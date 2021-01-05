@@ -25,8 +25,7 @@ run_test() {
 }
 
 # get all python files that aren't deleted
-python_files=$(git diff --cached --name-status | grep '\.py$' | grep -v '^D' \
-		   | sed 's/[A-Z][ \t]*//')
+python_files=$(git diff --cached --name-only --diff-filter=AM | grep '\.py$')
 
 if [ ! -z "${python_files}" ]; then
     # run isort

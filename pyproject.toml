@@ -8,7 +8,7 @@ readme = "README.md"
 keywords = ["tiledb-cf"]
 repository = "https://github.com/TileDB-Inc/tiledb-cf"
 packages = [
-    { include = "tiledb/cf", from = "src" },
+    { include = "tiledb/cf" },
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
