@@ -18,6 +18,8 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
+    "sphinx_autodoc_typehints",
+    "sphinx_rtd_theme",
 ]
 
 
@@ -28,7 +30,7 @@ todo_include_todos = False
 
 
 # -- Options for HTML output -------------------------------------------
-html_theme = "classic"
+html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]
 
 # -- Options for HTMLHelp output ---------------------------------------
