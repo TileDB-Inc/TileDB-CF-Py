@@ -8,7 +8,7 @@ readme = "README.md"
 keywords = ["tiledb-cf"]
 repository = "https://github.com/TileDB-Inc/tiledb-cf"
 packages = [
-    { include = "tiledb/cf", from = "src" },
+    { include = "tiledb/cf" },
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -29,7 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.7"
-tiledb = "^0.6.0"
+tiledb = "^0.7.1"
 numpy = "^1.16"
 
 [tool.poetry.dev-dependencies]
@@ -42,6 +42,8 @@ pylint = "^2.6.0"
 pytest = "^4.6.5"
 pytest-cov = "^2.0"
 Sphinx = "^3.3.0"
+sphinx-autodoc-typehints = "^1.11.1"
+sphinx-rtd-theme = "0.5.1"
 tox = "^3.14.0"
 wheel = "^0.33.6"
 
