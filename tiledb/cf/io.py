@@ -27,7 +27,7 @@ class DataspaceSchema:
     __slots__ = [
         "_allow_private_dimensions",
         "_array_schema_table",
-        "_attributes",
+        "_attribute_to_array",
         "_dimensions",
         "_narray",
         "_tiledb_cf_version",
@@ -41,10 +41,8 @@ class DataspaceSchema:
         self,
         array_schemas: Optional[Collection[Tuple[str, tiledb.ArraySchema]]] = None,
         tiledb_cf_version: Tuple[int, int, int] = _DEFAULT_TILEDB_CF_VERSION,
-        allow_private_dimensions: bool = False,
     ):
         self._tiledb_cf_version = tiledb_cf_version
-        self._allow_private_dimensions = allow_private_dimensions
         if array_schemas is None:
             self._array_schema_table = {}
             self._narray = 0
@@ -53,38 +51,30 @@ class DataspaceSchema:
             self._narray = len(array_schemas)
         if len(self._array_schema_table) != self._narray:
             raise ValueError(
-                "Invalid array_schema input. Cannot have multiple array schemas with "
-                "the same names. Names provided were: "
-                f"{self._array_schema_table.keys()}"
+                "Initializing dataspace schema failed; ArraySchemas must have unique "
+                "names."
             )
         self._dimensions: Dict[str, SharedDimension] = {}
-        self._attributes: Dict[str, Tuple[str, ...]] = {}
+        self._attribute_to_array: Dict[str, Tuple[str, ...]] = {}
         for (schema_name, schema) in self._array_schema_table.items():
             for attr in schema:
                 attr_name = attr.name
-                self._attributes[attr_name] = (
+                self._attribute_to_array[attr_name] = (
                     (schema_name,)
-                    if attr_name not in self._attributes
-                    else self._attributes[attr_name] + (schema_name,)
+                    if attr_name not in self._attribute_to_array
+                    else self._attribute_to_array[attr_name] + (schema_name,)
                 )
-            for dim in schema.domain:
-                new_dim = SharedDimension.create(dim)
-                if new_dim is not None:
-                    dim_name = dim.name
-                    if dim_name in self._dimensions:
-                        if new_dim != self._dimensions[dim_name]:
-                            raise ValueError(
-                                f"Dimension {dim} in ArraySchema {schema_name} does not"
-                                f" match SharedDimension {self._dimensions[dim_name]}."
-                            )
-                    else:
-                        self._dimensions[dim.name] = new_dim
-                elif not allow_private_dimensions:
-                    raise ValueError(
-                        f"ArraySchema {schema_name} contains a private dimension "
-                        f"{dim_name}. To allow private dimensions set "
-                        ":param:`allow_private_dimensions` to :code:`True`."
-                    )
+            for array_dim in schema.domain:
+                dim_name = array_dim.name
+                if dim_name in self._dimensions:
+                    if SharedDimension.create(array_dim) != self._dimensions[dim_name]:
+                        raise ValueError(
+                            f"Initializing dataspace schema failed; dimension "
+                            f" {dim_name} in array schema {schema_name} does not match "
+                            f"existing shared dimension {self._dimensions[dim_name]}."
+                        )
+                else:
+                    self._dimensions[dim_name] = SharedDimension.create(array_dim)
 
     def __eq__(self, other):
         """Instance is equal to another ArraySchema"""
@@ -123,24 +113,14 @@ class DataspaceSchema:
             tiledb.TileDBError: if an ArraySchema in the DataspaceSchema is invalid
             RuntimeError: if a shared :class:`tiledb.Dim` fails to match the defintion
             from the DataspaceSchema
-            RuntimeError: if :param:`allow_private_dimensions` is false and there is a
-            private :class:`tiledb.Dim`
         """
         for (schema_name, schema) in self._array_schema_table:
             schema.check()
             for dim in schema.domain:
-                new_dim = SharedDimension.create(dim)
-                if new_dim is not None:
-                    if new_dim != self._dimensions[dim.name]:
-                        raise RuntimeError(
-                            "Incompatible dimension definition for Dimension "
-                            f"{dim.name}."
-                        )
-                elif not self._allow_private_dimensions:
+                if SharedDimension.create(dim) != self._dimensions[dim.name]:
                     raise RuntimeError(
-                        f"ArraySchema {schema_name} contains a private Dimension "
-                        f"{dim}. To allow private dimensions set "
-                        ":param:`allow_private_dimensions` to :code:`True`."
+                        f"Database schema check failed; dimension definition for "
+                        f"dimension {dim.name} in array schema {schema_name}."
                     )
 
     def __repr__(self):
@@ -190,17 +170,14 @@ class SharedDimension(Generic[DType]):
 
     @classmethod
     def create(cls, dimension: tiledb.Dim):
-        """Create a SharedDimension from a tiledb.Dim"""
-        dim_name = dimension.name
-        if dim_name.startswith("__."):
-            if dim_name == "__.":
-                raise ValueError(
-                    f"Dimension {dimension} does not follow TileDB CF Convention. The "
-                    "prefix '__.' denoting a shared dimension must be followed by a "
-                    "valid dimension name."
-                )
-            return cls(dimension.name, dimension.domain, dimension.dtype)
-        return None
+        """Create a SharedDimension from a tiledb.Dim.
+
+        Create a SharedDimension using the name, domain, and type of a tiledb.dim.
+
+        Parameters:
+            dimension:
+        """
+        SharedDimension(dimension.name, dimension.domain, dimension.dtype)
 
     __slots__ = [
         "_name",
