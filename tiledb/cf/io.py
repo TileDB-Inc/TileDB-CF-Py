@@ -27,8 +27,9 @@ class DataspaceSchema:
     __slots__ = [
         "_allow_private_dimensions",
         "_array_schema_table",
-        "_narray",
+        "_attributes",
         "_dimensions",
+        "_narray",
         "_tiledb_cf_version",
     ]
 
@@ -38,7 +39,7 @@ class DataspaceSchema:
 
     def __init__(
         self,
-        array_schemas: Collection[Tuple[str, tiledb.ArraySchema]] = None,
+        array_schemas: Optional[Collection[Tuple[str, tiledb.ArraySchema]]] = None,
         tiledb_cf_version: Tuple[int, int, int] = _DEFAULT_TILEDB_CF_VERSION,
         allow_private_dimensions: bool = False,
     ):
@@ -57,7 +58,15 @@ class DataspaceSchema:
                 f"{self._array_schema_table.keys()}"
             )
         self._dimensions: Dict[str, SharedDimension] = {}
+        self._attributes: Dict[str, Tuple[str, ...]] = {}
         for (schema_name, schema) in self._array_schema_table.items():
+            for attr in schema:
+                attr_name = attr.name
+                self._attributes[attr_name] = (
+                    (schema_name,)
+                    if attr_name not in self._attributes
+                    else self._attributes[attr_name] + (schema_name,)
+                )
             for dim in schema.domain:
                 new_dim = SharedDimension.create(dim)
                 if new_dim is not None:
