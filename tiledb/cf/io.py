@@ -18,6 +18,92 @@ DType = TypeVar("DType", covariant=True)
 _METADATA_ARRAY = "__tiledb_group"
 
 
+class DataspaceArray:
+    """Array wrapper to access arrays inside the TileDB-CF Dataspace"""
+
+    __slots__ = [
+        "_array",
+        "_ctx",
+        "_key",
+        "_is_array",
+        "_metadata_array",
+        "_mode",
+        "_schema",
+        "_timestamp",
+        "_uri",
+    ]
+
+    def __init__(
+        self,
+        uri,
+        mode="r",
+        key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
+        timestamp=None,
+        array=None,
+        attr=None,
+        ctx: Optional[tiledb.Ctx] = None,
+        directory_separator: str = "/",
+    ):
+        if tiledb.object_type(uri, ctx) == "group":
+            if attr is not None and array is None:
+                group_schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
+                array = group_schema.get_attribute_array(attr)
+            if array is None:
+                raise ValueError(
+                    "Failed to open dataspace array. No array or attribute specified "
+                    "for URI is for a TileDB group."
+                )
+            array_uri = (
+                uri + array
+                if uri.endswith(directory_separator)
+                else uri + directory_separator + array
+            )
+        elif tiledb.object_type(uri, ctx) == "array":
+            array_uri = uri
+            array_name = (
+                uri.split(directory_separator)[-2]
+                if uri.endswith(directory_separator)
+                else uri.split(directory_separator)[-1]
+            )
+            if array is not None and array != array_name:
+                raise ValueError(
+                    f"Failed to open dataspace array. URI is for a TileDB array with "
+                    f"name {array_name} that does not match input array={array}."
+                )
+        else:
+            raise ValueError(
+                "Failed to open dataspace group. URI is not a valid TileDB object."
+            )
+        self._array = tiledb.Array(array_uri, mode, key, timestamp, attr, ctx)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    @property
+    def array(self):
+        """TileDB array opened through dataspace interface."""
+        return self._array
+
+    def close(self):
+        """Closes this DataspaceGroup, flushing all buffered data."""
+        if self._array is not None:
+            self._array.close()
+
+    def reopen(self):
+        """Reopen this DataspaceGroup
+
+        This is useful when the DataspaceGroup is updated after it was opened.
+        To sync-up with the updates, the user must either close the array and open
+        again, or just use ``reopen()`` without closing. ``reopen`` will be generally
+        faster than a close-then-open.
+        """
+        if self._array is not None:
+            self._array.reopen()
+
+
 class DataspaceGroup:
     """Array wrapper to access arrays inside the TileDB-CF Dataspace"""
 
@@ -48,11 +134,11 @@ class DataspaceGroup:
             )
 
     __slots__ = [
-        "_array",
         "_ctx",
+        "_directory_separator",
         "_key",
-        "_is_array",
         "_metadata_array",
+        "_metadata_uri",
         "_mode",
         "_schema",
         "_timestamp",
@@ -63,74 +149,37 @@ class DataspaceGroup:
         self,
         uri,
         mode="r",
-        key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
+        key: Optional[Union[str, bytes]] = None,
         timestamp=None,
-        array=None,
-        attr=None,
         ctx: Optional[tiledb.Ctx] = None,
         directory_separator: str = "/",
     ):
         self._uri = uri
+        self._metadata_uri = (
+            uri + _METADATA_ARRAY
+            if uri.endswith(directory_separator)
+            else uri + directory_separator + _METADATA_ARRAY
+        )
         self._mode = mode
         self._key = key
         self._timestamp = timestamp
         self._ctx = ctx
-        if tiledb.object_type(uri, ctx) == "group":
-            self._is_array = False
-            self._schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
-            self._metadata_array = self._schema.metadata_schema
-            if attr is not None and array is None:
-                array = self._schema.get_attribute_array(attr)
-            self._array = (
-                None
-                if array is None
-                else tiledb.Array(
-                    (
-                        uri + array
-                        if uri.endswith(directory_separator)
-                        else uri + directory_separator + array
-                    ),
-                    mode,
-                    key.get(array) if isinstance(key, dict) else key,
-                    timestamp,
-                    attr,
-                    ctx,
-                )
-            )
-        elif tiledb.object_type(uri, ctx) == "array":
-            self._is_array = True
-            if array is not None:
-                raise ValueError(
-                    "Failed to open dataspace group. Cannot parse array parameter when "
-                    "TileDB URI is for a TileDB array."
-                )
-            if isinstance(key, dict):
-                raise ValueError(
-                    "Failed to open dataspace group. Key cannot be a dictionary when "
-                    "TileDB URI is for a TileDB array."
-                )
-            self._array = tiledb.Array(uri, mode, key, timestamp, attr, ctx)
-            self._schema = self._array.schema
-            self._metadata_array = None
-        else:
+        self._directory_separator = directory_separator
+        if tiledb.object_type(uri, ctx) != "group":
             raise ValueError(
-                "Failed to open dataspace group. URI is not a valid TileDB object."
+                "Cannot load Dataspace group. URI does not point to a valid TileDB "
+                "group."
             )
-
+        self._schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
         self._metadata_array = (
             None
-            if self._schema._metadata_schema
+            if self._schema.metadata_scheman is None
             else tiledb.Array(
-                (
-                    uri + _METADATA_ARRAY
-                    if uri.endswith(directory_separator)
-                    else uri + directory_separator + _METADATA_ARRAY
-                ),
-                mode,
-                key.get(_METADATA_ARRAY) if isinstance(key, dict) else key,
-                timestamp,
-                attr,
-                ctx,
+                uri=self._metadata_uri,
+                mode=self._mode,
+                key=self._key,
+                timestamp=self._timestamp,
+                ctx=self._ctx,
             )
         )
 
@@ -140,20 +189,11 @@ class DataspaceGroup:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    @property
-    def array(self):
-        """TileDB array opened through dataspace interface."""
-        return self._array
-
     def close(self):
         """Closes this DataspaceGroup, flushing all buffered data."""
-        if self._array is not None:
-            self._array.close()
-        if self._metadata_array is not None:
-            self._metadata_array.close()
-        self._schema = None
+        self._metadata_array.close()
 
-    def reopen(self):
+    def reopen(self, timestamp=None):
         """Reopen this DataspaceGroup
 
         This is useful when the DataspaceGroup is updated after it was opened.
@@ -161,10 +201,27 @@ class DataspaceGroup:
         again, or just use ``reopen()`` without closing. ``reopen`` will be generally
         faster than a close-then-open.
         """
-        if self._array is not None:
-            self._array.reopen()
-        if self._metadata_array is not None:
-            self._array.reopen()
+        self._schema = DataspaceSchema.load(
+            self._uri,
+            self._ctx,
+            self._key,
+            self._directory_separator,
+        )
+        self._timestamp = timestamp
+        if self._metadata_array is None:
+            self._metadata_array = (
+                None
+                if self._schema.metadata_schema is None
+                else tiledb.Array(
+                    uri=self._metadata_uri,
+                    mode=self._mode,
+                    key=self._key,
+                    timestamp=self._timestamp,
+                    ctx=self._ctx,
+                )
+            )
+        else:
+            self._metadata_array.reopen()
 
 
 class DataspaceSchema(Mapping):
