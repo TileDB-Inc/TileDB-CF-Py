@@ -47,6 +47,17 @@ class DataspaceGroup:
                 ctx,
             )
 
+    __slots__ = [
+        "_array",
+        "_ctx",
+        "_key",
+        "_metadata_array",
+        "_mode",
+        "_schema",
+        "_timestamp",
+        "_uri",
+    ]
+
     def __init__(
         self,
         uri,
@@ -62,6 +73,7 @@ class DataspaceGroup:
         self._mode = mode
         self._key = key
         self._timestamp = timestamp
+        self._ctx = ctx
         self._schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
         if attr is not None and array is None:
             array = self._schema.get_attribute_array(attr)
@@ -104,16 +116,31 @@ class DataspaceGroup:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
-    def close(self):
-        """Closes this DataspaceGroup, flushing all buffered data."""
-        self._array.close()
-        if self._metadata_array is not None:
-            self._metadata_array.close()
-
     @property
     def array(self):
         """TileDB array opened through dataspace interface."""
         return self._array
+
+    def close(self):
+        """Closes this DataspaceGroup, flushing all buffered data."""
+        if self._array is not None:
+            self._array.close()
+        if self._metadata_array is not None:
+            self._metadata_array.close()
+        self._schema = None
+
+    def reopen(self):
+        """Reopen this DataspaceGroup
+
+        This is useful when the DataspaceGroup is updated after it was opened.
+        To sync-up with the updates, the user must either close the array and open
+        again, or just use ``reopen()`` without closing. ``reopen`` will be generally
+        faster than a close-then-open.
+        """
+        if self._array is not None:
+            self._array.reopen()
+        if self._metadata_array is not None:
+            self._array.reopen()
 
 
 class DataspaceSchema(Mapping):
@@ -245,11 +272,11 @@ class DataspaceSchema(Mapping):
         """Returns a generator that iterates over (name, ArraySchema) pairs."""
         return self._array_schema_table.__iter__()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Returns the number of ArraySchemas in the DataspaceSchema"""
         return self._narray
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Returns the object representation of this DataspaceSchema in string orm."""
         output = StringIO()
         output.write("DataspaceSchema(\n")
@@ -257,7 +284,7 @@ class DataspaceSchema(Mapping):
         for shared_dim in self._dimensions.values():
             output.write(f"    {repr(shared_dim)},")
         output.write("  )\n")
-        for name, schema in self:
+        for name, schema in self.keys():
             output.write(f"{name} {repr(schema)}")
         output.write(")\n")
         return output.getvalue()
@@ -318,6 +345,7 @@ class DataspaceSchema(Mapping):
 
     @property
     def metadata_schema(self):
+        """ArraySchema for the dataspace-level metadata."""
         return self._metadata_schema
 
     def set_default_metadata_schema(self, ctx):
