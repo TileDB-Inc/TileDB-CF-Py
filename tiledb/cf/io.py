@@ -5,44 +5,187 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Mapping
 from enum import Enum, unique
 from io import StringIO
-from typing import Collection, Dict, Generic, Iterable, Optional, Tuple, TypeVar, Union
+from typing import Collection, Dict, Generic, Iterator, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 
 import tiledb
 
-_DEFAULT_TILEDB_CF_VERSION = (0, 1, 0)
 DType = TypeVar("DType", covariant=True)
+_METADATA_ARRAY = "__tiledb_group"
 
 
-class DataspaceSchema:
+class DataspaceGroup:
+    """Array wrapper to access arrays inside the TileDB-CF Dataspace"""
+
+    @classmethod
+    def create(
+        cls,
+        uri: str,
+        dataspace_schema: DataspaceSchema,
+        key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+        directory_separator: str = "/",
+    ):
+        tiledb.group_create(uri, ctx)
+        separator = "" if uri.endswith(directory_separator) else directory_separator
+        if dataspace_schema.metadata_schema is not None:
+            tiledb.DenseArray.create(
+                uri + separator + _METADATA_ARRAY,
+                dataspace_schema.metadata_schema,
+                key.get(_METADATA_ARRAY) if isinstance(key, dict) else key,
+                ctx,
+            )
+        for array_name, array_schema in dataspace_schema.items():
+            tiledb.Array.create(
+                uri + separator + array_name,
+                array_schema,
+                key.get(array_name) if isinstance(key, dict) else key,
+                ctx,
+            )
+
+    def __init__(
+        self,
+        uri,
+        mode="r",
+        key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
+        timestamp=None,
+        array=None,
+        attr=None,
+        ctx: Optional[tiledb.Ctx] = None,
+        directory_separator: str = "/",
+    ):
+        self._uri = uri
+        self._mode = mode
+        self._key = key
+        self._timestamp = timestamp
+        self._schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
+        if attr is not None and array is None:
+            array = self._schema.get_attribute_array(attr)
+        self._array = (
+            None
+            if array is None
+            else tiledb.Array(
+                (
+                    uri + array
+                    if uri.endswith(directory_separator)
+                    else uri + directory_separator + array
+                ),
+                mode,
+                key.get(array) if isinstance(key, dict) else key,
+                timestamp,
+                attr,
+                ctx,
+            )
+        )
+        self._metadata_array = (
+            None
+            if self._schema._metadata_schema
+            else tiledb.Array(
+                (
+                    uri + _METADATA_ARRAY
+                    if uri.endswith(directory_separator)
+                    else uri + directory_separator + _METADATA_ARRAY
+                ),
+                mode,
+                key.get(_METADATA_ARRAY) if isinstance(key, dict) else key,
+                timestamp,
+                attr,
+                ctx,
+            )
+        )
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        """Closes this DataspaceGroup, flushing all buffered data."""
+        self._array.close()
+        if self._metadata_array is not None:
+            self._metadata_array.close()
+
+    @property
+    def array(self):
+        """TileDB array opened through dataspace interface."""
+        return self._array
+
+
+class DataspaceSchema(Mapping):
     """Schema for the TileDB-CF Dataspace representation
 
     Parameters:
         domain: Domain definition dimension space of
     """
 
+    @classmethod
+    def load(
+        cls,
+        uri: str,
+        ctx: tiledb.Ctx,
+        key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
+        directory_separator: str = "/",
+    ):
+        dataspace_type = tiledb.object_type(uri, ctx)
+        metadata_schema = None
+        if dataspace_type == "array":
+            is_array = True
+            array_name = (
+                uri.split(directory_separator)[-2]
+                if uri.endswith(directory_separator)
+                else uri.split(directory_separator)[-1]
+            )
+            local_key = key.get(array_name) if isinstance(key, dict) else key
+            array_schemas = [(array_name, tiledb.ArraySchema.load(uri, ctx, local_key))]
+        elif dataspace_type == "group":
+            is_array = False
+            vfs = tiledb.VFS(ctx=ctx)
+            array_schemas = []
+            for item in vfs.ls(uri):
+                if not tiledb.object_type(item) == "array":
+                    continue
+                array_name = (
+                    item.split(directory_separator)[-2]
+                    if item.endswith(directory_separator)
+                    else item.split(directory_separator)[-1]
+                )
+                local_key = key.get(array_name) if isinstance(key, dict) else key
+                if array_name == _METADATA_ARRAY:
+                    metadata_schema = tiledb.ArraySchema.load(uri, ctx, local_key)
+                else:
+                    array_schemas.append(
+                        (array_name, tiledb.ArraySchema.load(uri, ctx, local_key))
+                    )
+        else:
+            raise ValueError(
+                "Loading the dataspace schema failed; no valid TileDB obect at uri."
+            )
+        return cls(array_schemas, metadata_schema, is_array)
+
     __slots__ = [
         "_allow_private_dimensions",
         "_array_schema_table",
-        "_attribute_to_array",
+        "_attribute_to_arrays",
         "_dimensions",
+        "_group_schema",
+        "_is_array",
+        "_metadata_schema",
         "_narray",
-        "_tiledb_cf_version",
     ]
-
-    @staticmethod
-    def load(uri, ctx: tiledb.Ctx, key: Optional[str] = None):
-        pass
 
     def __init__(
         self,
         array_schemas: Optional[Collection[Tuple[str, tiledb.ArraySchema]]] = None,
-        tiledb_cf_version: Tuple[int, int, int] = _DEFAULT_TILEDB_CF_VERSION,
+        metadata_schema: Optional[tiledb.ArraySchema] = None,
+        is_array: bool = False,
     ):
-        self._tiledb_cf_version = tiledb_cf_version
+        self._metadata_schema = metadata_schema
+        self._is_array = is_array
         if array_schemas is None:
             self._array_schema_table = {}
             self._narray = 0
@@ -55,14 +198,14 @@ class DataspaceSchema:
                 "names."
             )
         self._dimensions: Dict[str, SharedDimension] = {}
-        self._attribute_to_array: Dict[str, Tuple[str, ...]] = {}
+        self._attribute_to_arrays: Dict[str, Tuple[str, ...]] = {}
         for (schema_name, schema) in self._array_schema_table.items():
             for attr in schema:
                 attr_name = attr.name
-                self._attribute_to_array[attr_name] = (
+                self._attribute_to_arrays[attr_name] = (
                     (schema_name,)
-                    if attr_name not in self._attribute_to_array
-                    else self._attribute_to_array[attr_name] + (schema_name,)
+                    if attr_name not in self._attribute_to_arrays
+                    else self._attribute_to_arrays[attr_name] + (schema_name,)
                 )
             for array_dim in schema.domain:
                 dim_name = array_dim.name
@@ -98,9 +241,9 @@ class DataspaceSchema:
         """
         return self._array_schema_table[schema_name]
 
-    def __iter__(self) -> Iterable[Tuple[str, tiledb.ArraySchema]]:
+    def __iter__(self) -> Iterator[str]:
         """Returns a generator that iterates over (name, ArraySchema) pairs."""
-        return self._array_schema_table.items()
+        return self._array_schema_table.__iter__()
 
     def __len__(self):
         """Returns the number of ArraySchemas in the DataspaceSchema"""
@@ -122,6 +265,57 @@ class DataspaceSchema:
                         f"Database schema check failed; dimension definition for "
                         f"dimension {dim.name} in array schema {schema_name}."
                     )
+
+    def get_all_attribute_arrays(
+        self, attribute_name: str
+    ) -> Optional[Tuple[str, ...]]:
+        """Return a tuple of the names of all arrays with a matching attribute
+
+        Parameter:
+            attribute_name: Name of the attribute to query on.
+
+        Returns:
+            A tuple of the name of all arrays with a matching attribute.
+        """
+        return self._attribute_to_arrays.get(attribute_name)
+
+    def get_attribute_array(self, attribute_name: str) -> str:
+        """Return the name of the array :param:`attribute_name` is contained
+
+        Parameters:
+            attribute_name: Name of the attribute to query on.
+
+        Returns:
+            Name of the array that contains the attribute with a matching name.
+
+        Raises:
+            KeyError: No attribute with name :param:`attribute_name` found.
+            ValueError: More than one array with :param:`attribute_name` found.
+        """
+        arrays = self._attribute_to_arrays.get(attribute_name)
+        if arrays is None:
+            raise KeyError(f"No attribute with name {attribute_name} found.")
+        assert len(arrays) > 0
+        if len(arrays) > 1:
+            raise ValueError(
+                f"More than one array with attribute name {attribute_name} found."
+                f"Arrays with that attribute are: {arrays}."
+            )
+        return arrays[0]
+
+    @property
+    def metadata_schema(self):
+        return self._metadata_schema
+
+    def set_default_metadata_schema(self, ctx):
+        # TODO(jp-dark) add this to creation class method instead
+        self._metadata_schema = tiledb.ArraySchema(
+            domain=tiledb.Domain(
+                tiledb.Dim(name="dim", domain=(0, 0), tile=1, dtype=np.int32, ctx=ctx)
+            ),
+            attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
+            sparse=False,
+        )
 
     def __repr__(self):
         output = StringIO()
