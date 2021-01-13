@@ -51,6 +51,7 @@ class DataspaceGroup:
         "_array",
         "_ctx",
         "_key",
+        "_is_array",
         "_metadata_array",
         "_mode",
         "_schema",
@@ -74,25 +75,48 @@ class DataspaceGroup:
         self._key = key
         self._timestamp = timestamp
         self._ctx = ctx
-        self._schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
-        if attr is not None and array is None:
-            array = self._schema.get_attribute_array(attr)
-        self._array = (
-            None
-            if array is None
-            else tiledb.Array(
-                (
-                    uri + array
-                    if uri.endswith(directory_separator)
-                    else uri + directory_separator + array
-                ),
-                mode,
-                key.get(array) if isinstance(key, dict) else key,
-                timestamp,
-                attr,
-                ctx,
+        if tiledb.object_type(uri, ctx) == "group":
+            self._is_array = False
+            self._schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
+            self._metadata_array = self._schema.metadata_schema
+            if attr is not None and array is None:
+                array = self._schema.get_attribute_array(attr)
+            self._array = (
+                None
+                if array is None
+                else tiledb.Array(
+                    (
+                        uri + array
+                        if uri.endswith(directory_separator)
+                        else uri + directory_separator + array
+                    ),
+                    mode,
+                    key.get(array) if isinstance(key, dict) else key,
+                    timestamp,
+                    attr,
+                    ctx,
+                )
             )
-        )
+        elif tiledb.object_type(uri, ctx) == "array":
+            self._is_array = True
+            if array is not None:
+                raise ValueError(
+                    "Failed to open dataspace group. Cannot parse array parameter when "
+                    "TileDB URI is for a TileDB array."
+                )
+            if isinstance(key, dict):
+                raise ValueError(
+                    "Failed to open dataspace group. Key cannot be a dictionary when "
+                    "TileDB URI is for a TileDB array."
+                )
+            self._array = tiledb.Array(uri, mode, key, timestamp, attr, ctx)
+            self._schema = self._array.schema
+            self._metadata_array = None
+        else:
+            raise ValueError(
+                "Failed to open dataspace group. URI is not a valid TileDB object."
+            )
+
         self._metadata_array = (
             None
             if self._schema._metadata_schema
@@ -158,41 +182,37 @@ class DataspaceSchema(Mapping):
         key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
         directory_separator: str = "/",
     ):
-        dataspace_type = tiledb.object_type(uri, ctx)
+        """Load a dataspace schema for a TileDB group
+
+        Parameters:
+            uri: uniform resource identifier for the TileDB group
+            ctx: a TileDB context
+            key: encryption key or dictionary of encryption keys (by array name)
+        """
         metadata_schema = None
-        if dataspace_type == "array":
-            is_array = True
+        if tiledb.object_type(uri, ctx) != "group":
+            raise ValueError(
+                f"Failed to load the dataspace schema. Provided uri {uri} is not a "
+                f"valid TileDB group."
+            )
+        vfs = tiledb.VFS(ctx=ctx)
+        array_schemas = []
+        for item in vfs.ls(uri):
+            if not tiledb.object_type(item) == "array":
+                continue
             array_name = (
-                uri.split(directory_separator)[-2]
-                if uri.endswith(directory_separator)
-                else uri.split(directory_separator)[-1]
+                item.split(directory_separator)[-2]
+                if item.endswith(directory_separator)
+                else item.split(directory_separator)[-1]
             )
             local_key = key.get(array_name) if isinstance(key, dict) else key
-            array_schemas = [(array_name, tiledb.ArraySchema.load(uri, ctx, local_key))]
-        elif dataspace_type == "group":
-            is_array = False
-            vfs = tiledb.VFS(ctx=ctx)
-            array_schemas = []
-            for item in vfs.ls(uri):
-                if not tiledb.object_type(item) == "array":
-                    continue
-                array_name = (
-                    item.split(directory_separator)[-2]
-                    if item.endswith(directory_separator)
-                    else item.split(directory_separator)[-1]
+            if array_name == _METADATA_ARRAY:
+                metadata_schema = tiledb.ArraySchema.load(uri, ctx, local_key)
+            else:
+                array_schemas.append(
+                    (array_name, tiledb.ArraySchema.load(uri, ctx, local_key))
                 )
-                local_key = key.get(array_name) if isinstance(key, dict) else key
-                if array_name == _METADATA_ARRAY:
-                    metadata_schema = tiledb.ArraySchema.load(uri, ctx, local_key)
-                else:
-                    array_schemas.append(
-                        (array_name, tiledb.ArraySchema.load(uri, ctx, local_key))
-                    )
-        else:
-            raise ValueError(
-                "Loading the dataspace schema failed; no valid TileDB obect at uri."
-            )
-        return cls(array_schemas, metadata_schema, is_array)
+        return cls(array_schemas, metadata_schema)
 
     __slots__ = [
         "_allow_private_dimensions",
@@ -200,7 +220,6 @@ class DataspaceSchema(Mapping):
         "_attribute_to_arrays",
         "_dimensions",
         "_group_schema",
-        "_is_array",
         "_metadata_schema",
         "_narray",
     ]
@@ -209,10 +228,8 @@ class DataspaceSchema(Mapping):
         self,
         array_schemas: Optional[Collection[Tuple[str, tiledb.ArraySchema]]] = None,
         metadata_schema: Optional[tiledb.ArraySchema] = None,
-        is_array: bool = False,
     ):
         self._metadata_schema = metadata_schema
-        self._is_array = is_array
         if array_schemas is None:
             self._array_schema_table = {}
             self._narray = 0
