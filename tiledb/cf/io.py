@@ -249,6 +249,19 @@ class DataspaceSchema(Mapping):
         """Returns the number of ArraySchemas in the DataspaceSchema"""
         return self._narray
 
+    def __repr__(self):
+        """Returns the object representation of this DataspaceSchema in string orm."""
+        output = StringIO()
+        output.write("DataspaceSchema(\n")
+        output.write("  SharedDomain (\n")
+        for shared_dim in self._dimensions.values():
+            output.write(f"    {repr(shared_dim)},")
+        output.write("  )\n")
+        for name, schema in self:
+            output.write(f"{name} {repr(schema)}")
+        output.write(")\n")
+        return output.getvalue()
+
     def check(self):
         """Checks the correctness of the DataspaceSchema
 
@@ -316,47 +329,6 @@ class DataspaceSchema(Mapping):
             attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
             sparse=False,
         )
-
-    def __repr__(self):
-        output = StringIO()
-        output.write("DataspaceSchema(\n")
-        output.write("  SharedDomain (\n")
-        for shared_dim in self._dimensions.values():
-            output.write(f"    {repr(shared_dim)},")
-        output.write("  )\n")
-        for name, schema in self:
-            output.write("  ArraySchema (\n")
-            output.write(f"    name={name}\n")
-            output.write("    domain=Domain(*[\n")
-            for dim in schema.domain:
-                if dim.name.startswith("__."):
-                    dim_repr = repr(dim).replace("__.", "")
-                else:
-                    dim_repr = "(private) " + repr(dim)
-                output.write(f"      {dim_repr},\n")
-                output.write("    ]),\n")
-            output.write("    attrs=[\n")
-            for i in range(schema.nattr):
-                output.write(f"      {repr(schema.attr(i))},\n")
-                output.write("    ],\n")
-                output.write(
-                    f"    cell_order='{schema.cell_order}',\n"
-                    f"    tile_order='{schema.tile_order}',\n"
-                )
-                output.write(f"    capacity={schema.capacity},\n")
-                output.write(f"    sparse={schema.sparse},\n")
-                if schema.sparse:
-                    output.write(f"    allows_duplicates={schema.allows_duplicates},\n")
-            if schema.coords_filters is not None:
-                output.write("  coords_filters=FilterList([")
-                for index, coord_filter in enumerate(schema.coords_filters):
-                    output.write(f"{repr(coord_filter)}")
-                    if index < len(schema.coords_filters):
-                        output.write(", ")
-                output.write("])\n")
-            output.write(")\n")
-        output.write(")\n")
-        return output.getvalue()
 
 
 class SharedDimension(Generic[DType]):
