@@ -138,6 +138,7 @@ class DataspaceGroup:
         "_directory_separator",
         "_key",
         "_metadata_array",
+        "_metadata_key",
         "_metadata_uri",
         "_mode",
         "_schema",
@@ -149,17 +150,12 @@ class DataspaceGroup:
         self,
         uri,
         mode="r",
-        key: Optional[Union[str, bytes]] = None,
+        key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
         timestamp=None,
         ctx: Optional[tiledb.Ctx] = None,
         directory_separator: str = "/",
     ):
         self._uri = uri
-        self._metadata_uri = (
-            uri + _METADATA_ARRAY
-            if uri.endswith(directory_separator)
-            else uri + directory_separator + _METADATA_ARRAY
-        )
         self._mode = mode
         self._key = key
         self._timestamp = timestamp
@@ -171,13 +167,19 @@ class DataspaceGroup:
                 "group."
             )
         self._schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
+        self._metadata_uri = (
+            uri + _METADATA_ARRAY
+            if uri.endswith(directory_separator)
+            else uri + directory_separator + _METADATA_ARRAY
+        )
+        self._metadata_key = key.get(_METADATA_ARRAY) if isinstance(key, dict) else key
         self._metadata_array = (
             None
             if self._schema.metadata_scheman is None
             else tiledb.Array(
                 uri=self._metadata_uri,
                 mode=self._mode,
-                key=self._key,
+                key=self._metadata_key,
                 timestamp=self._timestamp,
                 ctx=self._ctx,
             )
@@ -192,6 +194,32 @@ class DataspaceGroup:
     def close(self):
         """Closes this DataspaceGroup, flushing all buffered data."""
         self._metadata_array.close()
+
+    def create_metadata_array(self):
+        """Create a metadata array for this group.
+
+        This routine will create a metadata array for the group. An error will be raised
+        if the metadata array already exists (either directly if the array is open or
+        in directly during the Array creation step.
+
+        The user must either close the group and open it again, or just use
+        :meth:`reopen` without closing to read and write to the metadata array.
+
+        Raises:
+           RuntimeError: Metadata array exists and is open.
+        """
+        if self._metadata_array is not None:
+            raise RuntimeError(
+                "Failed to create metadata array; array exists and is open."
+            )
+        if self._schema.metadata_schema is None:
+            self._schema.set_default_metadata_schema()
+        tiledb.Array.create(
+            self._metadata_uri,
+            self._schema.metadata_schema,
+            self._metadata_key,
+            self._ctx,
+        )
 
     def reopen(self, timestamp=None):
         """Reopen this DataspaceGroup
@@ -423,7 +451,7 @@ class DataspaceSchema(Mapping):
         return self._metadata_schema
 
     def set_default_metadata_schema(self, ctx):
-        # TODO(jp-dark) add this to creation class method instead
+        """Set the metadata schema to a default placeholder DenseArray."""
         self._metadata_schema = tiledb.ArraySchema(
             domain=tiledb.Domain(
                 tiledb.Dim(name="dim", domain=(0, 0), tile=1, dtype=np.int32, ctx=ctx)
