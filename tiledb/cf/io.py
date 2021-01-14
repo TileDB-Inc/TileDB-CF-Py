@@ -19,7 +19,22 @@ _METADATA_ARRAY = "__tiledb_group"
 
 
 class DataspaceArray:
-    """Array wrapper to access arrays inside the TileDB-CF Dataspace"""
+    """Array wrapper to access arrays inside the TileDB-CF Dataspace.
+
+    Parameters:
+        uri: Uniform resource identifier for TileDB group or array.
+        mode: Open the array object in read 'r' or write 'w' mode.
+        key: If not None, encryption key or dictionary of encryption keys to decrypt
+            arrays.
+        timestamp: If not None, open the TileDB array at the given timestamp.
+        array: If not None, specifies which array in a TileDB group to open. If the
+            URI is for a TileDB array this must either be None or match the URI
+            basename.
+        attr: If not None, open one attribute of the TileDB array. If the array is
+            dense, indexing the array will return a Numpy nd.array directly.
+        ctx: TileDB context
+        directory_separator: Separator for directories used in URI.
+    """
 
     __slots__ = [
         "_array",
@@ -44,6 +59,18 @@ class DataspaceArray:
         ctx: Optional[tiledb.Ctx] = None,
         directory_separator: str = "/",
     ):
+        """Constructs a new :class:`DataspaceArray`.
+
+        If the URI is for a TileDB Group either :param:`array` or :param:`attr` must be
+        specified. If the URI is for a TileDB Group :param:`array` must either be
+        ``None`` or match the basename of the URI.
+
+        Raises:
+            ValueError: No array or attribute specified for TileDB group.
+            ValueError: URI basename for TileDB array does not match array input
+                parameter.
+            ValueError: URI is not a valid TileDB object.
+        """
         if tiledb.object_type(uri, ctx) == "group":
             if attr is not None and array is None:
                 group_schema = GroupSchema.load(uri, ctx, key, directory_separator)
@@ -51,7 +78,7 @@ class DataspaceArray:
             if array is None:
                 raise ValueError(
                     "Failed to open dataspace array. No array or attribute specified "
-                    "for URI is for a TileDB group."
+                    "for TileDB group."
                 )
             array_uri = (
                 uri + array
@@ -67,8 +94,9 @@ class DataspaceArray:
             )
             if array is not None and array != array_name:
                 raise ValueError(
-                    f"Failed to open dataspace array. URI is for a TileDB array with "
-                    f"name {array_name} that does not match input array={array}."
+                    f"Failed to open dataspace array. URI for TileDB array with "
+                    f"basename={array_name} that does not match parameter "
+                    f"array={array}."
                 )
         else:
             raise ValueError(
@@ -88,12 +116,12 @@ class DataspaceArray:
         return self._array
 
     def close(self):
-        """Closes this DataspaceGroup, flushing all buffered data."""
+        """Closes this :class:`DataspaceGroup`, flushing all buffered data."""
         if self._array is not None:
             self._array.close()
 
     def reopen(self):
-        """Reopen this DataspaceGroup
+        """Reopens this :class:`DataspaceGroup`.
 
         This is useful when the DataspaceGroup is updated after it was opened.
         To sync-up with the updates, the user must either close the array and open
@@ -105,7 +133,17 @@ class DataspaceArray:
 
 
 class DataspaceGroup:
-    """Array wrapper to access arrays inside the TileDB-CF Dataspace"""
+    """Array wrapper to access arrays through the TileDB-CF Dataspace API.
+
+    Parameters:
+        uri: Uniform resource identifier for TileDB group or array.
+        mode: Open the array object in read 'r' or write 'w' mode.
+        key: If not None, encryption key or dictionary of encryption keys to decrypt
+            arrays.
+        timestamp: If not None, open the TileDB metadata array at the given
+            timestamp.
+        ctx: TileDB context
+        directory_separator: Separator for directories used in URI."""
 
     @classmethod
     def create(
@@ -116,6 +154,16 @@ class DataspaceGroup:
         ctx: Optional[tiledb.Ctx] = None,
         directory_separator: str = "/",
     ):
+        """Create the group and arrays for a dataspace from a :class:`GroupSchema`.
+
+        Parameters:
+            uri: Uniform resource identifier for TileDB group or array.
+            dataspace_schema: Schema that defines the group to be created.
+            key: If not None, encryption key or dictionary of encryption keys to decrypt
+                arrays.
+            ctx: TileDB context
+            directory_separator: Separator for directories used in URI
+        """
         tiledb.group_create(uri, ctx)
         separator = "" if uri.endswith(directory_separator) else directory_separator
         if dataspace_schema.metadata_schema is not None:
@@ -155,6 +203,11 @@ class DataspaceGroup:
         ctx: Optional[tiledb.Ctx] = None,
         directory_separator: str = "/",
     ):
+        """Constructs a new :class:`GroupSchema`.
+
+        Raises:
+            ValueError: URI does not point to a valid TileDB group.
+        """
         self._uri = uri
         self._mode = mode
         self._key = key
@@ -196,7 +249,7 @@ class DataspaceGroup:
         self._metadata_array.close()
 
     def create_metadata_array(self):
-        """Create a metadata array for this group.
+        """Creates a metadata array for this group.
 
         This routine will create a metadata array for the group. An error will be raised
         if the metadata array already exists (either directly if the array is open or
@@ -222,7 +275,7 @@ class DataspaceGroup:
         )
 
     def reopen(self, timestamp=None):
-        """Reopen this DataspaceGroup
+        """Reopens this DataspaceGroup.
 
         This is useful when the DataspaceGroup is updated after it was opened.
         To sync-up with the updates, the user must either close the array and open
@@ -253,10 +306,12 @@ class DataspaceGroup:
 
 
 class GroupSchema(Mapping):
-    """Schema for the TileDB-CF Dataspace representation
+    """Schema for the TileDB-CF Dataspace representation.
 
     Parameters:
-        domain: Domain definition dimension space of
+        array_schemas: A collection of (name, ArraySchema) tuples for Arrays that belong
+            to this group.
+        metadata_schema: If not None, a schema for the group metadata array.
     """
 
     @classmethod
@@ -314,6 +369,11 @@ class GroupSchema(Mapping):
         array_schemas: Optional[Collection[Tuple[str, tiledb.ArraySchema]]] = None,
         metadata_schema: Optional[tiledb.ArraySchema] = None,
     ):
+        """Constructs a :class:`GroupSchema`.
+
+        Raises:
+            ValueError: ArraySchema has duplicate names.
+        """
         self._metadata_schema = metadata_schema
         if array_schemas is None:
             self._array_schema_table = {}
@@ -349,7 +409,6 @@ class GroupSchema(Mapping):
                     self._dimensions[dim_name] = SharedDimension.create(array_dim)
 
     def __eq__(self, other):
-        """Instance is equal to another ArraySchema"""
         if not isinstance(other, GroupSchema):
             return False
         if self._narray != len(other):
@@ -360,13 +419,13 @@ class GroupSchema(Mapping):
         return True
 
     def __getitem__(self, schema_name: str) -> tiledb.ArraySchema:
-        """Returns schema with name given by :param:`schema_name`
+        """Returns the :class:`Arrayschema` with the name given by :param:`schema_name`.
 
         Parameters:
             schema_name: Name of the ArraySchema to be returned.
 
         Returns:
-            ArraySchema with name :param:`schema_name`
+            ArraySchema with name :param:`schema_name`.
         """
         return self._array_schema_table[schema_name]
 
@@ -379,7 +438,7 @@ class GroupSchema(Mapping):
         return self._narray
 
     def __repr__(self) -> str:
-        """Returns the object representation of this GroupSchema in string orm."""
+        """Returns the object representation of this GroupSchema in string form."""
         output = StringIO()
         output.write("GroupSchema(\n")
         output.write("  SharedDomain (\n")
@@ -392,12 +451,12 @@ class GroupSchema(Mapping):
         return output.getvalue()
 
     def check(self):
-        """Checks the correctness of the GroupSchema
+        """Checks the correctness of the GroupSchema.
 
         Raises:
-            tiledb.TileDBError: if an ArraySchema in the GroupSchema is invalid
-            RuntimeError: if a shared :class:`tiledb.Dim` fails to match the defintion
-            from the GroupSchema
+            tiledb.TileDBError: An ArraySchema in the GroupSchema is invalid.
+            RuntimeError: A shared :class:`tiledb.Dim` fails to match the definition
+                from the GroupSchema.
         """
         for (schema_name, schema) in self._array_schema_table:
             schema.check()
@@ -411,21 +470,23 @@ class GroupSchema(Mapping):
     def get_all_attribute_arrays(
         self, attribute_name: str
     ) -> Optional[Tuple[str, ...]]:
-        """Return a tuple of the names of all arrays with a matching attribute
+        """Returns a tuple of the names of all arrays with a matching attribute.
 
         Parameter:
-            attribute_name: Name of the attribute to query on.
+            attribute_name: Name of the attribute to look up arrays for.
 
         Returns:
-            A tuple of the name of all arrays with a matching attribute.
+            A tuple of the name of all arrays with a matching attribute, or `None` if no
+                such array.
         """
         return self._attribute_to_arrays.get(attribute_name)
 
     def get_attribute_array(self, attribute_name: str) -> str:
-        """Return the name of the array :param:`attribute_name` is contained
+        """Returns the name of the array in which the :param:`attribute_name` is
+            contained.
 
         Parameters:
-            attribute_name: Name of the attribute to query on.
+            attribute_name: Name of the attribute to look up array for.
 
         Returns:
             Name of the array that contains the attribute with a matching name.
@@ -462,7 +523,14 @@ class GroupSchema(Mapping):
 
 
 class SharedDimension(Generic[DType]):
-    """A class for a shared one-dimensional dimension."""
+    """A class for a shared one-dimensional dimension.
+
+    Parameters:
+        name: Name of the :class:`SharedDimension`.
+        domain: The (inclusive) interval on which the :class:`SharedDimension` is
+            valid.
+        data_type: Numpy dtype of the dimension values and domain.
+    """
 
     @classmethod
     def create(cls, dimension: tiledb.Dim):
@@ -471,7 +539,8 @@ class SharedDimension(Generic[DType]):
         Create a SharedDimension using the name, domain, and type of a tiledb.dim.
 
         Parameters:
-            dimension:
+            dimension: TileDB dimension that will be used to create the shared
+                dimension.
         """
         SharedDimension(dimension.name, dimension.domain, dimension.dtype)
 
@@ -487,12 +556,10 @@ class SharedDimension(Generic[DType]):
         domain: Tuple[Optional[DType], Optional[DType]],
         data_type: Union[DataType, str, np.dtype, np.datetime64, np.generic],
     ):
-        """Constructor for Axis.
+        """Constructs a new :class:`SharedDimension`.
 
-        Parameters:
-            name: name of the axis
-            domain: domain the axis is defined on
-            data_type: TileDBType of Axis data or key to generate the Type
+        Raises:
+            ValueError: Name contains reserved character '.'.
         """
         if "." in name:
             raise ValueError(f"Invalid name {name}. Cannot have '.' in dimension name.")
@@ -522,17 +589,18 @@ class SharedDimension(Generic[DType]):
 
     @property
     def domain(self) -> Tuple[Optional[DType], Optional[DType]]:
-        """A tuple providing the (inclusive) interval the Axis is defined on."""
+        """A tuple providing the (inclusive) interval which the :class:`SharedDimension`
+        is defined on."""
         return self._domain
 
     @property
     def dtype(self) -> np.dtype:
-        """The dtype of the values this axis stores."""
+        """The numpy.dtype of the values and domain."""
         return self._dtype
 
     @property
     def name(self) -> str:
-        """The name of the axis."""
+        """The name of the dimension."""
         return self._name
 
 
@@ -585,17 +653,17 @@ class DataType(Enum):
             key: Input key that defines what type to use.
 
         Returns:
-            Corresponding TileDBType enum
+            Corresponding TileDBType enum.
 
         Raises:
-            ValueError: if key is a datetime64 object without a specified unit
+            ValueError: Key is a datetime64 object without a specified unit.
         """
         if isinstance(key, str):
             return cls[key]
         if isinstance(key, np.datetime64):
             date_unit = np.datetime_data(key)[0]
             if date_unit == "generic":
-                raise ValueError(f"datetime {key} does not speficy a date unit")
+                raise ValueError(f"Datetime {key} does not speficy a date unit.")
             return cls(np.dtype("M8[" + date_unit + "]"))
         dtype = np.dtype(key)
         if dtype == np.dtype("complex64"):
