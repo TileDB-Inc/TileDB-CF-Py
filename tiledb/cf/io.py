@@ -46,7 +46,7 @@ class DataspaceArray:
     ):
         if tiledb.object_type(uri, ctx) == "group":
             if attr is not None and array is None:
-                group_schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
+                group_schema = GroupSchema.load(uri, ctx, key, directory_separator)
                 array = group_schema.get_attribute_array(attr)
             if array is None:
                 raise ValueError(
@@ -111,7 +111,7 @@ class DataspaceGroup:
     def create(
         cls,
         uri: str,
-        dataspace_schema: DataspaceSchema,
+        dataspace_schema: GroupSchema,
         key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
         ctx: Optional[tiledb.Ctx] = None,
         directory_separator: str = "/",
@@ -166,7 +166,7 @@ class DataspaceGroup:
                 "Cannot load Dataspace group. URI does not point to a valid TileDB "
                 "group."
             )
-        self._schema = DataspaceSchema.load(uri, ctx, key, directory_separator)
+        self._schema = GroupSchema.load(uri, ctx, key, directory_separator)
         self._metadata_uri = (
             uri + _METADATA_ARRAY
             if uri.endswith(directory_separator)
@@ -229,7 +229,7 @@ class DataspaceGroup:
         again, or just use ``reopen()`` without closing. ``reopen`` will be generally
         faster than a close-then-open.
         """
-        self._schema = DataspaceSchema.load(
+        self._schema = GroupSchema.load(
             self._uri,
             self._ctx,
             self._key,
@@ -252,7 +252,7 @@ class DataspaceGroup:
             self._metadata_array.reopen()
 
 
-class DataspaceSchema(Mapping):
+class GroupSchema(Mapping):
     """Schema for the TileDB-CF Dataspace representation
 
     Parameters:
@@ -350,7 +350,7 @@ class DataspaceSchema(Mapping):
 
     def __eq__(self, other):
         """Instance is equal to another ArraySchema"""
-        if not isinstance(other, DataspaceSchema):
+        if not isinstance(other, GroupSchema):
             return False
         if self._narray != len(other):
             return False
@@ -375,13 +375,13 @@ class DataspaceSchema(Mapping):
         return self._array_schema_table.__iter__()
 
     def __len__(self) -> int:
-        """Returns the number of ArraySchemas in the DataspaceSchema"""
+        """Returns the number of ArraySchemas in the GroupSchema"""
         return self._narray
 
     def __repr__(self) -> str:
-        """Returns the object representation of this DataspaceSchema in string orm."""
+        """Returns the object representation of this GroupSchema in string orm."""
         output = StringIO()
-        output.write("DataspaceSchema(\n")
+        output.write("GroupSchema(\n")
         output.write("  SharedDomain (\n")
         for shared_dim in self._dimensions.values():
             output.write(f"    {repr(shared_dim)},")
@@ -392,12 +392,12 @@ class DataspaceSchema(Mapping):
         return output.getvalue()
 
     def check(self):
-        """Checks the correctness of the DataspaceSchema
+        """Checks the correctness of the GroupSchema
 
         Raises:
-            tiledb.TileDBError: if an ArraySchema in the DataspaceSchema is invalid
+            tiledb.TileDBError: if an ArraySchema in the GroupSchema is invalid
             RuntimeError: if a shared :class:`tiledb.Dim` fails to match the defintion
-            from the DataspaceSchema
+            from the GroupSchema
         """
         for (schema_name, schema) in self._array_schema_table:
             schema.check()
