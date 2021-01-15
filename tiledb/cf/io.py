@@ -515,7 +515,7 @@ class GroupSchema(Mapping):
         """ArraySchema for the dataspace-level metadata."""
         return self._metadata_schema
 
-    def set_default_metadata_schema(self, ctx):
+    def set_default_metadata_schema(self, ctx=None):
         """Set the metadata schema to a default placeholder DenseArray."""
         self._metadata_schema = tiledb.ArraySchema(
             domain=tiledb.Domain(
