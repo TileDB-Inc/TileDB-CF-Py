@@ -447,7 +447,7 @@ class GroupSchema(Mapping):
         for shared_dim in self._dimensions.values():
             output.write(f"    {repr(shared_dim)},")
         output.write("  )\n")
-        for name, schema in self.keys():
+        for name, schema in self.items():
             output.write(f"{name} {repr(schema)}")
         output.write(")\n")
         return output.getvalue()
@@ -460,7 +460,7 @@ class GroupSchema(Mapping):
             RuntimeError: A shared :class:`tiledb.Dim` fails to match the definition
                 from the GroupSchema.
         """
-        for (schema_name, schema) in self._array_schema_table:
+        for (schema_name, schema) in self._array_schema_table.items():
             schema.check()
             for dim in schema.domain:
                 if SharedDimension.create(dim) != self._dimensions[dim.name]:
@@ -468,7 +468,8 @@ class GroupSchema(Mapping):
                         f"Database schema check failed; dimension definition for "
                         f"dimension {dim.name} in array schema {schema_name}."
                     )
-        self._metadata_schema.check()
+        if self._metadata_schema is not None:
+            self._metadata_schema.check()
 
     def get_all_attribute_arrays(
         self, attribute_name: str

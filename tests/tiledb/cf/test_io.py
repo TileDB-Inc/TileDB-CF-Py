@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf.io import DataType, SharedDimension
+from tiledb.cf.io import DataType, GroupSchema, SharedDimension
 
 
 class TestDataType:
@@ -130,3 +130,106 @@ class TestSharedDimension:
             assert dim1 == dim2
         else:
             assert dim1 != dim2
+
+
+class TestGroupSchema:
+
+    _row_col_domain = tiledb.Domain(
+        tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.int32),
+        tiledb.Dim(name="cols", domain=(1, 4), tile=2, dtype=np.int32),
+    )
+
+    _attr_a = tiledb.Attr(name="a", dtype=np.int32)
+    _attr_b = tiledb.Attr(name="b", dtype=np.float64)
+
+    _dense_array_schema_a = tiledb.ArraySchema(
+        domain=_row_col_domain, sparse=False, attrs=[_attr_a]
+    )
+    _sparse_array_schema_a = tiledb.ArraySchema(
+        domain=_row_col_domain, sparse=True, attrs=[_attr_a]
+    )
+
+    _dense_array_schema_b = tiledb.ArraySchema(
+        domain=_row_col_domain, sparse=False, attrs=[_attr_b]
+    )
+    _sparse_array_schema_b = tiledb.ArraySchema(
+        domain=_row_col_domain, sparse=True, attrs=[_attr_b]
+    )
+
+    _empty_array_schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="dim", domain=(0, 0), tile=1, dtype=np.int32)
+        ),
+        attrs=[tiledb.Attr(name="attr", dtype=np.int32)],
+        sparse=False,
+    )
+
+    _basic_data = [
+        ([("dense", _dense_array_schema_a), ("sparse", _sparse_array_schema_b)], None),
+        (
+            [("dense", _dense_array_schema_a), ("sparse", _sparse_array_schema_b)],
+            _empty_array_schema,
+        ),
+        (
+            [("dense", _dense_array_schema_a), ("sparse", _sparse_array_schema_b)],
+            _empty_array_schema,
+        ),
+    ]
+
+    @pytest.mark.parametrize("array_schemas, metadata_schema", _basic_data)
+    def test_basic_schema(self, array_schemas, metadata_schema):
+        group_schema = GroupSchema(array_schemas, metadata_schema)
+        group_schema.check()
+        assert group_schema.metadata_schema == metadata_schema
+        assert repr(group_schema) is not None
+
+    def test_repeat_name_error(self):
+        """Test ValueError is raised when multiple array schemas have the same name."""
+        array_schemas = [
+            ("dense", self._dense_array_schema_a),
+            ("dense", self._sparse_array_schema_b),
+        ]
+        with pytest.raises(ValueError):
+            GroupSchema(array_schemas)
+
+    def test_dim_match_error(self):
+        """Test ValueError is raised when two schemas have a dimension that doesn't
+        match."""
+        array_schemas = [
+            ("dense1", self._dense_array_schema_a),
+            (
+                "dense2",
+                tiledb.ArraySchema(
+                    domain=tiledb.Domain(
+                        tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.int64),
+                    ),
+                    sparse=False,
+                    attrs=[self._attr_a],
+                ),
+            ),
+        ]
+        with pytest.raises(ValueError):
+            GroupSchema(array_schemas)
+
+    def test_no_attr_error(self):
+        """Test a KeyError is raised when querying for an attribute that isn't in
+        schema"""
+        group_schema = GroupSchema(
+            [
+                ("dense", self._dense_array_schema_a),
+            ]
+        )
+        with pytest.raises(KeyError):
+            group_schema.get_attribute_array("b")
+
+    def test_multi_attr_array_error(self):
+        """Test a ValueError is raised when calling `get_attribute_array` for an
+        attribute that exists in multiple array schemas."""
+        group_schema = GroupSchema(
+            [
+                ("dense", self._dense_array_schema_a),
+                ("sparse", self._sparse_array_schema_a),
+            ]
+        )
+        with pytest.raises(ValueError):
+            group_schema.get_attribute_array("a")
