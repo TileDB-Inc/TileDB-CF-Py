@@ -416,6 +416,8 @@ class GroupSchema(Mapping):
         for name, schema in self._array_schema_table:
             if schema != other.array_schema.get(name):
                 return False
+        if self._metadata_schema != other.metadata_schema:
+            return False
         return True
 
     def __getitem__(self, schema_name: str) -> tiledb.ArraySchema:
@@ -466,6 +468,7 @@ class GroupSchema(Mapping):
                         f"Database schema check failed; dimension definition for "
                         f"dimension {dim.name} in array schema {schema_name}."
                     )
+        self._metadata_schema.check()
 
     def get_all_attribute_arrays(
         self, attribute_name: str
