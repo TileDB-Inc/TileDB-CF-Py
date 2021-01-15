@@ -542,12 +542,12 @@ class SharedDimension(Generic[DType]):
             dimension: TileDB dimension that will be used to create the shared
                 dimension.
         """
-        SharedDimension(dimension.name, dimension.domain, dimension.dtype)
+        return SharedDimension(dimension.name, dimension.domain, dimension.dtype)
 
     __slots__ = [
         "_name",
         "_domain",
-        "_data_type",
+        "_dtype",
     ]
 
     def __init__(
@@ -583,8 +583,9 @@ class SharedDimension(Generic[DType]):
         )
 
     def __repr__(self) -> str:
-        return "SharedDimension(name={0!r}, domain={1!s}, dtype='{2!s})".format(
-            self._name, self._domain, self._dtype
+        return (
+            f"SharedDimension(name={self._name}, domain={self._domain}, "
+            f"dtype={self._dtype})"
         )
 
     @property
