@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf.io import DataType, GroupSchema, SharedDimension
+from tiledb.cf import DataType, GroupSchema, SharedDimension
 
 
 class TestDataType:
