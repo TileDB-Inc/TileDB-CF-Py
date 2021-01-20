@@ -136,6 +136,13 @@ class DataspaceGroup:
         ctx: TileDB context
     """
 
+    @staticmethod
+    def metadata_uri(uri: str) -> str:
+        """Returns URI for the metadata array given a group URI."""
+        return (
+            uri + _METADATA_ARRAY if uri.endswith("/") else uri + "/" + _METADATA_ARRAY
+        )
+
     @classmethod
     def create(
         cls,
@@ -212,7 +219,7 @@ class DataspaceGroup:
         self._metadata_key = key.get(_METADATA_ARRAY) if isinstance(key, dict) else key
         self._metadata_array = (
             None
-            if self._schema.metadata_scheman is None
+            if self._schema.metadata_schema is None
             else tiledb.Array(
                 uri=self._metadata_uri,
                 mode=self._mode,
@@ -230,7 +237,8 @@ class DataspaceGroup:
 
     def close(self):
         """Closes this DataspaceGroup, flushing all buffered data."""
-        self._metadata_array.close()
+        if self._metadata_array is not None:
+            self._metadata_array.close()
 
     def create_metadata_array(self):
         """Creates a metadata array for this group.
@@ -257,6 +265,11 @@ class DataspaceGroup:
             self._metadata_key,
             self._ctx,
         )
+
+    @property
+    def has_metadata_array(self) -> bool:
+        """Returns true if there a metadata array for storing group metadata."""
+        return self._metadata_array is not None
 
     def reopen(self, timestamp=None):
         """Reopens this DataspaceGroup.
