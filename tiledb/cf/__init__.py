@@ -5,10 +5,20 @@
 from __future__ import annotations
 
 import warnings
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from enum import Enum, unique
 from io import StringIO
-from typing import Collection, Dict, Generic, Iterator, Optional, Tuple, TypeVar, Union
+from typing import (
+    Any,
+    Collection,
+    Dict,
+    Generic,
+    Iterator,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 import numpy as np
 
@@ -16,6 +26,7 @@ import tiledb
 
 DType = TypeVar("DType", covariant=True)
 _METADATA_ARRAY = "__tiledb_group"
+_ATTRIBUTE_METADATA_FLAG = "__tiledb_attr."
 
 
 class DataspaceArray:
@@ -117,8 +128,84 @@ class DataspaceArray:
         again, or just use ``reopen()`` without closing. ``reopen`` will be generally
         faster than a close-then-open.
         """
-        if self._array is not None:
-            self._array.reopen()
+        self._array.reopen()
+
+
+class AttributeMetadata(MutableMapping):
+    def __init__(self, metadata: tiledb.Metadata, attribute: str):
+        self._metadata = metadata
+        self._attribute = attribute
+        self._key_prefix = _ATTRIBUTE_METADATA_FLAG + attribute + "."
+
+    def __setitem__(self, key, value):
+        """Implementation of [key] <- val (dict item assignment)
+
+        Paremeters:
+            key: key to set
+            value: corresponding value
+
+        Raise:
+            TypeError: Key is not type str.
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
+        self._metadata[self._key_prefix + key] = value
+
+    def __getitem__(self, key) -> Any:
+        """Implementation of [key] -> val (dict item retrieval)
+
+        Parameters:
+            key: Target key to find value from.
+
+        Returns:
+            Value stored with provided key.
+
+        Raise:
+            TypeError: Key is not type str.
+        """
+        if not (isinstance(key, str)):
+            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
+        return self._metadata.get(self._key_prefix + key)
+
+    def __contains__(self, key: Any) -> bool:
+        """Returns True if 'key' is found in metadata store.
+
+        Provides support for python 'in' syntax ('k in A.meta')
+
+        Parameters:
+            key: Target key to check against self.
+
+        Returns:
+            True is 'key' is found in the attribute metadata store.
+        """
+        try:
+            self[self._key_prefix + key]
+        except KeyError:
+            return False
+        return True
+
+    def __delitem__(self, key):
+        """Remove key from metadata.
+
+        Parameters:
+            key: Target key for item to remove from attribute metadata store.
+
+        Raise:
+            TypeError: Key is not type str.
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
+        del self._metadata[self._key_prefix + key]
+
+    def __iter__(self) -> Iterator[str]:
+        """Iterates over all attribute metadata keys."""
+        for key in self._metadata.keys():
+            if key.startswith(self._key_prefix):
+                yield key[len(self._key_prefix) :]
+
+    def __len__(self) -> int:
+        """Returns the number of attribute metadata items."""
+        return len(self.keys())
 
 
 class DataspaceGroup:
@@ -268,6 +355,12 @@ class DataspaceGroup:
     def has_metadata_array(self) -> bool:
         """Returns true if there a metadata array for storing group metadata."""
         return self._metadata_array is not None
+
+    @property
+    def meta(self) -> Optional[tiledb.Metadata]:
+        if self._metadata_array is None:
+            return None
+        return self._metadata_array.meta
 
     def reopen(self, timestamp=None):
         """Reopens this DataspaceGroup.
