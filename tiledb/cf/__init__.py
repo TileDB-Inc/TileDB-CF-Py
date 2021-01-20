@@ -35,17 +35,7 @@ class DataspaceArray:
         ctx: TileDB context
     """
 
-    __slots__ = [
-        "_array",
-        "_ctx",
-        "_key",
-        "_is_array",
-        "_metadata_array",
-        "_mode",
-        "_schema",
-        "_timestamp",
-        "_uri",
-    ]
+    __slots__ = ["_array"]
 
     def __init__(
         self,
@@ -73,6 +63,7 @@ class DataspaceArray:
             if attr is not None and array is None:
                 group_schema = GroupSchema.load(uri, ctx, key)
                 array = group_schema.get_attribute_array(attr)
+                print(f"Array name: {array}")
             if array is None:
                 raise ValueError(
                     "Failed to open dataspace array. No array or attribute specified "
@@ -93,12 +84,20 @@ class DataspaceArray:
             raise ValueError(
                 "Failed to open dataspace group. URI is not a valid TileDB object."
             )
-        self._array = tiledb.Array(array_uri, mode, key, timestamp, attr, ctx)
+        self._array = tiledb.open(
+            array_uri,
+            mode=mode,
+            key=key,
+            attr=attr,
+            config=None,
+            timestamp=timestamp,
+            ctx=ctx,
+        )
 
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exception_type, exception_value, exception_traceback):
         self.close()
 
     @property
@@ -108,8 +107,7 @@ class DataspaceArray:
 
     def close(self):
         """Closes this :class:`DataspaceGroup`, flushing all buffered data."""
-        if self._array is not None:
-            self._array.close()
+        self._array.close()
 
     def reopen(self):
         """Reopens this :class:`DataspaceGroup`.
@@ -232,7 +230,7 @@ class DataspaceGroup:
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self, exception_type, exception_value, exception_traceback):
         self.close()
 
     def close(self):
