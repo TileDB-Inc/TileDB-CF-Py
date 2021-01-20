@@ -4,33 +4,33 @@ import pytest
 import tiledb
 from tiledb.cf import GroupSchema
 
+_dim0 = tiledb.Dim(name="dim", domain=(0, 0), tile=1, dtype=np.int32)
+_row = tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.uint64)
+_col = tiledb.Dim(name="cols", domain=(1, 8), tile=2, dtype=np.uint64)
+_attr0 = tiledb.Attr(name="attr", dtype=np.int32)
+_attr_a = tiledb.Attr(name="a", dtype=np.uint64)
+_attr_b = tiledb.Attr(name="b", dtype=np.float64)
+_attr_c = tiledb.Attr(name="c", dtype=np.dtype("U"))
+_attr_d = tiledb.Attr(name="d", dtype=np.uint64)
+_empty_array_schema = tiledb.ArraySchema(
+    domain=tiledb.Domain(_dim0),
+    attrs=[_attr0],
+    sparse=False,
+)
+_array_schema_1 = tiledb.ArraySchema(
+    domain=tiledb.Domain(_row, _col),
+    attrs=[_attr_a, _attr_b, _attr_c],
+)
+_array_schema_2 = tiledb.ArraySchema(
+    domain=tiledb.Domain(_row, _col), sparse=True, attrs=[_attr_a]
+)
+_array_schema_3 = tiledb.ArraySchema(domain=tiledb.Domain(_row), attrs=[_attr_b])
+_array_schema_4 = tiledb.ArraySchema(
+    domain=tiledb.Domain(_col), attrs=[_attr_b, _attr_d]
+)
+
 
 class TestGroupSchema:
-
-    _dim0 = tiledb.Dim(name="dim", domain=(0, 0), tile=1, dtype=np.int32)
-    _row = tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.uint64)
-    _col = tiledb.Dim(name="cols", domain=(1, 8), tile=2, dtype=np.uint64)
-    _attr0 = tiledb.Attr(name="attr", dtype=np.int32)
-    _attr_a = tiledb.Attr(name="a", dtype=np.uint64)
-    _attr_b = tiledb.Attr(name="b", dtype=np.float64)
-    _attr_c = tiledb.Attr(name="c", dtype=np.dtype("U"))
-    _attr_d = tiledb.Attr(name="d", dtype=np.uint64)
-    _empty_array_schema = tiledb.ArraySchema(
-        domain=tiledb.Domain(_dim0),
-        attrs=[_attr0],
-        sparse=False,
-    )
-    _array_schema_1 = tiledb.ArraySchema(
-        domain=tiledb.Domain(_row, _col),
-        attrs=[_attr_a, _attr_b, _attr_c],
-    )
-    _array_schema_2 = tiledb.ArraySchema(
-        domain=tiledb.Domain(_row, _col), sparse=True, attrs=[_attr_a]
-    )
-    _array_schema_3 = tiledb.ArraySchema(domain=tiledb.Domain(_row), attrs=[_attr_b])
-    _array_schema_4 = tiledb.ArraySchema(
-        domain=tiledb.Domain(_col), attrs=[_attr_b, _attr_d]
-    )
 
     _scenarios = [
         {
@@ -64,7 +64,7 @@ class TestGroupSchema:
     ]
 
     @pytest.mark.parametrize("scenario", _scenarios)
-    def test_schema(self, scenario):
+    def test_initialize_group_schema(self, scenario):
         array_schemas = scenario["array_schemas"]
         metadata_schema = scenario["metadata_schema"]
         attribute_map = scenario["attribute_map"]
@@ -81,6 +81,8 @@ class TestGroupSchema:
             if len(result) == 1:
                 assert result[0] == group_schema.get_attribute_array(attr_name)
 
+
+class TestGroupSchemaExceptions:
     def test_set_metadata_array(self):
         """Test setting default metadata schema."""
         group_schema = GroupSchema()
@@ -92,8 +94,8 @@ class TestGroupSchema:
     def test_repeat_name_error(self):
         """Test ValueError is raised when multiple array schemas have the same name."""
         array_schemas = [
-            ("dense", self._array_schema_1),
-            ("dense", self._array_schema_2),
+            ("dense", _array_schema_1),
+            ("dense", _array_schema_2),
         ]
         with pytest.raises(ValueError):
             GroupSchema(array_schemas)
@@ -102,7 +104,7 @@ class TestGroupSchema:
         """Test ValueError is raised when two schemas have a dimension that doesn't
         match."""
         array_schemas = [
-            ("dense1", self._array_schema_1),
+            ("dense1", _array_schema_1),
             (
                 "dense2",
                 tiledb.ArraySchema(
@@ -110,7 +112,7 @@ class TestGroupSchema:
                         tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.int64),
                     ),
                     sparse=False,
-                    attrs=[self._attr_a],
+                    attrs=[_attr_a],
                 ),
             ),
         ]
@@ -122,7 +124,7 @@ class TestGroupSchema:
         schema"""
         group_schema = GroupSchema(
             [
-                ("dense", self._array_schema_1),
+                ("dense", _array_schema_1),
             ]
         )
         with pytest.raises(KeyError):
@@ -133,8 +135,8 @@ class TestGroupSchema:
         attribute that exists in multiple array schemas."""
         group_schema = GroupSchema(
             [
-                ("dense", self._array_schema_1),
-                ("sparse", self._array_schema_2),
+                ("dense", _array_schema_1),
+                ("sparse", _array_schema_2),
             ]
         )
         with pytest.raises(ValueError):
