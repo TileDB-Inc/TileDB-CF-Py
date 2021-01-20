@@ -21,7 +21,7 @@ ask_run_tool() {
 
 project_root=$(git rev-parse --show-toplevel)
 source_dir="${project_root}/tiledb"
-test_dir="${project_root}/tests/tiledb/cf"
+test_dir="${project_root}/tests"
 
 ask_run_tool "poetry run isort ${project_root}" "isort"
 ask_run_tool "poetry run black ${project_root}" "black"
