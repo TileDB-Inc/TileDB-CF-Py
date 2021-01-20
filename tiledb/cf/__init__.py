@@ -312,25 +312,28 @@ class GroupSchema(Mapping):
             key: encryption key or dictionary of encryption keys (by array name)
         """
         metadata_schema = None
+        print("Check group")
         if tiledb.object_type(uri, ctx) != "group":
             raise ValueError(
-                f"Failed to load the dataspace schema. Provided uri {uri} is not a "
+                f"Failed to load the dataspace schema. Provided uri '{uri}' is not a "
                 f"valid TileDB group."
             )
         vfs = tiledb.VFS(ctx=ctx)
         array_schemas = []
-        for item in vfs.ls(uri):
-            if not tiledb.object_type(item) == "array":
+        for item_uri in vfs.ls(uri):
+            if not tiledb.object_type(item_uri) == "array":
                 continue
             array_name = (
-                item.split("/")[-2] if item.endswith("/") else item.split("/")[-1]
+                item_uri.split("/")[-2]
+                if item_uri.endswith("/")
+                else item_uri.split("/")[-1]
             )
             local_key = key.get(array_name) if isinstance(key, dict) else key
             if array_name == _METADATA_ARRAY:
-                metadata_schema = tiledb.ArraySchema.load(uri, ctx, local_key)
+                metadata_schema = tiledb.ArraySchema.load(item_uri, ctx, local_key)
             else:
                 array_schemas.append(
-                    (array_name, tiledb.ArraySchema.load(uri, ctx, local_key))
+                    (array_name, tiledb.ArraySchema.load(item_uri, ctx, local_key))
                 )
         return cls(array_schemas, metadata_schema)
 
@@ -393,8 +396,8 @@ class GroupSchema(Mapping):
             return False
         if self._narray != len(other):
             return False
-        for name, schema in self._array_schema_table:
-            if schema != other.array_schema.get(name):
+        for name, schema in self._array_schema_table.items():
+            if schema != other.get(name):
                 return False
         if self._metadata_schema != other.metadata_schema:
             return False
@@ -422,7 +425,7 @@ class GroupSchema(Mapping):
     def __repr__(self) -> str:
         """Returns the object representation of this GroupSchema in string form."""
         output = StringIO()
-        output.write("GroupSchema(\n")
+
         output.write("  SharedDomain (\n")
         for shared_dim in self._dimensions.values():
             output.write(f"    {repr(shared_dim)},")

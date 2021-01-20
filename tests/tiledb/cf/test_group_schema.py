@@ -1,3 +1,5 @@
+from typing import Any, Dict
+
 import numpy as np
 import pytest
 
@@ -29,39 +31,39 @@ _array_schema_4 = tiledb.ArraySchema(
     domain=tiledb.Domain(_col), attrs=[_attr_b, _attr_d]
 )
 
+_empty_group: Dict[str, Any] = {
+    "array_schemas": None,
+    "metadata_schema": None,
+    "attribute_map": {},
+    "num_schemas": 0,
+}
+_single_array_group: Dict[str, Any] = {
+    "array_schemas": [("A1", _array_schema_1)],
+    "metadata_schema": _empty_array_schema,
+    "attribute_map": {"a": ("A1",), "b": ("A1",), "c": ("A1",)},
+    "num_schemas": 1,
+}
+_multi_array_group: Dict[str, Any] = {
+    "array_schemas": [
+        ("A1", _array_schema_1),
+        ("A2", _array_schema_2),
+        ("A3", _array_schema_3),
+        ("A4", _array_schema_4),
+    ],
+    "metadata_schema": None,
+    "attribute_map": {
+        "a": ("A1", "A2"),
+        "b": ("A1", "A3", "A4"),
+        "c": ("A1",),
+        "d": ("A4",),
+    },
+    "num_schemas": 4,
+}
+
 
 class TestGroupSchema:
 
-    _scenarios = [
-        {
-            "array_schemas": None,
-            "metadata_schema": None,
-            "attribute_map": {},
-            "num_schemas": 0,
-        },
-        {
-            "array_schemas": [("A1", _array_schema_1)],
-            "metadata_schema": _empty_array_schema,
-            "attribute_map": {"a": ("A1",), "b": ("A1",), "c": ("A1",)},
-            "num_schemas": 1,
-        },
-        {
-            "array_schemas": [
-                ("A1", _array_schema_1),
-                ("A2", _array_schema_2),
-                ("A3", _array_schema_3),
-                ("A4", _array_schema_4),
-            ],
-            "metadata_schema": None,
-            "attribute_map": {
-                "a": ("A1", "A2"),
-                "b": ("A1", "A3", "A4"),
-                "c": ("A1",),
-                "d": ("A4",),
-            },
-            "num_schemas": 4,
-        },
-    ]
+    _scenarios = [_empty_group, _single_array_group, _multi_array_group]
 
     @pytest.mark.parametrize("scenario", _scenarios)
     def test_initialize_group_schema(self, scenario):
@@ -70,6 +72,7 @@ class TestGroupSchema:
         attribute_map = scenario["attribute_map"]
         group_schema = GroupSchema(array_schemas, metadata_schema)
         group_schema.check()
+        assert group_schema == group_schema
         assert group_schema.metadata_schema == metadata_schema
         assert repr(group_schema) is not None
         assert len(group_schema) == scenario["num_schemas"]
@@ -80,6 +83,46 @@ class TestGroupSchema:
             ), f"Get all arrays for attribute '{attr_name}' failed."
             if len(result) == 1:
                 assert result[0] == group_schema.get_attribute_array(attr_name)
+
+
+class TestLoadEmptyGroup:
+    @pytest.fixture(scope="class")
+    def create_group(self, tmpdir_factory):
+        uri = str(tmpdir_factory.mktemp("empty_group"))
+        tiledb.group_create(uri)
+        return uri
+
+    def test_group_schema(self, create_group):
+        uri = create_group
+        schema = GroupSchema.load(uri, key=None, ctx=None)
+        assert schema.metadata_schema is None
+        assert len(schema) == 0
+
+
+class TestLoadGroup:
+
+    _array_schemas = [
+        ("A1", _array_schema_1),
+        ("A2", _array_schema_2),
+        ("A3", _array_schema_3),
+        ("A4", _array_schema_4),
+    ]
+    _metadata_array = _empty_array_schema
+
+    @pytest.fixture(scope="class")
+    def create_group(self, tmpdir_factory):
+        uri = str(tmpdir_factory.mktemp("simple_group"))
+        tiledb.group_create(uri)
+        tiledb.Array.create(uri + "/A1", _array_schema_1)
+        tiledb.Array.create(uri + "/A2", _array_schema_2)
+        tiledb.Array.create(uri + "/A3", _array_schema_3)
+        tiledb.Array.create(uri + "/A4", _array_schema_4)
+        tiledb.Array.create(uri + "/__tiledb_group", _empty_array_schema)
+        return uri
+
+    def test_group_schema(self, create_group):
+        schema = GroupSchema.load(create_group, key=None, ctx=None)
+        assert schema == GroupSchema(self._array_schemas, self._metadata_array)
 
 
 class TestGroupSchemaExceptions:
