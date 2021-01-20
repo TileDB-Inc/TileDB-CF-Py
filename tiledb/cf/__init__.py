@@ -33,7 +33,6 @@ class DataspaceArray:
         attr: If not None, open one attribute of the TileDB array. If the array is
             dense, indexing the array will return a Numpy nd.array directly.
         ctx: TileDB context
-        directory_separator: Separator for directories used in URI.
     """
 
     __slots__ = [
@@ -57,7 +56,6 @@ class DataspaceArray:
         array=None,
         attr=None,
         ctx: Optional[tiledb.Ctx] = None,
-        directory_separator: str = "/",
     ):
         """Constructs a new :class:`DataspaceArray`.
 
@@ -73,25 +71,18 @@ class DataspaceArray:
         """
         if tiledb.object_type(uri, ctx) == "group":
             if attr is not None and array is None:
-                group_schema = GroupSchema.load(uri, ctx, key, directory_separator)
+                group_schema = GroupSchema.load(uri, ctx, key)
                 array = group_schema.get_attribute_array(attr)
             if array is None:
                 raise ValueError(
                     "Failed to open dataspace array. No array or attribute specified "
                     "for TileDB group."
                 )
-            array_uri = (
-                uri + array
-                if uri.endswith(directory_separator)
-                else uri + directory_separator + array
-            )
+            array_uri = uri + array if uri.endswith("/") else uri + "/" + array
+
         elif tiledb.object_type(uri, ctx) == "array":
             array_uri = uri
-            array_name = (
-                uri.split(directory_separator)[-2]
-                if uri.endswith(directory_separator)
-                else uri.split(directory_separator)[-1]
-            )
+            array_name = uri.split("/")[-2] if uri.endswith("/") else uri.split("/")[-1]
             if array is not None and array != array_name:
                 raise ValueError(
                     f"Failed to open dataspace array. URI for TileDB array with "
@@ -143,7 +134,7 @@ class DataspaceGroup:
         timestamp: If not None, open the TileDB metadata array at the given
             timestamp.
         ctx: TileDB context
-        directory_separator: Separator for directories used in URI."""
+    """
 
     @classmethod
     def create(
@@ -152,7 +143,6 @@ class DataspaceGroup:
         dataspace_schema: GroupSchema,
         key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
         ctx: Optional[tiledb.Ctx] = None,
-        directory_separator: str = "/",
     ):
         """Create the group and arrays for a dataspace from a :class:`GroupSchema`.
 
@@ -162,10 +152,9 @@ class DataspaceGroup:
             key: If not None, encryption key or dictionary of encryption keys to decrypt
                 arrays.
             ctx: TileDB context
-            directory_separator: Separator for directories used in URI
         """
         tiledb.group_create(uri, ctx)
-        separator = "" if uri.endswith(directory_separator) else directory_separator
+        separator = "" if uri.endswith("/") else "/"
         if dataspace_schema.metadata_schema is not None:
             tiledb.DenseArray.create(
                 uri + separator + _METADATA_ARRAY,
@@ -183,7 +172,6 @@ class DataspaceGroup:
 
     __slots__ = [
         "_ctx",
-        "_directory_separator",
         "_key",
         "_metadata_array",
         "_metadata_key",
@@ -201,7 +189,6 @@ class DataspaceGroup:
         key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
         timestamp=None,
         ctx: Optional[tiledb.Ctx] = None,
-        directory_separator: str = "/",
     ):
         """Constructs a new :class:`GroupSchema`.
 
@@ -213,17 +200,14 @@ class DataspaceGroup:
         self._key = key
         self._timestamp = timestamp
         self._ctx = ctx
-        self._directory_separator = directory_separator
         if tiledb.object_type(uri, ctx) != "group":
             raise ValueError(
                 "Cannot load Dataspace group. URI does not point to a valid TileDB "
                 "group."
             )
-        self._schema = GroupSchema.load(uri, ctx, key, directory_separator)
+        self._schema = GroupSchema.load(uri, ctx, key)
         self._metadata_uri = (
-            uri + _METADATA_ARRAY
-            if uri.endswith(directory_separator)
-            else uri + directory_separator + _METADATA_ARRAY
+            uri + _METADATA_ARRAY if uri.endswith("/") else uri + "/" + _METADATA_ARRAY
         )
         self._metadata_key = key.get(_METADATA_ARRAY) if isinstance(key, dict) else key
         self._metadata_array = (
@@ -286,7 +270,6 @@ class DataspaceGroup:
             self._uri,
             self._ctx,
             self._key,
-            self._directory_separator,
         )
         self._timestamp = timestamp
         if self._metadata_array is None:
@@ -320,7 +303,6 @@ class GroupSchema(Mapping):
         uri: str,
         ctx: tiledb.Ctx,
         key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
-        directory_separator: str = "/",
     ):
         """Load a dataspace schema for a TileDB group
 
@@ -341,9 +323,7 @@ class GroupSchema(Mapping):
             if not tiledb.object_type(item) == "array":
                 continue
             array_name = (
-                item.split(directory_separator)[-2]
-                if item.endswith(directory_separator)
-                else item.split(directory_separator)[-1]
+                item.split("/")[-2] if item.endswith("/") else item.split("/")[-1]
             )
             local_key = key.get(array_name) if isinstance(key, dict) else key
             if array_name == _METADATA_ARRAY:
