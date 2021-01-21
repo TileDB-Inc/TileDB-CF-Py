@@ -483,11 +483,13 @@ class DataspaceGroup:
 
     @property
     def has_metadata_array(self) -> bool:
-        """Returns true if there a metadata array for storing group metadata."""
+        """Flag that is true if there a metadata array for storing group metadata."""
         return self._metadata_array is not None
 
     @property
     def meta(self) -> Optional[tiledb.Metadata]:
+        """Metadata object for the group, or None if no array to store group
+        metadata in."""
         if self._metadata_array is None:
             return None
         return self._metadata_array.meta
