@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import DataspaceGroup, GroupSchema
+from tiledb.cf import Group, GroupSchema
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 8), tile=2, dtype=np.uint64)
@@ -19,7 +19,7 @@ _array_schema_2 = tiledb.ArraySchema(
 )
 
 
-class TestCreateDataspaceGroup:
+class TestCreateGroup:
 
     _metadata_schema = _array_schema_1
     _array_schemas = [
@@ -34,7 +34,7 @@ class TestCreateDataspaceGroup:
         """Creates a TileDB Group from GroupSchema and returns scenario dict."""
         uri = str(tmpdir_factory.mktemp("group1"))
         ctx = None
-        DataspaceGroup.create(uri, self._group_schema, self._key, ctx)
+        Group.create(uri, self._group_schema, self._key, ctx)
         return uri
 
     def test_array_schemas(self, group_uri):
@@ -55,7 +55,7 @@ class TestCreateMetadata:
 
     def test_create_metadata(self, group_uri):
         uri = group_uri
-        with DataspaceGroup(uri) as group:
+        with Group(uri) as group:
             assert not group.has_metadata_array
             group.create_metadata_array()
             assert not group.has_metadata_array
@@ -77,27 +77,27 @@ class TestSimpleGroup:
     def group_uri(self, tmpdir_factory):
         uri = str(tmpdir_factory.mktemp("group1"))
         tiledb.group_create(uri)
-        metadata_uri = DataspaceGroup.metadata_uri(uri)
+        metadata_uri = Group.metadata_uri(uri)
         tiledb.Array.create(metadata_uri, self._metadata_schema)
         return uri
 
     def test_has_metadata(self, group_uri):
-        with DataspaceGroup(group_uri) as group:
-            assert isinstance(group, DataspaceGroup)
+        with Group(group_uri) as group:
+            assert isinstance(group, Group)
             assert group.has_metadata_array
             assert group.meta is not None
 
     def test_reopen(self, group_uri):
-        with DataspaceGroup(group_uri) as group:
+        with Group(group_uri) as group:
             group.reopen()
 
     def test_not_group_exception(self, group_uri):
-        array_uri = DataspaceGroup.metadata_uri(group_uri)
+        array_uri = Group.metadata_uri(group_uri)
         with pytest.raises(ValueError):
-            DataspaceGroup(array_uri)
+            Group(array_uri)
 
     def test_metadata_array_exists_exception(self, group_uri):
-        with DataspaceGroup(group_uri) as group:
+        with Group(group_uri) as group:
             with pytest.raises(RuntimeError):
                 group.create_metadata_array()
 
@@ -111,5 +111,5 @@ class TestNoMetadataArray:
         return uri
 
     def test_no_metadata_array_exception(self, group_uri):
-        with DataspaceGroup(group_uri) as group:
+        with Group(group_uri) as group:
             assert group.meta is None

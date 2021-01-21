@@ -29,8 +29,9 @@ _METADATA_ARRAY = "__tiledb_group"
 _ATTRIBUTE_METADATA_FLAG = "__tiledb_attr."
 
 
-class DataspaceArray:
-    """Array wrapper to access arrays inside the TileDB-CF Dataspace.
+class Array:
+    """Array wrapper to access arrays through groups and with attribute and array
+        metadata.
 
     Parameters:
         uri: Uniform resource identifier for TileDB group or array.
@@ -58,7 +59,7 @@ class DataspaceArray:
         attr=None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        """Constructs a new :class:`DataspaceArray`.
+        """Constructs a new :class:`Array`.
 
         If the URI is for a TileDB Group either :param:`array` or :param:`attr` must be
         specified. If the URI is for a TileDB Group :param:`array` must either be
@@ -77,8 +78,8 @@ class DataspaceArray:
                 print(f"Array name: {array}")
             if array is None:
                 raise ValueError(
-                    "Failed to open dataspace array. No array or attribute specified "
-                    "for TileDB group."
+                    "Failed to open array. No array or attribute specified for the "
+                    "provied TileDB group."
                 )
             array_uri = uri + array if uri.endswith("/") else uri + "/" + array
 
@@ -87,14 +88,12 @@ class DataspaceArray:
             array_name = uri.split("/")[-2] if uri.endswith("/") else uri.split("/")[-1]
             if array is not None and array != array_name:
                 raise ValueError(
-                    f"Failed to open dataspace array. URI for TileDB array with "
+                    f"Failed to open array. URI for TileDB array with "
                     f"basename={array_name} that does not match parameter "
                     f"array={array}."
                 )
         else:
-            raise ValueError(
-                "Failed to open dataspace group. URI is not a valid TileDB object."
-            )
+            raise ValueError("Failed to open object; URI is not a valid TileDB object.")
         self._array = tiledb.open(
             array_uri,
             mode=mode,
@@ -113,11 +112,6 @@ class DataspaceArray:
         self.close()
 
     @property
-    def array(self):
-        """TileDB array opened through dataspace interface."""
-        return self._array
-
-    @property
     def array_metadata(self) -> ArrayMetadata:
         return ArrayMetadata(self._array.meta)
 
@@ -129,13 +123,18 @@ class DataspaceArray:
         if self._array.nattr == 1:
             return AttributeMetadata(self._array.meta, 0)
         raise ValueError(
-            "Failed to open attribute metadata. Dataspace array has multiple "
-            "attributes; use get_attribute_metadata to specify which attribute to open."
+            "Failed to open attribute metadata. Array has multiple attributes; use "
+            "get_attribute_metadata to specify which attribute to open."
         )
 
     def close(self):
-        """Closes this :class:`DataspaceGroup`, flushing all buffered data."""
+        """Closes this :class:`Group`, flushing all buffered data."""
         self._array.close()
+
+    @property
+    def core(self):
+        """Internal TileDB array opened through cf.Array interface."""
+        return self._array
 
     def get_attribute_metadata(self, key: Union[str, int]) -> AttributeMetadata:
         """Returns attribute metadata object corresponding to requested attribute.
@@ -146,9 +145,9 @@ class DataspaceArray:
         return AttributeMetadata(self._array.meta, key)
 
     def reopen(self):
-        """Reopens this :class:`DataspaceGroup`.
+        """Reopens this :class:`Group`.
 
-        This is useful when the DataspaceGroup is updated after it was opened.
+        This is useful when the Group is updated after it was opened.
         To sync-up with the updates, the user must either close the array and open
         again, or just use ``reopen()`` without closing. ``reopen`` will be generally
         faster than a close-then-open.
@@ -338,8 +337,8 @@ class AttributeMetadata(MutableMapping):
         self._metadata.__setitem__(self._key_prefix + key, value)
 
 
-class DataspaceGroup:
-    """Array wrapper to access arrays through the TileDB-CF Dataspace API.
+class Group:
+    """TileDB group for accessing group metadata.
 
     Parameters:
         uri: Uniform resource identifier for TileDB group or array.
@@ -362,29 +361,29 @@ class DataspaceGroup:
     def create(
         cls,
         uri: str,
-        dataspace_schema: GroupSchema,
+        group_schema: GroupSchema,
         key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        """Create the group and arrays for a dataspace from a :class:`GroupSchema`.
+        """Create the TileDB group and arrays from a :class:`GroupSchema`.
 
         Parameters:
             uri: Uniform resource identifier for TileDB group or array.
-            dataspace_schema: Schema that defines the group to be created.
+            group_schema: Schema that defines the group to be created.
             key: If not None, encryption key or dictionary of encryption keys to decrypt
                 arrays.
             ctx: TileDB context
         """
         tiledb.group_create(uri, ctx)
         separator = "" if uri.endswith("/") else "/"
-        if dataspace_schema.metadata_schema is not None:
+        if group_schema.metadata_schema is not None:
             tiledb.DenseArray.create(
                 uri + separator + _METADATA_ARRAY,
-                dataspace_schema.metadata_schema,
+                group_schema.metadata_schema,
                 key.get(_METADATA_ARRAY) if isinstance(key, dict) else key,
                 ctx,
             )
-        for array_name, array_schema in dataspace_schema.items():
+        for array_name, array_schema in group_schema.items():
             tiledb.Array.create(
                 uri + separator + array_name,
                 array_schema,
@@ -424,8 +423,7 @@ class DataspaceGroup:
         self._ctx = ctx
         if tiledb.object_type(uri, ctx) != "group":
             raise ValueError(
-                "Cannot load Dataspace group. URI does not point to a valid TileDB "
-                "group."
+                "Cannot load group. URI does not point to a valid TileDB group."
             )
         self._schema = GroupSchema.load(uri, ctx, key)
         self._metadata_uri = (
@@ -451,7 +449,7 @@ class DataspaceGroup:
         self.close()
 
     def close(self):
-        """Closes this DataspaceGroup, flushing all buffered data."""
+        """Closes this Group, flushing all buffered data."""
         if self._metadata_array is not None:
             self._metadata_array.close()
 
@@ -495,9 +493,9 @@ class DataspaceGroup:
         return self._metadata_array.meta
 
     def reopen(self, timestamp=None):
-        """Reopens this DataspaceGroup.
+        """Reopens this Group.
 
-        This is useful when the DataspaceGroup is updated after it was opened.
+        This is useful when the Group is updated after it was opened.
         To sync-up with the updates, the user must either close the array and open
         again, or just use ``reopen()`` without closing. ``reopen`` will be generally
         faster than a close-then-open.
@@ -525,7 +523,7 @@ class DataspaceGroup:
 
 
 class GroupSchema(Mapping):
-    """Schema for the TileDB-CF Dataspace representation.
+    """Schema for a TileDB group.
 
     Parameters:
         array_schemas: A collection of (name, ArraySchema) tuples for Arrays that belong
@@ -540,7 +538,7 @@ class GroupSchema(Mapping):
         ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
     ):
-        """Load a dataspace schema for a TileDB group
+        """Load a schema for a TileDB group from a TileDB URI.
 
         Parameters:
             uri: uniform resource identifier for the TileDB group
@@ -551,7 +549,7 @@ class GroupSchema(Mapping):
         print("Check group")
         if tiledb.object_type(uri, ctx) != "group":
             raise ValueError(
-                f"Failed to load the dataspace schema. Provided uri '{uri}' is not a "
+                f"Failed to load the group schema. Provided uri '{uri}' is not a "
                 f"valid TileDB group."
             )
         vfs = tiledb.VFS(ctx=ctx)
@@ -601,8 +599,7 @@ class GroupSchema(Mapping):
             self._narray = len(array_schemas)
         if len(self._array_schema_table) != self._narray:
             raise ValueError(
-                "Initializing dataspace schema failed; ArraySchemas must have unique "
-                "names."
+                "Initializing schema failed; ArraySchemas must have unique names."
             )
         self._attribute_to_arrays: Dict[str, Tuple[str, ...]] = {}
         for (schema_name, schema) in self._array_schema_table.items():
@@ -708,7 +705,7 @@ class GroupSchema(Mapping):
 
     @property
     def metadata_schema(self):
-        """ArraySchema for the dataspace-level metadata."""
+        """ArraySchema for the group-level metadata."""
         return self._metadata_schema
 
     def set_default_metadata_schema(self, ctx=None):
