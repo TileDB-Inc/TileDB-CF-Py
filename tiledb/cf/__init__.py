@@ -46,7 +46,7 @@ class DataspaceArray:
         ctx: TileDB context
     """
 
-    __slots__ = ["_array"]
+    __slots__ = ["_array", "_attr", "_attributes"]
 
     def __init__(
         self,
@@ -104,6 +104,10 @@ class DataspaceArray:
             timestamp=timestamp,
             ctx=ctx,
         )
+        self._attr = attr
+        self._attributes = [
+            self._array.attr(index).name for index in range(self._array.nattr)
+        ]
 
     def __enter__(self):
         return self
@@ -116,9 +120,42 @@ class DataspaceArray:
         """TileDB array opened through dataspace interface."""
         return self._array
 
+    @property
+    def array_metadata(self) -> ArrayMetadata:
+        return ArrayMetadata(self._array.meta)
+
+    @property
+    def attribute_metadata(self) -> AttributeMetadata:
+        """Attribute metadata object for array metadata."""
+        if self._attr is not None:
+            return AttributeMetadata(self._array.meta, self._attr)
+        if len(self._attributes) == 1:
+            return AttributeMetadata(self._array.meta, self._attributes[0])
+        raise ValueError(
+            "Failed to open attribute metadata. Dataspace array has multiple "
+            "attributes; use get_attribute_metadata to specify which attribute to open."
+        )
+
     def close(self):
         """Closes this :class:`DataspaceGroup`, flushing all buffered data."""
         self._array.close()
+
+    def get_attribute_metadata(self, attr: str) -> AttributeMetadata:
+        """Returns attribute metadata object corresponding to requested attribute.
+
+        Parameters:
+            attr: Name of the attribute to get metadata from.
+
+        Raises:
+            ValueError: Requested attribute does not match attribute array was opened
+                with.
+            KeyError: Requested attribute is not inside current array.
+        """
+        if attr not in self._attributes:
+            raise KeyError(
+                "Attribute {attr} is not a valid attribute in this DataspaceArray."
+            )
+        return AttributeMetadata(self._array.meta, attr)
 
     def reopen(self):
         """Reopens this :class:`DataspaceGroup`.
@@ -131,11 +168,108 @@ class DataspaceArray:
         self._array.reopen()
 
 
-class AttributeMetadata(MutableMapping):
-    def __init__(self, metadata: tiledb.Metadata, attribute: str):
+class ArrayMetadata(MutableMapping):
+    """Metadata wrapper for accesssing array metadata.
+
+    Parameters:
+        metadata: TileDB array metadata
+    """
+
+    def __init__(self, metadata: tiledb.Metadata):
+        """Constructs a new :class:`ArrayMetadata` class."""
         self._metadata = metadata
-        self._attribute = attribute
-        self._key_prefix = _ATTRIBUTE_METADATA_FLAG + attribute + "."
+
+    def __setitem__(self, key, value):
+        """Implementation of [key] <- val (dict item assignment)
+
+        Paremeters:
+            key: key to set
+            value: corresponding value
+
+        Raises:
+            ValueError: Key is reserved for attribute metadata.
+        """
+        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
+            raise ValueError(
+                f"Key is reserved for attribute metadata. Cannot set value with key "
+                f"`{key}` in array metadata."
+            )
+        self._metadata[key] = value
+
+    def __getitem__(self, key) -> Any:
+        """Implementation of [key] -> val (dict item retrieval)
+
+        Parameters:
+            key: Target key to find value from.
+
+        Returns:
+            Value stored with provided key.
+
+        Raises:
+            ValueError: Key is reserved for attribute metadata.
+        """
+        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
+            raise ValueError(
+                f"Key is reserved for attribute metadata. Cannot get value with key "
+                f"`{key}` in array metadata."
+            )
+        return self._metadata.get(key)
+
+    def __contains__(self, key: Any) -> bool:
+        """Returns True if 'key' is found in metadata store.
+
+        Provides support for python 'in' syntax ('k in A.meta')
+
+        Parameters:
+            key: Target key to check against self.
+
+        Returns:
+            True is 'key' is found in the attribute metadata store.
+        """
+        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
+            return False
+        return key in self._metadata
+
+    def __delitem__(self, key):
+        """Remove key from metadata.
+
+        Parameters:
+            key: Target key for item to remove from attribute metadata store.
+
+        Raises:
+            ValueError: Key is reserved for attribute metadata.
+        """
+        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
+            raise ValueError(
+                f"Key is reserved for attribute metadata. Cannot delete value with key "
+                f"`{key}` in array metadata."
+            )
+        del self._metadata[key]
+
+    def __iter__(self) -> Iterator[str]:
+        """Iterates over all attribute metadata keys."""
+        for key in self._metadata.keys():
+            if not key.startswith(_ATTRIBUTE_METADATA_FLAG):
+                yield key
+
+    def __len__(self) -> int:
+        """Returns the number of attribute metadata items."""
+        return len(self.keys())
+
+
+class AttributeMetadata(MutableMapping):
+    """Metadata wrapper for accesssing attribute metadata.
+
+    Parameters:
+        metadata: TileDB array metadata
+        attr: Name of attribute metadata is being accessed for
+    """
+
+    def __init__(self, metadata: tiledb.Metadata, attr: str):
+        """Constructs a new :class:`AttributeMetadata`."""
+        self._metadata = metadata
+        self._attribute = attr
+        self._key_prefix = _ATTRIBUTE_METADATA_FLAG + attr + "."
 
     def __setitem__(self, key, value):
         """Implementation of [key] <- val (dict item assignment)
@@ -163,7 +297,7 @@ class AttributeMetadata(MutableMapping):
         Raise:
             TypeError: Key is not type str.
         """
-        if not (isinstance(key, str)):
+        if not isinstance(key, str):
             raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
         return self._metadata.get(self._key_prefix + key)
 
