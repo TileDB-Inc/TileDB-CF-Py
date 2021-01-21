@@ -537,7 +537,7 @@ class GroupSchema(Mapping):
     def load(
         cls,
         uri: str,
-        ctx: tiledb.Ctx,
+        ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
     ):
         """Load a dataspace schema for a TileDB group
