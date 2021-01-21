@@ -101,8 +101,8 @@ class TestSimpleGroup:
             with pytest.raises(RuntimeError):
                 group.create_metadata_array()
 
-class TestNoMetadataArray:
 
+class TestNoMetadataArray:
     @pytest.fixture(scope="class")
     def group_uri(self, tmpdir_factory):
         """Creates a TileDB group and return URI."""

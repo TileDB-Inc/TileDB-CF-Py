@@ -577,7 +577,6 @@ class GroupSchema(Mapping):
         "_allow_private_dimensions",
         "_array_schema_table",
         "_attribute_to_arrays",
-        "_dimensions",
         "_group_schema",
         "_metadata_schema",
         "_narray",
@@ -605,7 +604,6 @@ class GroupSchema(Mapping):
                 "Initializing dataspace schema failed; ArraySchemas must have unique "
                 "names."
             )
-        self._dimensions: Dict[str, SharedDimension] = {}
         self._attribute_to_arrays: Dict[str, Tuple[str, ...]] = {}
         for (schema_name, schema) in self._array_schema_table.items():
             for attr in schema:
@@ -615,17 +613,6 @@ class GroupSchema(Mapping):
                     if attr_name not in self._attribute_to_arrays
                     else self._attribute_to_arrays[attr_name] + (schema_name,)
                 )
-            for array_dim in schema.domain:
-                dim_name = array_dim.name
-                if dim_name in self._dimensions:
-                    if SharedDimension.create(array_dim) != self._dimensions[dim_name]:
-                        raise ValueError(
-                            f"Initializing dataspace schema failed; dimension "
-                            f" {dim_name} in array schema {schema_name} does not match "
-                            f"existing shared dimension {self._dimensions[dim_name]}."
-                        )
-                else:
-                    self._dimensions[dim_name] = SharedDimension.create(array_dim)
 
     def __eq__(self, other):
         if not isinstance(other, GroupSchema):
@@ -661,33 +648,22 @@ class GroupSchema(Mapping):
     def __repr__(self) -> str:
         """Returns the object representation of this GroupSchema in string form."""
         output = StringIO()
-
-        output.write("  SharedDomain (\n")
-        for shared_dim in self._dimensions.values():
-            output.write(f"    {repr(shared_dim)},")
-        output.write("  )\n")
+        output.write("  GroupSchema (\n")
         for name, schema in self.items():
             output.write(f"{name} {repr(schema)}")
         output.write(")\n")
         return output.getvalue()
 
     def check(self):
-        """Checks the correctness of the GroupSchema.
+        """Checks the correctness of each array in the GroupSchema.
 
         Raises:
             tiledb.TileDBError: An ArraySchema in the GroupSchema is invalid.
             RuntimeError: A shared :class:`tiledb.Dim` fails to match the definition
                 from the GroupSchema.
         """
-        for (schema_name, schema) in self._array_schema_table.items():
+        for schema in self._array_schema_table.values():
             schema.check()
-            for dim in schema.domain:
-                if SharedDimension.create(dim) != self._dimensions[dim.name]:
-                    raise RuntimeError(
-                        f"Database schema check failed; dimension definition for "
-                        f"dimension {dim.name} in array schema {schema_name} does not "
-                        f"match the shared dimensions {self._dimensions[dim.name]}."
-                    )
         if self._metadata_schema is not None:
             self._metadata_schema.check()
 
@@ -805,6 +781,9 @@ class SharedDimension(Generic[DType]):
             and self._domain == other._domain
             and self._dtype == other._dtype
         )
+
+    def __hash__(self):
+        return hash((self._name, self._domain, self._dtype))
 
     def __repr__(self) -> str:
         return (

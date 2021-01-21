@@ -111,25 +111,6 @@ class TestGroupSchema:
         with pytest.raises(ValueError):
             GroupSchema(array_schemas)
 
-    def test_dim_match_error(self):
-        """Test ValueError is raised when two schemas have a dimension that doesn't
-        match."""
-        array_schemas = [
-            ("dense1", _array_schema_1),
-            (
-                "dense2",
-                tiledb.ArraySchema(
-                    domain=tiledb.Domain(
-                        tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.int64),
-                    ),
-                    sparse=False,
-                    attrs=[_attr_a],
-                ),
-            ),
-        ]
-        with pytest.raises(ValueError):
-            GroupSchema(array_schemas)
-
     def test_no_attr_error(self):
         """Test a KeyError is raised when querying for an attribute that isn't in
         schema"""
