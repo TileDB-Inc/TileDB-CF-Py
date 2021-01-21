@@ -46,7 +46,7 @@ class DataspaceArray:
         ctx: TileDB context
     """
 
-    __slots__ = ["_array", "_attr", "_attributes"]
+    __slots__ = ["_array", "_attr"]
 
     def __init__(
         self,
@@ -105,9 +105,6 @@ class DataspaceArray:
             ctx=ctx,
         )
         self._attr = attr
-        self._attributes = [
-            self._array.attr(index).name for index in range(self._array.nattr)
-        ]
 
     def __enter__(self):
         return self
@@ -129,8 +126,8 @@ class DataspaceArray:
         """Attribute metadata object for array metadata."""
         if self._attr is not None:
             return AttributeMetadata(self._array.meta, self._attr)
-        if len(self._attributes) == 1:
-            return AttributeMetadata(self._array.meta, self._attributes[0])
+        if len(self._array.nattr) == 1:
+            return AttributeMetadata(self._array.meta, 0)
         raise ValueError(
             "Failed to open attribute metadata. Dataspace array has multiple "
             "attributes; use get_attribute_metadata to specify which attribute to open."
@@ -140,22 +137,13 @@ class DataspaceArray:
         """Closes this :class:`DataspaceGroup`, flushing all buffered data."""
         self._array.close()
 
-    def get_attribute_metadata(self, attr: str) -> AttributeMetadata:
+    def get_attribute_metadata(self, key: Union[str, int]) -> AttributeMetadata:
         """Returns attribute metadata object corresponding to requested attribute.
 
         Parameters:
-            attr: Name of the attribute to get metadata from.
-
-        Raises:
-            ValueError: Requested attribute does not match attribute array was opened
-                with.
-            KeyError: Requested attribute is not inside current array.
+            key: Name or index of the requested array attribute.
         """
-        if attr not in self._attributes:
-            raise KeyError(
-                "Attribute {attr} is not a valid attribute in this DataspaceArray."
-            )
-        return AttributeMetadata(self._array.meta, attr)
+        return AttributeMetadata(self._array.meta, key)
 
     def reopen(self):
         """Reopens this :class:`DataspaceGroup`.
@@ -254,22 +242,29 @@ class ArrayMetadata(MutableMapping):
 
     def __len__(self) -> int:
         """Returns the number of attribute metadata items."""
-        return len(self.keys())
+        return sum(1 for _item in self.__iter__())
 
 
 class AttributeMetadata(MutableMapping):
     """Metadata wrapper for accesssing attribute metadata.
 
     Parameters:
-        metadata: TileDB array metadata
-        attr: Name of attribute metadata is being accessed for
+        metadata: Full metadata class for the TileDB array.
+        attr: Name or index of the array attribute being requested.
     """
 
-    def __init__(self, metadata: tiledb.Metadata, attr: str):
+    def __init__(self, metadata: tiledb.Metadata, attr: Union[str, int]):
         """Constructs a new :class:`AttributeMetadata`."""
         self._metadata = metadata
-        self._attribute = attr
-        self._key_prefix = _ATTRIBUTE_METADATA_FLAG + attr + "."
+        if isinstance(attr, int):
+            self._attribute_name = metadata.array.attr(attr).name
+        else:
+            self._attribute_name = attr
+            try:
+                metadata.array.attr(attr)
+            except tiledb.TileDBError as err:
+                raise ValueError(f"Attribute `{attr}` not found in array.") from err
+        self._key_prefix = _ATTRIBUTE_METADATA_FLAG + self._attribute_name + "."
 
     def __setitem__(self, key, value):
         """Implementation of [key] <- val (dict item assignment)
@@ -283,7 +278,7 @@ class AttributeMetadata(MutableMapping):
         """
         if not isinstance(key, str):
             raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
-        self._metadata[self._key_prefix + key] = value
+        self._metadata.__setitem__(self._key_prefix + key, value)
 
     def __getitem__(self, key) -> Any:
         """Implementation of [key] -> val (dict item retrieval)
@@ -299,7 +294,7 @@ class AttributeMetadata(MutableMapping):
         """
         if not isinstance(key, str):
             raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
-        return self._metadata.get(self._key_prefix + key)
+        return self._metadata.__getitem__(self._key_prefix + key)
 
     def __contains__(self, key: Any) -> bool:
         """Returns True if 'key' is found in metadata store.
@@ -329,7 +324,7 @@ class AttributeMetadata(MutableMapping):
         """
         if not isinstance(key, str):
             raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
-        del self._metadata[self._key_prefix + key]
+        self._metadata.__delitem__(self._key_prefix + key)
 
     def __iter__(self) -> Iterator[str]:
         """Iterates over all attribute metadata keys."""
@@ -339,7 +334,7 @@ class AttributeMetadata(MutableMapping):
 
     def __len__(self) -> int:
         """Returns the number of attribute metadata items."""
-        return len(self.keys())
+        return sum(1 for _item in self.__iter__())
 
 
 class DataspaceGroup:
