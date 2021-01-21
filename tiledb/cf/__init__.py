@@ -167,42 +167,6 @@ class ArrayMetadata(MutableMapping):
         """Constructs a new :class:`ArrayMetadata` class."""
         self._metadata = metadata
 
-    def __setitem__(self, key, value):
-        """Implementation of [key] <- val (dict item assignment)
-
-        Paremeters:
-            key: key to set
-            value: corresponding value
-
-        Raises:
-            ValueError: Key is reserved for attribute metadata.
-        """
-        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
-            raise ValueError(
-                f"Key is reserved for attribute metadata. Cannot set value with key "
-                f"`{key}` in array metadata."
-            )
-        self._metadata.__setitem__(key, value)
-
-    def __getitem__(self, key) -> Any:
-        """Implementation of [key] -> val (dict item retrieval)
-
-        Parameters:
-            key: Target key to find value from.
-
-        Returns:
-            Value stored with provided key.
-
-        Raises:
-            ValueError: Key is reserved for attribute metadata.
-        """
-        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
-            raise ValueError(
-                f"Key is reserved for attribute metadata. Cannot get value with key "
-                f"`{key}` in array metadata."
-            )
-        return self._metadata.__getitem__(key)
-
     def __contains__(self, key: Any) -> bool:
         """Returns True if 'key' is found in metadata store.
 
@@ -234,6 +198,25 @@ class ArrayMetadata(MutableMapping):
             )
         self._metadata.__delitem__(key)
 
+    def __getitem__(self, key) -> Any:
+        """Implementation of [key] -> val (dict item retrieval)
+
+        Parameters:
+            key: Target key to find value from.
+
+        Returns:
+            Value stored with provided key.
+
+        Raises:
+            ValueError: Key is reserved for attribute metadata.
+        """
+        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
+            raise ValueError(
+                f"Key is reserved for attribute metadata. Cannot get value with key "
+                f"`{key}` in array metadata."
+            )
+        return self._metadata.__getitem__(key)
+
     def __iter__(self) -> Iterator[str]:
         """Iterates over all attribute metadata keys."""
         for key in self._metadata.keys():
@@ -243,6 +226,23 @@ class ArrayMetadata(MutableMapping):
     def __len__(self) -> int:
         """Returns the number of attribute metadata items."""
         return sum(1 for _item in self.__iter__())
+
+    def __setitem__(self, key, value):
+        """Implementation of [key] <- val (dict item assignment)
+
+        Paremeters:
+            key: key to set
+            value: corresponding value
+
+        Raises:
+            ValueError: Key is reserved for attribute metadata.
+        """
+        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
+            raise ValueError(
+                f"Key is reserved for attribute metadata. Cannot set value with key "
+                f"`{key}` in array metadata."
+            )
+        self._metadata.__setitem__(key, value)
 
 
 class AttributeMetadata(MutableMapping):
@@ -265,36 +265,6 @@ class AttributeMetadata(MutableMapping):
             except tiledb.TileDBError as err:
                 raise ValueError(f"Attribute `{attr}` not found in array.") from err
         self._key_prefix = _ATTRIBUTE_METADATA_FLAG + self._attribute_name + "."
-
-    def __setitem__(self, key, value):
-        """Implementation of [key] <- val (dict item assignment)
-
-        Paremeters:
-            key: key to set
-            value: corresponding value
-
-        Raise:
-            TypeError: Key is not type str.
-        """
-        if not isinstance(key, str):
-            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
-        self._metadata.__setitem__(self._key_prefix + key, value)
-
-    def __getitem__(self, key) -> Any:
-        """Implementation of [key] -> val (dict item retrieval)
-
-        Parameters:
-            key: Target key to find value from.
-
-        Returns:
-            Value stored with provided key.
-
-        Raise:
-            TypeError: Key is not type str.
-        """
-        if not isinstance(key, str):
-            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
-        return self._metadata.__getitem__(self._key_prefix + key)
 
     def __contains__(self, key: Any) -> bool:
         """Returns True if 'key' is found in metadata store.
@@ -327,6 +297,22 @@ class AttributeMetadata(MutableMapping):
             raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
         self._metadata.__delitem__(self._key_prefix + key)
 
+    def __getitem__(self, key) -> Any:
+        """Implementation of [key] -> val (dict item retrieval)
+
+        Parameters:
+            key: Target key to find value from.
+
+        Returns:
+            Value stored with provided key.
+
+        Raise:
+            TypeError: Key is not type str.
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
+        return self._metadata.__getitem__(self._key_prefix + key)
+
     def __iter__(self) -> Iterator[str]:
         """Iterates over all attribute metadata keys."""
         for key in self._metadata.keys():
@@ -336,6 +322,20 @@ class AttributeMetadata(MutableMapping):
     def __len__(self) -> int:
         """Returns the number of attribute metadata items."""
         return sum(1 for _item in self.__iter__())
+
+    def __setitem__(self, key, value):
+        """Implementation of [key] <- val (dict item assignment)
+
+        Paremeters:
+            key: key to set
+            value: corresponding value
+
+        Raise:
+            TypeError: Key is not type str.
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
+        self._metadata.__setitem__(self._key_prefix + key, value)
 
 
 class DataspaceGroup:
