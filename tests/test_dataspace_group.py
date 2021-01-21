@@ -82,6 +82,34 @@ class TestSimpleGroup:
         return uri
 
     def test_has_metadata(self, group_uri):
-        uri = group_uri
-        with DataspaceGroup(uri) as group:
+        with DataspaceGroup(group_uri) as group:
+            assert isinstance(group, DataspaceGroup)
             assert group.has_metadata_array
+            assert group.meta is not None
+
+    def test_reopen(self, group_uri):
+        with DataspaceGroup(group_uri) as group:
+            group.reopen()
+
+    def test_not_group_exception(self, group_uri):
+        array_uri = DataspaceGroup.metadata_uri(group_uri)
+        with pytest.raises(ValueError):
+            DataspaceGroup(array_uri)
+
+    def test_metadata_array_exists_exception(self, group_uri):
+        with DataspaceGroup(group_uri) as group:
+            with pytest.raises(RuntimeError):
+                group.create_metadata_array()
+
+class TestNoMetadataArray:
+
+    @pytest.fixture(scope="class")
+    def group_uri(self, tmpdir_factory):
+        """Creates a TileDB group and return URI."""
+        uri = str(tmpdir_factory.mktemp("empty_group"))
+        tiledb.group_create(uri)
+        return uri
+
+    def test_no_metadata_array_exception(self, group_uri):
+        with DataspaceGroup(group_uri) as group:
+            assert group.meta is None
