@@ -84,48 +84,16 @@ class TestGroupSchema:
             if len(result) == 1:
                 assert result[0] == group_schema.get_attribute_array(attr_name)
 
+    def test_not_equal(self):
+        schema1 = GroupSchema([("A1", _array_schema_1)])
+        schema2 = GroupSchema([("A1", _array_schema_1)], _empty_array_schema)
+        schema3 = GroupSchema([("A2", _array_schema_1)])
+        schema4 = GroupSchema([("A1", _array_schema_1), ("A2", _array_schema_2)])
+        assert schema1 != schema2
+        assert schema1 != schema3
+        assert schema1 != schema4
+        assert schema1 != "not a group schema"
 
-class TestLoadEmptyGroup:
-    @pytest.fixture(scope="class")
-    def create_group(self, tmpdir_factory):
-        uri = str(tmpdir_factory.mktemp("empty_group"))
-        tiledb.group_create(uri)
-        return uri
-
-    def test_group_schema(self, create_group):
-        uri = create_group
-        schema = GroupSchema.load(uri, key=None, ctx=None)
-        assert schema.metadata_schema is None
-        assert len(schema) == 0
-
-
-class TestLoadGroup:
-
-    _array_schemas = [
-        ("A1", _array_schema_1),
-        ("A2", _array_schema_2),
-        ("A3", _array_schema_3),
-        ("A4", _array_schema_4),
-    ]
-    _metadata_array = _empty_array_schema
-
-    @pytest.fixture(scope="class")
-    def create_group(self, tmpdir_factory):
-        uri = str(tmpdir_factory.mktemp("simple_group"))
-        tiledb.group_create(uri)
-        tiledb.Array.create(uri + "/A1", _array_schema_1)
-        tiledb.Array.create(uri + "/A2", _array_schema_2)
-        tiledb.Array.create(uri + "/A3", _array_schema_3)
-        tiledb.Array.create(uri + "/A4", _array_schema_4)
-        tiledb.Array.create(uri + "/__tiledb_group", _empty_array_schema)
-        return uri
-
-    def test_group_schema(self, create_group):
-        schema = GroupSchema.load(create_group, key=None, ctx=None)
-        assert schema == GroupSchema(self._array_schemas, self._metadata_array)
-
-
-class TestGroupSchemaExceptions:
     def test_set_metadata_array(self):
         """Test setting default metadata schema."""
         group_schema = GroupSchema()
@@ -184,3 +152,47 @@ class TestGroupSchemaExceptions:
         )
         with pytest.raises(ValueError):
             group_schema.get_attribute_array("a")
+
+
+class TestLoadEmptyGroup:
+    @pytest.fixture(scope="class")
+    def create_group(self, tmpdir_factory):
+        uri = str(tmpdir_factory.mktemp("empty_group"))
+        tiledb.group_create(uri)
+        return uri
+
+    def test_group_schema(self, create_group):
+        uri = create_group
+        schema = GroupSchema.load(uri, key=None, ctx=None)
+        assert schema.metadata_schema is None
+        assert len(schema) == 0
+
+
+class TestLoadGroup:
+
+    _array_schemas = [
+        ("A1", _array_schema_1),
+        ("A2", _array_schema_2),
+        ("A3", _array_schema_3),
+        ("A4", _array_schema_4),
+    ]
+    _metadata_array = _empty_array_schema
+
+    @pytest.fixture(scope="class")
+    def group_uri(self, tmpdir_factory):
+        uri = str(tmpdir_factory.mktemp("simple_group"))
+        tiledb.group_create(uri)
+        tiledb.Array.create(uri + "/A1", _array_schema_1)
+        tiledb.Array.create(uri + "/A2", _array_schema_2)
+        tiledb.Array.create(uri + "/A3", _array_schema_3)
+        tiledb.Array.create(uri + "/A4", _array_schema_4)
+        tiledb.Array.create(uri + "/__tiledb_group", _empty_array_schema)
+        return uri
+
+    def test_group_schema(self, group_uri):
+        schema = GroupSchema.load(group_uri, key=None, ctx=None)
+        assert schema == GroupSchema(self._array_schemas, self._metadata_array)
+
+    def test_not_group_exception(self, group_uri):
+        with pytest.raises(ValueError):
+            GroupSchema.load(group_uri + "/A1")
