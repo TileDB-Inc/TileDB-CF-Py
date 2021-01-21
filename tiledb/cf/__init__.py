@@ -182,7 +182,7 @@ class ArrayMetadata(MutableMapping):
                 f"Key is reserved for attribute metadata. Cannot set value with key "
                 f"`{key}` in array metadata."
             )
-        self._metadata[key] = value
+        self._metadata.__setitem__(key, value)
 
     def __getitem__(self, key) -> Any:
         """Implementation of [key] -> val (dict item retrieval)
@@ -201,7 +201,7 @@ class ArrayMetadata(MutableMapping):
                 f"Key is reserved for attribute metadata. Cannot get value with key "
                 f"`{key}` in array metadata."
             )
-        return self._metadata.get(key)
+        return self._metadata.__getitem__(key)
 
     def __contains__(self, key: Any) -> bool:
         """Returns True if 'key' is found in metadata store.
@@ -216,7 +216,7 @@ class ArrayMetadata(MutableMapping):
         """
         if key.startswith(_ATTRIBUTE_METADATA_FLAG):
             return False
-        return key in self._metadata
+        return self._metadata.__contains__(key)
 
     def __delitem__(self, key):
         """Remove key from metadata.
@@ -232,7 +232,7 @@ class ArrayMetadata(MutableMapping):
                 f"Key is reserved for attribute metadata. Cannot delete value with key "
                 f"`{key}` in array metadata."
             )
-        del self._metadata[key]
+        self._metadata.__delitem__(key)
 
     def __iter__(self) -> Iterator[str]:
         """Iterates over all attribute metadata keys."""
@@ -306,12 +306,13 @@ class AttributeMetadata(MutableMapping):
 
         Returns:
             True is 'key' is found in the attribute metadata store.
+
+        Raise:
+            TypeError: Key is not type str.
         """
-        try:
-            self[self._key_prefix + key]
-        except KeyError:
-            return False
-        return True
+        if not isinstance(key, str):
+            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
+        return self._metadata.__contains__(self._key_prefix + key)
 
     def __delitem__(self, key):
         """Remove key from metadata.
