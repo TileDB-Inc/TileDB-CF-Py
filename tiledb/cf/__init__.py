@@ -685,7 +685,8 @@ class GroupSchema(Mapping):
                 if SharedDimension.create(dim) != self._dimensions[dim.name]:
                     raise RuntimeError(
                         f"Database schema check failed; dimension definition for "
-                        f"dimension {dim.name} in array schema {schema_name}."
+                        f"dimension {dim.name} in array schema {schema_name} does not "
+                        f"match the shared dimensions {self._dimensions[dim.name]}."
                     )
         if self._metadata_schema is not None:
             self._metadata_schema.check()
