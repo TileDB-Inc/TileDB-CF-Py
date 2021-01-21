@@ -48,6 +48,8 @@ class TestSimpleArray:
             array[:] = self._A1_data
         tiledb.Array.create(uri + "/A2", _array_schema_2)
         tiledb.Array.create(uri + "/A3", _array_schema_3)
+        filesystem = tiledb.VFS()
+        filesystem.create_dir(uri + "/empty_dir")
         return uri
 
     def test_open_array_from_group(self, group_uri):
@@ -58,6 +60,8 @@ class TestSimpleArray:
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"
             assert np.array_equal(dataspace.array[:, :]["a"], self._A1_data)
+            dataspace.reopen()
+            assert array.mode == "r"
 
     def test_open_array(self, group_uri):
         uri = group_uri + "/A1"
@@ -73,3 +77,15 @@ class TestSimpleArray:
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"
             assert np.array_equal(dataspace.array[:, :], self._A1_data)
+
+    def test_no_array_exception(self, group_uri):
+        with pytest.raises(ValueError):
+            DataspaceArray(group_uri, key=self._key)
+
+    def test_conflicting_array_exception(self, group_uri):
+        with pytest.raises(ValueError):
+            DataspaceArray(group_uri + "/A1", key=self._key, array="A2")
+
+    def test_invalid_uri_exception(self, group_uri):
+        with pytest.raises(ValueError):
+            DataspaceArray(group_uri + "/empty_dir", key=self._key)
