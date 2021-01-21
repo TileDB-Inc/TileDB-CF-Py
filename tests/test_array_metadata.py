@@ -24,17 +24,37 @@ class TestArrayMetadata:
 
     def test_modify_metadata(self, array_uri):
         with tiledb.DenseArray(array_uri, mode="r") as array:
-            array_metadata = ArrayMetadata(array.meta)
-            assert len(array_metadata) == 0
+            meta = ArrayMetadata(array.meta)
+            assert len(meta) == 0
+            assert "__tiledb_attr.attr" not in meta
         with tiledb.DenseArray(array_uri, mode="w") as array:
-            array_metadata = ArrayMetadata(array.meta)
-            array_metadata["key0"] = "array value"
-            array_metadata["key1"] = 10
-            array_metadata["key2"] = 0.1
+            meta = ArrayMetadata(array.meta)
+            meta["key0"] = "array value"
+            meta["key1"] = 10
+            meta["key2"] = 0.1
         with tiledb.DenseArray(array_uri, mode="w") as array:
-            array_metadata = ArrayMetadata(array.meta)
-            del array_metadata["key2"]
+            meta = ArrayMetadata(array.meta)
+            del meta["key2"]
         with tiledb.DenseArray(array_uri, mode="r") as array:
-            array_metadata = ArrayMetadata(array.meta)
-            assert set(array_metadata.keys()) == set(["key0", "key1"])
-            assert array_metadata["key0"] == "array value"
+            meta = ArrayMetadata(array.meta)
+            assert set(meta.keys()) == set(["key0", "key1"])
+            assert "key0" in meta
+            assert meta["key0"] == "array value"
+
+    def test_delitem_attr_key_exception(self, array_uri):
+        with pytest.raises(ValueError):
+            with tiledb.DenseArray(array_uri, mode="w") as array:
+                meta = ArrayMetadata(array.meta)
+                del meta["__tiledb_attr.attr"]
+
+    def test_getitem_attr_key_exception(self, array_uri):
+        with pytest.raises(ValueError):
+            with tiledb.DenseArray(array_uri, mode="r") as array:
+                meta = ArrayMetadata(array.meta)
+                _ = meta["__tiledb_attr.attr"]
+
+    def test_setitem_attr_key_exception(self, array_uri):
+        with pytest.raises(ValueError):
+            with tiledb.DenseArray(array_uri, mode="w") as array:
+                meta = ArrayMetadata(array.meta)
+                meta["__tiledb_attr.a"] = "value"
