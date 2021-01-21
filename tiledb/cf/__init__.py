@@ -126,7 +126,7 @@ class DataspaceArray:
         """Attribute metadata object for array metadata."""
         if self._attr is not None:
             return AttributeMetadata(self._array.meta, self._attr)
-        if len(self._array.nattr) == 1:
+        if self._array.nattr == 1:
             return AttributeMetadata(self._array.meta, 0)
         raise ValueError(
             "Failed to open attribute metadata. Dataspace array has multiple "

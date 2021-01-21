@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import DataspaceArray, GroupSchema
+from tiledb.cf import ArrayMetadata, AttributeMetadata, DataspaceArray, GroupSchema
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.int32)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.int32)
@@ -70,6 +70,25 @@ class TestSimpleArray:
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"
             assert np.array_equal(dataspace.array[:, :]["a"], self._A1_data)
+            dataspace.reopen()
+            assert array.mode == "r"
+
+    def test_array_metadata(self, group_uri):
+        uri = group_uri + "/A1"
+        with DataspaceArray(uri, mode="r", key=self._key) as dataspace:
+            isinstance(dataspace.array_metadata, ArrayMetadata)
+
+    def test_attribute_metadata_with_attr(self, group_uri):
+        with DataspaceArray(group_uri, key=self._key, attr="a") as dataspace:
+            isinstance(dataspace.attribute_metadata, AttributeMetadata)
+
+    def test_attribute_metadata_with_single_attribute_array(self, group_uri):
+        with DataspaceArray(group_uri, key=self._key, array="A3") as dataspace:
+            isinstance(dataspace.attribute_metadata, AttributeMetadata)
+
+    def test_get_attribute_metadata(self, group_uri):
+        with DataspaceArray(group_uri, key=self._key, array="A2") as dataspace:
+            isinstance(dataspace.get_attribute_metadata("b"), AttributeMetadata)
 
     def test_open_attr(self, group_uri):
         with DataspaceArray(group_uri, mode="r", key=self._key, attr="a") as dataspace:
@@ -89,3 +108,8 @@ class TestSimpleArray:
     def test_invalid_uri_exception(self, group_uri):
         with pytest.raises(ValueError):
             DataspaceArray(group_uri + "/empty_dir", key=self._key)
+
+    def test_ambiguous_metadata_attribute_exception(self, group_uri):
+        with pytest.raises(ValueError):
+            with DataspaceArray(group_uri, key=self._key, array="A2") as dataspace:
+                isinstance(dataspace.attribute_metadata, AttributeMetadata)
