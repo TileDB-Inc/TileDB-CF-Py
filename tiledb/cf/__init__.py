@@ -29,132 +29,6 @@ _METADATA_ARRAY = "__tiledb_group"
 _ATTRIBUTE_METADATA_FLAG = "__tiledb_attr."
 
 
-class Array:
-    """Array wrapper to access arrays through groups and with attribute and array
-        metadata.
-
-    Parameters:
-        uri: Uniform resource identifier for TileDB group or array.
-        mode: Open the array object in read 'r' or write 'w' mode.
-        key: If not None, encryption key or dictionary of encryption keys to decrypt
-            arrays.
-        timestamp: If not None, open the TileDB array at the given timestamp.
-        array: If not None, specifies which array in a TileDB group to open. If the
-            URI is for a TileDB array this must either be None or match the URI
-            basename.
-        attr: If not None, open one attribute of the TileDB array. If the array is
-            dense, indexing the array will return a Numpy nd.array directly.
-        ctx: TileDB context
-    """
-
-    __slots__ = ["_array", "_attr"]
-
-    def __init__(
-        self,
-        uri,
-        mode="r",
-        key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
-        timestamp=None,
-        array=None,
-        attr=None,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        """Constructs a new :class:`Array`.
-
-        If the URI is for a TileDB Group either :param:`array` or :param:`attr` must be
-        specified. If the URI is for a TileDB Group :param:`array` must either be
-        ``None`` or match the basename of the URI.
-
-        Raises:
-            ValueError: No array or attribute specified for TileDB group.
-            ValueError: URI basename for TileDB array does not match array input
-                parameter.
-            ValueError: URI is not a valid TileDB object.
-        """
-        if tiledb.object_type(uri, ctx) == "group":
-            if attr is not None and array is None:
-                group_schema = GroupSchema.load(uri, ctx, key)
-                array = group_schema.get_attribute_array(attr)
-                print(f"Array name: {array}")
-            if array is None:
-                raise ValueError(
-                    "Failed to open array. No array or attribute specified for the "
-                    "provied TileDB group."
-                )
-            array_uri = uri + array if uri.endswith("/") else uri + "/" + array
-
-        elif tiledb.object_type(uri, ctx) == "array":
-            array_uri = uri
-            array_name = uri.split("/")[-2] if uri.endswith("/") else uri.split("/")[-1]
-            if array is not None and array != array_name:
-                raise ValueError(
-                    f"Failed to open array. URI for TileDB array with "
-                    f"basename={array_name} that does not match parameter "
-                    f"array={array}."
-                )
-        else:
-            raise ValueError("Failed to open object; URI is not a valid TileDB object.")
-        self._array = tiledb.open(
-            array_uri,
-            mode=mode,
-            key=key,
-            attr=attr,
-            config=None,
-            timestamp=timestamp,
-            ctx=ctx,
-        )
-        self._attr = attr
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, exception_traceback):
-        self.close()
-
-    @property
-    def array_metadata(self) -> ArrayMetadata:
-        return ArrayMetadata(self._array.meta)
-
-    @property
-    def attribute_metadata(self) -> AttributeMetadata:
-        """Attribute metadata object for array metadata."""
-        if self._attr is not None:
-            return AttributeMetadata(self._array.meta, self._attr)
-        if self._array.nattr == 1:
-            return AttributeMetadata(self._array.meta, 0)
-        raise ValueError(
-            "Failed to open attribute metadata. Array has multiple attributes; use "
-            "get_attribute_metadata to specify which attribute to open."
-        )
-
-    def close(self):
-        """Closes this :class:`Group`, flushing all buffered data."""
-        self._array.close()
-
-    @property
-    def core(self):
-        """Internal TileDB array opened through cf.Array interface."""
-        return self._array
-
-    def get_attribute_metadata(self, key: Union[str, int]) -> AttributeMetadata:
-        """Returns attribute metadata object corresponding to requested attribute.
-
-        Parameters:
-            key: Name or index of the requested array attribute.
-        """
-        return AttributeMetadata(self._array.meta, key)
-
-    def reopen(self):
-        """Reopens this :class:`Group`.
-
-        This is useful when the Group is updated after it was opened.
-        To sync-up with the updates, the user must either close the array and open
-        again, or just use ``reopen()`` without closing. ``reopen`` will be generally
-        faster than a close-then-open.
-        """
-        self._array.reopen()
-
-
 class ArrayMetadata(MutableMapping):
     """Metadata wrapper for accesssing array metadata.
 
@@ -392,6 +266,10 @@ class Group:
             )
 
     __slots__ = [
+        "_array",
+        "_array_uri",
+        "_array_key",
+        "_attr",
         "_ctx",
         "_key",
         "_metadata_array",
@@ -409,6 +287,8 @@ class Group:
         mode="r",
         key: Optional[Union[Dict[str, Union[str, bytes]], str, bytes]] = None,
         timestamp=None,
+        array: Optional[str] = None,
+        attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
         """Constructs a new :class:`GroupSchema`.
@@ -441,6 +321,33 @@ class Group:
                 ctx=self._ctx,
             )
         )
+        self._attr = attr
+        if array is not None:
+            self._array_uri = self._uri + "/" + array
+            self._array_key = key.get(array) if isinstance(key, dict) else key
+        elif attr is not None:
+            group_schema = GroupSchema.load(uri, ctx, key)
+            array = group_schema.get_attribute_array(attr)
+            self._array_uri = (
+                self._uri + array if uri.endswith("/") else uri + "/" + array
+            )
+            self._array_key = key.get(array) if isinstance(key, dict) else key
+        else:
+            self._array_uri = None
+            self._array_key = None
+        self._array = (
+            None
+            if self._array_uri is None
+            else tiledb.open(
+                self._array_uri,
+                mode=self._mode,
+                key=self._array_key,
+                attr=attr,
+                config=None,
+                timestamp=timestamp,
+                ctx=ctx,
+            )
+        )
 
     def __enter__(self):
         return self
@@ -452,6 +359,35 @@ class Group:
         """Closes this Group, flushing all buffered data."""
         if self._metadata_array is not None:
             self._metadata_array.close()
+        if self._array is not None:
+            self._array.close()
+
+    @property
+    def array(self) -> tiledb.Array:
+        if self._array is None:
+            raise ValueError("Cannot access group array: no array was opened.")
+        return self._array
+
+    @property
+    def array_metadata(self) -> ArrayMetadata:
+        """Metadata object for the array."""
+        if self._array is None:
+            raise ValueError("Cannot access group array metadata: no array was opened.")
+        return ArrayMetadata(self._array.meta)
+
+    @property
+    def attribute_metadata(self) -> AttributeMetadata:
+        """Metadata object for the attribute metadata."""
+        if self._array is None:
+            raise ValueError("Cannot access attribute metadata: no array was opened.")
+        if self._attr is not None:
+            return AttributeMetadata(self._array.meta, self._attr)
+        if self._array.nattr == 1:
+            return AttributeMetadata(self._array.meta, 0)
+        raise ValueError(
+            "Failed to open attribute metadata. Array has multiple attributes; use "
+            "get_attribute_metadata to specify which attribute to open."
+        )
 
     def create_metadata_array(self):
         """Creates a metadata array for this group.
@@ -478,6 +414,16 @@ class Group:
             self._metadata_key,
             self._ctx,
         )
+
+    def get_attribute_metadata(self, key: Union[str, int]) -> AttributeMetadata:
+        """Returns attribute metadata object corresponding to requested attribute.
+
+        Parameters:
+            key: Name or index of the requested array attribute.
+        """
+        if self._array is None:
+            raise ValueError("Cannot access attribute metadata: no array was opened.")
+        return AttributeMetadata(self._array.meta, key)
 
     @property
     def has_metadata_array(self) -> bool:
@@ -557,11 +503,7 @@ class GroupSchema(Mapping):
         for item_uri in vfs.ls(uri):
             if not tiledb.object_type(item_uri) == "array":
                 continue
-            array_name = (
-                item_uri.split("/")[-2]
-                if item_uri.endswith("/")
-                else item_uri.split("/")[-1]
-            )
+            array_name = item_uri.split("/")[-1]
             local_key = key.get(array_name) if isinstance(key, dict) else key
             if array_name == _METADATA_ARRAY:
                 metadata_schema = tiledb.ArraySchema.load(item_uri, ctx, local_key)

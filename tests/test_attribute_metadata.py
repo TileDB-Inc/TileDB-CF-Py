@@ -40,6 +40,10 @@ class TestAttributeMetadata:
             assert "key0" in meta
             assert meta["key0"] == "attribute_value"
 
+    def test_open_from_index(self, array_uri):
+        with tiledb.DenseArray(array_uri, mode="r") as array:
+            AttributeMetadata(array.meta, 0)
+
     def test_attr_not_in_array_exception(self, array_uri):
         with pytest.raises(ValueError):
             with tiledb.DenseArray(array_uri, mode="w") as array:
