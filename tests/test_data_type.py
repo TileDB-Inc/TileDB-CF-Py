@@ -69,3 +69,8 @@ def test_data_type(key, expected_name, expected_value):
     data_type = DataType.create(key)
     assert data_type.name == expected_name
     assert data_type.dtype == expected_value
+
+
+def test_generic_datetime_exception():
+    with pytest.raises(ValueError):
+        DataType.create(np.datetime64(""))
