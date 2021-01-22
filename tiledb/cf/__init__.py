@@ -765,7 +765,7 @@ class SharedDimension(Generic[DType]):
         if isinstance(data_type, np.dtype):
             self._dtype = data_type
         elif isinstance(data_type, DataType):
-            self._dtype = DataType.dtype
+            self._dtype = data_type.dtype
         else:
             self._dtype = DataType.create(data_type).dtype
 
