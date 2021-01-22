@@ -169,9 +169,29 @@ class TestGroupWithArrays:
             assert np.array_equal(array[:, :], self._A1_data)
 
     def test_ambiguous_metadata_attribute_exception(self, group_uri):
-        with pytest.raises(ValueError):
-            with Group(group_uri, array="A2") as group:
+        with Group(group_uri, array="A2") as group:
+            with pytest.raises(ValueError):
                 isinstance(group.attribute_metadata, AttributeMetadata)
+
+    def test_no_array_execption(self, group_uri):
+        with Group(group_uri) as group:
+            with pytest.raises(ValueError):
+                _ = group.array
+
+    def test_no_array_metadata_execption(self, group_uri):
+        with Group(group_uri) as group:
+            with pytest.raises(ValueError):
+                _ = group.array_metadata
+
+    def test_no_attribute_metadata_execption(self, group_uri):
+        with Group(group_uri) as group:
+            with pytest.raises(ValueError):
+                _ = group.attribute_metadata
+
+    def test_no_get_attribute_metadata_execption(self, group_uri):
+        with Group(group_uri) as group:
+            with pytest.raises(ValueError):
+                _ = group.get_attribute_metadata("a")
 
 
 class TestNoMetadataArray:
