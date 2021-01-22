@@ -29,7 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.7"
-tiledb = "^0.7.0"
+tiledb = "^0.7.1"
 numpy = "^1.16"
 
 [tool.poetry.dev-dependencies]
