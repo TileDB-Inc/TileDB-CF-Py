@@ -29,186 +29,110 @@ _METADATA_ARRAY = "__tiledb_group"
 _ATTRIBUTE_METADATA_FLAG = "__tiledb_attr."
 
 
-class ArrayMetadata(MutableMapping):
-    """Metadata wrapper for accesssing array metadata.
+class Metadata(MutableMapping):
+    """Wrapper for accessing metadata.
 
     Parameters:
         metadata: TileDB array metadata
     """
 
     def __init__(self, metadata: tiledb.Metadata):
-        """Constructs a new :class:`ArrayMetadata` class."""
         self._metadata = metadata
 
-    def __contains__(self, key: Any) -> bool:
-        """Returns True if 'key' is found in metadata store.
-
-        Provides support for python 'in' syntax ('k in A.meta')
-
-        Parameters:
-            key: Target key to check against self.
-
-        Returns:
-            True is 'key' is found in the attribute metadata store.
-        """
-        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
-            return False
-        return self._metadata.__contains__(key)
-
-    def __delitem__(self, key):
-        """Remove key from metadata.
-
-        Parameters:
-            key: Target key for item to remove from attribute metadata store.
-
-        Raises:
-            ValueError: Key is reserved for attribute metadata.
-        """
-        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
-            raise ValueError(
-                f"Key is reserved for attribute metadata. Cannot delete value with key "
-                f"`{key}` in array metadata."
-            )
-        self._metadata.__delitem__(key)
-
-    def __getitem__(self, key) -> Any:
-        """Implementation of [key] -> val (dict item retrieval)
-
-        Parameters:
-            key: Target key to find value from.
-
-        Returns:
-            Value stored with provided key.
-
-        Raises:
-            ValueError: Key is reserved for attribute metadata.
-        """
-        if key.startswith(_ATTRIBUTE_METADATA_FLAG):
-            raise ValueError(
-                f"Key is reserved for attribute metadata. Cannot get value with key "
-                f"`{key}` in array metadata."
-            )
-        return self._metadata.__getitem__(key)
-
     def __iter__(self) -> Iterator[str]:
-        """Iterates over all attribute metadata keys."""
-        for key in self._metadata.keys():
-            if not key.startswith(_ATTRIBUTE_METADATA_FLAG):
+        """Iterates over all metadata keys."""
+        for tiledb_key in self._metadata.keys():
+            key = self._from_tiledb_key(tiledb_key)
+            if key is not None:
                 yield key
 
     def __len__(self) -> int:
-        """Returns the number of attribute metadata items."""
-        return sum(1 for _item in self.__iter__())
+        """Returns the number of metadata items."""
+        return sum(1 for _ in self)
 
-    def __setitem__(self, key, value):
+    def __getitem__(self, key: str) -> Any:
+        """Implementation of [key] -> val (dict item retrieval)
+
+        Parameters:
+            key: Key to find value from.
+
+        Returns:
+            Value stored with provided key.
+        """
+        return self._metadata[self._to_tiledb_key(key)]
+
+    def __setitem__(self, key: str, value: Any) -> None:
         """Implementation of [key] <- val (dict item assignment)
 
         Paremeters:
             key: key to set
             value: corresponding value
-
-        Raises:
-            ValueError: Key is reserved for attribute metadata.
         """
+        self._metadata[self._to_tiledb_key(key)] = value
+
+    def __delitem__(self, key):
+        """Remove key from metadata.
+
+        Parameters:
+            key: Key to remove.
+        """
+        del self._metadata[self._to_tiledb_key(key)]
+
+    def _to_tiledb_key(self, key: str) -> str:
+        """Map an external user metadata key to an internal tiledb key.
+
+        Raises
+            KeyError: If `key` cannot be mapped.
+        """
+        return key
+
+    def _from_tiledb_key(self, tiledb_key: str) -> Optional[str]:
+        """Map an internal tiledb key to an external user metadata key.
+
+        Returns:
+            The external user metadata key corresponding to `tiledb_key`,
+            or None if there is no such corresponding key.
+        """
+        return tiledb_key
+
+
+class ArrayMetadata(Metadata):
+    """Metadata wrapper for accessing array metadata."""
+
+    def _to_tiledb_key(self, key: str) -> str:
         if key.startswith(_ATTRIBUTE_METADATA_FLAG):
-            raise ValueError(
-                f"Key is reserved for attribute metadata. Cannot set value with key "
-                f"`{key}` in array metadata."
-            )
-        self._metadata.__setitem__(key, value)
+            raise KeyError("Key is reserved for attribute metadata.")
+        return key
+
+    def _from_tiledb_key(self, tiledb_key: str) -> Optional[str]:
+        if not tiledb_key.startswith(_ATTRIBUTE_METADATA_FLAG):
+            return tiledb_key
+        return None
 
 
-class AttributeMetadata(MutableMapping):
-    """Metadata wrapper for accesssing attribute metadata.
+class AttributeMetadata(Metadata):
+    """Metadata wrapper for accessing attribute metadata.
 
     Parameters:
-        metadata: Full metadata class for the TileDB array.
+        metadata: TileDB array metadata
         attr: Name or index of the array attribute being requested.
     """
 
     def __init__(self, metadata: tiledb.Metadata, attr: Union[str, int]):
-        """Constructs a new :class:`AttributeMetadata`."""
-        self._metadata = metadata
-        if isinstance(attr, int):
-            self._attribute_name = metadata.array.attr(attr).name
-        else:
-            self._attribute_name = attr
-            try:
-                metadata.array.attr(attr)
-            except tiledb.TileDBError as err:
-                raise ValueError(f"Attribute `{attr}` not found in array.") from err
-        self._key_prefix = _ATTRIBUTE_METADATA_FLAG + self._attribute_name + "."
+        super().__init__(metadata)
+        try:
+            attr_name = metadata.array.attr(attr).name
+        except tiledb.TileDBError as err:
+            raise ValueError(f"Attribute `{attr}` not found in array.") from err
+        self._key_prefix = _ATTRIBUTE_METADATA_FLAG + attr_name + "."
 
-    def __contains__(self, key: Any) -> bool:
-        """Returns True if 'key' is found in metadata store.
+    def _to_tiledb_key(self, key: str) -> str:
+        return self._key_prefix + key
 
-        Provides support for python 'in' syntax ('k in A.meta')
-
-        Parameters:
-            key: Target key to check against self.
-
-        Returns:
-            True is 'key' is found in the attribute metadata store.
-
-        Raise:
-            TypeError: Key is not type str.
-        """
-        if not isinstance(key, str):
-            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
-        return self._metadata.__contains__(self._key_prefix + key)
-
-    def __delitem__(self, key):
-        """Remove key from metadata.
-
-        Parameters:
-            key: Target key for item to remove from attribute metadata store.
-
-        Raise:
-            TypeError: Key is not type str.
-        """
-        if not isinstance(key, str):
-            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
-        self._metadata.__delitem__(self._key_prefix + key)
-
-    def __getitem__(self, key) -> Any:
-        """Implementation of [key] -> val (dict item retrieval)
-
-        Parameters:
-            key: Target key to find value from.
-
-        Returns:
-            Value stored with provided key.
-
-        Raise:
-            TypeError: Key is not type str.
-        """
-        if not isinstance(key, str):
-            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
-        return self._metadata.__getitem__(self._key_prefix + key)
-
-    def __iter__(self) -> Iterator[str]:
-        """Iterates over all attribute metadata keys."""
-        for key in self._metadata.keys():
-            if key.startswith(self._key_prefix):
-                yield key[len(self._key_prefix) :]
-
-    def __len__(self) -> int:
-        """Returns the number of attribute metadata items."""
-        return sum(1 for _item in self.__iter__())
-
-    def __setitem__(self, key, value):
-        """Implementation of [key] <- val (dict item assignment)
-
-        Paremeters:
-            key: key to set
-            value: corresponding value
-
-        Raise:
-            TypeError: Key is not type str.
-        """
-        if not isinstance(key, str):
-            raise TypeError(f"Unexpected key type '{type(key)}': expected str type")
-        self._metadata.__setitem__(self._key_prefix + key, value)
+    def _from_tiledb_key(self, tiledb_key: str) -> Optional[str]:
+        if tiledb_key.startswith(self._key_prefix):
+            return tiledb_key[len(self._key_prefix) :]
+        return None
 
 
 class Group:

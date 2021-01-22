@@ -42,19 +42,19 @@ class TestArrayMetadata:
             assert meta["key0"] == "array value"
 
     def test_delitem_attr_key_exception(self, array_uri):
-        with pytest.raises(ValueError):
+        with pytest.raises(KeyError):
             with tiledb.DenseArray(array_uri, mode="w") as array:
                 meta = ArrayMetadata(array.meta)
                 del meta["__tiledb_attr.attr"]
 
     def test_getitem_attr_key_exception(self, array_uri):
-        with pytest.raises(ValueError):
+        with pytest.raises(KeyError):
             with tiledb.DenseArray(array_uri, mode="r") as array:
                 meta = ArrayMetadata(array.meta)
                 _ = meta["__tiledb_attr.attr"]
 
     def test_setitem_attr_key_exception(self, array_uri):
-        with pytest.raises(ValueError):
+        with pytest.raises(KeyError):
             with tiledb.DenseArray(array_uri, mode="w") as array:
                 meta = ArrayMetadata(array.meta)
                 meta["__tiledb_attr.a"] = "value"
