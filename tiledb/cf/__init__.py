@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import os.path
-from collections import defaultdict
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from io import StringIO
@@ -229,7 +228,13 @@ class Group:
         self._attr = attr
         if array is None and attr is not None:
             group_schema = GroupSchema.load(uri, ctx, key)
-            array = group_schema.get_attribute_array(attr)
+            arrays = group_schema.get_attribute_arrays(attr)
+            if len(arrays) != 1:
+                raise ValueError(
+                    f"Failed to open a single array with attribute {attr}. There is "
+                    f"{len(arrays)} with attribute named {attr}."
+                )
+            array = arrays[0]
         self._array = (
             None
             if array is None
@@ -435,7 +440,6 @@ class GroupSchema(Mapping):
 
     __slots__ = [
         "_array_schema_table",
-        "_attribute_to_arrays",
         "_metadata_schema",
     ]
 
@@ -454,11 +458,6 @@ class GroupSchema(Mapping):
             self._array_schema_table = {}
         else:
             self._array_schema_table = dict(array_schemas)
-        self._attribute_to_arrays: Dict[str, List[str]] = defaultdict(list)
-        for (schema_name, schema) in self._array_schema_table.items():
-            for attr in schema:
-                attr_name = attr.name
-                self._attribute_to_arrays[attr_name].append(schema_name)
 
     def __eq__(self, other: Any):
         if not isinstance(other, GroupSchema):
@@ -513,8 +512,8 @@ class GroupSchema(Mapping):
         if self._metadata_schema is not None:
             self._metadata_schema.check()
 
-    def get_all_attribute_arrays(self, attribute_name: str) -> Optional[List[str]]:
-        """Returns a tuple of the names of all arrays with a matching attribute.
+    def get_attribute_arrays(self, attribute_name: str) -> Optional[List[str]]:
+        """Returns a list of the names of all arrays with a matching attribute.
 
         Parameter:
             attribute_name: Name of the attribute to look up arrays for.
@@ -523,32 +522,13 @@ class GroupSchema(Mapping):
             A tuple of the name of all arrays with a matching attribute, or `None` if no
                 such array.
         """
-        return self._attribute_to_arrays.get(attribute_name)
-
-    def get_attribute_array(self, attribute_name: str) -> str:
-        """Returns the name of the array in which the :param:`attribute_name` is
-            contained.
-
-        Parameters:
-            attribute_name: Name of the attribute to look up array for.
-
-        Returns:
-            Name of the array that contains the attribute with a matching name.
-
-        Raises:
-            KeyError: No attribute with name :param:`attribute_name` found.
-            ValueError: More than one array with :param:`attribute_name` found.
-        """
-        arrays = self._attribute_to_arrays.get(attribute_name)
-        if arrays is None:
-            raise KeyError(f"No attribute with name {attribute_name} found.")
-        assert len(arrays) > 0
-        if len(arrays) > 1:
-            raise ValueError(
-                f"More than one array with attribute name {attribute_name} found."
-                f"Arrays with that attribute are: {arrays}."
-            )
-        return arrays[0]
+        arrays = []
+        for array_name, array_schema in self._array_schema_table.items():
+            for attr in array_schema:
+                if attribute_name == attr.name:
+                    arrays.append(array_name)
+                    break
+        return arrays
 
     @property
     def metadata_schema(self) -> Optional[tiledb.ArraySchema]:

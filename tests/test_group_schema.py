@@ -77,12 +77,10 @@ class TestGroupSchema:
         assert repr(group_schema) is not None
         assert len(group_schema) == scenario["num_schemas"]
         for attr_name, arrays in attribute_map.items():
-            result = group_schema.get_all_attribute_arrays(attr_name)
+            result = group_schema.get_attribute_arrays(attr_name)
             assert result == list(
                 arrays
             ), f"Get all arrays for attribute '{attr_name}' failed."
-            if len(result) == 1:
-                assert result[0] == group_schema.get_attribute_array(attr_name)
 
     def test_not_equal(self):
         schema1 = GroupSchema({"A1": _array_schema_1})
@@ -105,21 +103,11 @@ class TestGroupSchema:
         group_schema.metadata_schema.check()
         group_schema.set_default_metadata_schema()
 
-    def test_no_attr_error(self):
+    def test_no_attr(self):
         """Test a KeyError is raised when querying for an attribute that isn't in
         schema"""
         group_schema = GroupSchema({"dense": _array_schema_1})
-        with pytest.raises(KeyError):
-            group_schema.get_attribute_array("missing")
-
-    def test_multi_attr_array_error(self):
-        """Test a ValueError is raised when calling `get_attribute_array` for an
-        attribute that exists in multiple array schemas."""
-        group_schema = GroupSchema(
-            {"dense": _array_schema_1, "sparse": _array_schema_2}
-        )
-        with pytest.raises(ValueError):
-            group_schema.get_attribute_array("a")
+        assert len(group_schema.get_attribute_arrays("missing")) == 0
 
 
 class TestLoadEmptyGroup:
