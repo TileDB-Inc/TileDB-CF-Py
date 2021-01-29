@@ -325,7 +325,7 @@ class Group:
         is created.
 
         Raises:
-           RuntimeError: Metadata array exists and is open.
+            RuntimeError: Metadata array exists and is open.
         """
         if self._metadata_array is not None:
             raise RuntimeError(
@@ -614,13 +614,32 @@ class DataspaceSchema(GroupSchema):
         return list(self._attribute_map.keys())
 
     def attr_dtype(self, name: str) -> np.dtype:
-        """Returns the dtype of the attribute named :param:`name`."""
+        """Returns the dtype of the attribute with the requested name.
+
+        Parameters:
+            name: Name of the desired axis
+
+        Returns:
+            The dtype of the attribute with the requested name.
+        """
         return self._attribute_map[name][0].dtype
 
     @property
     def axis_names(self) -> List[str]:
         """A list of names of axes in this :class:`DataspaceSchema`."""
         return list(self._axis_map.keys())
+
+    def axis(self, name: str) -> Tuple[tiledb.Dim, tiledb.Attr]:
+        """Returns the attribute and shared dimension pair for the axis with the
+            requested name.
+
+        Parameters:
+            name: Name of the desired axis.
+
+        Returns:
+            attribute and shared dimension pair for the requested axis
+        """
+        return (self._axis_map[name][0], self._dimension_map[name])
 
     def dim(self, name: str) -> SharedDimension:
         return self._dimension_map[name]
