@@ -151,6 +151,95 @@ class AttributeMetadata(Metadata):
         return None
 
 
+class Dataspace:
+    """Class for opening a TileDB Dataspace."""
+
+    @classmethod
+    def create(
+        cls,
+        uri: str,
+        schema: Union[GroupSchema, tiledb.ArraySchema],
+        key: Optional[Union[Dict[str, str], str]] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ):
+        if isinstance(schema, GroupSchema):
+            # @todo add check that this is a valid dataspace
+            Group.create(uri, schema, key, ctx)
+        elif isinstance(schema, tiledb.ArraySchema):
+            tiledb.Array.create(uri, schema, key, ctx)
+        else:
+            raise TypeError(
+                f"Type {type(schema)} of input schema is not a valid TileDB schema "
+                f"type."
+            )
+
+    def __init__(
+        self,
+        uri: str,
+        mode: str = "r",
+        key: Optional[Union[Dict[str, str], str]] = None,
+        timestamp: Optional[int] = None,
+        attr: Optional[str] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ):
+        self._attr = attr
+        self._object_type = tiledb.object_type(uri)
+        if self._object_type == "group":
+            self._dataspace = Group(
+                uri,
+                mode=mode,
+                key=key,
+                timestamp=timestamp,
+                attr=attr,
+                ctx=ctx,
+            )
+            self._array = None if self._attr is None else self._dataspace.array
+        elif self._object_type == "array":
+            self._dataspace = tiledb.open(
+                uri,
+                mode=mode,
+                key=key,
+                attr=attr,
+                timestamp=timestamp,
+                ctx=ctx,
+            )
+            self._array = self._dataspace
+        else:
+            raise ValueError(
+                f"Unable to open Dataspace. URI `{uri}` is not a valid TileDB uri."
+            )
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, exception_traceback):
+        self.close()
+
+    @property
+    def array(self) -> tiledb.Array:
+        """The opened array, or ``None`` if no array was opened."""
+        if self._array is None:
+            raise RuntimeError("Cannot access array: no array was opened.")
+        return self._array
+
+    def close(self):
+        self._dataspace.close()
+
+    @property
+    def meta(self) -> Optional[ArrayMetadata]:
+        meta = self._dataspace.meta
+        return None if meta is None else ArrayMetadata(meta)
+
+    @property
+    def attribute_metadata(self) -> AttributeMetadata:
+        meta = self._dataspace.meta
+        if meta is None or self._attr is None:
+            raise RuntimeError(
+                "Cannot access attribute metadata: no attribute was opened."
+            )
+        return AttributeMetadata(meta, self._attr)
+
+
 class Group:
     """Class for opening TileDB group metadata, arrays, and attributes.
 
