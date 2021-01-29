@@ -179,6 +179,7 @@ class Dataspace:
         mode: str = "r",
         key: Optional[Union[Dict[str, str], str]] = None,
         timestamp: Optional[int] = None,
+        array: Optional[str] = None,
         attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
@@ -193,8 +194,15 @@ class Dataspace:
                 attr=attr,
                 ctx=ctx,
             )
-            self._array = None if self._attr is None else self._dataspace.array
+            self._array = (
+                None if self._attr is None and array is None else self._dataspace.array
+            )
         elif self._object_type == "array":
+            if array is not None:
+                raise ValueError(
+                    "Failed to open Dataspace. Cannot specify array value when URI "
+                    "is for a TileDB API."
+                )
             self._dataspace = tiledb.open(
                 uri,
                 mode=mode,
@@ -206,7 +214,7 @@ class Dataspace:
             self._array = self._dataspace
         else:
             raise ValueError(
-                f"Unable to open Dataspace. URI `{uri}` is not a valid TileDB uri."
+                f"Failed to open Dataspace. URI `{uri}` is not a valid TileDB uri."
             )
 
     def __enter__(self):
@@ -222,22 +230,34 @@ class Dataspace:
             raise RuntimeError("Cannot access array: no array was opened.")
         return self._array
 
+    @property
+    def attribute_metadata(self) -> Dict[str, AttributeMetadata]:
+        meta = self._dataspace.meta
+        if meta is None or self._array is None:
+            return {}
+        if self._attr is not None:
+            return {self._attr: AttributeMetadata(meta, self._attr)}
+        return {
+            attr.name: AttributeMetadata(meta, attr.name) for attr in self._array.schema
+        }
+
     def close(self):
         self._dataspace.close()
+
+    def get_attribute_metadata(self, attr: Union[str, int]) -> AttributeMetadata:
+        """Returns attribute metadata object corresponding to requested attribute.
+
+        Parameters:
+            attr: Name or index of the requested array attribute.
+        """
+        if self._array is None:
+            raise ValueError("Cannot access attribute metadata: no array was opened.")
+        return AttributeMetadata(self._array.meta, attr)
 
     @property
     def meta(self) -> Optional[ArrayMetadata]:
         meta = self._dataspace.meta
         return None if meta is None else ArrayMetadata(meta)
-
-    @property
-    def attribute_metadata(self) -> AttributeMetadata:
-        meta = self._dataspace.meta
-        if meta is None or self._attr is None:
-            raise RuntimeError(
-                "Cannot access attribute metadata: no attribute was opened."
-            )
-        return AttributeMetadata(meta, self._attr)
 
 
 class Group:
@@ -702,6 +722,18 @@ class DataspaceSchema(GroupSchema):
         """A list of the names of attributes in this :class:`DataspaceSchema`."""
         return list(self._attribute_map.keys())
 
+    def attr_dim_names(self, name) -> Tuple[str, ...]:
+        """Returns the dimension names of the array the requested attribute is in.
+
+        Parameters:
+            name: Name of the desired attribute.
+
+        Returns:
+            A tuple of the dimensions of the array the requested attribute is in.
+        """
+        array = self._array_schema_table[self._attribute_map[name][1]]
+        return tuple(dim.name for dim in array.domain)
+
     def attr_dtype(self, name: str) -> np.dtype:
         """Returns the dtype of the attribute with the requested name.
 
@@ -712,6 +744,20 @@ class DataspaceSchema(GroupSchema):
             The dtype of the attribute with the requested name.
         """
         return self._attribute_map[name][0].dtype
+
+    def attr_shape(self, name) -> Tuple[int, ...]:
+        """Returns the shape of the array the requested attribute is in.
+
+        Parameters:
+            name: Name of the desired attribute.
+
+        Returns:
+            The shape of the desired attribute as an array.
+
+        Raises:
+            TypeError: Floating point (inexact) domain.
+        """
+        return self._array_schema_table[self._attribute_map[name][1]].shape
 
     @property
     def axis_names(self) -> List[str]:
