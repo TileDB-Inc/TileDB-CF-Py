@@ -500,19 +500,17 @@ class GroupSchema(Mapping):
         return output.getvalue()
 
     def check(self):
-        """Checks the correctness of each array in the GroupSchema.
+        """Checks the correctness of each array in the :class:`GroupSchema`.
 
         Raises:
             tiledb.TileDBError: An ArraySchema in the GroupSchema is invalid.
-            RuntimeError: A shared :class:`tiledb.Dim` fails to match the definition
-                from the GroupSchema.
         """
         for schema in self._array_schema_table.values():
             schema.check()
         if self._metadata_schema is not None:
             self._metadata_schema.check()
 
-    def get_attribute_arrays(self, attribute_name: str) -> Optional[List[str]]:
+    def get_attribute_arrays(self, attribute_name: str) -> List[str]:
         """Returns a list of the names of all arrays with a matching attribute.
 
         Parameter:
@@ -544,6 +542,111 @@ class GroupSchema(Mapping):
             attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
             sparse=False,
         )
+
+
+class DataspaceSchema(GroupSchema):
+
+    __slots__ = [
+        "_attribute_map",
+        "_coordinate_map",
+        "_dimension_map",
+    ]
+
+    def __init__(
+        self,
+        array_schemas: Optional[Dict[str, tiledb.ArraySchema]] = None,
+        metadata_schema: Optional[Dict[str, tiledb.ArraySchema]] = None,
+    ):
+        """Constructs a :class:`DataSchema`."""
+        super().__init__(array_schemas, metadata_schema)
+        self._attribute_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
+        self._coordinate_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
+        self._dimension_map: Dict[str, SharedDimension] = {}
+        for array_name, array_schema in self._array_schema_table.items():
+            domain = array_schema.domain
+            for attr in array_schema:
+                attr_name = attr.name
+                if attr_name == "__tiledb_coordinate":
+                    if domain.ndim != 1:
+                        raise RuntimeError(
+                            f"Failed to initialized Dataspace; coordinate data is only "
+                            f"supported for one dimensional arrays. Coordinate "
+                            f"{attr_name} found in {domain.ndim}-dimension array "
+                            f"{array_name}."
+                        )
+                    dim_name = domain.dim(0)
+                    if dim_name in self._coordinate_map:
+                        raise RuntimeError(
+                            f"Failed to initialized Dataspace; duplicate definition of "
+                            f"coordinate {dim_name}. Coordinates must be unique."
+                        )
+                    self._coordinate_map[dim_name] = (attr, array_name)
+                else:
+                    if attr_name in self._attribute_map:
+                        raise RuntimeError(
+                            f"Failed to initilized Dataspace; all attributes in the "
+                            f"group must have unique names. Attribute {attr_name} is "
+                            f"contained in multipnle arrays."
+                        )
+                    self._attribute_map[attr_name] = (attr, array_name)
+            for tiledb_dim in domain:
+                dim = SharedDimension.from_tiledb_dim(tiledb_dim)
+                if dim.name in self._dimension_map:
+                    if dim != self._dimension_map[dim.name]:
+                        raise RuntimeError(
+                            f"Failed to initialize Dataspace; all dimensions in the "
+                            f"group with the same name must have the same domain and "
+                            f"type. Dimension {dim.name} has inconsisent definitions."
+                        )
+                else:
+                    self._dimension_map[dim.name] = dim
+
+    def attr(self, name: str) -> tiledb.Attr:
+        """Returns the TileDB attribute with the requested :param:`name`.
+
+        Parameters:
+            name: Name of the desired attribute.
+        """
+        return self._attribute_map[name][0]
+
+    @property
+    def attr_names(self) -> List[str]:
+        """Returns a list of attribute names."""
+        return list(self._attribute_map.keys())
+
+    def attr_dtype(self, name: str) -> np.dtype:
+        return self._attribute_map[name][0].dtype
+
+    def dim(self, name: str) -> SharedDimension:
+        return self._dimension_map[name]
+
+    @property
+    def dim_names(self) -> List[str]:
+        return list(self._dimension_map.keys())
+
+    def has_attr(self, name: str) -> bool:
+        return name in self._attribute_map
+
+    def get_attribute_arrays(self, attribute_name: str) -> List[str]:
+        """Returns a list of the names of all arrays with a matching attribute.
+
+        Parameter:
+            attribute_name: Name of the attribute to look up arrays for.
+
+        Returns:
+            A tuple of the name of all arrays with a matching attribute, or `None` if no
+                such array.
+        """
+        value = self._attribute_map.get(attribute_name)
+        return [] if value is None else [value[1]]
+
+    @property
+    def nattr(self) -> int:
+        return len(self._attribute_map)
+
+    @property
+    def ndim(self) -> int:
+        return len(self._dimension_map)
 
 
 @dataclass(frozen=True)
