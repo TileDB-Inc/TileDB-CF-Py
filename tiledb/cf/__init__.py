@@ -548,7 +548,7 @@ class DataspaceSchema(GroupSchema):
 
     __slots__ = [
         "_attribute_map",
-        "_coordinate_map",
+        "_axis_map",
         "_dimension_map",
     ]
 
@@ -560,27 +560,26 @@ class DataspaceSchema(GroupSchema):
         """Constructs a :class:`DataSchema`."""
         super().__init__(array_schemas, metadata_schema)
         self._attribute_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
-        self._coordinate_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
+        self._axis_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
         self._dimension_map: Dict[str, SharedDimension] = {}
         for array_name, array_schema in self._array_schema_table.items():
             domain = array_schema.domain
             for attr in array_schema:
                 attr_name = attr.name
-                if attr_name == "__tiledb_coordinate":
+                if attr_name == "__tiledb_axis":
                     if domain.ndim != 1:
                         raise RuntimeError(
-                            f"Failed to initialized Dataspace; coordinate data is only "
-                            f"supported for one dimensional arrays. Coordinate "
-                            f"{attr_name} found in {domain.ndim}-dimension array "
-                            f"{array_name}."
+                            f"Failed to initialized Dataspace; axis data is only "
+                            f"supported for one dimensional arrays. Axis {attr_name} "
+                            f"found in {domain.ndim}-dimension array {array_name}."
                         )
                     dim_name = domain.dim(0)
-                    if dim_name in self._coordinate_map:
+                    if dim_name in self._axis_map:
                         raise RuntimeError(
                             f"Failed to initialized Dataspace; duplicate definition of "
-                            f"coordinate {dim_name}. Coordinates must be unique."
+                            f"axis {dim_name}. Axes must be unique."
                         )
-                    self._coordinate_map[dim_name] = (attr, array_name)
+                    self._axis_map[dim_name] = (attr, array_name)
                 else:
                     if attr_name in self._attribute_map:
                         raise RuntimeError(
@@ -611,17 +610,24 @@ class DataspaceSchema(GroupSchema):
 
     @property
     def attr_names(self) -> List[str]:
-        """Returns a list of attribute names."""
+        """A list of the names of attributes in this :class:`DataspaceSchema`."""
         return list(self._attribute_map.keys())
 
     def attr_dtype(self, name: str) -> np.dtype:
+        """Returns the dtype of the attribute named :param:`name`."""
         return self._attribute_map[name][0].dtype
+
+    @property
+    def axis_names(self) -> List[str]:
+        """A list of names of axes in this :class:`DataspaceSchema`."""
+        return list(self._axis_map.keys())
 
     def dim(self, name: str) -> SharedDimension:
         return self._dimension_map[name]
 
     @property
     def dim_names(self) -> List[str]:
+        """A list of names of dimensions in this :class:`DataspaceSchema`."""
         return list(self._dimension_map.keys())
 
     def has_attr(self, name: str) -> bool:
