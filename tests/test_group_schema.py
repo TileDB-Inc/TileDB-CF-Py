@@ -119,7 +119,7 @@ class TestLoadEmptyGroup:
 
     def test_group_schema(self, create_group):
         uri = create_group
-        schema = GroupSchema.load(uri, key=None, ctx=None)
+        schema = GroupSchema.load_group(uri, key=None, ctx=None)
         assert schema.metadata_schema is None
         assert len(schema) == 0
 
@@ -146,9 +146,9 @@ class TestLoadGroup:
         return uri
 
     def test_group_schema(self, group_uri):
-        schema = GroupSchema.load(group_uri, key=None, ctx=None)
+        schema = GroupSchema.load_group(group_uri, key=None, ctx=None)
         assert schema == GroupSchema(self._array_schemas, self._metadata_array)
 
     def test_not_group_exception(self, group_uri):
         with pytest.raises(ValueError):
-            GroupSchema.load(group_uri + "/A1")
+            GroupSchema.load_group(group_uri + "/A1")

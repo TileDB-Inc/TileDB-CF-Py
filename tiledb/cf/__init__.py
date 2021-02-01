@@ -198,11 +198,6 @@ class Dataspace:
                 None if self._attr is None and array is None else self._dataspace.array
             )
         elif self._object_type == "array":
-            if array is not None:
-                raise ValueError(
-                    "Failed to open Dataspace. Cannot specify array value when URI "
-                    "is for a TileDB API."
-                )
             self._dataspace = tiledb.open(
                 uri,
                 mode=mode,
@@ -332,11 +327,11 @@ class Group:
         self._mode = mode
         self._key = key
         self._ctx = ctx
-        self._schema = GroupSchema.load(uri, ctx, key)
+        self._schema = GroupSchema.load_group(uri, ctx, key)
         self._metadata_array = self._get_metadata_array(timestamp)
         self._attr = attr
         if array is None and attr is not None:
-            group_schema = GroupSchema.load(uri, ctx, key)
+            group_schema = GroupSchema.load_group(uri, ctx, key)
             arrays = group_schema.get_attribute_arrays(attr)
             if len(arrays) != 1:
                 raise ValueError(
@@ -487,7 +482,7 @@ class Group:
         again, or just use ``reopen()`` without closing. ``reopen`` will be generally
         faster than a close-then-open.
         """
-        self._schema = GroupSchema.load(
+        self._schema = GroupSchema.load_group(
             self._uri,
             self._ctx,
             self._key,
@@ -510,7 +505,7 @@ class GroupSchema(Mapping):
     """
 
     @classmethod
-    def load(
+    def load_group(
         cls,
         uri: str,
         ctx: Optional[tiledb.Ctx] = None,
@@ -519,7 +514,7 @@ class GroupSchema(Mapping):
         """Load a schema for a TileDB group from a TileDB URI.
 
         Parameters:
-            uri: uniform resource identifier for the TileDB group
+            uri: uniform resource identifier for the TileDB group.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             key: If not ``None``, encryption key, or dictionary of encryption keys, to
                 decrypt arrays.
@@ -654,6 +649,47 @@ class GroupSchema(Mapping):
 
 
 class DataspaceSchema(GroupSchema):
+    @classmethod
+    def load(
+        cls,
+        uri: str,
+        ctx: Optional[tiledb.Ctx] = None,
+        key: Optional[Union[Dict[str, str], str]] = None,
+    ):
+        """Load a dataspae schema for a TileDB group or array from a TileDB URI.
+
+        Parameters:
+            uri: uniform resource identifier for the TileDB object.
+            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            key: If not ``None``, encryption key, or diction of encryption keys, to
+                decrypt arrays.
+        """
+        if tiledb.object_type(uri, ctx) == "group":
+            return cls.load_group(uri, ctx, key)
+        if tiledb.object_type(uri, ctx) == "array":
+            return cls.load_array(uri, ctx, key)
+        raise ValueError(
+            f"Failed to load the dataspace schema. Provided uri '{uri}' is not a valid "
+            f"TileDB object."
+        )
+
+    @classmethod
+    def load_array(
+        cls,
+        uri: str,
+        ctx: Optional[tiledb.Ctx] = None,
+        key: Optional[Union[Dict[str, str], str]] = None,
+    ):
+        """Load a dataspae schema for a TileDB array from a TileDB URI.
+
+        Parameters:
+            uri: uniform resource identifier for the TileDB object.
+            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            key: If not ``None``, encryption key, or diction of encryption keys, to
+                decrypt arrays.
+        """
+        array_schema = tiledb.ArraySchema(uri, ctx, key)
+        cls({uri: array_schema}, None)
 
     __slots__ = [
         "_attribute_map",
@@ -694,7 +730,7 @@ class DataspaceSchema(GroupSchema):
                         raise RuntimeError(
                             f"Failed to initilized Dataspace; all attributes in the "
                             f"group must have unique names. Attribute {attr_name} is "
-                            f"contained in multipnle arrays."
+                            f"contained in multiple arrays."
                         )
                     self._attribute_map[attr_name] = (attr, array_name)
             for tiledb_dim in domain:
