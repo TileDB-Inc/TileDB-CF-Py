@@ -730,42 +730,45 @@ class DataspaceSchema(GroupSchema):
         self._axis_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
         self._dimension_map: Dict[str, SharedDimension] = {}
         for array_name, array_schema in self._array_schema_table.items():
-            domain = array_schema.domain
-            for attr in array_schema:
-                attr_name = attr.name
-                if attr_name == "__tiledb_axis":
-                    if domain.ndim != 1:
-                        raise RuntimeError(
-                            f"Failed to initialized DataspaceSchema; axis data is only "
-                            f"supported for one dimensional arrays. Axis '{attr_name}' "
-                            f"found in {domain.ndim}-dimension array {array_name}."
-                        )
-                    dim_name = domain.dim(0)
-                    if dim_name in self._axis_map:
-                        raise RuntimeError(
-                            f"Failed to initialized Dataspace; duplicate definition of "
-                            f"axis {dim_name}. Axes must be unique."
-                        )
-                    self._axis_map[dim_name] = (attr, array_name)
-                else:
-                    if attr_name in self._attribute_map:
-                        raise RuntimeError(
-                            f"Failed to initilized DataspaceSchema; all attributes in "
-                            f"the group must have unique names. Attribute '{attr_name}'"
-                            f" is contained in multiple arrays."
-                        )
-                    self._attribute_map[attr_name] = (attr, array_name)
-            for tiledb_dim in domain:
-                dim = SharedDimension.from_tiledb_dim(tiledb_dim)
-                if dim.name in self._dimension_map:
-                    if dim != self._dimension_map[dim.name]:
-                        raise RuntimeError(
-                            f"Failed to initialize Dataspace; all dimensions in the "
-                            f"group with the same name must have the same domain and "
-                            f"type. Dimension {dim.name} has inconsisent definitions."
-                        )
-                else:
-                    self._dimension_map[dim.name] = dim
+            self._add_array(array_name, array_schema)
+
+    def _add_array(self, array_name, array_schema):
+        domain = array_schema.domain
+        for attr in array_schema:
+            attr_name = attr.name
+            if attr_name == "__tiledb_axis":
+                if domain.ndim != 1:
+                    raise RuntimeError(
+                        f"Failed to initialized DataspaceSchema; axis data is only "
+                        f"supported for one dimensional arrays. Axis '{attr_name}' "
+                        f"found in {domain.ndim}-dimension array {array_name}."
+                    )
+                dim_name = domain.dim(0)
+                if dim_name in self._axis_map:
+                    raise RuntimeError(
+                        f"Failed to initialized Dataspace; duplicate definition of "
+                        f"axis {dim_name}. Axes must be unique."
+                    )
+                self._axis_map[dim_name] = (attr, array_name)
+            else:
+                if attr_name in self._attribute_map:
+                    raise RuntimeError(
+                        f"Failed to initilized DataspaceSchema; all attributes in "
+                        f"the group must have unique names. Attribute '{attr_name}'"
+                        f" is contained in multiple arrays."
+                    )
+                self._attribute_map[attr_name] = (attr, array_name)
+        for tiledb_dim in domain:
+            dim = SharedDimension.from_tiledb_dim(tiledb_dim)
+            if dim.name in self._dimension_map:
+                if dim != self._dimension_map[dim.name]:
+                    raise RuntimeError(
+                        f"Failed to initialize Dataspace; all dimensions in the "
+                        f"group with the same name must have the same domain and "
+                        f"type. Dimension {dim.name} has inconsisent definitions."
+                    )
+            else:
+                self._dimension_map[dim.name] = dim
 
     def attr(self, name: str) -> tiledb.Attr:
         """Returns the TileDB attribute with the requested :param:`name`.
