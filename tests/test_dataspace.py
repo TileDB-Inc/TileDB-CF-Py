@@ -57,22 +57,32 @@ class TestCreateGroup:
         return uri
 
     def test_create_group_dataspace(self, group_uri):
-        uri = group_uri
-        assert tiledb.object_type(uri) == "group"
+        assert tiledb.object_type(group_uri) == "group"
         for name, schema in self._array_schemas:
             array_uri = group_uri + "/" + name
             assert tiledb.ArraySchema.load(array_uri) == schema
 
 
-class TestNotTileDBURI:
-    @pytest.fixture(scope="class")
-    def empty_uri(self, tmpdir_factory):
-        """Create an empty directory and return URI."""
-        return str(tmpdir_factory.mktemp("empty"))
+class TestCreateGroupExceptions:
 
-    def test_not_group_exception(self, empty_uri):
+    _array_schemas = [
+        ("A1", _array_schema_1),
+        ("A2", _array_schema_1),
+    ]
+    _group_schema = GroupSchema(_array_schemas)
+
+    @pytest.fixture(scope="class")
+    def group_uri(self, tmpdir_factory):
+        uri = str(tmpdir_factory.mktemp("group2"))
+        return uri
+
+    def test_not_dataspace_exception(self, group_uri):
+        with pytest.raises(RuntimeError):
+            Dataspace.create(group_uri, self._group_schema)
+
+    def test_not_group_exception(self, group_uri):
         with pytest.raises(TypeError):
-            Dataspace.create(empty_uri, None)
+            Dataspace.create(group_uri, None)
 
 
 class TestSimpleArray:

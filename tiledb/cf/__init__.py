@@ -163,7 +163,8 @@ class Dataspace:
         ctx: Optional[tiledb.Ctx] = None,
     ):
         if isinstance(schema, GroupSchema):
-            # @todo add check that this is a valid dataspace
+            if not isinstance(schema, DataspaceSchema):
+                schema = DataspaceSchema.from_group_schema(schema)
             Group.create(uri, schema, key, ctx)
         elif isinstance(schema, tiledb.ArraySchema):
             tiledb.Array.create(uri, schema, key, ctx)
@@ -663,13 +664,18 @@ class GroupSchema(Mapping):
 
 class DataspaceSchema(GroupSchema):
     @classmethod
+    def from_group_schema(cls, schema: GroupSchema):
+        """Return a :class:`DataspaceSchema` from a :class:`GroupSchema`."""
+        return cls(dict(schema.items()), schema.metadata_schema)
+
+    @classmethod
     def load(
         cls,
         uri: str,
         ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, str], str]] = None,
     ):
-        """Load a dataspae schema for a TileDB group or array from a TileDB URI.
+        """Load a schema for dataspace from a TileDB group or array from a TileDB URI.
 
         Parameters:
             uri: uniform resource identifier for the TileDB object.
@@ -693,7 +699,10 @@ class DataspaceSchema(GroupSchema):
         ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, str], str]] = None,
     ):
-        """Load a dataspae schema for a TileDB array from a TileDB URI.
+        """Load a schema for a dataspace from a TileDB array from a TileDB URI.
+
+        This method treats the TileDB array like a group with a single array and no
+        group metadata.
 
         Parameters:
             uri: uniform resource identifier for the TileDB object.
@@ -715,7 +724,7 @@ class DataspaceSchema(GroupSchema):
         array_schemas: Optional[Dict[str, tiledb.ArraySchema]] = None,
         metadata_schema: Optional[Dict[str, tiledb.ArraySchema]] = None,
     ):
-        """Constructs a :class:`DataSchema`."""
+        """Constructs a :class:`DataspaceSchema`."""
         super().__init__(array_schemas, metadata_schema)
         self._attribute_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
         self._axis_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
@@ -727,8 +736,8 @@ class DataspaceSchema(GroupSchema):
                 if attr_name == "__tiledb_axis":
                     if domain.ndim != 1:
                         raise RuntimeError(
-                            f"Failed to initialized Dataspace; axis data is only "
-                            f"supported for one dimensional arrays. Axis {attr_name} "
+                            f"Failed to initialized DataspaceSchema; axis data is only "
+                            f"supported for one dimensional arrays. Axis '{attr_name}' "
                             f"found in {domain.ndim}-dimension array {array_name}."
                         )
                     dim_name = domain.dim(0)
@@ -741,9 +750,9 @@ class DataspaceSchema(GroupSchema):
                 else:
                     if attr_name in self._attribute_map:
                         raise RuntimeError(
-                            f"Failed to initilized Dataspace; all attributes in the "
-                            f"group must have unique names. Attribute {attr_name} is "
-                            f"contained in multiple arrays."
+                            f"Failed to initilized DataspaceSchema; all attributes in "
+                            f"the group must have unique names. Attribute '{attr_name}'"
+                            f" is contained in multiple arrays."
                         )
                     self._attribute_map[attr_name] = (attr, array_name)
             for tiledb_dim in domain:
