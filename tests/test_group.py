@@ -179,8 +179,7 @@ class TestGroupWithArrays:
 
     def test_no_array_execption(self, group_uri):
         with Group(group_uri) as group:
-            with pytest.raises(RuntimeError):
-                _ = group.array
+            assert group.array is None
 
     def test_no_array_metadata_execption(self, group_uri):
         with Group(group_uri) as group:

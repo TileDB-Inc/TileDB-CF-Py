@@ -191,12 +191,11 @@ class Dataspace:
                 mode=mode,
                 key=key,
                 timestamp=timestamp,
+                array=array,
                 attr=attr,
                 ctx=ctx,
             )
-            self._array = (
-                None if self._attr is None and array is None else self._dataspace.array
-            )
+            self._array = self._dataspace.array
         elif self._object_type == "array":
             self._dataspace = tiledb.open(
                 uri,
@@ -221,9 +220,18 @@ class Dataspace:
     @property
     def array(self) -> tiledb.Array:
         """The opened array, or ``None`` if no array was opened."""
-        if self._array is None:
-            raise RuntimeError("Cannot access array: no array was opened.")
         return self._array
+
+    @property
+    def array_metadata(self) -> Optional[ArrayMetadata]:
+        """The opened array's metadata, or ``None`` if no array was opened.
+
+        Note that if this :class:`Dataspace` object is a TileDB array, then this object
+        provides access to the same metadata as the :meth:`dataspace_metadata` property.
+        """
+        if self._array is None:
+            return None
+        return ArrayMetadata(self._array.meta)
 
     @property
     def attribute_metadata(self) -> Dict[str, AttributeMetadata]:
@@ -239,6 +247,10 @@ class Dataspace:
     def close(self):
         self._dataspace.close()
 
+    @property
+    def dataspace_metadata(self) -> ArrayMetadata:
+        return ArrayMetadata(self._dataspace.meta)
+
     def get_attribute_metadata(self, attr: Union[str, int]) -> AttributeMetadata:
         """Returns attribute metadata object corresponding to requested attribute.
 
@@ -253,6 +265,9 @@ class Dataspace:
     def meta(self) -> Optional[ArrayMetadata]:
         meta = self._dataspace.meta
         return None if meta is None else ArrayMetadata(meta)
+
+    def reopen(self):
+        self._dataspace.reopen()
 
 
 class Group:
@@ -382,8 +397,6 @@ class Group:
     @property
     def array(self) -> tiledb.Array:
         """The opened array, or ``None`` if no array was opened."""
-        if self._array is None:
-            raise RuntimeError("Cannot access group array: no array was opened.")
         return self._array
 
     @property
