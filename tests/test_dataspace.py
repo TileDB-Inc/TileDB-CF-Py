@@ -4,9 +4,10 @@ import pytest
 import tiledb
 from tiledb.cf import ArrayMetadata, AttributeMetadata, Dataspace, Group, GroupSchema
 
+_CF_COORDINATE_NAME = ".tiledb_axis_data"
+
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
-
 
 _attr_a = tiledb.Attr(name="a", dtype=np.uint64)
 _attr_b = tiledb.Attr(name="b", dtype=np.float64)
@@ -25,6 +26,14 @@ _array_schema_3 = tiledb.ArraySchema(
     domain=tiledb.Domain(_row, _col),
     attrs=[_attr_d],
 )
+_array_with_coordinate = tiledb.ArraySchema(
+    domain=tiledb.Domain(tiledb.Dim(name="pressure", domain=(0, 3), dtype=np.uint64)),
+    sparse=False,
+    attrs=[
+        tiledb.Attr(name=_CF_COORDINATE_NAME, dtype=np.float64),
+        tiledb.Attr(name="temperature", dtype=np.float64),
+    ],
+)
 
 
 class TestCreateArray:
@@ -34,7 +43,7 @@ class TestCreateArray:
         Dataspace.create(uri, _array_schema_1)
         return uri
 
-    def test_create_group_dataspace(self, array_uri):
+    def test_create_array_dataspace(self, array_uri):
         assert tiledb.object_type(array_uri) == "array"
         assert tiledb.ArraySchema.load(array_uri, key=None) == _array_schema_1
 
@@ -92,9 +101,31 @@ class TestSimpleArray:
         tiledb.Array.create(uri, _array_schema_2)
         return uri
 
-    def test_reopen(self, array_uri):
-        with Dataspace(array_uri) as dataspace:
-            dataspace.reopen()
+    def test_open(self, array_uri):
+        with Dataspace(array_uri, mode="r") as dataspace:
+            assert isinstance(dataspace.array, tiledb.Array)
+
+
+class TestArrayWithCoordinate:
+
+    _pressure_data = np.array([11.6, 20.1, 27.3, 15.9])
+    _temperature_data = np.array([5.2, 6.3, 3.4, 5.4])
+
+    @pytest.fixture(scope="class")
+    def array_uri(self, tmpdir_factory):
+        uri = str(tmpdir_factory.mktemp("tmp")) + "/array"
+        tiledb.Array.create(uri, _array_with_coordinate)
+        with tiledb.DenseArray(uri, mode="w") as array:
+            array[0:4] = {
+                _CF_COORDINATE_NAME: self._pressure_data,
+                "temperature": self._temperature_data,
+            }
+        return uri
+
+    def test_open_coordinate(self, array_uri):
+        with Dataspace(array_uri, attr="pressure") as dataspace:
+            pressure = np.asarray(dataspace.array)
+        assert np.array_equal(pressure, self._pressure_data)
 
 
 class TestSimpleGroup:

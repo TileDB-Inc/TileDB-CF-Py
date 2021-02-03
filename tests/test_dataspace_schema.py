@@ -61,6 +61,18 @@ _multi_array_group: Dict[str, Any] = {
 }
 
 
+class TestCreateArray:
+    @pytest.fixture(scope="class")
+    def array_uri(self, tmpdir_factory):
+        uri = str(tmpdir_factory.mktemp("tmp")) + "/array"
+        tiledb.Array.create(uri, _array_schema_1)
+        return uri
+
+    def test_load_array(self, array_uri):
+        dataspace_schema = DataspaceSchema.load_array(array_uri)
+        assert isinstance(dataspace_schema, DataspaceSchema)
+
+
 class TestDataspaceSchema:
 
     _scenarios = [_empty_group, _single_array_group, _multi_array_group]

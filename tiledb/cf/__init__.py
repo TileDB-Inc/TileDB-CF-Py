@@ -17,6 +17,7 @@ import tiledb
 DType = TypeVar("DType", covariant=True)
 _METADATA_ARRAY = "__tiledb_group"
 _ATTRIBUTE_METADATA_FLAG = "__tiledb_attr."
+_CF_COORDINATE_NAME = ".tiledb_axis_data"
 
 
 def _get_array_uri(group_uri: str, array_name: str) -> str:
@@ -184,8 +185,9 @@ class Dataspace:
         attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        self._attr = attr
         self._object_type = tiledb.object_type(uri)
+        self._dataspace_schema = DataspaceSchema.load(uri, ctx, key)
+        self._attr = None if attr is None else self._dataspace_schema.attr_name(attr)
         if self._object_type == "group":
             self._dataspace = Group(
                 uri,
@@ -193,7 +195,7 @@ class Dataspace:
                 key=key,
                 timestamp=timestamp,
                 array=array,
-                attr=attr,
+                attr=self._attr,
                 ctx=ctx,
             )
             self._array = self._dataspace.array
@@ -202,7 +204,7 @@ class Dataspace:
                 uri,
                 mode=mode,
                 key=key,
-                attr=attr,
+                attr=self._attr,
                 timestamp=timestamp,
                 ctx=ctx,
             )
@@ -710,12 +712,11 @@ class DataspaceSchema(GroupSchema):
             key: If not ``None``, encryption key, or diction of encryption keys, to
                 decrypt arrays.
         """
-        array_schema = tiledb.ArraySchema(uri, ctx, key)
-        cls({uri: array_schema}, None)
+        array_schema = tiledb.ArraySchema.load(uri, ctx, key)
+        return cls({uri: array_schema}, None)
 
     __slots__ = [
         "_attribute_map",
-        "_axis_map",
         "_dimension_map",
     ]
 
@@ -726,8 +727,7 @@ class DataspaceSchema(GroupSchema):
     ):
         """Constructs a :class:`DataspaceSchema`."""
         super().__init__(array_schemas, metadata_schema)
-        self._attribute_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
-        self._axis_map: Dict[str, Tuple[tiledb.Attr, str]] = {}
+        self._attribute_map: Dict[str, Tuple[tiledb.ArraySchema, str]] = {}
         self._dimension_map: Dict[str, SharedDimension] = {}
         for array_name, array_schema in self._array_schema_table.items():
             self._add_array(array_name, array_schema)
@@ -736,28 +736,22 @@ class DataspaceSchema(GroupSchema):
         domain = array_schema.domain
         for attr in array_schema:
             attr_name = attr.name
-            if attr_name == "__tiledb_axis":
+            attr_key = attr_name
+            if attr_name == _CF_COORDINATE_NAME:
                 if domain.ndim != 1:
                     raise RuntimeError(
                         f"Failed to initialized DataspaceSchema; axis data is only "
                         f"supported for one dimensional arrays. Axis '{attr_name}' "
                         f"found in {domain.ndim}-dimension array {array_name}."
                     )
-                dim_name = domain.dim(0)
-                if dim_name in self._axis_map:
-                    raise RuntimeError(
-                        f"Failed to initialized Dataspace; duplicate definition of "
-                        f"axis {dim_name}. Axes must be unique."
-                    )
-                self._axis_map[dim_name] = (attr, array_name)
-            else:
-                if attr_name in self._attribute_map:
-                    raise RuntimeError(
-                        f"Failed to initilized DataspaceSchema; all attributes in "
-                        f"the group must have unique names. Attribute '{attr_name}'"
-                        f" is contained in multiple arrays."
-                    )
-                self._attribute_map[attr_name] = (attr, array_name)
+                attr_key = domain.dim(0).name
+            if attr_key in self._attribute_map:
+                raise RuntimeError(
+                    f"Failed to initilized DataspaceSchema; all attributes in "
+                    f"the group must have unique names. Attribute '{attr_key}'"
+                    f" is contained in multiple arrays."
+                )
+            self._attribute_map[attr_key] = (array_schema, attr_name)
         for tiledb_dim in domain:
             dim = SharedDimension.from_tiledb_dim(tiledb_dim)
             if dim.name in self._dimension_map:
@@ -776,69 +770,13 @@ class DataspaceSchema(GroupSchema):
         Parameters:
             name: Name of the desired attribute.
         """
-        return self._attribute_map[name][0]
+        (array_schema, attr_name) = self._attribute_map[name]
+        return array_schema[attr_name]
 
-    @property
-    def attr_names(self) -> List[str]:
-        """A list of the names of attributes in this :class:`DataspaceSchema`."""
-        return list(self._attribute_map.keys())
-
-    def attr_dim_names(self, name) -> Tuple[str, ...]:
-        """Returns the dimension names of the array the requested attribute is in.
-
-        Parameters:
-            name: Name of the desired attribute.
-
-        Returns:
-            A tuple of the dimensions of the array the requested attribute is in.
-        """
-        array = self._array_schema_table[self._attribute_map[name][1]]
-        return tuple(dim.name for dim in array.domain)
-
-    def attr_dtype(self, name: str) -> np.dtype:
-        """Returns the dtype of the attribute with the requested name.
-
-        Parameters:
-            name: Name of the desired axis
-
-        Returns:
-            The dtype of the attribute with the requested name.
-        """
-        return self._attribute_map[name][0].dtype
-
-    def attr_shape(self, name) -> Tuple[int, ...]:
-        """Returns the shape of the array the requested attribute is in.
-
-        Parameters:
-            name: Name of the desired attribute.
-
-        Returns:
-            The shape of the desired attribute as an array.
-
-        Raises:
-            TypeError: Floating point (inexact) domain.
-        """
-        return self._array_schema_table[self._attribute_map[name][1]].shape
-
-    @property
-    def axis_names(self) -> List[str]:
-        """A list of names of axes in this :class:`DataspaceSchema`."""
-        return list(self._axis_map.keys())
-
-    def axis(self, name: str) -> Tuple[tiledb.Dim, tiledb.Attr]:
-        """Returns the attribute and shared dimension pair for the axis with the
-            requested name.
-
-        Parameters:
-            name: Name of the desired axis.
-
-        Returns:
-            attribute and shared dimension pair for the requested axis
-        """
-        return (self._axis_map[name][0], self._dimension_map[name])
-
-    def dim(self, name: str) -> SharedDimension:
-        return self._dimension_map[name]
+    def attr_name(self, key: Union[int, str]) -> str:
+        if isinstance(key, int):
+            raise NotImplementedError
+        return self._attribute_map[key][1]
 
     @property
     def dim_names(self) -> List[str]:
@@ -848,7 +786,7 @@ class DataspaceSchema(GroupSchema):
     def has_attr(self, name: str) -> bool:
         return name in self._attribute_map
 
-    def get_attribute_arrays(self, attribute_name: str) -> List[str]:
+    def get_attribute_array(self, attribute_name: str) -> List[str]:
         """Returns a list of the names of all arrays with a matching attribute.
 
         Parameter:
