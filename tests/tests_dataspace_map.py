@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import DataspaceSchema
+from tiledb.cf import DataspaceMap
 
 _dim0 = tiledb.Dim(name="dim", domain=(0, 0), tile=1, dtype=np.int32)
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.uint64)
@@ -69,11 +69,11 @@ class TestCreateArray:
         return uri
 
     def test_load_array(self, array_uri):
-        dataspace_schema = DataspaceSchema.load_array(array_uri)
-        assert isinstance(dataspace_schema, DataspaceSchema)
+        dataspace_schema = DataspaceMap.load_array(array_uri)
+        assert isinstance(dataspace_schema, DataspaceMap)
 
 
-class TestDataspaceSchema:
+class TestDataspaceMap:
 
     _scenarios = [_empty_group, _single_array_group, _multi_array_group]
 
@@ -82,7 +82,7 @@ class TestDataspaceSchema:
         array_schemas = scenario["array_schemas"]
         metadata_schema = scenario["metadata_schema"]
         attribute_map = scenario["attribute_map"]
-        dataspace_schema = DataspaceSchema(array_schemas, metadata_schema)
+        dataspace_schema = DataspaceMap(array_schemas, metadata_schema)
         dataspace_schema.check()
         assert dataspace_schema == dataspace_schema
         assert dataspace_schema.metadata_schema == metadata_schema
@@ -95,10 +95,10 @@ class TestDataspaceSchema:
             ), f"Get all arrays for attribute '{attr_name}' failed."
 
     def test_not_equal(self):
-        schema1 = DataspaceSchema({"A1": _array_schema_1})
-        schema2 = DataspaceSchema({"A1": _array_schema_1}, _empty_array_schema)
-        schema3 = DataspaceSchema({"A2": _array_schema_1})
-        schema4 = DataspaceSchema({"A1": _array_schema_1, "A2": _array_schema_2})
+        schema1 = DataspaceMap({"A1": _array_schema_1})
+        schema2 = DataspaceMap({"A1": _array_schema_1}, _empty_array_schema)
+        schema3 = DataspaceMap({"A2": _array_schema_1})
+        schema4 = DataspaceMap({"A1": _array_schema_1, "A2": _array_schema_2})
         assert schema1 != schema2
         assert schema2 != schema1
         assert schema1 != schema3
@@ -109,7 +109,7 @@ class TestDataspaceSchema:
 
     def test_set_metadata_array(self):
         """Test setting default metadata schema."""
-        dataspace_schema = DataspaceSchema()
+        dataspace_schema = DataspaceMap()
         assert dataspace_schema.metadata_schema is None
         dataspace_schema.set_default_metadata_schema()
         dataspace_schema.metadata_schema.check()
@@ -118,5 +118,5 @@ class TestDataspaceSchema:
     def test_no_attr(self):
         """Test a KeyError is raised when querying for an attribute that isn't in
         schema"""
-        dataspace_schema = DataspaceSchema({"dense": _array_schema_1})
+        dataspace_schema = DataspaceMap({"dense": _array_schema_1})
         assert len(dataspace_schema.get_attribute_arrays("missing")) == 0
