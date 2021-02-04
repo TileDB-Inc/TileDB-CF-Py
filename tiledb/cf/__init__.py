@@ -17,7 +17,7 @@ import tiledb
 DType = TypeVar("DType", covariant=True)
 _METADATA_ARRAY = "__tiledb_group"
 _ATTRIBUTE_METADATA_FLAG = "__tiledb_attr."
-_CF_COORDINATE_NAME = ".tiledb_axis_data"
+_CF_COORDINATE_SUFFIX = ".axis_data"
 
 
 def _get_array_uri(group_uri: str, array_name: str) -> str:
@@ -155,54 +155,192 @@ class AttributeMetadata(Metadata):
 class Dataspace:
     """Class for opening a TileDB Dataspace."""
 
-    @classmethod
-    def create(
-        cls,
-        uri: str,
-        schema: Union[GroupSchema, tiledb.ArraySchema],
-        key: Optional[Union[Dict[str, str], str]] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        dataspace_map = DataspaceMap(schema)
-        if dataspace_map.is_array:
-            tiledb.Array.create(uri, schema, key, ctx)
-        else:
-            Group.create(uri, schema, key, ctx)
-
     def __init__(
         self,
         uri: str,
         mode: str = "r",
         key: Optional[Union[Dict[str, str], str]] = None,
-        timestamp: Optional[int] = None,
-        array: Optional[str] = None,
-        attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        self._object_type = tiledb.object_type(uri)
-        self._dataspace_map = DataspaceMap.load(uri, ctx, key)
-        self._attr = None if attr is None else self._dataspace_map.attr_name(attr)
-        if self._dataspace_map.is_array:
-            self._dataspace = tiledb.open(
-                uri,
-                mode=mode,
-                key=key,
-                attr=self._attr,
-                timestamp=timestamp,
-                ctx=ctx,
-            )
-            self._array = self._dataspace
+        self._uri = uri
+        self._key = key
+        self._ctx = ctx
+        self._attribute_map: Dict[str, Tuple[str, str]] = {}
+        self._dimension_map: Dict[str, SharedDimension] = {}
+        if tiledb.object_type(uri, ctx) == "array":
+            self._schema = tiledb.ArraySchema.load(uri, ctx, key)
+            self._add_array(None, self._schema)
+        elif tiledb.object_type(uri, ctx) == "group":
+            self._schema = GroupSchema.load_group(uri, ctx, key)
+            for array_name, array_schema in self._schema.items():
+                self._add_array(array_name, array_schema)
         else:
-            self._dataspace = Group(
-                uri,
+            raise ValueError(
+                f"Failed to load the dataspace schema. Provided uri '{uri}' is not a "
+                f"valid TileDB object."
+            )
+
+    def _add_array(self, array_name, array_schema):
+        domain = array_schema.domain
+        for attr in array_schema:
+            attr_name = attr.name
+            attr_key = attr_name
+            if attr_name.endswith(_CF_COORDINATE_SUFFIX):
+                if domain.ndim != 1:
+                    raise RuntimeError(
+                        f"Failed to initialized DataspaceMap; axis data is only "
+                        f"supported for one dimensional arrays. Axis '{attr_name}' "
+                        f"found in {domain.ndim}-dimension array {array_name}."
+                    )
+                attr_key = attr_key[: -len(_CF_COORDINATE_SUFFIX)]
+            if attr_key in self._attribute_map:
+                raise RuntimeError(
+                    f"Failed to initilized DataspaceMap; all attributes in "
+                    f"the group must have unique names. Attribute '{attr_key}'"
+                    f" is contained in multiple arrays."
+                )
+            self._attribute_map[attr_key] = (array_name, attr_name)
+        for tiledb_dim in domain:
+            dim = SharedDimension.from_tiledb_dim(tiledb_dim)
+            if dim.name in self._dimension_map:
+                if dim != self._dimension_map[dim.name]:
+                    raise RuntimeError(
+                        f"Failed to initialize Dataspace; all dimensions in the "
+                        f"group with the same name must have the same domain and "
+                        f"type. Dimension {dim.name} has inconsisent definitions."
+                    )
+            else:
+                self._dimension_map[dim.name] = dim
+
+    @property
+    def array_names(self) -> Iterator[Optional[str]]:
+        if self.is_array:
+            yield None
+        else:
+            return self._schema.keys()
+
+    @property
+    def array_schemas(self) -> Iterator[tiledb.ArraySchema]:
+        if self.is_array:
+            yield self._schema
+        else:
+            return self._schema.values()
+
+    def array(self, array: Optional[str], attr: Optional[str]) -> DataspaceArrayWrapper:
+        return DataspaceArrayWrapper(self, array, attr)
+
+    @property
+    def dim_names(self) -> List[str]:
+        """A list of names of dimensions in this :class:`DataspaceMap`."""
+        return list(self._dimension_map.keys())
+
+    def array_wrapper(
+        self,
+        array: Optional[str] = None,
+        attr: Optional[str] = None,
+        mode: str = "r",
+        timestamp: Optional[int] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ) -> DataspaceArrayWrapper:
+        return DataspaceArrayWrapper(
+            self,
+            array=array,
+            attr=attr,
+            mode=mode,
+            timestamp=timestamp,
+            ctx=ctx,
+        )
+
+    def attr_name(self, key: Union[int, str]) -> str:
+        if isinstance(key, int):
+            raise NotImplementedError
+        return self._attribute_map[key][1]
+
+    def metadata_array_wrapper(
+        self,
+        mode: str = "r",
+        timestamp: Optional[int] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ) -> DataspaceArrayWrapper:
+        if self.is_array:
+            return DataspaceArrayWrapper(self)
+        return DataspaceArrayWrapper(
+            self,
+            array=_METADATA_ARRAY,
+            mode=mode,
+            timestamp=timestamp,
+            ctx=ctx,
+        )
+
+    def has_attr(self, name: str) -> bool:
+        return name in self._attribute_map
+
+    @property
+    def key(self) -> Optional[Union[Dict[str, str], str]]:
+        return self._key
+
+    @property
+    def is_array(self) -> bool:
+        return isinstance(self._schema, tiledb.ArraySchema)
+
+    @property
+    def nattr(self) -> int:
+        return len(self._attribute_map)
+
+    @property
+    def ndim(self) -> int:
+        return len(self._dimension_map)
+
+    @property
+    def uri(self) -> str:
+        return self._uri
+
+
+class DataspaceArrayWrapper:
+    def __init__(
+        self,
+        dataspace: Dataspace,
+        array: Optional[str] = None,
+        attr: Optional[str] = None,
+        mode: str = "r",
+        timestamp: Optional[int] = None,
+        ctx: Optional[tiledb.ctx] = None,
+    ):
+        self._dataspace = dataspace
+        if dataspace.is_array:
+            if array is not None:
+                raise ValueError(
+                    "Failed to open DataspaceArrayWrapper. Cannot specify array for "
+                    "dataspace of type array."
+                )
+            self._group = None
+            self._array = tiledb.open(
+                uri=dataspace.uri,
                 mode=mode,
-                key=key,
+                attr=attr,
+                key=dataspace.key,
                 timestamp=timestamp,
-                array=array,
-                attr=self._attr,
                 ctx=ctx,
             )
-            self._array = self._dataspace.array
+        else:
+            self._group = Group(
+                uri=dataspace.uri,
+                mode=mode,
+                array=array,
+                attr=attr,
+                key=dataspace.key,
+                timestamp=timestamp,
+                ctx=ctx,
+            )
+            self._array = self._group.array
+            assert self._array is not None
+        self._attr_map = (
+            {dataspace.attr_name(attr): attr}
+            if attr is not None
+            else {
+                dataspace.attr_name(attr.name): attr.name for attr in self._array.schema
+            }
+        )
 
     def __enter__(self):
         return self
@@ -216,51 +354,24 @@ class Dataspace:
         return self._array
 
     @property
-    def array_metadata(self) -> Optional[ArrayMetadata]:
-        """The opened array's metadata, or ``None`` if no array was opened.
-
-        Note that if this :class:`Dataspace` object is a TileDB array, then this object
-        provides access to the same metadata as the :meth:`dataspace_metadata` property.
-        """
-        if self._array is None:
-            return None
-        return ArrayMetadata(self._array.meta)
-
-    @property
     def attribute_metadata(self) -> Dict[str, AttributeMetadata]:
-        meta = self._dataspace.meta
-        if meta is None or self._array is None:
-            return {}
-        if self._attr is not None:
-            return {self._attr: AttributeMetadata(meta, self._attr)}
         return {
-            attr.name: AttributeMetadata(meta, attr.name) for attr in self._array.schema
+            attr_key: AttributeMetadata(self._array.meta, attr_key)
+            for attr_key in self._attr_map.keys()
         }
 
     def close(self):
-        self._dataspace.close()
+        self._array.close()
 
     @property
-    def dataspace_metadata(self) -> ArrayMetadata:
-        return ArrayMetadata(self._dataspace.meta)
-
-    def get_attribute_metadata(self, attr: Union[str, int]) -> AttributeMetadata:
-        """Returns attribute metadata object corresponding to requested attribute.
-
-        Parameters:
-            attr: Name or index of the requested array attribute.
-        """
-        if self._array is None:
-            raise ValueError("Cannot access attribute metadata: no array was opened.")
-        return AttributeMetadata(self._array.meta, attr)
-
-    @property
-    def meta(self) -> Optional[ArrayMetadata]:
-        meta = self._dataspace.meta
-        return None if meta is None else ArrayMetadata(meta)
+    def meta(self) -> ArrayMetadata:
+        return ArrayMetadata(self._array.meta)
 
     def reopen(self):
-        self._dataspace.reopen()
+        self._array.reopen()
+
+    def size(self):
+        return self._array.size
 
 
 class Group:
@@ -323,11 +434,11 @@ class Group:
     def __init__(
         self,
         uri: str,
+        array: Optional[str] = None,
+        attr: Optional[str] = None,
         mode: str = "r",
         key: Optional[Union[Dict[str, str], str]] = None,
         timestamp: Optional[int] = None,
-        array: Optional[str] = None,
-        attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
         """Constructs a new :class:`Group`."""
@@ -652,186 +763,6 @@ class GroupSchema(Mapping):
             attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
             sparse=False,
         )
-
-
-class DataspaceMap:
-    @classmethod
-    def load(
-        cls,
-        uri: str,
-        ctx: Optional[tiledb.Ctx] = None,
-        key: Optional[Union[Dict[str, str], str]] = None,
-    ):
-        """Load a map for dataspace from an URI for a TileDB group or array.
-
-        Parameters:
-            uri: uniform resource identifier for the TileDB object.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            key: If not ``None``, encryption key, or diction of encryption keys, to
-                decrypt arrays.
-        """
-        if tiledb.object_type(uri, ctx) == "group":
-            return cls.load_group(uri, ctx, key)
-        if tiledb.object_type(uri, ctx) == "array":
-            return cls.load_array(uri, ctx, key)
-        raise ValueError(
-            f"Failed to load the dataspace schema. Provided uri '{uri}' is not a valid "
-            f"TileDB object."
-        )
-
-    @classmethod
-    def load_group(
-        cls,
-        uri: str,
-        ctx: Optional[tiledb.Ctx] = None,
-        key: Optional[Union[Dict[str, str], str]] = None,
-    ):
-        """Load a map for a dataspace from an URI for a TileDB group.
-
-        Parameters:
-            uri: uniform resource identifier for the TileDB object.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            key: If not ``None``, encryption key, or diction of encryption keys, to
-                decrypt arrays.
-        """
-        group_schema = GroupSchema.load_group(uri, ctx, key)
-        return cls(group_schema)
-
-    @classmethod
-    def load_array(
-        cls,
-        uri: str,
-        ctx: Optional[tiledb.Ctx] = None,
-        key: Optional[Union[Dict[str, str], str]] = None,
-    ):
-        """Load a schema for a dataspace for a TileDB array from a TileDB URI.
-
-        This method treats the TileDB array like a group with a single array and no
-        group metadata.
-
-        Parameters:
-            uri: uniform resource identifier for the TileDB object.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            key: If not ``None``, encryption key, or diction of encryption keys, to
-                decrypt arrays.
-        """
-        array_schema = tiledb.ArraySchema.load(uri, ctx, key)
-        return cls(array_schema)
-
-    __slots__ = [
-        "_attribute_map",
-        "_dimension_map",
-        "_schema",
-    ]
-
-    def __init__(self, schema: Union[tiledb.ArraySchema, GroupSchema]):
-        """Constructs a :class:`DataspaceMap`."""
-        self._schema = schema
-        self._attribute_map: Dict[str, Tuple[tiledb.ArraySchema, str]] = {}
-        self._dimension_map: Dict[str, SharedDimension] = {}
-        if isinstance(schema, tiledb.ArraySchema):
-            self._add_array(None, schema)
-        elif isinstance(schema, GroupSchema):
-            for array_name, array_schema in self._schema.items():
-                self._add_array(array_name, array_schema)
-        else:
-            raise TypeError(
-                f"Type {type(schema)} of input schema is not a valid TileDB schema "
-                f"type."
-            )
-
-    def _add_array(self, array_name, array_schema):
-        domain = array_schema.domain
-        for attr in array_schema:
-            attr_name = attr.name
-            attr_key = attr_name
-            if attr_name == _CF_COORDINATE_NAME:
-                if domain.ndim != 1:
-                    raise RuntimeError(
-                        f"Failed to initialized DataspaceMap; axis data is only "
-                        f"supported for one dimensional arrays. Axis '{attr_name}' "
-                        f"found in {domain.ndim}-dimension array {array_name}."
-                    )
-                attr_key = domain.dim(0).name
-            if attr_key in self._attribute_map:
-                raise RuntimeError(
-                    f"Failed to initilized DataspaceMap; all attributes in "
-                    f"the group must have unique names. Attribute '{attr_key}'"
-                    f" is contained in multiple arrays."
-                )
-            self._attribute_map[attr_key] = (array_schema, attr_name)
-        for tiledb_dim in domain:
-            dim = SharedDimension.from_tiledb_dim(tiledb_dim)
-            if dim.name in self._dimension_map:
-                if dim != self._dimension_map[dim.name]:
-                    raise RuntimeError(
-                        f"Failed to initialize Dataspace; all dimensions in the "
-                        f"group with the same name must have the same domain and "
-                        f"type. Dimension {dim.name} has inconsisent definitions."
-                    )
-            else:
-                self._dimension_map[dim.name] = dim
-
-    @property
-    def array_names(self) -> Iterator[Optional[str]]:
-        if self.is_array:
-            yield None
-        else:
-            return self._schema.keys()
-
-    @property
-    def array_schemas(self) -> Iterator[tiledb.ArraySchema]:
-        if self.is_array:
-            yield self._schema
-        else:
-            return self._schema.values()
-
-    def attr(self, name: str) -> tiledb.Attr:
-        """Returns the TileDB attribute with the requested :param:`name`.
-
-        Parameters:
-            name: Name of the desired attribute.
-        """
-        (array_schema, attr_name) = self._attribute_map[name]
-        return array_schema[attr_name]
-
-    def attr_name(self, key: Union[int, str]) -> str:
-        if isinstance(key, int):
-            raise NotImplementedError
-        return self._attribute_map[key][1]
-
-    @property
-    def dim_names(self) -> List[str]:
-        """A list of names of dimensions in this :class:`DataspaceMap`."""
-        return list(self._dimension_map.keys())
-
-    def has_attr(self, name: str) -> bool:
-        return name in self._attribute_map
-
-    @property
-    def is_array(self) -> bool:
-        return isinstance(self._schema, tiledb.ArraySchema)
-
-    def get_attribute_array(self, attribute_name: str) -> List[str]:
-        """Returns a list of the names of all arrays with a matching attribute.
-
-        Parameter:
-            attribute_name: Name of the attribute to look up arrays for.
-
-        Returns:
-            A tuple of the name of all arrays with a matching attribute, or `None` if no
-                such array.
-        """
-        value = self._attribute_map.get(attribute_name)
-        return [] if value is None else [value[1]]
-
-    @property
-    def nattr(self) -> int:
-        return len(self._attribute_map)
-
-    @property
-    def ndim(self) -> int:
-        return len(self._dimension_map)
 
 
 @dataclass(frozen=True)
