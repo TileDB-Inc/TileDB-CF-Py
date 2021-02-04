@@ -72,13 +72,10 @@ class TestCreateMetadata:
         return uri
 
     def test_create_metadata(self, group_uri):
-        uri = group_uri
-        with Group(uri) as group:
-            assert not group.has_metadata_array
-            group.create_metadata_array()
-            assert not group.has_metadata_array
-            group.reopen()
-            assert group.has_metadata_array
+        group = Group(group_uri)
+        assert group.schema.metadata_schema is None
+        group.create_metadata_array()
+        assert isinstance(group.schema.metadata_schema, tiledb.ArraySchema)
 
 
 class TestSimpleGroup:
@@ -98,19 +95,9 @@ class TestSimpleGroup:
         return uri
 
     def test_has_metadata(self, group_uri):
-        with Group(group_uri) as group:
-            assert isinstance(group, Group)
-            assert group.has_metadata_array
-            assert group.meta is not None
-
-    def test_reopen(self, group_uri):
-        with Group(group_uri) as group:
-            group.reopen()
-
-    def test_metadata_array_exists_exception(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(RuntimeError):
-                group.create_metadata_array()
+        group = Group(group_uri)
+        with group.metadata_array() as metadata_array:
+            assert isinstance(metadata_array, tiledb.Array)
 
 
 class TestGroupWithArrays:
@@ -141,34 +128,15 @@ class TestGroupWithArrays:
         return uri
 
     def test_open_array_from_group(self, group_uri):
-        with Group(group_uri, array="A1") as group:
-            array = group.array
+        group = Group(group_uri)
+        with group.array("A1") as array:
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"
             assert np.array_equal(array[:, :]["a"], self._A1_data)
-            group.reopen()
-            assert array.mode == "r"
 
     def test_open_attr(self, group_uri):
-        with Group(group_uri, attr="a") as group:
-            array = group.array
+        group = Group(group_uri)
+        with group.array(attr="a") as array:
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"
             assert np.array_equal(array[:, :], self._A1_data)
-
-    def test_no_array_execption(self, group_uri):
-        with Group(group_uri) as group:
-            assert group.array is None
-
-
-class TestNoMetadataArray:
-    @pytest.fixture(scope="class")
-    def group_uri(self, tmpdir_factory):
-        """Creates a TileDB group and return URI."""
-        uri = str(tmpdir_factory.mktemp("empty_group"))
-        tiledb.group_create(uri)
-        return uri
-
-    def test_no_metadata_array_exception(self, group_uri):
-        with Group(group_uri) as group:
-            assert group.meta is None
