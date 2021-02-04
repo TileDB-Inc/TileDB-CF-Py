@@ -161,21 +161,12 @@ class TestGroupWithArrays:
         with Group(group_uri, array="A3") as group:
             isinstance(group.attribute_metadata, AttributeMetadata)
 
-    def test_get_attribute_metadata(self, group_uri):
-        with Group(group_uri, array="A2") as group:
-            isinstance(group.get_attribute_metadata("b"), AttributeMetadata)
-
     def test_open_attr(self, group_uri):
         with Group(group_uri, attr="a") as group:
             array = group.array
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"
             assert np.array_equal(array[:, :], self._A1_data)
-
-    def test_ambiguous_metadata_attribute_exception(self, group_uri):
-        with Group(group_uri, array="A2") as group:
-            with pytest.raises(RuntimeError):
-                isinstance(group.attribute_metadata, AttributeMetadata)
 
     def test_no_array_execption(self, group_uri):
         with Group(group_uri) as group:
@@ -190,11 +181,6 @@ class TestGroupWithArrays:
         with Group(group_uri) as group:
             with pytest.raises(RuntimeError):
                 _ = group.attribute_metadata
-
-    def test_no_get_attribute_metadata_execption(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(ValueError):
-                _ = group.get_attribute_metadata("a")
 
 
 class TestNoMetadataArray:

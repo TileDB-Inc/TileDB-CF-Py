@@ -158,7 +158,6 @@ class Dataspace:
     def __init__(
         self,
         uri: str,
-        mode: str = "r",
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
@@ -517,7 +516,7 @@ class Group:
         return ArrayMetadata(self._array.meta)
 
     @property
-    def attribute_metadata(self) -> AttributeMetadata:
+    def attribute_metadata(self) -> Dict[str, AttributeMetadata]:
         """Metadata object for the attribute metadata.
 
         Raises:
@@ -527,13 +526,11 @@ class Group:
         if self._array is None:
             raise RuntimeError("Cannot access attribute metadata: no array was opened.")
         if self._attr is not None:
-            return AttributeMetadata(self._array.meta, self._attr)
-        if self._array.nattr == 1:
-            return AttributeMetadata(self._array.meta, 0)
-        raise RuntimeError(
-            "Cannot access attribute metadata. Array has multiple open attributes; use "
-            "get_attribute_metadata to specify which attribute to open."
-        )
+            return {self._attr: AttributeMetadata(self._array.meta, self._attr)}
+        return {
+            attr.name: AttributeMetadata(self._array.meta, attr.name)
+            for attr in self._array.schema
+        }
 
     def create_metadata_array(self):
         """Creates a metadata array for this group.
@@ -560,16 +557,6 @@ class Group:
             self.metadata_key,
             self._ctx,
         )
-
-    def get_attribute_metadata(self, attr: Union[str, int]) -> AttributeMetadata:
-        """Returns attribute metadata object corresponding to requested attribute.
-
-        Parameters:
-            attr: Name or index of the requested array attribute.
-        """
-        if self._array is None:
-            raise ValueError("Cannot access attribute metadata: no array was opened.")
-        return AttributeMetadata(self._array.meta, attr)
 
     @property
     def has_metadata_array(self) -> bool:
