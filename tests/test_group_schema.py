@@ -77,7 +77,7 @@ class TestGroupSchema:
         assert repr(group_schema) is not None
         assert len(group_schema) == scenario["num_schemas"]
         for attr_name, arrays in attribute_map.items():
-            result = group_schema.get_attribute_arrays(attr_name)
+            result = group_schema.get_attr_arrays(attr_name)
             assert result == list(
                 arrays
             ), f"Get all arrays for attribute '{attr_name}' failed."
@@ -107,7 +107,7 @@ class TestGroupSchema:
         """Test a KeyError is raised when querying for an attribute that isn't in
         schema"""
         group_schema = GroupSchema({"dense": _array_schema_1})
-        assert len(group_schema.get_attribute_arrays("missing")) == 0
+        assert len(group_schema.get_attr_arrays("missing")) == 0
 
 
 class TestLoadEmptyGroup:
