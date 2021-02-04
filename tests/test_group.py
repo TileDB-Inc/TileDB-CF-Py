@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import ArrayMetadata, AttributeMetadata, Group, GroupSchema
+from tiledb.cf import Group, GroupSchema
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
@@ -149,18 +149,6 @@ class TestGroupWithArrays:
             group.reopen()
             assert array.mode == "r"
 
-    def test_array_metadata(self, group_uri):
-        with Group(group_uri, array="A1") as group:
-            isinstance(group.array_metadata, ArrayMetadata)
-
-    def test_attribute_metadata_with_attr(self, group_uri):
-        with Group(group_uri, attr="a") as group:
-            isinstance(group.attribute_metadata, AttributeMetadata)
-
-    def test_attribute_metadata_with_single_attribute_array(self, group_uri):
-        with Group(group_uri, array="A3") as group:
-            isinstance(group.attribute_metadata, AttributeMetadata)
-
     def test_open_attr(self, group_uri):
         with Group(group_uri, attr="a") as group:
             array = group.array
@@ -171,16 +159,6 @@ class TestGroupWithArrays:
     def test_no_array_execption(self, group_uri):
         with Group(group_uri) as group:
             assert group.array is None
-
-    def test_no_array_metadata_execption(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(RuntimeError):
-                _ = group.array_metadata
-
-    def test_no_attribute_metadata_execption(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(RuntimeError):
-                _ = group.attribute_metadata
 
 
 class TestNoMetadataArray:

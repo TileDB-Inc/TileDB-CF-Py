@@ -476,36 +476,6 @@ class Group:
         """The opened array, or ``None`` if no array was opened."""
         return self._array
 
-    @property
-    def array_metadata(self) -> ArrayMetadata:
-        """Metadata object for the array.
-
-        Raises:
-            RuntimeError: No array was opened.
-        """
-        if self._array is None:
-            raise RuntimeError(
-                "Cannot access group array metadata: no array was opened."
-            )
-        return ArrayMetadata(self._array.meta)
-
-    @property
-    def attribute_metadata(self) -> Dict[str, AttributeMetadata]:
-        """Metadata object for the attribute metadata.
-
-        Raises:
-            RuntimeError: No array was opened.
-            RuntimeError: Array has multiple open attributes.
-        """
-        if self._array is None:
-            raise RuntimeError("Cannot access attribute metadata: no array was opened.")
-        if self._attr is not None:
-            return {self._attr: AttributeMetadata(self._array.meta, self._attr)}
-        return {
-            attr.name: AttributeMetadata(self._array.meta, attr.name)
-            for attr in self._array.schema
-        }
-
     def create_metadata_array(self):
         """Creates a metadata array for this group.
 
