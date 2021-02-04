@@ -185,12 +185,6 @@ class Dataspace:
             attr_name = attr.name
             attr_key = attr_name
             if attr_name.endswith(_CF_COORDINATE_SUFFIX):
-                if domain.ndim != 1:
-                    raise RuntimeError(
-                        f"Failed to initialized DataspaceMap; axis data is only "
-                        f"supported for one dimensional arrays. Axis '{attr_name}' "
-                        f"found in {domain.ndim}-dimension array {array_name}."
-                    )
                 attr_key = attr_key[: -len(_CF_COORDINATE_SUFFIX)]
             if attr_key in self._attribute_map:
                 raise RuntimeError(
