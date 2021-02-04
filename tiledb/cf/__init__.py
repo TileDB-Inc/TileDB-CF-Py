@@ -152,6 +152,40 @@ class AttributeMetadata(Metadata):
         return None
 
 
+class AttributeDataspaceMap:
+
+    __slots__ = ["_attribute_map"]
+
+    def __init__(self):
+        self._attribute_map: Dict[str, Tuple[str, Optional[str]]] = dict()
+
+    def __getitem__(self, key: str) -> Union[str, Tuple[str, str]]:
+        return self._attribute_map[key][0]
+
+    def __len__(self) -> int:
+        return len(self._attribute_map)
+
+    def add_array(self, array_name: Optional[str], array_schema: tiledb.ArraySchema):
+        for attr in array_schema:
+            attr_name = attr.name
+            attr_key = (
+                attr_name[: -len(_CF_COORDINATE_SUFFIX)]
+                if attr_name.endswith(_CF_COORDINATE_SUFFIX)
+                else attr_name
+            )
+            if attr_key in self._attribute_map:
+                raise RuntimeError(
+                    f"Failed to add attribute '{attr_key}'. Attribute already exitsts."
+                )
+            if array_name is None:
+                self._attribute_map[attr_key] = attr_name
+            else:
+                self._attribute_map[attr_key] = (attr_name, array_name)
+
+    def has_attr(self, key: str) -> bool:
+        return key in self._attribute_map
+
+
 class Dataspace:
     """Class for opening a TileDB Dataspace."""
 
@@ -164,36 +198,24 @@ class Dataspace:
         self._uri = uri
         self._key = key
         self._ctx = ctx
-        self._attribute_map: Dict[str, Tuple[str, str]] = {}
+        self._attribute_map = AttributeDataspaceMap()
         self._dimension_map: Dict[str, SharedDimension] = {}
         if tiledb.object_type(uri, ctx) == "array":
             self._schema = tiledb.ArraySchema.load(uri, ctx, key)
-            self._add_array(None, self._schema)
+            self._add_array(self._schema)
+            self._attribute_map.add_array(None, self._schema)
         elif tiledb.object_type(uri, ctx) == "group":
             self._schema = GroupSchema.load_group(uri, ctx, key)
             for array_name, array_schema in self._schema.items():
-                self._add_array(array_name, array_schema)
+                self._add_array(array_schema)
         else:
             raise ValueError(
                 f"Failed to load the dataspace schema. Provided uri '{uri}' is not a "
                 f"valid TileDB object."
             )
 
-    def _add_array(self, array_name, array_schema):
-        domain = array_schema.domain
-        for attr in array_schema:
-            attr_name = attr.name
-            attr_key = attr_name
-            if attr_name.endswith(_CF_COORDINATE_SUFFIX):
-                attr_key = attr_key[: -len(_CF_COORDINATE_SUFFIX)]
-            if attr_key in self._attribute_map:
-                raise RuntimeError(
-                    f"Failed to initilized DataspaceMap; all attributes in "
-                    f"the group must have unique names. Attribute '{attr_key}'"
-                    f" is contained in multiple arrays."
-                )
-            self._attribute_map[attr_key] = (array_name, attr_name)
-        for tiledb_dim in domain:
+    def _add_array(self, array_schema):
+        for tiledb_dim in array_schema.domain:
             dim = SharedDimension.from_tiledb_dim(tiledb_dim)
             if dim.name in self._dimension_map:
                 if dim != self._dimension_map[dim.name]:
@@ -266,7 +288,7 @@ class Dataspace:
         )
 
     def has_attr(self, name: str) -> bool:
-        return name in self._attribute_map
+        return self._attribute_map.has_attr(name)
 
     @property
     def key(self) -> Optional[Union[Dict[str, str], str]]:
