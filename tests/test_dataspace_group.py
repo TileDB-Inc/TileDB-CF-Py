@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import Group, GroupSchema
+from tiledb.cf import DataspaceGroup, DataspaceGroupSchema
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
@@ -11,6 +11,7 @@ _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
 _attr_a = tiledb.Attr(name="a", dtype=np.uint64)
 _attr_b = tiledb.Attr(name="b", dtype=np.float64)
 _attr_c = tiledb.Attr(name="c", dtype=np.dtype("U"))
+_attr_d = tiledb.Attr(name="d", dtype=np.float64)
 _array_schema_1 = tiledb.ArraySchema(
     domain=tiledb.Domain(_row, _col),
     attrs=[_attr_a],
@@ -22,26 +23,27 @@ _array_schema_2 = tiledb.ArraySchema(
 )
 _array_schema_3 = tiledb.ArraySchema(
     domain=tiledb.Domain(_row, _col),
-    attrs=[_attr_c],
+    attrs=[_attr_d],
 )
 
 
-class TestCreateGroup:
+class TestCreateDataspaceGroup:
 
     _metadata_schema = _array_schema_1
     _array_schemas = {
         "A1": _array_schema_1,
         "A2": _array_schema_2,
     }
-    _group_schema = GroupSchema(_array_schemas, _metadata_schema)
+    _group_schema = DataspaceGroupSchema(_array_schemas, _metadata_schema)
     _key = None
 
     @pytest.fixture(scope="class")
     def group_uri(self, tmpdir_factory):
-        """Creates a TileDB Group from GroupSchema and returns scenario dict."""
+        """Creates a TileDB DataspaceGroup from DataspaceGroupSchema and returns
+        scenario dict."""
         uri = str(tmpdir_factory.mktemp("group1"))
         ctx = None
-        Group.create(uri, self._group_schema, self._key, ctx)
+        DataspaceGroup.create(uri, self._group_schema, self._key, ctx)
         return uri
 
     def test_array_schemas(self, group_uri):
@@ -60,7 +62,7 @@ class TestNotTileDBURI:
 
     def test_not_group_exception(self, empty_uri):
         with pytest.raises(ValueError):
-            Group(empty_uri)
+            DataspaceGroup(empty_uri)
 
 
 class TestCreateMetadata:
@@ -72,13 +74,13 @@ class TestCreateMetadata:
         return uri
 
     def test_create_metadata(self, group_uri):
-        group = Group(group_uri)
+        group = DataspaceGroup(group_uri)
         assert group.schema.metadata_schema is None
         group.create_metadata_array()
         assert isinstance(group.schema.metadata_schema, tiledb.ArraySchema)
 
 
-class TestSimpleGroup:
+class TestSimpleDataspaceGroup:
 
     _metadata_schema = tiledb.ArraySchema(
         domain=tiledb.Domain(
@@ -91,16 +93,16 @@ class TestSimpleGroup:
     @pytest.fixture(scope="class")
     def group_uri(self, tmpdir_factory):
         uri = str(tmpdir_factory.mktemp("group1"))
-        Group.create(uri, GroupSchema(None, self._metadata_schema))
+        DataspaceGroup.create(uri, DataspaceGroupSchema(None, self._metadata_schema))
         return uri
 
     def test_has_metadata(self, group_uri):
-        group = Group(group_uri)
+        group = DataspaceGroup(group_uri)
         with group.metadata_array() as metadata_array:
             assert isinstance(metadata_array, tiledb.Array)
 
 
-class TestGroupWithArrays:
+class TestDataspaceGroupWithArrays:
 
     _metadata_schema = tiledb.ArraySchema(
         domain=tiledb.Domain(
@@ -128,14 +130,14 @@ class TestGroupWithArrays:
         return uri
 
     def test_open_array_from_group(self, group_uri):
-        group = Group(group_uri)
+        group = DataspaceGroup(group_uri)
         with group.array("A1") as array:
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"
             assert np.array_equal(array[:, :]["a"], self._A1_data)
 
     def test_open_attr(self, group_uri):
-        group = Group(group_uri)
+        group = DataspaceGroup(group_uri)
         with group.array(attr="a") as array:
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"

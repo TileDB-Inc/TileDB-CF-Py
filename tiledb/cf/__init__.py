@@ -540,7 +540,9 @@ class GroupSchema(Mapping):
         if array_schemas is None:
             self._array_schema_table = {}
         else:
-            self._array_schema_table = dict(array_schemas)
+            self._array_schema_table = {
+                key: value for (key, value) in array_schemas.items()
+            }
 
     def __eq__(self, other: Any):
         if not isinstance(other, GroupSchema):
@@ -679,7 +681,7 @@ class DataspaceGroupSchema(GroupSchema):
                 self._dimension_map[dim.name] = dim
 
     def get_array_from_attr(self, attr: str) -> str:
-        return self._attr_map[attr]
+        return self._attr_map.get_array(attr)
 
     def get_attr_arrays(self, attr: str) -> List[str]:
         """Returns a list of the names of all arrays with a matching attribute.
@@ -691,14 +693,11 @@ class DataspaceGroupSchema(GroupSchema):
             A tuple of the name of all arrays with a matching attribute, or `None` if no
             such array.
         """
-        array = self._attr_map.get(attr)
-        return (
-            []
-            if array is None
-            else [
-                array,
-            ]
-        )
+        if attr not in self._attr_map:
+            return []
+        return [
+            self._attr_map.get_array(attr),
+        ]
 
     @property
     def dim_names(self) -> List[str]:
