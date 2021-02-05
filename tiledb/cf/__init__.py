@@ -153,7 +153,7 @@ class AttributeMetadata(Metadata):
         return None
 
 
-class DataspaceArrayWrapper:
+class DataspaceArray:
     def __init__(
         self,
         uri,
@@ -175,6 +175,14 @@ class DataspaceArrayWrapper:
             ctx=ctx,
         )
 
+    def __array__(self, dtype=None):
+        if self._array.is_sparse:
+            raise NotImplementedError(
+                "Opening a sparse TileDB array directly as a Numpy array is not yet"
+                " implemented."
+            )
+        return np.asarray(self._array, dtype)
+
     def __enter__(self):
         return self
 
@@ -182,8 +190,8 @@ class DataspaceArrayWrapper:
         self.close()
 
     @property
-    def array(self) -> tiledb.Array:
-        """The opened array, or ``None`` if no array was opened."""
+    def base(self) -> tiledb.Array:
+        """Direct access to the base TileDB array api."""
         return self._array
 
     @property
@@ -439,14 +447,14 @@ class DataspaceGroup(Group):
         self._ctx = ctx
         self._schema = DataspaceGroupSchema.load_group(uri, ctx, key)
 
-    def dataspace_array_wrapper(
+    def dataspace_array(
         self,
         array: Optional[str] = None,
         attr: Optional[str] = None,
         mode: str = "r",
         timestamp: Optional[int] = None,
-    ) -> DataspaceArrayWrapper:
-        return DataspaceArrayWrapper(
+    ) -> DataspaceArray:
+        return DataspaceArray(
             self.array_uri(array, attr),
             mode=mode,
             attr=attr,
@@ -455,12 +463,12 @@ class DataspaceGroup(Group):
             ctx=self._ctx,
         )
 
-    def metadata_dataspace_array_wrapper(
+    def dataspace_metadata_array(
         self,
         mode: str = "r",
         timestamp: Optional[int] = None,
-    ) -> DataspaceArrayWrapper:
-        return self.dataspace_array_wrapper(_METADATA_ARRAY, None, mode, timestamp)
+    ) -> DataspaceArray:
+        return self.dataspace_array(_METADATA_ARRAY, None, mode, timestamp)
 
     def has_attr(self, name: str) -> bool:
         return self._schema.has_attr
