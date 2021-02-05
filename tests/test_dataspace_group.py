@@ -125,8 +125,6 @@ class TestDataspaceGroupWithArrays:
             array[:] = self._A1_data
         tiledb.Array.create(uri + "/A2", _array_schema_2)
         tiledb.Array.create(uri + "/A3", _array_schema_3)
-        filesystem = tiledb.VFS()
-        filesystem.create_dir(uri + "/empty_dir")
         return uri
 
     def test_open_array_from_group(self, group_uri):

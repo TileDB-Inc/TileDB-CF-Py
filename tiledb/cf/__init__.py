@@ -176,7 +176,7 @@ class DataspaceArray:
         )
 
     def __array__(self, dtype=None):
-        if self._array.is_sparse:
+        if self._array.sparse:
             raise NotImplementedError(
                 "Opening a sparse TileDB array directly as a Numpy array is not yet"
                 " implemented."
@@ -391,6 +391,9 @@ class Group:
             self.metadata_key,
             self._ctx,
         )
+
+    def has_metadata_array(self) -> bool:
+        return self._schema.metadata_schema is not None
 
     def metadata_array(
         self,
