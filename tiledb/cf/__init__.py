@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import os.path
 import typing
+from collections import OrderedDict
 from collections.abc import Mapping, MutableMapping
 from dataclasses import dataclass
 from io import StringIO
@@ -217,6 +218,84 @@ class DataspaceArray:
 
     def size(self):
         return self._array.size
+
+
+class DataspaceArraySchema:
+    @classmethod
+    def from_group_schema(cls, array_schema: tiledb.ArraySchema):
+        if isinstance(array_schema, cls):
+            return array_schema
+        return cls(tiledb.ArraySchema)
+
+    @classmethod
+    def load(
+        cls,
+        uri: str,
+        ctx: Optional[tiledb.Ctx] = None,
+        key: Optional[str] = None,
+    ):
+        return cls(tiledb.ArraySchema.load(uri, ctx, key))
+
+    def __init__(self, array_schema: tiledb.ArraySchema):
+        self._array_schema = array_schema
+        self._attr_map = OrderedDict()  # type: ignore
+        for attr in array_schema:
+            attr_name = attr.name
+            attr_key = (
+                attr_name[: -len(_CF_COORDINATE_SUFFIX)]
+                if attr_name.endswith(_CF_COORDINATE_SUFFIX)
+                else attr_name
+            )
+            if attr_key in self._attr_map:
+                raise RuntimeError(
+                    f"Failed to initialize DataspaceArraySchema. ArraySchema contains "
+                    f"mulitple attributes with decoded attribute name {attr_key}."
+                )
+            self._attr_map[attr_key] = attr
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, DataspaceArraySchema):
+            return False
+        if not isinstance(self, type(other)):
+            return False
+        if self.base != other.base:
+            return False
+        return True
+
+    def __iter__(self) -> Iterator[Tuple[str, tiledb.Attr]]:
+        for item in self._attr_map.items():
+            yield item
+
+    def attr(self, key: Union[str, int]) -> tiledb.Attr:
+        """Returns an Attr instance given an int index or string label
+
+        Parameters:
+            key: attribute index (positional or associative)
+
+        Returns:
+            The ArraySchema attribute at index or with the given name (label)
+        """
+        if isinstance(key, str):
+            return self._attr_map[str]
+        return self._array_schema.attr(key)
+
+    def attr_names(self) -> Tuple[str, ...]:
+        return tuple(self._attr_map.keys())
+
+    @property
+    def base(self) -> tiledb.Array:
+        return self._array_schema
+
+    def has_attr(self, name):
+        """Returns true if the given name is an Attribute of the ArraySchema
+
+        Parameters:
+            name: The dataspace name of the requested TileDB attribute.
+        """
+        return name in self._attr_map
+
+    def attr_dtype(self, name: str) -> np.dtype:
+        return self._attr_map[name].dtype
 
 
 class DataspaceAttributeMap(Mapping):
