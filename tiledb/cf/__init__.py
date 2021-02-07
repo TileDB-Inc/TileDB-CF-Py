@@ -164,9 +164,8 @@ class DataspaceArray:
         timestamp: Optional[int] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        self._attr_map = DataspaceAttributeMap()
-        self._attr_map.add_array(tiledb.ArraySchema.load(uri, ctx, key))
-        self._attr = None if attr is None else self._attr_map[attr]
+        self._schema = DataspaceArraySchema.load(uri, ctx, key)
+        self._attr = None if attr is None else self._schema.attr(attr)
         self._array = tiledb.open(
             uri=uri,
             mode=mode,
@@ -202,7 +201,7 @@ class DataspaceArray:
             if self._attr is not None
             else {
                 attr_key: AttributeMetadata(self._array.meta, attr_key)
-                for attr_key in self._attr_map.keys()
+                for attr_key in self._schema.attr_names
             }
         )
 
@@ -279,6 +278,7 @@ class DataspaceArraySchema:
             return self._attr_map[str]
         return self._array_schema.attr(key)
 
+    @property
     def attr_names(self) -> Tuple[str, ...]:
         return tuple(self._attr_map.keys())
 
