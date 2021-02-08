@@ -174,7 +174,7 @@ class DataspaceArray:
         ctx: Optional[tiledb.Ctx] = None,
     ):
         self._schema = DataspaceArraySchema.load(uri, ctx, key)
-        self._attr = None if attr is None else self._schema.attr(attr)
+        self._attr = None if attr is None else self._schema.attr(attr).name
         self._array = tiledb.open(
             uri=uri,
             mode=mode,
@@ -498,7 +498,7 @@ class Group:
         self._schema = GroupSchema.load_group(self._uri, self._ctx, self._key)
 
 
-class DataspaceGroup(Group):
+class DataspaceGroup:
     """Class for opening a TileDB Dataspace."""
 
     @classmethod
@@ -523,7 +523,9 @@ class DataspaceGroup(Group):
             if isinstance(group_schema, DataspaceGroupSchema)
             else DataspaceGroupSchema(group_schema)
         )
-        super().create(uri, dataspace_schema.base, key, ctx)
+        Group.create(uri, dataspace_schema.base, key, ctx)
+
+    __slots__ = ["_ctx", "_group", "_schema"]
 
     def __init__(
         self,
@@ -531,12 +533,15 @@ class DataspaceGroup(Group):
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        self._uri = uri
-        self._key = key
         self._ctx = ctx
-        self._schema = DataspaceGroupSchema.load_group(uri, ctx, key)
+        self._group = Group(uri, key, ctx)
+        self._schema = DataspaceGroupSchema(self._group.schema)
 
-    def dataspace_array(
+    @property
+    def base(self) -> Group:
+        return self._group
+
+    def array(
         self,
         array: Optional[str] = None,
         attr: Optional[str] = None,
@@ -544,20 +549,20 @@ class DataspaceGroup(Group):
         timestamp: Optional[int] = None,
     ) -> DataspaceArray:
         return DataspaceArray(
-            self.array_uri(array, attr),
+            self._group.array_uri(array, attr),
             mode=mode,
             attr=attr,
-            key=self.array_key(array, attr),
+            key=self._group.array_key(array, attr),
             timestamp=timestamp,
             ctx=self._ctx,
         )
 
-    def dataspace_metadata_array(
+    def metadata_array(
         self,
         mode: str = "r",
         timestamp: Optional[int] = None,
     ) -> DataspaceArray:
-        return self.dataspace_array(_METADATA_ARRAY, None, mode, timestamp)
+        return self.array(_METADATA_ARRAY, None, mode, timestamp)
 
     def has_attr(self, name: str) -> bool:
         return self._schema.has_attr(name)

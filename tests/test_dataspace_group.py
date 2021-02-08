@@ -81,7 +81,7 @@ class TestSimpleDataspaceGroup:
 
     def test_dataspace(self, group_uri):
         dataspace_group = DataspaceGroup(group_uri)
-        with dataspace_group.dataspace_metadata_array(mode="r") as array:
+        with dataspace_group.metadata_array(mode="r") as array:
             assert isinstance(array, DataspaceArray)
 
 
@@ -104,14 +104,14 @@ class TestDataspaceGroupWithArrays:
 
     def test_open_array_from_group(self, group_uri):
         dataspace_group = DataspaceGroup(group_uri)
-        with dataspace_group.dataspace_array("A1") as array:
+        with dataspace_group.array("A1") as array:
             assert isinstance(array, DataspaceArray)
             assert array.base.mode == "r"
             assert np.array_equal(array.base[:, :]["a"], self._A1_data)
 
-    # def test_open_attr(self, group_uri):
-    #     group = DataspaceGroup(group_uri)
-    #     with group.dataspace_array(attr="a") as array:
-    #         assert isinstance(array, DataspaceArray)
-    #         assert array.base.mode == "r"
-    #         assert np.array_equal(array.base[:, :], self._A1_data)
+    def test_open_attr(self, group_uri):
+        dataspace_group = DataspaceGroup(group_uri)
+        with dataspace_group.array(attr="a") as array:
+            assert isinstance(array, DataspaceArray)
+            assert array.base.mode == "r"
+            assert np.array_equal(array.base[:, :], self._A1_data)
