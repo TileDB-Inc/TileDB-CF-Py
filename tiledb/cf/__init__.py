@@ -185,6 +185,84 @@ class DataspaceArraySchema:
         return self._attr_map[name].dtype
 
 
+class DataspaceGroup:
+    """Class for opening a TileDB Dataspace."""
+
+    @classmethod
+    def create(
+        cls,
+        uri: str,
+        group_schema: Union[GroupSchema, DataspaceGroupSchema],
+        key: Optional[Union[Dict[str, str], str]] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ):
+        """Create the TileDB group and arrays from a :class:`GroupSchema`.
+
+        Parameters:
+            uri: Uniform resource identifier for TileDB group or array.
+            group_schema: Schema that defines the group to be created.
+            key: If not ``None``, encryption key, or dictionary of encryption keys to
+                decrypt arrays.
+            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        """
+        dataspace_schema = (
+            group_schema
+            if isinstance(group_schema, DataspaceGroupSchema)
+            else DataspaceGroupSchema(group_schema)
+        )
+        Group.create(uri, dataspace_schema.base, key, ctx)
+
+    __slots__ = ["_ctx", "_group", "_schema"]
+
+    def __init__(
+        self,
+        uri: str,
+        key: Optional[Union[Dict[str, str], str]] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ):
+        self._ctx = ctx
+        self._group = Group(uri, key, ctx)
+        self._schema = DataspaceGroupSchema(self._group.schema)
+
+    @property
+    def base(self) -> Group:
+        return self._group
+
+    def array(
+        self,
+        array: Optional[str] = None,
+        attr: Optional[str] = None,
+        mode: str = "r",
+        timestamp: Optional[int] = None,
+    ) -> DataspaceArray:
+        return DataspaceArray(
+            self._group.array_uri(array, attr),
+            mode=mode,
+            attr=attr,
+            key=self._group.array_key(array, attr),
+            timestamp=timestamp,
+            ctx=self._ctx,
+        )
+
+    def metadata_array(
+        self,
+        mode: str = "r",
+        timestamp: Optional[int] = None,
+    ) -> DataspaceArray:
+        return self.array(_METADATA_ARRAY, None, mode, timestamp)
+
+    def has_attr(self, name: str) -> bool:
+        return self._schema.has_attr(name)
+
+    @property
+    def nattr(self) -> int:
+        return self._schema.nattr
+
+    @property
+    def ndim(self) -> int:
+        return self._schema.ndim
+
+
 class DataspaceGroupSchema:
     """Schema for a TileDB dataspce group.
 
@@ -283,84 +361,6 @@ class DataspaceGroupSchema:
     @property
     def ndim(self) -> int:
         return len(self._dimension_map)
-
-
-class DataspaceGroup:
-    """Class for opening a TileDB Dataspace."""
-
-    @classmethod
-    def create(
-        cls,
-        uri: str,
-        group_schema: Union[GroupSchema, DataspaceGroupSchema],
-        key: Optional[Union[Dict[str, str], str]] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        """Create the TileDB group and arrays from a :class:`GroupSchema`.
-
-        Parameters:
-            uri: Uniform resource identifier for TileDB group or array.
-            group_schema: Schema that defines the group to be created.
-            key: If not ``None``, encryption key, or dictionary of encryption keys to
-                decrypt arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-        """
-        dataspace_schema = (
-            group_schema
-            if isinstance(group_schema, DataspaceGroupSchema)
-            else DataspaceGroupSchema(group_schema)
-        )
-        Group.create(uri, dataspace_schema.base, key, ctx)
-
-    __slots__ = ["_ctx", "_group", "_schema"]
-
-    def __init__(
-        self,
-        uri: str,
-        key: Optional[Union[Dict[str, str], str]] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        self._ctx = ctx
-        self._group = Group(uri, key, ctx)
-        self._schema = DataspaceGroupSchema(self._group.schema)
-
-    @property
-    def base(self) -> Group:
-        return self._group
-
-    def array(
-        self,
-        array: Optional[str] = None,
-        attr: Optional[str] = None,
-        mode: str = "r",
-        timestamp: Optional[int] = None,
-    ) -> DataspaceArray:
-        return DataspaceArray(
-            self._group.array_uri(array, attr),
-            mode=mode,
-            attr=attr,
-            key=self._group.array_key(array, attr),
-            timestamp=timestamp,
-            ctx=self._ctx,
-        )
-
-    def metadata_array(
-        self,
-        mode: str = "r",
-        timestamp: Optional[int] = None,
-    ) -> DataspaceArray:
-        return self.array(_METADATA_ARRAY, None, mode, timestamp)
-
-    def has_attr(self, name: str) -> bool:
-        return self._schema.has_attr(name)
-
-    @property
-    def nattr(self) -> int:
-        return self._schema.nattr
-
-    @property
-    def ndim(self) -> int:
-        return self._schema.ndim
 
 
 class Group:
