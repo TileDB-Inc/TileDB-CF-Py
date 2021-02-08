@@ -107,6 +107,10 @@ class DataspaceArray:
     def reopen(self):
         self._array.reopen()
 
+    @property
+    def schema(self) -> DataspaceArraySchema:
+        return self._schema
+
     def size(self):
         return self._array.size
 
@@ -165,9 +169,13 @@ class DataspaceArraySchema:
             return self._attr_map[str]  # type: ignore
         return self._array_schema.attr(key)
 
+    def attr_dtype(self, name: str) -> np.dtype:
+        return self._attr_map[name].dtype
+
     @property
-    def attr_names(self) -> Tuple[str, ...]:
-        return tuple(self._attr_map.keys())
+    def attr_names(self) -> Iterator[str]:
+        for key in self._attr_map.keys():
+            yield key
 
     @property
     def base(self) -> tiledb.Array:
@@ -181,8 +189,14 @@ class DataspaceArraySchema:
         """
         return name in self._attr_map
 
-    def attr_dtype(self, name: str) -> np.dtype:
-        return self._attr_map[name].dtype
+    @property
+    def index_domain(self) -> Iterator[Tuple[str, int]]:
+        for dim in self._array_schema.domain:
+            yield (dim.name, dim.size)
+
+    @property
+    def shape(self) -> Tuple[int, ...]:
+        return self._array_schema.shape
 
 
 class DataspaceGroup:
@@ -290,16 +304,12 @@ class DataspaceGroup:
     def ndim(self) -> int:
         return self._schema.ndim
 
+    @property
+    def schema(self) -> DataspaceGroupSchema:
+        return self._schema
 
-class DataspaceGroupSchema:
-    """Schema for a TileDB dataspce group.
 
-    Parameters:
-        array_schemas: A collection of (name, ArraySchema) tuples for Arrays that belong
-             to this group.
-        metadata_schema: If not None, a schema for the group metadata array.
-    """
-
+class DataspaceGroupSchema(Mapping):
     @classmethod
     def from_group_schema(cls, group_schema: GroupSchema):
         if isinstance(group_schema, cls):
@@ -323,10 +333,10 @@ class DataspaceGroupSchema:
         """
         return cls(GroupSchema.load_group(uri, ctx, key))
 
-    __slots__ = ["_attr_to_array_map", "_dimension_map", "_schema"]
+    __slots__ = ["_attr_to_array_map", "_dimension_map", "_group_schema"]
 
     def __init__(self, group_schema: GroupSchema):
-        self._schema = group_schema
+        self._group_schema = group_schema
         self._dimension_map: Dict[str, SharedDimension] = {}
         self._attr_to_array_map: Dict[str, str] = {}
         for array_name, array_schema in group_schema.items():
@@ -340,6 +350,15 @@ class DataspaceGroupSchema:
         if self.base != other.base:
             return False
         return True
+
+    def __getitem__(self, schema_name: str) -> DataspaceArraySchema:
+        return DataspaceArraySchema(self._group_schema[schema_name])
+
+    def __iter__(self) -> Iterator[str]:
+        return self._group_schema.__iter__()
+
+    def __len__(self) -> int:
+        return len(self._group_schema)
 
     def _add_array(self, array_name, array_schema):
         for attr in array_schema:
@@ -369,7 +388,7 @@ class DataspaceGroupSchema:
 
     @property
     def base(self) -> GroupSchema:
-        return self._schema
+        return self._group_schema
 
     def get_array_from_attr(self, attr: str) -> str:
         return self._attr_to_array_map[attr]
