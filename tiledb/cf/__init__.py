@@ -224,6 +224,21 @@ class DataspaceGroup:
         self._group = Group(uri, key, ctx)
         self._schema = DataspaceGroupSchema(self._group.schema)
 
+    def _get_array_name(
+        self,
+        array: Optional[str] = None,
+        attr: Optional[str] = None,
+    ) -> str:
+        if array is None:
+            if attr is None:
+                raise ValueError("No array or attribute name provided.")
+            return self._schema.get_array_from_attr(attr)
+        return array
+
+    @property
+    def array_names(self) -> Iterator[str]:
+        return self._group.array_names
+
     @property
     def base(self) -> Group:
         return self._group
@@ -235,14 +250,23 @@ class DataspaceGroup:
         mode: str = "r",
         timestamp: Optional[int] = None,
     ) -> DataspaceArray:
+        array = self._get_array_name(array, attr)
         return DataspaceArray(
-            self._group.array_uri(array, attr),
+            self._group.array_uri(array),
             mode=mode,
             attr=attr,
-            key=self._group.array_key(array, attr),
+            key=self._group.array_key(array),
             timestamp=timestamp,
             ctx=self._ctx,
         )
+
+    def array_key(self, array: str = None, attr: Optional[str] = None) -> Optional[str]:
+        array = self._get_array_name(array, attr)
+        return self._group.array_key(array)
+
+    def array_uri(self, array: str = None, attr: Optional[str] = None) -> str:
+        array = self._get_array_name(array, attr)
+        return self._group.array_uri(array)
 
     def metadata_array(
         self,
@@ -253,6 +277,10 @@ class DataspaceGroup:
 
     def has_attr(self, name: str) -> bool:
         return self._schema.has_attr(name)
+
+    @property
+    def has_metadata_array(self) -> bool:
+        return self._group.has_metadata_array
 
     @property
     def nattr(self) -> int:
@@ -435,42 +463,34 @@ class Group:
         mode: str = "r",
         timestamp: Optional[int] = None,
     ) -> tiledb.Array:
+        if array is None:
+            if attr is None:
+                raise ValueError(
+                    "Failed to open array. No array or attribute name provided."
+                )
+            array = self._schema.get_array_from_attr(attr)
         return tiledb.open(
-            self.array_uri(array, attr),
+            self.array_uri(array),
             mode=mode,
-            key=self.array_key(array, attr),
+            key=self.array_key(array),
             attr=attr,
             config=None,
             timestamp=timestamp,
             ctx=self._ctx,
         )
 
-    def array_key(
-        self, array: Optional[str] = None, attr: Optional[str] = None
-    ) -> Optional[str]:
-        if array is None:
-            if attr is None:
-                raise ValueError(
-                    "Failed to find array key. No array or attribute name provided."
-                )
-            array = self._schema.get_array_from_attr(attr)
+    def array_key(self, array: str) -> Optional[str]:
         return self._key.get(array) if isinstance(self._key, dict) else self._key
 
     @property
-    def array_names(self) -> Iterator[Optional[str]]:
+    def array_names(self) -> Iterator[str]:
         return self._schema.keys()
 
     @property
     def array_schemas(self) -> Iterator[tiledb.ArraySchema]:
         return self._schema.values()
 
-    def array_uri(self, array: Optional[str] = None, attr: Optional[str] = None):
-        if array is None:
-            if attr is None:
-                raise ValueError(
-                    "Failed to find array URI. No array or attribute name provided."
-                )
-            array = self._schema.get_array_from_attr(attr)
+    def array_uri(self, array: str) -> str:
         return _get_array_uri(self._uri, array)
 
     def create_metadata_array(self):
@@ -488,6 +508,7 @@ class Group:
             self._ctx,
         )
 
+    @property
     def has_metadata_array(self) -> bool:
         return self._schema.metadata_schema is not None
 
