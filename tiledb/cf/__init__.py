@@ -185,54 +185,6 @@ class DataspaceArraySchema:
         return self._attr_map[name].dtype
 
 
-class DataspaceAttributeMap(Mapping):
-
-    __slots__ = ["_attribute_map"]
-
-    def __init__(self):
-        self._attribute_map: Dict[str, Tuple[str, Optional[str]]] = dict()
-
-    def __getitem__(self, key: str) -> str:
-        return self._attribute_map[key][0]
-
-    def __iter__(self) -> Iterator[str]:
-        return self._attribute_map.__iter__()
-
-    def __len__(self) -> int:
-        return len(self._attribute_map)
-
-    def add_array(
-        self,
-        array_schema: tiledb.ArraySchema,
-        array_name: Optional[str] = None,
-    ):
-        for attr in array_schema:
-            self.add_attr(attr.name, array_name)
-
-    def add_attr(self, attr_name: str, array_name: Optional[str] = None):
-        attr_key = (
-            attr_name[: -len(_CF_COORDINATE_SUFFIX)]
-            if attr_name.endswith(_CF_COORDINATE_SUFFIX)
-            else attr_name
-        )
-        if attr_key in self._attribute_map:
-            raise RuntimeError(
-                f"Failed to add attribute '{attr_key}'. Attribute already exitsts."
-            )
-        if array_name is None:
-            self._attribute_map[attr_key] = (attr_name, None)
-        else:
-            self._attribute_map[attr_key] = (attr_name, array_name)
-
-    def get_array(self, attr_key) -> str:
-        (_, array) = self._attribute_map[attr_key]
-        if array is None:
-            raise KeyError(
-                f"Failed to get array name. No array name stored for key {attr_key}."
-            )
-        return array
-
-
 class DataspaceGroupSchema:
     """Schema for a TileDB dataspce group.
 
