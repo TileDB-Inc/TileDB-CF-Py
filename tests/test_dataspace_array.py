@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import DataspaceArray
+from tiledb.cf import ArrayMetadata, AttributeMetadata, DataspaceArray
 
 _CF_COORDINATE_SUFFIX = ".axis_data"
 
@@ -31,6 +31,17 @@ class TestDataspaceArray:
                 "pressure" + _CF_COORDINATE_SUFFIX: self._pressure,
                 "temperature": self._temperature,
             }
+            array_meta = ArrayMetadata(array.meta)
+            array_meta["global_1"] = "value1"
+            array_meta["global_2"] = "value2"
+            pressure_meta = AttributeMetadata(
+                array.meta,
+                "pressure" + _CF_COORDINATE_SUFFIX,
+            )
+            pressure_meta["units"] = "psi"
+            temperature_meta = AttributeMetadata(array.meta, "temperature")
+            temperature_meta["units"] = "degrees celsius"
+
         return uri
 
     def test_read_array_cf_coordinate(self, array_uri):
@@ -42,3 +53,8 @@ class TestDataspaceArray:
         with DataspaceArray(array_uri) as array:
             temperature = array.base[:]["temperature"]
         assert np.array_equal(temperature, self._temperature)
+
+    def test_load_array_metadata(self, array_uri):
+        with DataspaceArray(array_uri) as array:
+            meta = array.load_metadata()
+        assert meta == {"global_1": "value1", "global_2": "value2"}

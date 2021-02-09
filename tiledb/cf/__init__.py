@@ -100,6 +100,19 @@ class DataspaceArray:
     def close(self):
         self._array.close()
 
+    def load_attribute_metadata(self) -> Dict[str, Dict[str, Any]]:
+        return (
+            {self._attr: dict(AttributeMetadata(self._array.meta, self._attr).items())}
+            if self._attr is not None
+            else {
+                attr_key: dict(AttributeMetadata(self._array.meta, attr_key).items())
+                for attr_key in self._schema.attr_names
+            }
+        )
+
+    def load_metadata(self) -> Dict[str, Any]:
+        return dict(ArrayMetadata(self._array.meta).items())
+
     @property
     def meta(self) -> ArrayMetadata:
         return ArrayMetadata(self._array.meta)
