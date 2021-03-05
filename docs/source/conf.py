@@ -9,7 +9,7 @@ source_suffix = [".rst", ".md"]
 master_doc = "index"
 
 project = "TileDB-CF-Py"
-copyright = "2020, TileDB, Inc"
+copyright = "2021, TileDB, Inc"
 author = "TileDB, Inc"
 release = "0.1.0"
 version = "0.1.0"
