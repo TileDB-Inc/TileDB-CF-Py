@@ -6,7 +6,7 @@ Hi! Thank you for your interest in contributing to TileDB-CF-Py. The following n
 
 * Reporting a bug?  Please read [how to file a bug report](#reporting-a-bug) section to make sure sufficient information is included.
 
-* Contributing code? You rock! Be sure to [review the contributor section](#contributing-code) for helpful tips on the tools we use to build TileDB-CF-Py, format code, and issue pull requests (PR)'s.
+* Contributing code? You rock! Be sure to [review the contributor section](#contributing-code) for helpful tips on the tools we use to build this project, format code, and issue pull requests (PR)'s.
 
 Note: All participants in TileDB spaces are expected to adhere to a high standard of profectionalism in all interactions. See the [code of conduct](CODE_OF_CONDUCT.md) for more information.
 
@@ -30,33 +30,43 @@ A useful bug report filed as a GitHub issue provides information about how to re
 
 ### Quickstart Workflow
 
-[From a fork of TileDB](https://help.github.com/articles/fork-a-repo/)
+[From a fork of TileDB-CF-Py](https://help.github.com/articles/fork-a-repo/)
 
 ```bash
 git clone https://github.com/username/TileDB-CF-Py
-poetry install # creates virtual environment & installs TileDB-CF-Py
+pip install -e '.[parallel]'
 git checkout -b <my_initials>/<my_bugfix/feature_branch>
 # ... code changes ...
-poetry run tox # run all test suites with tox
+./tools/lint.sh # run linters
+tox # run all test suites with tox
 git commit -a -m "descriptive commit message"
 git push --set-upstream origin <my_initials>/<my_bugfix_branch>
 ```
 
-[Issue a PR from your updated TileDB fork](https://help.github.com/articles/creating-a-pull-request-from-a-fork/)
+[Issue a PR from your updated TileDB-CF-Py fork](https://help.github.com/articles/creating-a-pull-request-from-a-fork/)
 
 Branch conventions:
 
 * `dev` is the development branch of TileDB-CF-Py, all PR's are merged into `dev`.
-* `main` tracks the latest stable / released version of TileDB-CF-Py.
-* `release-x.y.z` are major / bugfix release branches of TileDB-CF-Py.
+* `main` tracks the latest stable / released version.
+* `release-x.y.z` are major / bugfix release branches.
 
 ### Building Locally for Development
 
-This project uses [poetry](https://python-poetry.org/) for its build system and package management.
+This project uses setuptools for its build system, and can be built locally using pip. It is recommended you set-up a Python virtual environment with your preferred method before installing. Once the virtual environment is activated, install `tiledb.cf` as 'editable' using pip:
 
-To install `tiledb.cf` library, all required dependencies, and all development tools, run `poetry install`. To install only the `tiledb.cf` library and required dependencies run `poetry install --no-dev`. Poetry will create a local virtual environment and install python packages to the local virtual environment. Once installed, the dependencies can be updated by running `poetry update`.
+```bash
+pip install -e .
+```
 
-To run software in the local environment poetry creates, you can run python or tools with poetry (e.g. `poetry run python`, `poetry run black`), by using the poetry shell (`poetry shell`), or by manually activating the virtual environment. Information about the virtual environment can be viewed with the `poetry env info` command.
+The following tools are used for testing, linting, and formatting. You may want to install them either in the local virtual environment or as command line tools for you system:
+
+* black
+* flake8
+* mypy
+* pytest (with pytest-cov)
+* tox
+
 
 ### Formatting, Style, and Linting
 
@@ -64,28 +74,22 @@ To run software in the local environment poetry creates, you can run python or t
 * class names use `CamelCase`
 * member functions, variables use `snake_case`
 * private module or class member use a leading underscore `_local_variable`
-* comments are good, TileDB-CF-Py uses [sphinx](https://www.sphinx-doc.org/) with [napolean](https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html) for parsing Google-stype docstrings with type hints
+* comments are good, the project uses Google-style docstrings with type hints
 * format code using [black](https://pypi.org/project/black/) and [isort](https://pypi.org/project/isort/)
 * lint code using [flake8](https://pypi.org/project/flake8/) and [mypy](https://pypi.org/project/mypy/)
 
-This project uses a variety of static analysis tools for improved code quality. These tools are included in the development dependencies in the [pyproject.toml](pyproject.toml) file and will be installed in a local virtual environment when running `poetry install` or `poetry update`.
-
-It is highly recommended to run formatting and linting tools before every commit. This can be automated by activating the pre-commit hook `tools/hooks/pre-commit.sh`. This can be done by either creating a symlink or copying `tools/hooks/pre-commit.sh` to `.git/hooks/pre-commit` in the local directory. Note that the pre-commit hook may fail due to unstaged changes. You may wish to stash these changes before committing. This can be done as follows:
+It is highly recommended to run formatting and linting tools before every commit. This can be automated by activating the pre-commit hook `tools/hooks/pre-commit.sh`. To do this symlink or copy `tools/hooks/pre-commit.sh` to `.git/hooks/pre-commit` in the local directory. Note that the pre-commit hook may fail due to unstaged changes. You may wish to stash these changes before committing. This can be done as follows:
 
 ```bash
 git add <files-to-be-added>
 git stash --keep-index
-git commit 
+git commit
 git stash pop
 ```
 
 ### Testing
 
-The testing for this project uses pytest and tox. Currently, tox is set-up to test Python versions 3.7 and 3.8. This requires you to have `python3.7` and `python3.8` accessible to tox. Tests can be run through poetry in the local directory by running:
-
-```bash
-poetry run tox
-```
+The testing for this project uses pytest and tox. Currently, tox is set-up to test Python versions 3.7, 3.8, and 3.9. This requires you to have `python3.7`, `python3.8`, and `python3.9` accessible to tox. Tests can be run by executing `tox`.
 
 It is strongly recommended that you run the full tox test suite before submitting code for a pull request.
 
@@ -95,11 +99,11 @@ It is strongly recommended that you run the full tox test suite before submittin
 
 * Commit changes to a local branch.  The convention is to use your initials to identify branches.  Branch names should be identifiable and reflect the feature or bug that they want to address / fix. This helps in deleting old branches later.
 
-* Make sure the test suite passes by running `poetry run tox`.
+* Make sure the test suite passes by running `tox`.
 
 * When ready to submit a PR, `git rebase` the branch on top of the latest `dev` commit.  Be sure to squash / cleanup the commit history so that the PR preferably one, or a couple commits at most.  Each atomic commit in a PR should be able to pass the test suite.
 
-* Run the formatting (`poetry run isort`, `poetry run black`) and linting tools (`poetry run flake8`, `poetry run mypy`) before submitting a final PR. Make sure that your contribution generally follows the format and naming conventions used by surrounding code.
+* Run the formatting (`isort`, `black`) and linting tools (`flake8`, `mypy`) before submitting a final PR. Make sure that your contribution generally follows the format and naming conventions used by surrounding code.
 
 * Update the [HISTROY.md](HISTORY.md) with any changes/adds/removes to user-facing API or system behavior. Make sure to note any non-backward compatible changes as a breaking change.
 
@@ -107,32 +111,11 @@ It is strongly recommended that you run the full tox test suite before submittin
 
 * Make sure CI (continuous integration) is passing for your PR.
 
-### Documentation Pull Requests
-
-* TileDB-CF-Py uses [Sphinx](http://www.sphinx-doc.org/en/master/) as its documentation generator.
-
-* Documentation is written in [reStructuredText](http://docutils.sourceforge.net/rst.html) markup.
-
-Everything needed to build the documentation locally is included in the `pyproject.toml` developer dependencies, and installed locally using `poetry install` command. The local pythong environment created by poetry can be invoked by running `poetry shell`. For example, to clone TileDB-CF-Py from your local fork and build the docs execute the following commands:
-
-```bash
-git clone https://github.com/username/TileDB-CF-Py
-cd TileDB-CF-Py
-poetry install
-cd docs
-poetry shell
-make html
-```
-
-You can then open the `doc/source/_build/html/index.html` file in your browser.
-
 ### Resources
 
 * TileDB-CF-Py
   * [Issues](https://github.com/TileDB-Inc/TileDB-CF-Py/issues)
   * [Documentation](https://docs.tiledb.com/geospatial)
-  * API Documentation (TBD)
-  * TileDB-CF Standard (TBD)
 
 * TileDB
   * [Homepage](https://tiledb.com)

@@ -23,8 +23,8 @@ project_root=$(git rev-parse --show-toplevel)
 source_dir="${project_root}/tiledb"
 test_dir="${project_root}/tests"
 
-ask_run_tool "poetry run isort ${project_root}" "isort"
-ask_run_tool "poetry run black ${project_root}" "black"
-ask_run_tool "poetry run flake8 ${project_root}" "flake8"
-ask_run_tool "poetry run mypy ${source_dir} ${test_dir}" "mypy"
-ask_run_tool "poetry run pytest --cov-report term-missing --cov=${source_dir} ${test_dir}" "pytest"
+ask_run_tool "isort ${project_root}" "isort"
+ask_run_tool "black ${project_root}" "black"
+ask_run_tool "flake8 ${project_root}" "flake8"
+ask_run_tool "mypy ${source_dir} ${test_dir}" "mypy"
+ask_run_tool "pytest --cov-report term-missing --cov=${source_dir} ${test_dir}" "pytest"
