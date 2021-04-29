@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from tiledb.cf import Group, from_netcdf_file, from_netcdf_group
+from tiledb.cf import Group, from_netcdf, from_netcdf_group
 from tiledb.cf.engines.netcdf4_engine import NetCDF4ConverterEngine
 
 from . import NetCDF4TestCase
@@ -76,7 +76,7 @@ def test_from_netcdf(netcdf4_test_case, tmpdir):
     """Integration test for `from_netcdf_file` function call."""
     name, filename, test_case = netcdf4_test_case
     uri = str(tmpdir.mkdir("output").join(name))
-    from_netcdf_file(filename, uri)
+    from_netcdf(filename, uri)
     for attr_name, var_name in attr_to_var_map[name].items():
         with Group(uri, attr=attr_name) as group:
             nonempty_domain = group.array.nonempty_domain()
@@ -97,6 +97,25 @@ def test_from_netcdf_group(netcdf4_test_case, tmpdir):
     uri = str(tmpdir.mkdir("output").join(name))
     with netCDF4.Dataset(filename) as dataset:
         from_netcdf_group(dataset, uri)
+    for attr_name, var_name in attr_to_var_map[name].items():
+        with Group(uri, attr=attr_name) as group:
+            nonempty_domain = group.array.nonempty_domain()
+            result = group.array.multi_index[nonempty_domain]
+        assert np.array_equal(
+            result[attr_name], test_case.variable_data[var_name]
+        ), f"unexpected values for attribute '{attr_name}'"
+
+
+@pytest.mark.parametrize(
+    "netcdf4_test_case",
+    [simple_coord_1, simple_unlim_dim, scalar_variables],
+    indirect=True,
+)
+def test_from_netcdf_group2(netcdf4_test_case, tmpdir):
+    """Integration test for `from_netcdf_group` function call."""
+    name, filename, test_case = netcdf4_test_case
+    uri = str(tmpdir.mkdir("output").join(name))
+    from_netcdf_group(filename, uri)
     for attr_name, var_name in attr_to_var_map[name].items():
         with Group(uri, attr=attr_name) as group:
             nonempty_domain = group.array.nonempty_domain()
@@ -143,7 +162,7 @@ def test_group_metadata(tmpdir):
         dataset.setncattr("name", "Group metadata example")
         dataset.setncattr("array", [0.0, 1.0, 2.0])
     uri = str(tmpdir.mkdir("output").join("test_group_metadata"))
-    from_netcdf_file(filepath, uri)
+    from_netcdf(filepath, uri)
     with Group(uri) as group:
         assert group.meta["name"] == "Group metadata example"
         assert group.meta["array"] == (0.0, 1.0, 2.0)
@@ -159,7 +178,7 @@ def test_variable_metadata(tmpdir):
         variable.setncattr("array", [1, 2])
         variable.setncattr("singleton", [1.0])
     uri = str(tmpdir.mkdir("output").join("test_variable_metadata"))
-    from_netcdf_file(filepath, uri)
+    from_netcdf(filepath, uri)
     with Group(uri, attr="x1") as group:
         attr_meta = group.attr_metadata
         assert attr_meta is not None

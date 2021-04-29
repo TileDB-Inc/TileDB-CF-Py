@@ -9,4 +9,4 @@ from .core import (
     GroupSchema,
 )
 from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, axis_name
-from .engines import from_netcdf_file, from_netcdf_group
+from .engines import from_netcdf, from_netcdf_group
