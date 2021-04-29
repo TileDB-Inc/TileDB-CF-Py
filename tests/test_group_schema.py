@@ -1,3 +1,5 @@
+# Copyright 2021 TileDB Inc.
+# Licensed under the MIT License.
 from typing import Any, Dict
 
 import numpy as np
@@ -34,13 +36,13 @@ _array_schema_4 = tiledb.ArraySchema(
 _empty_group: Dict[str, Any] = {
     "array_schemas": None,
     "metadata_schema": None,
-    "attribute_map": {},
+    "attr_map": {},
     "num_schemas": 0,
 }
 _single_array_group: Dict[str, Any] = {
     "array_schemas": {"A1": _array_schema_1},
     "metadata_schema": _empty_array_schema,
-    "attribute_map": {"a": ("A1",), "b": ("A1",), "c": ("A1",)},
+    "attr_map": {"a": ("A1",), "b": ("A1",), "c": ("A1",)},
     "num_schemas": 1,
 }
 _multi_array_group: Dict[str, Any] = {
@@ -51,7 +53,7 @@ _multi_array_group: Dict[str, Any] = {
         "A4": _array_schema_4,
     },
     "metadata_schema": None,
-    "attribute_map": {
+    "attr_map": {
         "a": ("A1", "A2"),
         "b": ("A1", "A3", "A4"),
         "c": ("A1",),
@@ -69,20 +71,20 @@ class TestGroupSchema:
     def test_initialize_group_schema(self, scenario):
         array_schemas = scenario["array_schemas"]
         metadata_schema = scenario["metadata_schema"]
-        attribute_map = scenario["attribute_map"]
+        attr_map = scenario["attr_map"]
         group_schema = GroupSchema(array_schemas, metadata_schema)
         group_schema.check()
         assert group_schema == group_schema
         assert group_schema.metadata_schema == metadata_schema
         assert repr(group_schema) is not None
         assert len(group_schema) == scenario["num_schemas"]
-        for attr_name, arrays in attribute_map.items():
-            result = group_schema.get_all_attribute_arrays(attr_name)
+        for attr_name, arrays in attr_map.items():
+            result = group_schema.get_all_attr_arrays(attr_name)
             assert result == list(
                 arrays
             ), f"Get all arrays for attribute '{attr_name}' failed."
             if len(result) == 1:
-                assert result[0] == group_schema.get_attribute_array(attr_name)
+                assert result[0] == group_schema.get_attr_array(attr_name)
 
     def test_not_equal(self):
         schema1 = GroupSchema({"A1": _array_schema_1})
@@ -110,16 +112,16 @@ class TestGroupSchema:
         schema"""
         group_schema = GroupSchema({"dense": _array_schema_1})
         with pytest.raises(KeyError):
-            group_schema.get_attribute_array("missing")
+            group_schema.get_attr_array("missing")
 
     def test_multi_attr_array_error(self):
-        """Test a ValueError is raised when calling `get_attribute_array` for an
+        """Test a ValueError is raised when calling `get_attr_array` for an
         attribute that exists in multiple array schemas."""
         group_schema = GroupSchema(
             {"dense": _array_schema_1, "sparse": _array_schema_2}
         )
         with pytest.raises(ValueError):
-            group_schema.get_attribute_array("a")
+            group_schema.get_attr_array("a")
 
 
 class TestLoadEmptyGroup:
