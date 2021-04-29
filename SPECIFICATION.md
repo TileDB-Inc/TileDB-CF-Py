@@ -1,4 +1,4 @@
-# TileDB CF Specification
+# TileDB CF Dataspace Specification
 
 :information_source: **Notes:**
 
@@ -6,7 +6,7 @@
 
 ## Introduction
 
-[TileDB](https://github.com/TileDB-Inc/TileDB) is a powerful open-source engine for storing and accessing dense and sparse multi-dimensional arrays. The objective of this document is to define the TileDB _CF Dataspace_ specification: a specification for TileDB groups that is compatible with the [NetCDF](https://www.unidata.ucar.edu/software/netcdf/) data model using the [CF Metadata Conventions](http://cfconventions.org/latest.html).
+[TileDB](https://github.com/TileDB-Inc/TileDB) is a powerful open-source engine for storing and accessing dense and sparse multi-dimensional arrays. The objective of this document is to define the TileDB _CF Dataspace_ specification: a specification for TileDB groups that is compatible with the [NetCDF](https://www.unidata.ucar.edu/software/netcdf/) data model using the [CF Metadata Conventions](http://cfconventions.org).
 
 NetCDF and TileDB use over lapping terminology to refer to concepts in their respective data model. A complete description of the TileDB data model can be found at the [TileDB website](https://docs.tiledb.com/main/basic-concepts/data-model). A complete description of the NetCDF data model can be found at the [UCAR website](https://www.unidata.ucar.edu/software/netcdf/docs/netcdf_data_model.html).
 
