@@ -32,6 +32,35 @@ or from [PyPI](https://pypi.org/project/tiledb/) with ``pip``:
 
 ```bash
 pip install tiledb-cf
+
+```
+
+## Command Line Interface
+
+TileDB-CF provides a command line interface. Currently, it has the following commands:
+
+```bash
+Usage: tiledb-cf netcdf-convert [OPTIONS]
+
+  Converts a NetCDF input file to nested TileDB groups.
+
+Options:
+  -i, --input-file TEXT           The path or URI to the NetCDF file that will be converted.  [required]
+
+  -o, --output-uri TEXT           The URI for the output TileDB group. [required]
+
+  --input-group-path TEXT         The path in the input NetCDF for the root group that will be converted.  [default: /]
+
+  --recursive / --no-recursive    Recursively convert all groups contained in the input group path.  [default: True]
+
+  -k, --output-key TEXT           Key for the generated TileDB arrays.
+
+  --unlimited-dim-size INTEGER    Size to convert unlimited dimensions to. [default: 10000]
+
+  --dim-dtype [int8|int16|int32|int64|uint8|uint16|uint32|uint64]
+                                  The data type for TileDB dimensions created from converted NetCDF.  [default: uint64]
+
+  --help                          Show this message and exit.
 ```
 
 ## Development
