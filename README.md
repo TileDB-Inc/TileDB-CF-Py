@@ -2,18 +2,16 @@
 
 # TileDB-CF-Py
 
-The TileDB-CF-Py library is a Python library for supporting standardized storage of climate and forecast datasets in [TileDB](https://tiledb.com). TileDB-CF-Py provides readers, writers, and an in-memory data model for viewing and manipulating TileDB Arrays and Groups using the TileDB-CF Standard.
+The TileDB-CF-Py library is a Python library for supporting the NetCDF data model in the [TileDB storage engine](https://github.com/TileDB-Inc/TileDB). TileDB-CF-Py provides readers and writers for viewing and manipulating TileDB arrays and groups using TileDB CF Dataspaces - a special TileDB group that follows the requirements in [tiledb-cf-spec.md](tiledb-cf-spec.md).
 
-Intended use cases for this library include using the readers and writers for converting NetCDF datasets that follow the [CF Convention](http://cfconventions.org/latest.html) to TileDB and reading/writing TileDB datasets to [xarray](http://xarray.pydata.org/en/stable/).
+## Documentation
 
-## Quick Links
-
-* TileDB-CF-Py
-  * [Documentation](https://docs.tiledb.com/geospatial)
+  * Documentation (TBD)
   * API Documentation (TBD)
-  * TileDB-CF Standard (TBD)
+  * [TileDB CF Dataspace Specification](tiledb-cf-spec.md)
 
-* TileDB
+## TileDB Quick Links
+
   * [Homepage](https://tiledb.com)
   * [Documentation](https://docs.tiledb.com/main/)
   * [Forum](https://forum.tiledb.io/)
