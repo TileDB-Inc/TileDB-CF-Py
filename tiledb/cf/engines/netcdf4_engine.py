@@ -7,6 +7,7 @@ from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 from io import StringIO
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import netCDF4
@@ -210,7 +211,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     @classmethod
     def from_file(
         cls,
-        input_file: str,
+        input_file: Union[str, Path],
         group_path: str = "/",
         unlimited_dim_size: int = 10000,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
@@ -248,7 +249,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         unlimited_dim_size: int = 10000,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles: Dict[Tuple[str, ...], Tuple[int, ...]] = None,
-        default_input_file: Optional[str] = None,
+        default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a `class`:netCDF4.Group`.
@@ -302,7 +303,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dimensions: Dict[str, NetCDFDimensionConverter],
         variables: Dict[str, NetCDFVariableConverter],
         arrays: Dict[str, NetCDFArrayConverter],
-        default_input_file: Optional[str] = None,
+        default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
         self._dimensions = dimensions
@@ -389,7 +390,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
         netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[str] = None,
+        input_file: Optional[Union[str, Path]] = None,
         group_path: Optional[str] = None,
     ):
         """Creates a TileDB group and its arrays from the defined CF dataspace and
@@ -411,7 +412,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
         netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[str] = None,
+        input_file: Optional[Union[str, Path]] = None,
         group_path: Optional[str] = None,
     ):
         """Copies data from a NetCDF group to a TileDB CF dataspace.
@@ -538,7 +539,7 @@ def copy_metadata_item(meta, netcdf_item, key):
 @contextmanager
 def open_netcdf_group(
     group: Optional[Union[netCDF4.Dataset, netCDF4.Group]] = None,
-    input_file: Optional[str] = None,
+    input_file: Optional[Union[str, Path]] = None,
     group_path: Optional[str] = None,
 ):
     """Context manager for opening a NetCDF group.

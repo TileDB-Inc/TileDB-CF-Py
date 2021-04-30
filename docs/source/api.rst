@@ -21,7 +21,7 @@ All external class and functions in the TileDB-CF library are available in this 
 NetCDF Auto-convert Functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. autofunction:: tiledb.cf.from_netcdf_file
+.. autofunction:: tiledb.cf.from_netcdf
    :noindex:
 
 .. autofunction:: tiledb.cf.from_netcdf_group
