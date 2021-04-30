@@ -21,7 +21,8 @@ def simple1_netcdf_file(tmpdir_factory):
     filepath = str(tmpdir_factory.mktemp("sample_netcdf").join("simple1.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         dataset.createDimension("row", 8)
-        dataset.createVariable("x1", np.float64, ("row",))
+        x1 = dataset.createVariable("x1", np.float64, ("row",))
+        x1[:] = np.linspace(1.0, 4.0, 8)
     return filepath
 
 
@@ -30,8 +31,10 @@ def simple2_netcdf_file(tmpdir_factory):
     filepath = str(tmpdir_factory.mktemp("sample_netcdf").join("simple1.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         dataset.createDimension("row", 8)
-        dataset.createVariable("x1", np.float64, ("row",))
-        dataset.createVariable("x2", np.float64, ("row",))
+        x1 = dataset.createVariable("x1", np.float64, ("row",))
+        x1[:] = np.linspace(0.0, 1.0, 8)
+        x2 = dataset.createVariable("x2", np.float64, ("row",))
+        x2[:] = np.linspace(0.0, 1.0, 8) ** 2
     return filepath
 
 
