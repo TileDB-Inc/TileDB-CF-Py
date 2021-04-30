@@ -15,11 +15,11 @@ def from_netcdf(
     output_uri: str,
     input_group_path: str = "/",
     recursive: bool = True,
-    output_key: Optional[Union[Dict[str, str], str]] = None,
+    output_key: Optional[Union[str, Dict[str, str]]] = None,
     output_ctx: Optional[tiledb.Ctx] = None,
     unlimited_dim_size: int = 10000,
     dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-    tiles: Dict[Tuple[str, ...], Tuple[int, ...]] = None,
+    tiles: Dict[str, Dict[Tuple[str, ...], Tuple[int, ...]]] = None,
 ):
     """Converts a NetCDF input file to nested TileDB CF dataspaces.
 
@@ -31,6 +31,8 @@ def from_netcdf(
         output_uri: Uniform resource identifier for the TileDB group to be created.
         input_group_path: The path to the NetCDF group to copy data from. Use ``'/'``
             for the root group.
+        recursive: If ``True``, recursively convert groups in a NetCDF file. Otherwise,
+            only convert group provided.
         output_key: If not ``None``, encryption key, or dictionary of encryption keys,
             to decrypt arrays.
         output_ctx: If not ``None``, TileDB context wrapper for a TileDB storage
@@ -39,8 +41,9 @@ def from_netcdf(
         unlimited_dim_size: The size of the domain for TileDB dimensions created
             from unlimited NetCDF dimensions.
         dim_dtype: The numpy dtype for TileDB dimensions.
-        tiles: A map from the name of NetCDF dimensions defining a variable to the
-            tiles of those dimensions in the generated NetCDF array.
+        tiles: A map from the NetCDF group name to a map from the name of NetCDF
+            dimensions defining a variable to the tiles of those dimensions in the
+            generated NetCDF array.
     """
     from .netcdf4_engine import NetCDF4ConverterEngine, open_netcdf_group
 
@@ -54,7 +57,7 @@ def from_netcdf(
             dim_dtype,
             tiles.get(group.path) if tiles is not None else None,
         )
-        converter.convert(group_uri, output_key, output_ctx, netcdf_group=dataset)
+        converter.convert(group_uri, output_key, output_ctx, netcdf_group=group)
         if recursive:
             for subgroup in group.groups.values():
                 recursive_convert_group(subgroup)
