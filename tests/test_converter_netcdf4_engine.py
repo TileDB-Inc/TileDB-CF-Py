@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+import tiledb
 from tiledb.cf import Group, from_netcdf, from_netcdf_group
 from tiledb.cf.engines.netcdf4_engine import NetCDF4ConverterEngine
 
@@ -185,6 +186,34 @@ def test_variable_metadata(tmpdir):
         assert attr_meta["fullname"] == "Example variable"
         assert attr_meta["array"] == (1, 2)
         assert attr_meta["singleton"] == 1.0
+
+
+def test_nested_groups(tmpdir, group1_netcdf_file):
+    root_uri = str(tmpdir.mkdir("output").join("test_example_group1"))
+    from_netcdf(group1_netcdf_file, root_uri)
+    x = np.linspace(-1.0, 1.0, 8)
+    y = np.linspace(-1.0, 1.0, 4)
+    # Test root
+    with Group(root_uri, attr="x1") as group:
+        x1 = group.array[:]
+    assert np.array_equal(x1, x)
+    # Test group 1
+    with Group(root_uri + "/group1", attr="x2") as group:
+        x2 = group.array[:]
+    assert np.array_equal(x2, 2.0 * x)
+    # Test group 2
+    with Group(root_uri + "/group1/group2", attr="y1") as group:
+        y1 = group.array[:]
+    assert np.array_equal(y1, y)
+    # Test group 3
+    with tiledb.open(root_uri + "/group3/array0") as array:
+        array0 = array[:, :]
+        A1 = array0["A1"]
+        A2 = array0["A2"]
+        A3 = array0["A3"]
+    assert np.array_equal(A1, np.outer(y, y))
+    assert np.array_equal(A2, np.zeros((4, 4), dtype=np.float64))
+    assert np.array_equal(A3, np.identity(4, dtype=np.int32))
 
 
 def test_not_implemented(empty_netcdf_file):
