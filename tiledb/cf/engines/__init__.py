@@ -1,5 +1,6 @@
 # Copyright 2021 TileDB Inc.
 # Licensed under the MIT License.
+from pathlib import Path
 from typing import Dict, Optional, Tuple, Union
 
 import numpy as np
@@ -10,7 +11,7 @@ _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 
 
 def from_netcdf(
-    input_file: str,
+    input_file: Union[str, Path],
     output_uri: str,
     input_group_path: str = "/",
     recursive: bool = True,
@@ -82,8 +83,8 @@ def from_netcdf_group(
     information on the backend converter engine used for the conversion.
 
     Parameters:
-        netcdf_input (Union[str, netCDF4.Dataset, netCDF4.Group]): Either the NetCDF
-            group to convert or the filepath (as a string) to the NetCDF group.
+        netcdf_input (Union[str, Path, netCDF4.Dataset, netCDF4.Group]): Either the
+            NetCDF group to convert or the filepath (as a string) to the NetCDF group.
         output_uri: Uniform resource identifier for the TileDB group to be created.
         input_group_path: The path to the NetCDF group to copy data from. Use ``'/'``
             for the root group. This is only used if ``netcdf_input`` is a filepath.
@@ -99,7 +100,7 @@ def from_netcdf_group(
     """
     from .netcdf4_engine import NetCDF4ConverterEngine
 
-    if isinstance(netcdf_input, str):
+    if isinstance(netcdf_input, (str, Path)):
         converter = NetCDF4ConverterEngine.from_file(
             netcdf_input,
             input_group_path,
