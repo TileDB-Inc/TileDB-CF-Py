@@ -19,7 +19,7 @@ from ..core import Group
 from ..creator import DataspaceCreator
 
 _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
-COORDINATE_SUFFIX = ".axis_data"
+COORDINATE_SUFFIX = ".data"
 
 
 @dataclass

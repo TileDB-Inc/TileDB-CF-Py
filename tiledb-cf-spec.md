@@ -35,23 +35,26 @@ A TileDB CF dataspace is a TileDB group with arrays, attributes, and dimensions 
 
 ### Terminology
 
+* **Dataspace name**: The name of an attribute or dimension stripped of an optional suffix of `.index` or `.data`.
 * **Index dimension**: A TileDB dimension with an integer data type and domain with `0` as its lower bound.
 * **Data dimension**: Any TileDB dimension that is not an index dimension.
-* **Dataspace name**: The name of an attribute or dimension stripped of an optional suffix of `.index` or `.data`.
+* **Collection of dimensions**: A set of TileDB dimensions with the same name, data type, and domain.
 
 ### CF Dataspace
+
+A CF Dataspace is a TileDB group that follows certain requirements in order to provide additional relational context to dimensions and attributes using naming conventions. In a CF Dataspace, attributes within the entire group are unique; an index dimension that shares that same dataspace name as an attribute is an indexer for that attribute; and a data dimension that shares the same name as an attribute is a reference to the same data.
 
 #### Requirements for Attributes and Dimensions
 
 1. All attributes and dimension must be named (there must not be any anonymous attributes or dimensions).
-2. All dimensions that share a name must have the same domain and data type.
-3. All attributes must have a unique dataspace name.
-4. If an attribute and data dimension share the same dataspace name, they must share the same full name and data type.
+2. All dimensions that share a name must belong to the same collection (they must have the same domain and data type), and for any given dataspace name there may be at most one collection of index dimensions and one collection of data dimensions with that dataspace name.
+4. All attributes must have a unique dataspace name.
+5. If an attribute and data dimension share the same dataspace name, they must share the same full name, data type, and variability. The attribute must have only 1 cell.
 
 #### Requirements for Metadata
 
 1. Group metadata is stored in a special metadata array named `__tiledb_group` inside the TileDB group.
-2. Attribute metadata is stored in the array the attribute is in using the prefix `__tiledb_attr.{attr_name}.` for the attribute key where `{attr_name}` is the full name of the attribute.
+2. Attribute metadata is stored in the same array the attribute is stored in. The metadata key must use the prefix `__tiledb_attr.{attr_name}.` where `{attr_name}` is the full name of the attribute.
 3. If the metadata key `_FillValue` exists for an attribute; it must have the same value as the fill value for the attribute.
 
 ### Indexable CF Dataspace
@@ -95,6 +98,6 @@ This is a suggestion on how to convert a collection of indexable TileDB CF datas
 
 The TileDB CF Dataspace fully supports the classic NetCDF Data Model and most features in the NetCDF-4 data model. Some features and use cases do not directly transfer or may need to be modified before use in TileDB.
 
-* **Unlimited Dimensions**: TileDB can support unlimited dimensions by using fill values, sparse arrays, or nullable attributes. However, for dataset consisting of multiple attributes stored in multiple arrays, it may be difficult to determine the current size of the unlimited dimension.
 * **Coordinates**: In NetCDF, it is a common convention to name a one-dimensional variable with the same name as its dimension to signify it as a "coordinate" or independent variable other variables are defined on. In TileDB, a variable and dimension in the same array cannot have the same name. This is handled by using the `.index` and `.data` suffixes.
+* **Unlimited Dimensions**: TileDB can support unlimited dimensions by using fill values, sparse arrays, or nullable attributes. However, for dataset consisting of multiple attributes stored in multiple arrays, it may be cumbersome to determine the current "size" (maximum coordinate data has been added for) of the unlimited dimension. Storing attributes defined on the same dimensions in the same array helps partially mitigate this issue.
 * **Compound data types**: As of TileDB version 2.2, compound data types are not directly supported in TileDB. Compound data types can be broken into their constituent parts; however, this breaks storage locality (TileDB attributes are stored in a [columnar format](https://docs.tiledb.com/main/basic-concepts/data-format)). Variable, opaque, and string data types are supported.

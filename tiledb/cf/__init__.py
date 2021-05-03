@@ -13,7 +13,7 @@ from .core import (
     Group,
     GroupSchema,
 )
-from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, axis_name
+from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
 from .engines import from_netcdf, from_netcdf_group
 
 

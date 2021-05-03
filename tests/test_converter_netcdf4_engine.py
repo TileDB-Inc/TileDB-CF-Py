@@ -62,7 +62,7 @@ scalar_variables = NetCDF4TestCase(
 
 
 attr_to_var_map = {
-    "simple_coord_1": {"data": "data", "x": "x", "y": "y", "row.axis_data": "row"},
+    "simple_coord_1": {"data": "data", "x": "x", "y": "y", "row.data": "row"},
     "simple_unlim_dim": {"data": "data", "x": "x", "y": "y"},
     "scalar_variables": {"x": "x", "y": "y"},
 }
