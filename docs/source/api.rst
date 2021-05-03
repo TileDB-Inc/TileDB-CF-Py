@@ -39,14 +39,6 @@ DataspaceCreator
    :members:
    :noindex:
 
-ArrayCreator
-^^^^^^^^^^^^
-
-.. autoclass:: tiledb.cf.ArrayCreator
-   :members:
-   :noindex:
-
-
 Converter Classes
 -----------------
 
