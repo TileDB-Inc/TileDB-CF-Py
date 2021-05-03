@@ -49,7 +49,7 @@ A CF Dataspace is a TileDB group that follows certain requirements in order to p
 1. All attributes and dimension must be named (there must not be any anonymous attributes or dimensions).
 2. All dimensions that share a name must belong to the same collection (they must have the same domain and data type), and for any given dataspace name there may be at most one collection of index dimensions and one collection of data dimensions with that dataspace name.
 4. All attributes must have a unique dataspace name.
-5. If an attribute and data dimension share the same dataspace name, they must share the same full name and data type.
+5. If an attribute and data dimension share the same dataspace name, they must share the same full name, data type, and variability. The attribute must have only 1 cell.
 
 #### Requirements for Metadata
 
