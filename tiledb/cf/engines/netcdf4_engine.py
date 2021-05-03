@@ -206,7 +206,7 @@ class NetCDFArrayConverter:
 
 @dataclass
 class NetCDF4ConverterEngine(DataspaceCreator):
-    """Converter for NetCDF to TileDB using """
+    """Converter for NetCDF to TileDB using netCDF4."""
 
     @classmethod
     def from_file(
@@ -252,7 +252,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
-        """Returns a :class:`NetCDF4ConverterEngine` from a `class`:netCDF4.Group`.
+        """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
 
         Parameters:
             group: The NetCDF group to convert.
@@ -417,12 +417,12 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     ):
         """Copies data from a NetCDF group to a TileDB CF dataspace.
 
-        If not NetCDF group, input_file, or group_path is specified, this will copy the
-        from the default NetCDF file and group. These values are automatically set when
-        creating a :class:`NetCDF4ConverterEngine` using the ``from_file`` class method.
-
-        If both ``netcdf_group`` and ``input_file`` are set, this method will prioritize
-        using the NetCDF group set by ``netcdf_group``.
+        This will copy data from a NetCDF group that is defined either by a
+        :class:`netCDF4.Group` or by an input_file and group path. If neither the
+        ``netcdf_group`` or ``input_file`` is specified, this will copy data from the
+        input file ``self.default_input_file``.  If both ``netcdf_group`` and
+        ``input_file`` are set, this method will prioritize using the NetCDF group set
+        by ``netcdf_group``.
 
         Parameters:
             group_uri: Uniform resource identifier for the TileDB group data is being

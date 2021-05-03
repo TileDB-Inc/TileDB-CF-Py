@@ -28,7 +28,7 @@ def from_netcdf(
 
     Parameters:
         input_file: The input NetCDF file to generate the converter engine from.
-        output_uri: Uniform resource identifier for the TileDB group to be created.
+        output_uri: The uniform resource identifier for the TileDB group to be created.
         input_group_path: The path to the NetCDF group to copy data from. Use ``'/'``
             for the root group.
         recursive: If ``True``, recursively convert groups in a NetCDF file. Otherwise,
@@ -37,11 +37,13 @@ def from_netcdf(
             to decrypt arrays.
         output_ctx: If not ``None``, TileDB context wrapper for a TileDB storage
             manager.
-               dim_dtype: The numpy dtype for TileDB dimensions.
+        dim_dtype: The numpy dtype for the TileDB dimensions created from NetCDF
+            dimensions.
         unlimited_dim_size: The size of the domain for TileDB dimensions created
             from unlimited NetCDF dimensions.
         dim_dtype: The numpy dtype for TileDB dimensions.
         tiles: A map from the NetCDF group name to a map from the name of NetCDF
+
             dimensions defining a variable to the tiles of those dimensions in the
             generated NetCDF array.
     """

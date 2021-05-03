@@ -291,6 +291,9 @@ class DataspaceCreator:
             dim_name: Name of the new dimension to be created.
             domain: The (inclusive) interval on which the dimension is valid.
             dtype: The numpy dtype of the values and domain of the dimension.
+
+        Raises:
+            ValueError: Cannot create a new dimension with the provided ``dim_name``.
         """
         shared_dim: SharedDim = SharedDim(dim_name, domain, np.dtype(dtype))
         try:
@@ -337,7 +340,7 @@ class DataspaceCreator:
         return self._dims.keys()
 
     def remove_array(self, array_name: str):
-        """Removes the specified array from the CF dataspace.
+        """Removes the specified array and all its attributes from the CF dataspace.
 
         Parameters:
             array_name: Name of the array that will be removed.
@@ -395,6 +398,9 @@ class DataspaceCreator:
         Parameters:
             original_name: Current name of the array to be renamed.
             new_name: New name the array will be renamed to.
+
+        Raises:
+            ValueError: Cannot rename an array to the provided name ``new_name``.
         """
         try:
             self._check_new_array_name(new_name)
@@ -415,6 +421,9 @@ class DataspaceCreator:
         Parameters:
             original_name: Current name of the attribute to be renamed.
             new_name: New name the attribute will be renamed to.
+
+        Raises:
+            ValueError: Cannot rename the attribute to provided name ``attr_name``.
         """
         try:
             self._check_new_attr_name(new_name)
@@ -434,6 +443,9 @@ class DataspaceCreator:
         Parameters:
             original_name: Current name of the dimension to be renamed.
             new_name: New name the dimension will be renamed to.
+
+        Raises:
+            ValueError: Cannot rename the dimension to the provided name ``new_name``.
         """
         try:
             dim = self._dims[original_name]
