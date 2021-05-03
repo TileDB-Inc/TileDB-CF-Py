@@ -11,9 +11,9 @@ class TestDataspaceCreatorExample1:
     @pytest.fixture
     def dataspace_creator(self):
         creator = DataspaceCreator()
-        creator.add_dim("pressure.axis_index", (0, 3), np.uint64)
+        creator.add_dim("pressure.index", (0, 3), np.uint64)
         creator.add_dim("temperature", (1, 8), np.uint64)
-        creator.add_array("A1", ("pressure.axis_index",))
+        creator.add_array("A1", ("pressure.index",))
         filters = tiledb.FilterList(
             [
                 tiledb.ZstdFilter(level=1),
@@ -21,7 +21,7 @@ class TestDataspaceCreatorExample1:
         )
         creator.add_array(
             "A2",
-            ("pressure.axis_index", "temperature"),
+            ("pressure.index", "temperature"),
             sparse=True,
             dim_filters={"temperature": filters},
         )
@@ -29,7 +29,7 @@ class TestDataspaceCreatorExample1:
         creator.set_array_properties("A1", tiles=(2,))
         creator.set_array_properties("A2", tiles=(2, 4))
         creator.set_array_properties("A3", tiles=[8])
-        creator.add_attr("pressure.axis_data", "A1", np.float64)
+        creator.add_attr("pressure.data", "A1", np.float64)
         creator.add_attr("b", "A1", np.float64)
         creator.add_attr("c", "A1", np.uint64)
         creator.add_attr("d", "A2", np.uint64)
@@ -44,7 +44,7 @@ class TestDataspaceCreatorExample1:
 
     def test_attr_names(self, dataspace_creator):
         assert set(dataspace_creator.attr_names) == {
-            "pressure.axis_data",
+            "pressure.data",
             "b",
             "c",
             "d",
@@ -53,7 +53,7 @@ class TestDataspaceCreatorExample1:
 
     def test_dim_names(self, dataspace_creator):
         assert set(dataspace_creator.dim_names) == {
-            "pressure.axis_index",
+            "pressure.index",
             "temperature",
         }
 
@@ -64,11 +64,11 @@ class TestDataspaceCreatorExample1:
         assert group_schema["A1"] == tiledb.ArraySchema(
             domain=tiledb.Domain(
                 tiledb.Dim(
-                    name="pressure.axis_index", domain=(0, 3), tile=2, dtype=np.uint64
+                    name="pressure.index", domain=(0, 3), tile=2, dtype=np.uint64
                 )
             ),
             attrs=[
-                tiledb.Attr(name="pressure.axis_data", dtype=np.float64),
+                tiledb.Attr(name="pressure.data", dtype=np.float64),
                 tiledb.Attr(name="b", dtype=np.float64),
                 tiledb.Attr(name="c", dtype=np.uint64),
             ],
@@ -76,7 +76,7 @@ class TestDataspaceCreatorExample1:
         assert group_schema["A2"] == tiledb.ArraySchema(
             domain=tiledb.Domain(
                 tiledb.Dim(
-                    name="pressure.axis_index", domain=(0, 3), tile=2, dtype=np.uint64
+                    name="pressure.index", domain=(0, 3), tile=2, dtype=np.uint64
                 ),
                 tiledb.Dim(
                     name="temperature",
@@ -184,12 +184,12 @@ def test_add_attr_axis_data_coord_exists_error():
     creator.add_array("array2", list())
     creator.add_attr("attr1", "array1", np.float64)
     with pytest.raises(ValueError):
-        creator.add_attr("attr1.axis_data", "array2", np.float64)
+        creator.add_attr("attr1.data", "array2", np.float64)
 
 
 def test_add_attr_index_axis_coord_exists_error():
     creator = DataspaceCreator()
-    creator.add_dim("coord.axis_index", (1, 4), np.uint64)
+    creator.add_dim("coord.index", (1, 4), np.uint64)
     creator.add_dim("row", (0, 3), np.int64)
     creator.add_array(
         "array1",
@@ -198,7 +198,7 @@ def test_add_attr_index_axis_coord_exists_error():
         ],
     )
     with pytest.raises(NotImplementedError):
-        creator.add_attr("coord.axis_data", "array1", np.float64)
+        creator.add_attr("coord.data", "array1", np.float64)
 
 
 def test_add_dim_name_exists_error():
@@ -212,7 +212,7 @@ def test_add_dim_index_dataspace_name_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (0, 3), np.uint64)
     with pytest.raises(ValueError):
-        creator.add_dim("row.axis_index", (0, 7), np.uint64)
+        creator.add_dim("row.index", (0, 7), np.uint64)
 
 
 def test_add_dim_attr_coord_name_exists_error():
@@ -231,7 +231,7 @@ def test_add_dim_attr_coord_name_exists_error():
 
 def test_add_dim_coord_axis_index_name_exists_error():
     creator = DataspaceCreator()
-    creator.add_dim("pressure.axis_index", (1, 4), np.uint64)
+    creator.add_dim("pressure.index", (1, 4), np.uint64)
     with pytest.raises(ValueError):
         creator.add_dim("pressure", (0.0, 100.0), np.float64)
 
@@ -240,9 +240,9 @@ def test_add_dim_coord_axis_data_name_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (0, 3), np.int64)
     creator.add_array("array1", ["row"])
-    creator.add_attr("coord.axis_index", "array1", np.float64)
+    creator.add_attr("coord.index", "array1", np.float64)
     with pytest.raises(NotImplementedError):
-        creator.add_dim("coord.axis_data", (1, 4), np.uint64)
+        creator.add_dim("coord.data", (1, 4), np.uint64)
 
 
 def test_remove_empty_array():
@@ -309,19 +309,19 @@ def test_remove_dim():
 
 def test_remove_dim_axis_data():
     creator = DataspaceCreator()
-    creator.add_dim("row.axis_data", [0.0, 100.0], np.float64)
-    assert set(creator.dim_names) == {"row.axis_data"}
-    creator.remove_dim("row.axis_data")
+    creator.add_dim("row.data", [0.0, 100.0], np.float64)
+    assert set(creator.dim_names) == {"row.data"}
+    creator.remove_dim("row.data")
     assert set(creator.dim_names) == set()
 
 
 def test_remove_dim_in_use_error():
     creator = DataspaceCreator()
-    creator.add_dim("row.axis_data", [0.0, 100.0], np.float64)
-    creator.add_array("A1", ["row.axis_data"], sparse=True)
-    creator.add_array("A2", ["row.axis_data"], sparse=True)
+    creator.add_dim("row.data", [0.0, 100.0], np.float64)
+    creator.add_array("A1", ["row.data"], sparse=True)
+    creator.add_array("A2", ["row.data"], sparse=True)
     with pytest.raises(ValueError):
-        creator.remove_dim("row.axis_data")
+        creator.remove_dim("row.data")
 
 
 def test_rename_array():

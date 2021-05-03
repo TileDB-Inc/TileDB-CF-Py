@@ -28,19 +28,20 @@ import tiledb
 from .core import METADATA_ARRAY_NAME, Group, GroupSchema
 
 DType = TypeVar("DType", covariant=True)
-DATA_SUFFIX = ".axis_data"
-INDEX_SUFFIX = ".axis_index"
+DATA_SUFFIX = ".data"
+INDEX_SUFFIX = ".index"
 
 
 def dataspace_name(full_name: str):
-    """Returns axis name for from full dimension or attribute name.
+    """Returns dataspace name for from full dimension or attribute name.
 
     Parameters:
         full_name: The full name of the dimension or attribute as it will be written in
             TileDB.
 
     Returns:
-        The name of the axis as it would be written in the NetCDF data model.
+        The name of the dimension or attribute as it would be written in the NetCDF data
+        model.
     """
     if full_name.endswith(DATA_SUFFIX):
         return full_name[: -len(DATA_SUFFIX)]
@@ -238,8 +239,8 @@ class DataspaceCreator:
 
         Each attribute name must be unique. It also cannot conflict with the name of a
         dimension in the array it is being added to, and the attribute's
-        'dataspace name' (name after dropping the suffix ``.axis_data`` or
-        ``.axis_index``) cannot conflict with the axis name of an existing attribute.
+        'dataspace name' (name after dropping the suffix ``.data`` or ``.index``) cannot
+        conflict with the dataspace name of an existing attribute.
 
         Parameters:
             attr_name: Name of the new attribute that will be added.
@@ -978,7 +979,7 @@ class SharedDim(Generic[DType]):
 
     @classmethod
     def from_tiledb_dim(cls, dim: tiledb.Dim):
-        """Converts a tiledb.Dim to a SharedDim
+        """Converts a tiledb.Dim to a :class:`SharedDim`
 
         Parameters:
             dim: TileDB dimension that will be used to create the shared
@@ -997,10 +998,19 @@ class SharedDim(Generic[DType]):
 
     @property
     def is_data_dim(self) -> bool:
-        """Returns if the currend SharedDimension is a 'data axis'
+        """Returns if the :class:`SharedDim` is a 'data dimension'
 
-        A data axis is a dimension that is not an integer type or starts at a value
+        A data dimension is a dimension that is not an integer type or starts at a value
         other than zero. This is compared to an 'index axis' that is a simple integer
         index with default offset.
         """
-        return not (np.issubdtype(self.dtype, np.integer) and self.domain[0] == 0)
+        return not self.is_index_dim
+
+    @property
+    def is_index_dim(self) -> bool:
+        """Returns if the :class:`SharedDim` is a 'index dimension'
+
+        An index dimension is a dimension that is of an integer type and whose domain
+        starts at 0.
+        """
+        return np.issubdtype(self.dtype, np.integer) and self.domain[0] == 0
