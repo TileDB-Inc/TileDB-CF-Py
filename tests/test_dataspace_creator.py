@@ -57,8 +57,8 @@ class TestDataspaceCreatorExample1:
             "temperature",
         }
 
-    def test_data_axis_names(self, dataspace_creator):
-        assert set(dataspace_creator.data_axis_names) == {"temperature"}
+    def test_data_dim_names(self, dataspace_creator):
+        assert set(dataspace_creator.data_dim_names) == {"temperature"}
 
     def test_to_schema(self, dataspace_creator):
         group_schema = dataspace_creator.to_schema()
@@ -307,10 +307,10 @@ def test_remove_dim_axis_data():
     creator = DataspaceCreator()
     creator.add_dim("row.axis_data", [0.0, 100.0], np.float64)
     assert set(creator.dim_names) == {"row.axis_data"}
-    assert set(creator.data_axis_names) == {"row"}
+    assert set(creator.data_dim_names) == {"row"}
     creator.remove_dim("row.axis_data")
     assert set(creator.dim_names) == set()
-    assert set(creator.data_axis_names) == set()
+    assert set(creator.data_dim_names) == set()
 
 
 def test_remove_dim_in_use_error():
@@ -402,10 +402,10 @@ def test_rename_dim_dataspace_axis():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 3], np.float64)
     assert set(creator.dim_names) == {"row"}
-    assert set(creator.data_axis_names) == {"row"}
+    assert set(creator.data_dim_names) == {"row"}
     creator.rename_dim("row", "col")
     assert set(creator.dim_names) == {"col"}
-    assert set(creator.data_axis_names) == {"col"}
+    assert set(creator.data_dim_names) == {"col"}
 
 
 def test_rename_dim_used():

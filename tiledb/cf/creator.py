@@ -32,7 +32,7 @@ DATA_SUFFIX = ".axis_data"
 INDEX_SUFFIX = ".axis_index"
 
 
-def axis_name(full_name: str):
+def dataspace_name(full_name: str):
     """Returns axis name for from full dimension or attribute name.
 
     Parameters:
@@ -78,8 +78,8 @@ class DataspaceCreator:
         self._array_creators: Dict[str, ArrayCreator] = {}
         self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
         self._attr_to_array: Dict[str, str] = {}
-        self._attr_axis_names: Dict[str, str] = {}
-        self._data_axis_names: Dict[str, str] = {}
+        self._attr_dataspace_names: Dict[str, str] = {}
+        self._data_dim_names: Dict[str, str] = {}
 
     def __repr__(self):
         output = StringIO()
@@ -106,15 +106,15 @@ class DataspaceCreator:
     def _check_new_attr_name(self, attr_name: str):
         if attr_name in self._attr_to_array:
             raise ValueError(f"An attribute with name '{attr_name}' already exists.")
-        ds_name = axis_name(attr_name)
-        if ds_name in self._attr_axis_names:
+        ds_name = dataspace_name(attr_name)
+        if ds_name in self._attr_dataspace_names:
             raise ValueError(
-                f"An attribute named '{self._attr_axis_names[ds_name]}' with "
+                f"An attribute named '{self._attr_dataspace_names[ds_name]}' with "
                 f"dataspace name '{ds_name}' already exists."
             )
-        if ds_name in self._data_axis_names:
+        if ds_name in self._data_dim_names:
             raise ValueError(
-                f"A data axis named '{self._data_axis_names[ds_name]}' with "
+                f"A data axis named '{self._data_dim_names[ds_name]}' with "
                 f"dataspace name '{ds_name}' already exists."
             )
 
@@ -123,16 +123,16 @@ class DataspaceCreator:
             raise ValueError(
                 f"A different dimension with name '{dim.name}' already exists."
             )
-        if dim.is_data_axis:
-            ds_name = axis_name(dim.name)
-            if ds_name in self._attr_axis_names:
+        if dim.is_data_dim:
+            ds_name = dataspace_name(dim.name)
+            if ds_name in self._attr_dataspace_names:
                 raise ValueError(
-                    f"An attribute named '{self._attr_axis_names[ds_name]}' with "
+                    f"An attribute named '{self._attr_dataspace_names[ds_name]}' with "
                     f"dataspace name '{ds_name}' already exists."
                 )
-            if ds_name in self._data_axis_names:
+            if ds_name in self._data_dim_names:
                 raise ValueError(
-                    f"A data axis named '{self._data_axis_names[ds_name]}' "
+                    f"A data axis named '{self._data_dim_names[ds_name]}' "
                     f"with dataspace name '{ds_name}' already exists."
                 )
 
@@ -263,7 +263,7 @@ class DataspaceCreator:
             filters,
         )
         self._attr_to_array[attr_name] = array_name
-        self._attr_axis_names[axis_name(attr_name)] = attr_name
+        self._attr_dataspace_names[dataspace_name(attr_name)] = attr_name
 
     def add_dim(self, dim_name: str, domain: Tuple[Any, Any], dtype: np.dtype):
         """Adds a new dimension to the CF dataspace.
@@ -288,8 +288,8 @@ class DataspaceCreator:
                 f"Cannot add new dimension '{dim_name}'. {str(err)}"
             ) from err
         self._dims[dim_name] = shared_dim
-        if shared_dim.is_data_axis:
-            self._data_axis_names[axis_name(dim_name)] = dim_name
+        if shared_dim.is_data_dim:
+            self._data_dim_names[dataspace_name(dim_name)] = dim_name
 
     @property
     def array_names(self):
@@ -318,7 +318,7 @@ class DataspaceCreator:
         Group.create(group_uri, self.to_schema(ctx), key, ctx)
 
     @property
-    def data_axis_names(self):
+    def data_dim_names(self):
         """A view of the 'axis names' of dimensions in the dataspace that are data
         axes.
 
@@ -329,7 +329,7 @@ class DataspaceCreator:
         The axis name is the name of the dimension after dropping the optional suffixes
         `.data_axis` or `.data_index`.
         """
-        return self._data_axis_names.keys()
+        return self._data_dim_names.keys()
 
     @property
     def dim_names(self):
@@ -344,7 +344,7 @@ class DataspaceCreator:
         """
         array = self._array_creators[array_name]
         for attr_name in array.attr_names:
-            del self._attr_axis_names[axis_name(attr_name)]
+            del self._attr_dataspace_names[dataspace_name(attr_name)]
             del self._attr_to_array[attr_name]
         for dim_name in array.dim_names:
             self._dim_to_arrays[dim_name].remove(array_name)
@@ -365,7 +365,7 @@ class DataspaceCreator:
             ) from err
         array_creator = self._array_creators[array_name]
         array_creator.remove_attr(attr_name)
-        del self._attr_axis_names[axis_name(attr_name)]
+        del self._attr_dataspace_names[dataspace_name(attr_name)]
         del self._attr_to_array[attr_name]
 
     def remove_dim(self, dim_name: str):
@@ -384,8 +384,8 @@ class DataspaceCreator:
                 f"arrays: {array_list}."
             )
         dim = self._dims.pop(dim_name)
-        if dim.is_data_axis:
-            del self._data_axis_names[axis_name(dim.name)]
+        if dim.is_data_dim:
+            del self._data_dim_names[dataspace_name(dim.name)]
 
     def rename_array(self, original_name: str, new_name: str):
         """Renames an array in the CF dataspace.
@@ -423,8 +423,8 @@ class DataspaceCreator:
         array = self._array_creators[self._attr_to_array[original_name]]
         array.rename_attr(original_name, new_name)
         self._attr_to_array[new_name] = self._attr_to_array.pop(original_name)
-        del self._attr_axis_names[axis_name(original_name)]
-        self._attr_axis_names[axis_name(new_name)] = new_name
+        del self._attr_dataspace_names[dataspace_name(original_name)]
+        self._attr_dataspace_names[dataspace_name(new_name)] = new_name
 
     def rename_dim(self, original_name: str, new_name: str):
         """Renames a dimension in the CF dataspace.
@@ -454,9 +454,9 @@ class DataspaceCreator:
             )
         self._dims[new_name] = self._dims.pop(original_name)
         self._dims[new_name].name = new_name
-        if dim.is_data_axis:
-            del self._data_axis_names[axis_name(original_name)]
-            self._data_axis_names[axis_name(new_name)] = new_name
+        if dim.is_data_dim:
+            del self._data_dim_names[dataspace_name(original_name)]
+            self._data_dim_names[dataspace_name(new_name)] = new_name
 
     def set_array_properties(self, array_name: str, **properties):
         """Sets properties for an array in the CF dataspace.
@@ -992,7 +992,7 @@ class SharedDim(Generic[DType]):
         )
 
     @property
-    def is_data_axis(self) -> bool:
+    def is_data_dim(self) -> bool:
         """Returns if the currend SharedDimension is a 'data axis'
 
         A data axis is a dimension that is not an integer type or starts at a value
