@@ -318,20 +318,6 @@ class DataspaceCreator:
         Group.create(group_uri, self.to_schema(ctx), key, ctx)
 
     @property
-    def data_dim_names(self):
-        """A view of the 'axis names' of dimensions in the dataspace that are data
-        axes.
-
-        A data axis or data dimension is a dimension that is not an integer dimension or
-        is an integer dimension whose domain starts at a value other than 0. This is in
-        contrast to 'index dimensions', a dimension that is a simple index.
-
-        The axis name is the name of the dimension after dropping the optional suffixes
-        `.data_axis` or `.data_index`.
-        """
-        return self._data_dim_names.keys()
-
-    @property
     def dim_names(self):
         """A view of the names of dimensions in the CF dataspace."""
         return self._dims.keys()
