@@ -11,13 +11,12 @@ from typing import (
     Any,
     Collection,
     Dict,
-    Generic,
     List,
     Mapping,
+    MutableMapping,
     Optional,
     Sequence,
     Tuple,
-    TypeVar,
     Union,
 )
 
@@ -27,7 +26,7 @@ import tiledb
 
 from .core import METADATA_ARRAY_NAME, Group, GroupSchema
 
-DType = TypeVar("DType", covariant=True)
+DType = Union[int, float, str, None]
 DATA_SUFFIX = ".data"
 INDEX_SUFFIX = ".index"
 
@@ -75,7 +74,7 @@ class DataspaceCreator:
 
     def __init__(self):
         """Constructs a :class:`DataspaceCreator`."""
-        self._dims: Dict[str, SharedDim] = {}
+        self._dims: MutableMapping[str, SharedDim] = {}
         self._array_creators: Dict[str, ArrayCreator] = {}
         self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
         self._attr_to_array: Dict[str, str] = {}
@@ -863,7 +862,7 @@ class ArrayCreator:
 
 
 @dataclass
-class AttrCreator(Generic[DType]):
+class AttrCreator:
     """Creator for a TileDB attribute.
 
     Parameters:
@@ -922,7 +921,7 @@ class AttrCreator(Generic[DType]):
 
 
 @dataclass
-class DimCreator(Generic[DType]):
+class DimCreator:
     """Creator for a TileDB dimension using a SharedDim.
 
     Attributes:
@@ -931,7 +930,7 @@ class DimCreator(Generic[DType]):
         filters: Specifies compression filters for the dimension.
     """
 
-    base: SharedDim[DType]
+    base: SharedDim
     tile: Optional[Union[int, float]] = None
     filters: Optional[Union[tiledb.FilterList]] = None
 
@@ -976,7 +975,7 @@ class DimCreator(Generic[DType]):
 
 
 @dataclass
-class SharedDim(Generic[DType]):
+class SharedDim:
     """A class for a shared one-dimensional dimension.
 
     Parameters:

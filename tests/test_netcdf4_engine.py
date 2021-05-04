@@ -33,9 +33,9 @@ def test_dim_converter_simple(tmpdir_factory):
         assert converter.input_name == dim.name
         assert converter.input_size == dim.size
         assert not converter.is_unlimited
-        assert converter.output_name == dim.name
-        assert converter.output_domain == (0, dim.size - 1)
-        assert converter.output_dtype == np.uint64
+        assert converter.name == dim.name
+        assert converter.domain == (0, dim.size - 1)
+        assert converter.dtype == np.uint64
 
 
 @pytest.mark.skipif(not HAS_NETCDF4, reason="netCDF4 not found")
@@ -49,15 +49,15 @@ def test_dim_converter_unlim(tmpdir_factory):
         assert converter.input_name == dim.name
         assert converter.input_size == dim.size
         assert converter.is_unlimited
-        assert converter.output_name == dim.name
-        assert converter.output_domain == (0, max_size - 1)
-        assert converter.output_dtype == np.uint64
+        assert converter.name == dim.name
+        assert converter.domain == (0, max_size - 1)
+        assert converter.dtype == np.uint64
 
 
 def test_array_converter_tiles_from_chunks():
     dims = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
-        NetCDFDimensionConverter("col", 8, False, "col", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
+        NetCDFDimensionConverter("col", (0, 7), np.dtype("uint64"), "col", 8, False),
     )
     var = [
         NetCDFVariableConverter(
@@ -85,8 +85,8 @@ def test_array_converter_tiles_from_chunks():
 
 def test_array_converter_mixed_chunks():
     dims = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
-        NetCDFDimensionConverter("col", 8, False, "col", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
+        NetCDFDimensionConverter("col", (0, 7), np.dtype("uint64"), "col", 8, False),
     )
     var = [
         NetCDFVariableConverter(
@@ -114,8 +114,8 @@ def test_array_converter_mixed_chunks():
 
 def test_array_converter_mixed_chunks_with_none():
     dims = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
-        NetCDFDimensionConverter("col", 8, False, "col", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
+        NetCDFDimensionConverter("col", (0, 7), np.dtype("uint64"), "col", 8, False),
     )
     var = [
         NetCDFVariableConverter(
@@ -143,7 +143,7 @@ def test_array_converter_mixed_chunks_with_none():
 
 def test_array_converter_from_chunks_1D():
     dims = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
     )
     var = [
         NetCDFVariableConverter(
@@ -171,8 +171,8 @@ def test_array_converter_from_chunks_1D():
 
 def test_array_converter_hardset_no_tiles():
     dims = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
-        NetCDFDimensionConverter("col", 8, False, "col", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
+        NetCDFDimensionConverter("col", (0, 7), np.dtype("uint64"), "col", 8, False),
     )
     var = [
         NetCDFVariableConverter(
@@ -192,8 +192,8 @@ def test_array_converter_hardset_no_tiles():
 
 def test_rename_array():
     dim_converters = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
-        NetCDFDimensionConverter("col", 8, False, "col", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
+        NetCDFDimensionConverter("col", (0, 7), np.dtype("uint64"), "col", 8, False),
     )
     var_converters = [
         NetCDFVariableConverter(
@@ -217,7 +217,7 @@ def test_rename_array():
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
-        {dim.output_name: dim for dim in dim_converters},
+        {dim.name: dim for dim in dim_converters},
         {var.output_name: var for var in var_converters},
         array_converters,
     )
@@ -227,8 +227,8 @@ def test_rename_array():
 
 def test_rename_array_name_exists_error():
     dim_converters = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
-        NetCDFDimensionConverter("col", 8, False, "col", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
+        NetCDFDimensionConverter("col", (0, 7), np.dtype("uint64"), "col", 8, False),
     )
     var1 = NetCDFVariableConverter(
         "variable",
@@ -253,7 +253,7 @@ def test_rename_array_name_exists_error():
         "B1": NetCDFArrayConverter(dim_converters, [var2]),
     }
     converter = NetCDF4ConverterEngine(
-        {dim.output_name: dim for dim in dim_converters},
+        {dim.name: dim for dim in dim_converters},
         {"a1": var1, "a2": var2},
         array_converters,
     )
@@ -263,8 +263,8 @@ def test_rename_array_name_exists_error():
 
 def test_rename_attr():
     dim_converters = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
-        NetCDFDimensionConverter("col", 8, False, "col", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
+        NetCDFDimensionConverter("col", (0, 7), np.dtype("uint64"), "col", 8, False),
     )
     var_converters = [
         NetCDFVariableConverter(
@@ -288,7 +288,7 @@ def test_rename_attr():
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
-        {dim.output_name: dim for dim in dim_converters},
+        {dim.name: dim for dim in dim_converters},
         {var.output_name: var for var in var_converters},
         array_converters,
     )
@@ -298,8 +298,8 @@ def test_rename_attr():
 
 def test_rename_attr_name_exists_error():
     dim_converters = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
-        NetCDFDimensionConverter("col", 8, False, "col", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
+        NetCDFDimensionConverter("col", (0, 7), np.dtype("uint64"), "col", 8, False),
     )
     var_converters = [
         NetCDFVariableConverter(
@@ -323,7 +323,7 @@ def test_rename_attr_name_exists_error():
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
-        {dim.output_name: dim for dim in dim_converters},
+        {dim.name: dim for dim in dim_converters},
         {var.output_name: var for var in var_converters},
         array_converters,
     )
@@ -333,7 +333,7 @@ def test_rename_attr_name_exists_error():
 
 def test_rename_dim():
     dim_converters = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
     )
     var_converters = [
         NetCDFVariableConverter(
@@ -348,7 +348,7 @@ def test_rename_dim():
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
-        {dim.output_name: dim for dim in dim_converters},
+        {dim.name: dim for dim in dim_converters},
         {var.output_name: var for var in var_converters},
         array_converters,
     )
@@ -358,8 +358,8 @@ def test_rename_dim():
 
 def test_rename_dim_name_exists_error():
     dim_converters = (
-        NetCDFDimensionConverter("row", 8, False, "row", (0, 7), np.dtype("uint64")),
-        NetCDFDimensionConverter("col", 4, False, "col", (0, 4), np.dtype("uint64")),
+        NetCDFDimensionConverter("row", (0, 7), np.dtype("uint64"), "row", 8, False),
+        NetCDFDimensionConverter("col", (0, 4), np.dtype("uint64"), "col", 4, False),
     )
     var_converters = [
         NetCDFVariableConverter(
@@ -374,7 +374,7 @@ def test_rename_dim_name_exists_error():
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
-        {dim.output_name: dim for dim in dim_converters},
+        {dim.name: dim for dim in dim_converters},
         {var.output_name: var for var in var_converters},
         array_converters,
     )

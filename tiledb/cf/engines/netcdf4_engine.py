@@ -16,14 +16,14 @@ import numpy as np
 import tiledb
 
 from ..core import Group
-from ..creator import DataspaceCreator
+from ..creator import DataspaceCreator, SharedDim, dataspace_name
 
 _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
 
 
 @dataclass
-class NetCDFDimensionConverter:
+class NetCDFDimensionConverter(SharedDim):
     """Data for converting from a NetCDF dimension to a TileDB dimension.
 
     Parameters:
@@ -48,22 +48,19 @@ class NetCDFDimensionConverter:
     input_name: str
     input_size: int
     is_unlimited: bool
-    output_name: str
-    output_domain: Tuple[int, int]
-    output_dtype: np.dtype
 
     def __repr__(self):
         if self.is_unlimited:
             return (
-                f"Dimension(name={self.input_name}, size=unlimited) -> Dim(name="
-                f"{self.output_name}, domain=[{self.output_domain[0]}, "
-                f"{self.output_domain[1]}], dtype={self.output_dtype})"
+                f"Dimension(name={self.input_name}, size=unlimited) -> SharedDim(name="
+                f"{self.name}, domain=[{self.domain[0]}, {self.domain[1]}], dtype="
+                f"'{self.dtype!s}')"
             )
         else:
             return (
                 f"Dimension(name={self.input_name}, size={self.input_size}) -> Dim(name"
-                f"={self.output_name}, domain=[{self.output_domain[0]}, "
-                f"{self.output_domain[1]}], dtype={self.output_dtype})"
+                f"={self.name}, domain=[{self.domain[0]}, {self.domain[1]}], dtype="
+                f"'{self.dtype!s}')"
             )
 
     @classmethod
@@ -86,11 +83,11 @@ class NetCDFDimensionConverter:
         size = dim.size if not dim.isunlimited() else unlimited_dim_size
         return cls(
             dim.name,
+            (0, size - 1),
+            np.dtype(dtype),
+            dim.name,
             dim.size,
             dim.isunlimited(),
-            dim.name,
-            (0, size - 1),
-            dtype,
         )
 
 
@@ -300,28 +297,30 @@ class NetCDF4ConverterEngine(DataspaceCreator):
 
     def __init__(
         self,
-        dimensions: Dict[str, NetCDFDimensionConverter],
+        dimensions: Dict[str, SharedDim],
         variables: Dict[str, NetCDFVariableConverter],
         arrays: Dict[str, NetCDFArrayConverter],
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
-        self._dimensions = dimensions
         self._variables = variables
         self._arrays = arrays
         self._default_input_file = default_input_file
         self._default_group_path = default_group_path
         super().__init__()
-        for dim in self._dimensions.values():
-            super().add_dim(
-                dim_name=dim.output_name,
-                domain=dim.output_domain,
-                dtype=dim.output_dtype,
+        self._dims = dimensions
+        self._index_dim_dataspace_names = {
+            dataspace_name(dim.name): dim.name for dim in self._dims.values()
+        }
+        if len(self._index_dim_dataspace_names) != len(self._dims):
+            raise ValueError(
+                "Failed to create NetCDF4EngineConverter; there is a dimension with a "
+                "duplicate dataspace name."
             )
         for array_name, array_converter in self._arrays.items():
             super().add_array(
                 array_name=array_name,
-                dims=tuple(dim.output_name for dim in array_converter.dimensions),
+                dims=tuple(dim.name for dim in array_converter.dimensions),
                 tiles=array_converter.tiles,
             )
             for var_converter in array_converter.variables:
@@ -334,24 +333,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
 
     def __repr__(self):
         output = StringIO()
-        output.write("NetCDFConverterEngine( \n")
-        output.write("  dimensions: \n")
-        for dim in self._dimensions.values():
-            output.write(f"    {dim}\n")
-        output.write("\n  arrays: \n")
-        for array_name, array_converter in self._arrays.items():
-            output.write("    Array( \n")
-            output.write(f"      name: {array_name}\n")
-            output.write(f"      tiles: {array_converter.tiles}\n")
-            output.write("      dimensions:\n")
-            for dim in array_converter.dimensions:
-                output.write(f"        {dim}\n")
-            output.write("      attributes:\n")
-            for var in array_converter.variables:
-                output.write(f"        {var}\n")
-            output.write("    )\n")
-        output.write(")")
-        output.write(f"{super().__repr__()} \n")
+        output.write(f"{super().__repr__()}\n")
+        if self._default_input_file is not None:
+            output.write("Default NetCDF file: {self._default_input_file}\n")
+        if self._default_group_path is not None:
+            output.write("Deault NetCDF group path: {self._default_group_path}\n")
         return output.getvalue()
 
     def add_array(
@@ -499,22 +485,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         super().rename_attr(original_name, new_name)
         self._variables[new_name] = self._variables.pop(original_name)
         self._variables[new_name].output_name = new_name
-
-    def rename_dim(self, original_name: str, new_name: str):
-        """Renames a dimension in the output TileDB CF dataspace.
-
-        Parameters:
-            original_name: Current name of the dimension to be renamed.
-            new_name: New name the dimension will be renamed to.
-        """
-        if new_name in self._dimensions:
-            raise ValueError(
-                f"Cannot rename dimension '{original_name}' to '{new_name}'. A "
-                f"dimension with that name already exists."
-            )
-        super().rename_dim(original_name, new_name)
-        self._dimensions[new_name] = self._dimensions.pop(original_name)
-        self._dimensions[new_name].output_name = new_name
 
 
 def copy_metadata_item(meta, netcdf_item, key):
