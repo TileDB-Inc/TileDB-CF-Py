@@ -61,22 +61,20 @@ def test_array_converter_tiles_from_chunks():
     )
     var = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4, 4),
             "a1",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4, 4),
         ),
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("int32"),
-            None,
-            (4, 4),
             "a2",
             np.dtype("int32"),
-            None,
+            input_name="variable",
+            input_dtype=np.dtype("int32"),
+            input_chunks=(4, 4),
         ),
     ]
     array_converter = NetCDFArrayConverter(dims, var)
@@ -90,22 +88,20 @@ def test_array_converter_mixed_chunks():
     )
     var = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4, 4),
             "a1",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4, 4),
         ),
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("int32"),
-            None,
-            (2, 4),
             "a2",
             np.dtype("int32"),
-            None,
+            input_name="variable",
+            input_dtype=np.dtype("int32"),
+            input_chunks=(2, 4),
         ),
     ]
     array_converter = NetCDFArrayConverter(dims, var)
@@ -119,22 +115,19 @@ def test_array_converter_mixed_chunks_with_none():
     )
     var = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4, 4),
             "a1",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4, 4),
         ),
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("int32"),
-            None,
-            None,
             "a2",
             np.dtype("int32"),
-            None,
+            input_name="variable",
+            input_dtype=np.dtype("int32"),
         ),
     ]
     array_converter = NetCDFArrayConverter(dims, var)
@@ -147,22 +140,20 @@ def test_array_converter_from_chunks_1D():
     )
     var = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4,),
             "a1",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4,),
         ),
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("int32"),
-            None,
-            (4,),
             "a2",
             np.dtype("int32"),
-            None,
+            input_name="variable",
+            input_dtype=np.dtype("int32"),
+            input_chunks=(4,),
         ),
     ]
     array_converter = NetCDFArrayConverter(dims, var)
@@ -176,13 +167,13 @@ def test_array_converter_hardset_no_tiles():
     )
     var = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4, 4),
             "attr",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4, 4),
         ),
     ]
     tiles = tuple()
@@ -197,28 +188,26 @@ def test_rename_array():
     )
     var_converters = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4, 4),
             "a1",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4, 4),
         ),
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("int32"),
-            None,
-            (4, 4),
             "a2",
             np.dtype("int32"),
-            None,
+            input_name="variable",
+            input_dtype=np.dtype("int32"),
+            input_chunks=(4, 4),
         ),
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
         {dim.name: dim for dim in dim_converters},
-        {var.output_name: var for var in var_converters},
+        {var.name: var for var in var_converters},
         array_converters,
     )
     converter.rename_array("A1", "B1")
@@ -231,22 +220,20 @@ def test_rename_array_name_exists_error():
         NetCDFDimensionConverter("col", (0, 7), np.dtype("uint64"), "col", 8, False),
     )
     var1 = NetCDFVariableConverter(
-        "variable",
-        np.dtype("float64"),
-        -1.0,
-        (4, 4),
         "a1",
         np.dtype("float64"),
         -1.0,
+        input_name="variable",
+        input_dtype=np.dtype("float64"),
+        input_fill=-1.0,
+        input_chunks=(4, 4),
     )
     var2 = NetCDFVariableConverter(
-        "variable",
-        np.dtype("int32"),
-        None,
-        (4, 4),
         "a2",
         np.dtype("int32"),
-        None,
+        input_name="variable",
+        input_dtype=np.dtype("int32"),
+        input_chunks=(4, 4),
     )
     array_converters = {
         "A1": NetCDFArrayConverter(dim_converters, [var1]),
@@ -268,28 +255,26 @@ def test_rename_attr():
     )
     var_converters = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4, 4),
             "a1",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4, 4),
         ),
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("int32"),
-            None,
-            (4, 4),
             "a2",
             np.dtype("int32"),
-            None,
+            input_name="variable",
+            input_dtype=np.dtype("int32"),
+            input_chunks=(4, 4),
         ),
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
         {dim.name: dim for dim in dim_converters},
-        {var.output_name: var for var in var_converters},
+        {var.name: var for var in var_converters},
         array_converters,
     )
     converter.rename_attr("a1", "b1")
@@ -303,28 +288,26 @@ def test_rename_attr_name_exists_error():
     )
     var_converters = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4, 4),
             "a1",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4, 4),
         ),
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("int32"),
-            None,
-            (4, 4),
             "b1",
             np.dtype("int32"),
-            None,
+            input_name="variable",
+            input_dtype=np.dtype("int32"),
+            input_chunks=(4, 4),
         ),
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
         {dim.name: dim for dim in dim_converters},
-        {var.output_name: var for var in var_converters},
+        {var.name: var for var in var_converters},
         array_converters,
     )
     with pytest.raises(ValueError):
@@ -337,19 +320,19 @@ def test_rename_dim():
     )
     var_converters = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4,),
             "a1",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4,),
         ),
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
         {dim.name: dim for dim in dim_converters},
-        {var.output_name: var for var in var_converters},
+        {var.name: var for var in var_converters},
         array_converters,
     )
     converter.rename_dim("row", "dim1")
@@ -363,19 +346,19 @@ def test_rename_dim_name_exists_error():
     )
     var_converters = [
         NetCDFVariableConverter(
-            "variable",
-            np.dtype("float64"),
-            -1.0,
-            (4, 4),
             "a1",
             np.dtype("float64"),
             -1.0,
+            input_name="variable",
+            input_dtype=np.dtype("float64"),
+            input_fill=-1.0,
+            input_chunks=(4, 4),
         ),
     ]
     array_converters = {"A1": NetCDFArrayConverter(dim_converters, var_converters)}
     converter = NetCDF4ConverterEngine(
         {dim.name: dim for dim in dim_converters},
-        {var.output_name: var for var in var_converters},
+        {var.name: var for var in var_converters},
         array_converters,
     )
     with pytest.raises(ValueError):

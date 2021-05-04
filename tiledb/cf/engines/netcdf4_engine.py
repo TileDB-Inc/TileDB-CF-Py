@@ -16,7 +16,7 @@ import numpy as np
 import tiledb
 
 from ..core import Group
-from ..creator import DataspaceCreator, SharedDim, dataspace_name
+from ..creator import AttrCreator, DataspaceCreator, SharedDim, dataspace_name
 
 _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
@@ -92,7 +92,7 @@ class NetCDFDimensionConverter(SharedDim):
 
 
 @dataclass
-class NetCDFVariableConverter:
+class NetCDFVariableConverter(AttrCreator):
     """Data for converting from a NetCDF variable to a TileDB attribute.
 
     Parameters:
@@ -114,20 +114,15 @@ class NetCDFVariableConverter:
         output_fill: Fill value for unset values i the output TileDB attribute.
     """
 
-    input_name: str
-    input_dtype: np.dtype
-    input_fill: Optional[Union[int, float, str]]
-    input_chunks: Optional[Tuple[int, ...]]
-    output_name: str
-    output_dtype: np.dtype
-    output_fill: Optional[Union[int, float, str]]
+    input_name: Optional[str] = None
+    input_dtype: Optional[np.dtype] = None
+    input_fill: Optional[Union[int, float, str]] = None
+    input_chunks: Optional[Tuple[int, ...]] = None
 
     def __repr__(self):
         return (
             f"Variable(name={self.input_name}, dtype={self.input_dtype}, _FillValue="
-            f"{self.input_fill}, chunks={self.input_chunks}) ->  "
-            f"Attr(name={self.output_name}, dtype={self.output_dtype}, "
-            f"fill={self.output_fill})"
+            f"{self.input_fill}, chunks={self.input_chunks}) ->  {super().__repr__()}"
         )
 
     @classmethod
@@ -144,13 +139,13 @@ class NetCDFVariableConverter:
             var.name if var.name not in var.dimensions else var.name + COORDINATE_SUFFIX
         )
         return cls(
-            var.name,
-            var.dtype,
-            fill,
-            chunks,
             attr_name,
             var.dtype,
             fill,
+            input_name= var.name,
+            input_dtype=var.dtype,
+            input_fill=fill,
+            input_chunks=chunks,
         )
 
 
@@ -276,7 +271,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         dim_dtype,
                     )
             variable_converter = NetCDFVariableConverter.from_netcdf(var)
-            variables[variable_converter.output_name] = variable_converter
+            variables[variable_converter.name] = variable_converter
             partition[var.dimensions].append(variable_converter)
         sorted_keys = sorted(partition.keys())
         arrays = {
@@ -325,10 +320,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             )
             for var_converter in array_converter.variables:
                 super().add_attr(
-                    var_converter.output_name,
+                    var_converter.name,
                     array_name,
-                    dtype=var_converter.output_dtype,
-                    fill=var_converter.output_fill,
+                    dtype=var_converter.dtype,
+                    fill=var_converter.fill,
                 )
 
     def __repr__(self):
@@ -448,8 +443,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                                 f"Variable {var_converter.input_name} not found in "
                                 f"requested NetCDF group."
                             ) from err
-                        data[var_converter.output_name] = variable[...]
-                        attr_meta = group.get_attr_metadata(var_converter.output_name)
+                        data[var_converter.name] = variable[...]
+                        attr_meta = group.get_attr_metadata(var_converter.name)
                         for meta_key in variable.ncattrs():
                             copy_metadata_item(attr_meta, variable, meta_key)
                     dim_slice = tuple(slice(dim.size) for dim in variable.get_dims())
@@ -484,7 +479,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             )
         super().rename_attr(original_name, new_name)
         self._variables[new_name] = self._variables.pop(original_name)
-        self._variables[new_name].output_name = new_name
+        self._variables[new_name].name = new_name
 
 
 def copy_metadata_item(meta, netcdf_item, key):
