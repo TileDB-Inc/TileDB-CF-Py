@@ -175,6 +175,46 @@ class NetCDFVariableConverter(AttrCreator):
 
 
 class NetCDFArrayConverter(ArrayCreator):
+    """Converter for a TileDB array from a collection of NetCDF variables.
+
+    Parameters:
+        dims: An ordered list of the shared dimensions for the domain of this array.
+        cell_order: The order in which TileDB stores the cells on disk inside a
+            tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
+            ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert curve.
+        tile_order: The order in which TileDB stores the tiles on disk. Valid values
+            are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
+            ``F`` for column major.
+        capacity: The number of cells in a data tile of a sparse fragment.
+        tiles: An optional ordered list of tile sizes for the dimensions of the
+            array. The length must match the number of dimensions in the array.
+        coords_filters: Filters for all dimensions that are not specified explicitly by
+            ``dim_filters``.
+        dim_filters: A dict from dimension name to a ``FilterList`` for dimensions in
+            the array. Overrides the values set in ``coords_filters``.
+        offsets_filters: Filters for the offsets for variable length attributes or
+            dimensions.
+        allows_duplicates: Specifies if multiple values can be stored at the same
+             coordinate. Only allowed for sparse arrays.
+        sparse: Specifies if the array is a sparse TileDB array (true) or dense
+            TileDB array (false).
+
+    Attributes:
+        cell_order: The order in which TileDB stores the cells on disk inside a
+            tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
+            ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert curve.
+        tile_order: The order in which TileDB stores the tiles on disk. Valid values
+            are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
+            ``F`` for column major.
+        capacity: The number of cells in a data tile of a sparse fragment.
+        coords_filters: Filters for all dimensions that are not specified explicitly by
+            ``dim_filters``.
+        offsets_filters: Filters for the offsets for variable length attributes or
+            dimensions.
+        allows_duplicates: Specifies if multiple values can be stored at the same
+             coordinate. Only allowed for sparse arrays.
+    """
+
     def add_attr(self, attr_creator: AttrCreator):
         """Adds a new attribute to an array in the CF dataspace.
 
@@ -202,6 +242,13 @@ class NetCDFArrayConverter(ArrayCreator):
         netcdf_group: netCDF4.Group,
         tiledb_group: Group,
     ):
+        """Copies data from a NetCDF group to a TileDB CF dataspace.
+
+        Parameters:
+            netcdf_group: The NetCDF group to copy data from.
+            tiledb_group: The tiledb group to copy data into. Must be open into the
+                array the data is being copied into.
+        """
         data = {}
         for attr_converter in self._attr_creators.values():
             if not isinstance(attr_converter, NetCDFVariableConverter):
@@ -286,7 +333,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             default_group_path: If not ``None``, the default NetCDF group to copy data
                 from. Use ``'/'`` to specify the root group.
         """
-
         converter = cls(default_input_file, default_group_path)
         dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
         autotiles: Dict[Tuple[str, ...], Optional[Tuple[int, ...]]] = {}
