@@ -79,7 +79,7 @@ def from_netcdf_group(
     output_ctx: Optional[tiledb.Ctx] = None,
     unlimited_dim_size: int = 10000,
     dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-    tiles: Dict[Tuple[str, ...], Tuple[int, ...]] = None,
+    tiles: Optional[Dict[Tuple[str, ...], Optional[Tuple[int, ...]]]] = None,
 ):
     """Converts a group in a NetCDF file or :class:`netCDF4.Group` to a TileDB CF
     dataspace.

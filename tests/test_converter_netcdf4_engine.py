@@ -218,8 +218,7 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
 
 def test_not_implemented(empty_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(empty_netcdf_file)
-    with pytest.raises(NotImplementedError):
-        converter.add_array("A1", [])
+    converter.add_array("A1", [])
     with pytest.raises(NotImplementedError):
         converter.add_attr("a1", "A1", np.float64)
 

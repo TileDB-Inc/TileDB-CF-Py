@@ -16,7 +16,13 @@ import numpy as np
 import tiledb
 
 from ..core import Group
-from ..creator import AttrCreator, DataspaceCreator, SharedDim, dataspace_name
+from ..creator import (
+    ArrayCreator,
+    AttrCreator,
+    DataspaceCreator,
+    SharedDim,
+    dataspace_name,
+)
 
 _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
@@ -69,6 +75,7 @@ class NetCDFDimensionConverter(SharedDim):
         dim: netCDF4.Dimension,
         unlimited_dim_size: int,
         dtype: np.dtype,
+        dim_name: Optional[str] = None,
     ):
         """Returns a :class:`NetCDFDimensionConverter` from a
         :class:`netcdf4.Dimension`.
@@ -82,7 +89,7 @@ class NetCDFDimensionConverter(SharedDim):
         """
         size = dim.size if not dim.isunlimited() else unlimited_dim_size
         return cls(
-            dim.name,
+            dim_name if dim_name is not None else dim.name,
             (0, size - 1),
             np.dtype(dtype),
             dim.name,
@@ -126,74 +133,95 @@ class NetCDFVariableConverter(AttrCreator):
         )
 
     @classmethod
-    def from_netcdf(cls, var: netCDF4.Variable):
+    def from_netcdf(
+        cls,
+        ncvar: netCDF4.Variable,
+        attr_name: Optional[str] = None,
+        dtype: Optional[np.dtype] = None,
+        fill: Optional[Union[int, float, str]] = None,
+        var: bool = False,
+        nullable: bool = False,
+        filters: Optional[tiledb.FilterList] = None,
+    ):
         """Returns a :class:`NetCDFVariableConverter` from a :class:`netCDF4.Variable`.
 
         Parameters:
             var: The input netCDF4 variable.
         """
-        fill = var.getncattr("_FillValue") if "_FillValue" in var.ncattrs() else None
-        chunks = var.chunking()
-        chunks = None if chunks == "contiguous" or chunks is None else tuple(chunks)
-        attr_name = (
-            var.name if var.name not in var.dimensions else var.name + COORDINATE_SUFFIX
+        fill = (
+            ncvar.getncattr("_FillValue") if "_FillValue" in ncvar.ncattrs() else None
         )
+        chunks = ncvar.chunking()
+        chunks = None if chunks == "contiguous" or chunks is None else tuple(chunks)
+        if attr_name is None:
+            attr_name = (
+                ncvar.name
+                if ncvar.name not in ncvar.dimensions
+                else ncvar.name + COORDINATE_SUFFIX
+            )
+        dtype = np.dtype(dtype) if dtype is not None else np.dtype(ncvar.dtype)
         return cls(
             attr_name,
-            var.dtype,
+            dtype,
             fill,
-            input_name= var.name,
-            input_dtype=var.dtype,
-            input_fill=fill,
-            input_chunks=chunks,
+            var,
+            nullable,
+            filters,
+            ncvar.name,
+            ncvar.dtype,
+            fill,
+            chunks,
         )
 
 
-@dataclass
-class NetCDFArrayConverter:
-    """Data for converting a collection of NetCDF variables defined over the same
-    NetCDF dimensions to a TileDB array.
+class NetCDFArrayConverter(ArrayCreator):
+    def add_attr(self, attr_creator: AttrCreator):
+        """Adds a new attribute to an array in the CF dataspace.
 
-    On initialization, if the tile size is not explicitly set, it will be updated from
-    the NetCDF variable chunk sizes. The tile size will be set to the chunk size of the
-    input NetCDF variables if:
-        * the input for ``tiles=None``,
-        * at least one variable has chunks not equal to ``None``,
-        * all variables with chunks not equal to ``None`` have the same chunks.
-    To skip checking the size of tiles on initialization, use ``tiles=tuple()``. This
-    will set ``tiles=None`` after initialization.
+        Each attribute name must be unique. It also cannot conflict with the name of a
+        dimension in the array.
 
-    Parameters:
-        dimensions: An ordered tuple of the converter for the dimensions the NetCDF
-            variables are defined on.
-        variables: A list of converters from NetCDF variables to TileDB attributes
-            where the variables are all defined on the same dimensions.
-        tiles: If not ``None``, the tile sizes for the TileDB dimensions.
+        Parameters:
+            attr_name: Name of the new attribute that will be added.
+            dtype: Numpy dtype of the new attribute.
+            fill: Fill value for unset cells.
+            var: Specifies if the attribute is variable length (automatic for
+                byte/strings).
+            nullable: Specifies if the attribute is nullable using validity tiles.
+            filters: Specifies compression filters for the attribute.
+        """
+        if not isinstance(attr_creator, NetCDFVariableConverter):
+            raise NotImplementedError(
+                "Support for non-NetCDF attributes in a NetCDFArrayConverter has not "
+                "yet been implemented."
+            )
+        super().add_attr(attr_creator)
 
-    Attributes:
-        dimensions: An ordered tuple of the converter for the dimensions the NetCDF
-            variables are defined on.
-        variables: A list of converters from NetCDF variables to TileDB attributes
-            where the variables are all defined on the same dimensions.
-        tiles: If not ``None``, the tile sizes for the TileDB dimensions.
-    """
-
-    dimensions: Tuple[NetCDFDimensionConverter, ...]
-    variables: List[NetCDFVariableConverter]
-    tiles: Optional[Tuple[int, ...]] = None
-
-    def __post_init__(self):
-        if self.tiles is not None:
-            if not self.tiles:
-                self.tiles = None
-        else:
-            chunks = [
-                var.input_chunks
-                for var in self.variables
-                if var.input_chunks is not None
-            ]
-            if len(set(chunks)) == 1:
-                self.tiles = chunks[0]
+    def copy(
+        self,
+        netcdf_group: netCDF4.Group,
+        tiledb_group: Group,
+    ):
+        data = {}
+        for attr_converter in self._attr_creators.values():
+            if not isinstance(attr_converter, NetCDFVariableConverter):
+                raise RuntimeError(
+                    "Cannot assign value for attribute {attr_converter.name} that is "
+                    "of type {type(attr_converter)}."
+                )
+            try:
+                variable = netcdf_group.variables[attr_converter.input_name]
+            except KeyError as err:
+                raise KeyError(
+                    f"Variable {attr_converter.input_name} not found in "
+                    f"requested NetCDF group."
+                ) from err
+            data[attr_converter.name] = variable[...]
+            attr_meta = tiledb_group.get_attr_metadata(attr_converter.name)
+            for meta_key in variable.ncattrs():
+                copy_metadata_item(attr_meta, variable, meta_key)
+        dim_slice = tuple(slice(dim.size) for dim in variable.get_dims())
+        tiledb_group.array[dim_slice or slice(None)] = data
 
 
 @dataclass
@@ -207,7 +235,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         group_path: str = "/",
         unlimited_dim_size: int = 10000,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-        tiles: Dict[Tuple[str, ...], Tuple[int, ...]] = None,
+        tiles: Optional[Dict[Tuple[str, ...], Optional[Tuple[int, ...]]]] = None,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a group in a NetCDF file.
 
@@ -240,7 +268,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         netcdf_group: netCDF4.Group,
         unlimited_dim_size: int = 10000,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-        tiles: Dict[Tuple[str, ...], Tuple[int, ...]] = None,
+        tiles: Optional[Dict[Tuple[str, ...], Optional[Tuple[int, ...]]]] = None,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
@@ -258,87 +286,62 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             default_group_path: If not ``None``, the default NetCDF group to copy data
                 from. Use ``'/'`` to specify the root group.
         """
-        dimensions = {}
-        variables = {}
-        tiles = tiles if tiles is not None else {}
-        partition = defaultdict(list)  # ignore: type
-        for var in netcdf_group.variables.values():
-            for dim in var.get_dims():
-                if dim.name not in dimensions:
-                    dimensions[dim.name] = NetCDFDimensionConverter.from_netcdf(
+
+        converter = cls(default_input_file, default_group_path)
+        dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
+        autotiles: Dict[Tuple[str, ...], Optional[Tuple[int, ...]]] = {}
+        for ncvar in netcdf_group.variables.values():
+            for dim in ncvar.get_dims():
+                if dim.name not in converter.dim_names:
+                    converter.add_ncdim_to_dim_converter(
                         dim,
                         unlimited_dim_size,
                         dim_dtype,
                     )
-            variable_converter = NetCDFVariableConverter.from_netcdf(var)
-            variables[variable_converter.name] = variable_converter
-            partition[var.dimensions].append(variable_converter)
-        sorted_keys = sorted(partition.keys())
-        arrays = {
-            f"array{count}": NetCDFArrayConverter(
-                tuple(dimensions[name] for name in dim_names),
-                partition[dim_names],
-                tiles.get(dim_names),
+            dims_to_vars[ncvar.dimensions].append(ncvar.name)
+            chunks = ncvar.chunking()
+            if not (chunks is None or chunks == "contiguous"):
+                autotiles[ncvar.dimensions] = (
+                    None
+                    if ncvar.dimensions in autotiles
+                    and chunks != autotiles.get(ncvar.dimensions)
+                    else chunks
+                )
+        if tiles is not None:
+            autotiles.update(tiles)
+        sorted_keys = sorted(dims_to_vars.keys())
+        for count, dim_names in enumerate(sorted_keys):
+            converter.add_array(
+                f"array{count}", dim_names, tiles=autotiles.get(dim_names)
             )
-            for count, dim_names in enumerate(sorted_keys)
-        }
-        return cls(
-            dimensions,
-            variables,
-            arrays,
-            default_input_file,
-            default_group_path,
-        )
+            for var_name in dims_to_vars[dim_names]:
+                converter.add_ncvar_to_attr_converter(
+                    netcdf_group.variables[var_name], f"array{count}"
+                )
+        return converter
 
     def __init__(
         self,
-        dimensions: Dict[str, SharedDim],
-        variables: Dict[str, NetCDFVariableConverter],
-        arrays: Dict[str, NetCDFArrayConverter],
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
-        self._variables = variables
-        self._arrays = arrays
-        self._default_input_file = default_input_file
-        self._default_group_path = default_group_path
+        self.default_input_file = default_input_file
+        self.default_group_path = default_group_path
         super().__init__()
-        self._dims = dimensions
-        self._index_dim_dataspace_names = {
-            dataspace_name(dim.name): dim.name for dim in self._dims.values()
-        }
-        if len(self._index_dim_dataspace_names) != len(self._dims):
-            raise ValueError(
-                "Failed to create NetCDF4EngineConverter; there is a dimension with a "
-                "duplicate dataspace name."
-            )
-        for array_name, array_converter in self._arrays.items():
-            super().add_array(
-                array_name=array_name,
-                dims=tuple(dim.name for dim in array_converter.dimensions),
-                tiles=array_converter.tiles,
-            )
-            for var_converter in array_converter.variables:
-                super().add_attr(
-                    var_converter.name,
-                    array_name,
-                    dtype=var_converter.dtype,
-                    fill=var_converter.fill,
-                )
 
     def __repr__(self):
         output = StringIO()
         output.write(f"{super().__repr__()}\n")
-        if self._default_input_file is not None:
-            output.write("Default NetCDF file: {self._default_input_file}\n")
-        if self._default_group_path is not None:
-            output.write("Deault NetCDF group path: {self._default_group_path}\n")
+        if self.default_input_file is not None:
+            output.write("Default NetCDF file: {self.default_input_file}\n")
+        if self.default_group_path is not None:
+            output.write("Deault NetCDF group path: {self.default_group_path}\n")
         return output.getvalue()
 
     def add_array(
         self,
         array_name: str,
-        dims: Union[str, Sequence[str]],
+        dims: Sequence[str],
         cell_order: str = "row-major",
         tile_order: str = "row-major",
         capacity: int = 0,
@@ -349,21 +352,163 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
-        """Adding external arrays is not yet supported."""
-        raise NotImplementedError("Adding external arrays is not yet supported.")
+        """Adds a new array to the CF dataspace.
 
-    def add_attr(
+        The name of each array must be unique. All properties must match the normal
+        requirements for a ``TileDB.ArraySchema``.
+
+        Parameters:
+            array_name: Name of the new array to be created.
+            dims: An ordered list of the names of the shared dimensions for the domain
+                of this array.
+            cell_order: The order in which TileDB stores the cells on disk inside a
+                tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
+                ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert
+                curve.
+            tile_order: The order in which TileDB stores the tiles on disk. Valid values
+                are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
+                ``F`` for column major.
+            capacity: The number of cells in a data tile of a sparse fragment.
+            tiles: An optional ordered list of tile sizes for the dimensions of the
+                array. The length must match the number of dimensions in the array.
+            coords_filters: Filters for all dimensions that are not otherwise set by
+                ``dim_filters.``
+            dim_filters: A dict from dimension name to a ``FilterList`` for dimensions
+                in the array. Overrides the values set in ``coords_filters``.
+            offsets_filters: Filters for the offsets for variable length attributes or
+                dimensions.
+            allows_duplicates: Specifies if multiple values can be stored at the same
+                 coordinate. Only allowed for sparse arrays.
+            sparse: Specifies if the array is a sparse TileDB array (true) or dense
+                TileDB array (false).
+
+        Raises:
+            ValueError: Cannot add new array with given name.
+        """
+        try:
+            self._check_new_array_name(array_name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new array with name '{array_name}'. {str(err)}"
+            ) from err
+        if not dims:
+            dims = ("__scalars",)
+            self.add_dim("__scalars", (0, 0), np.dtype(np.uint32))
+        array_dims = tuple(self._dims[dim_name] for dim_name in dims)
+        self._array_creators[array_name] = NetCDFArrayConverter(
+            array_dims,
+            cell_order,
+            tile_order,
+            capacity,
+            tiles,
+            coords_filters,
+            dim_filters,
+            offsets_filters,
+            allows_duplicates,
+            sparse,
+        )
+        for dim_name in dims:
+            self._dim_to_arrays[dim_name].append(array_name)
+
+    def add_ncdim_to_dim_converter(
         self,
-        attr_name: str,
+        ncdim: netCDF4,
+        unlimited_dim_size: int = 10000,
+        dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
+        dim_name: Optional[str] = None,
+    ):
+        dim_converter = NetCDFDimensionConverter.from_netcdf(
+            ncdim,
+            unlimited_dim_size,
+            dtype,
+            dim_name,
+        )
+        try:
+            self._check_new_dim_name(dim_converter)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new dimension '{dim_converter.name}'. {str(err)}"
+            ) from err
+        self._dims[dim_converter.name] = dim_converter
+        if dim_converter.is_data_dim:
+            self._data_dim_dataspace_names[
+                dataspace_name(dim_converter.name)
+            ] = dim_converter.name
+        else:
+            self._index_dim_dataspace_names[
+                dataspace_name(dim_converter.name)
+            ] = dim_converter.name
+
+    def add_ncvar_to_attr_converter(
+        self,
+        ncvar: netCDF4.Variable,
         array_name: str,
-        dtype: np.dtype,
+        attr_name: Optional[str] = None,
+        dtype: Optional[np.dtype] = None,
         fill: Optional[Union[int, float, str]] = None,
         var: bool = False,
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
     ):
-        """Adding external attributes is not yet supported."""
-        raise NotImplementedError("Adding external attributes is not yet supported.")
+        """Adds a new variable to attribute converter to an array in the CF dataspace.
+
+        Each attribute name must be unique. It also cannot conflict with the name of a
+        dimension in the array it is being added to, and the attribute's
+        'dataspace name' (name after dropping the suffix ``.data`` or ``.index``) cannot
+        conflict with the dataspace name of an existing attribute.
+
+        Parameters:
+            attr_name: Name of the new attribute that will be added.
+            array_name: Name of the array the attribute will be added to.
+            dtype: Numpy dtype of the new attribute.
+            fill: Fill value for unset cells.
+            var: Specifies if the attribute is variable length (automatic for
+                byte/strings).
+            nullable: Specifies if the attribute is nullable using validity tiles.
+            filters: Specifies compression filters for the attribute.
+
+        Raises:
+            KeyError: The provided ``array_name`` does not correspond to an array in the
+                dataspace.
+            ValueError: Cannot create a new attribute with the provided ``attr_name``.
+        """
+        try:
+            array_creator = self._array_creators[array_name]
+        except KeyError as err:
+            raise KeyError(
+                f"Cannot add attribute to array '{array_name}'. No array named "
+                f"'{array_name}' exists."
+            ) from err
+        if ncvar.ndim != 0 and ncvar.ndim != array_creator.ndim:
+            raise ValueError(
+                f"Cannot convert a NetCDF variable with {ncvar.ndim} dimensions to an "
+                f"array with {array_creator.ndim} dimensions."
+            )
+        if ncvar.ndim == 0 and array_creator.ndim != 1:
+            raise ValueError(
+                f"Cannot add a scalar NetCDF variable to an array with "
+                f"{array_creator.ndim} dimensions > 1."
+            )
+        ncvar_converter = NetCDFVariableConverter.from_netcdf(
+            ncvar,
+            attr_name,
+            dtype,
+            fill,
+            var,
+            nullable,
+            filters,
+        )
+        try:
+            self._check_new_attr_name(ncvar_converter.name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new attribute '{ncvar_converter.name}'. {str(err)}"
+            ) from err
+        array_creator.add_attr(ncvar_converter)
+        self._attr_to_array[ncvar_converter.name] = array_name
+        self._attr_dataspace_names[
+            dataspace_name(ncvar_converter.name)
+        ] = ncvar_converter.name
 
     def convert(
         self,
@@ -417,10 +562,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         """
         if netcdf_group is None:
             input_file = (
-                input_file if input_file is not None else self._default_input_file
+                input_file if input_file is not None else self.default_input_file
             )
             group_path = (
-                group_path if group_path is not None else self._default_group_path
+                group_path if group_path is not None else self.default_group_path
             )
         with open_netcdf_group(netcdf_group, input_file, group_path) as nc_group:
             # Copy group metadata
@@ -428,58 +573,12 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 for group_key in nc_group.ncattrs():
                     copy_metadata_item(group.meta, nc_group, group_key)
             # Copy variables and variable metadata to arrays
-            for array_name, array_converter in self._arrays.items():
-                with Group(
-                    group_uri, mode="w", array=array_name, key=key, ctx=ctx
-                ) as group:
-                    data = {}
-                    if not array_converter.variables:
-                        continue
-                    for var_converter in array_converter.variables:
-                        try:
-                            variable = nc_group.variables[var_converter.input_name]
-                        except KeyError as err:
-                            raise KeyError(
-                                f"Variable {var_converter.input_name} not found in "
-                                f"requested NetCDF group."
-                            ) from err
-                        data[var_converter.name] = variable[...]
-                        attr_meta = group.get_attr_metadata(var_converter.name)
-                        for meta_key in variable.ncattrs():
-                            copy_metadata_item(attr_meta, variable, meta_key)
-                    dim_slice = tuple(slice(dim.size) for dim in variable.get_dims())
-                    group.array[dim_slice or slice(None)] = data
-
-    def rename_array(self, original_name: str, new_name: str):
-        """Renames an array in the output TileDB CF dataspace.
-
-        Parameters:
-            original_name: Current name of the array to be renamed.
-            new_name: New name the array will be renamed to.
-        """
-        if new_name in self._arrays:
-            raise ValueError(
-                f"Cannot rename array '{original_name}' to '{new_name}'. An array with "
-                f"that name already exists."
-            )
-        super().rename_array(original_name, new_name)
-        self._arrays[new_name] = self._arrays.pop(original_name)
-
-    def rename_attr(self, original_name: str, new_name: str):
-        """Renames an attribute in the output TileDB CF dataspace.
-
-        Parameters:
-            original_name: Current name of the attribute to be renamed.
-            new_name: New name the attribute will be renamed to.
-        """
-        if new_name in self._variables:
-            raise ValueError(
-                f"Cannot rename attribute '{original_name}' to '{new_name}'. An "
-                f"attribute with that name already exists."
-            )
-        super().rename_attr(original_name, new_name)
-        self._variables[new_name] = self._variables.pop(original_name)
-        self._variables[new_name].name = new_name
+            for array_name, array_creator in self._array_creators.items():
+                if isinstance(array_creator, NetCDFArrayConverter):
+                    with Group(
+                        group_uri, mode="w", array=array_name, key=key, ctx=ctx
+                    ) as tiledb_group:
+                        array_creator.copy(nc_group, tiledb_group)
 
 
 def copy_metadata_item(meta, netcdf_item, key):
