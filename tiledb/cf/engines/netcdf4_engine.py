@@ -56,18 +56,11 @@ class NetCDFDimensionConverter(SharedDim):
     is_unlimited: bool
 
     def __repr__(self):
-        if self.is_unlimited:
-            return (
-                f"Dimension(name={self.input_name}, size=unlimited) -> SharedDim(name="
-                f"{self.name}, domain=[{self.domain[0]}, {self.domain[1]}], dtype="
-                f"'{self.dtype!s}')"
-            )
-        else:
-            return (
-                f"Dimension(name={self.input_name}, size={self.input_size}) -> Dim(name"
-                f"={self.name}, domain=[{self.domain[0]}, {self.domain[1]}], dtype="
-                f"'{self.dtype!s}')"
-            )
+        size_str = "unlimited" if self.is_unlimited else str(self.input_size)
+        return (
+            f"Dimension(name={self.input_name}, size={size_str}) -> "
+            f"{super().__repr__()}"
+        )
 
     @classmethod
     def from_netcdf(
