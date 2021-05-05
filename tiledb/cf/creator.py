@@ -269,14 +269,15 @@ class DataspaceCreator:
             raise ValueError(
                 f"Cannot add new attribute '{attr_name}'. {str(err)}"
             ) from err
-        array_creator.add_attr(
+        attr_creator = AttrCreator(
             attr_name,
-            dtype,
+            np.dtype(dtype),
             fill,
             var,
             nullable,
             filters,
         )
+        array_creator.add_attr(attr_creator)
         self._attr_to_array[attr_name] = array_name
         self._attr_dataspace_names[dataspace_name(attr_name)] = attr_name
 
@@ -656,15 +657,7 @@ class ArrayCreator:
         output.write("  )")
         return output.getvalue()
 
-    def add_attr(
-        self,
-        attr_name: str,
-        dtype: np.dtype,
-        fill: Optional[Union[int, float, str]] = None,
-        var: bool = False,
-        nullable: bool = False,
-        filters: Optional[tiledb.FilterList] = None,
-    ):
+    def add_attr(self, attr_creator: AttrCreator):
         """Adds a new attribute to an array in the CF dataspace.
 
         Each attribute name must be unique. It also cannot conflict with the name of a
@@ -679,6 +672,7 @@ class ArrayCreator:
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
         """
+        attr_name = attr_creator.name
         if attr_name in self._attr_creators:
             raise ValueError(
                 f"Cannot create new attribute with name '{attr_name}'. An attribute "
@@ -689,14 +683,7 @@ class ArrayCreator:
                 f"Cannot create new attribute with name '{attr_name}'. A dimension with"
                 f" that name already exists in this array."
             )
-        self._attr_creators[attr_name] = AttrCreator(
-            attr_name,
-            np.dtype(dtype),
-            fill,
-            var,
-            nullable,
-            filters,
-        )
+        self._attr_creators[attr_name] = attr_creator
 
     @property
     def attr_names(self):
