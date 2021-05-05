@@ -33,22 +33,20 @@ class NetCDFDimensionConverter(SharedDim):
     """Data for converting from a NetCDF dimension to a TileDB dimension.
 
     Parameters:
-        input_name: The name of the input NetCDF dimension.
-        input_size: The size of the input NetCDF dimension.
-        is_unlimited: If the input NetCDF dimension is unlimited (can grow in size).
-        output_name: The name of output TileDB dimension.
-        output_domain: The interval the output TileDB dimension is defined on.
-        output_dtype: The numpy dtype of the values and domain of the output TileDB
-            dimension.
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+        input_name: Name of the input NetCDF variable.
+        input_size: Size of the input NetCDF variable.
+        is_unlimited: If True, the input NetCDF variable is unlimited.
 
     Attributes:
-        input_name: The name of the input NetCDF dimension.
-        input_size: The size of the input NetCDF dimension.
-        is_unlimited: If the input NetCDF dimension is unlimited (can grow in size).
-        output_name: The name of output TileDB dimension.
-        output_domain: The interval the output TileDB dimension is defined on.
-        output_dtype: The numpy dtype of the values and domain of the output TileDB
-            dimension.
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+        input_name: Name of the input NetCDF variable.
+        input_size: Size of the input NetCDF variable.
+        is_unlimited: If True, the input NetCDF variable is unlimited.
     """
 
     input_name: str
@@ -75,10 +73,12 @@ class NetCDFDimensionConverter(SharedDim):
 
         Parameters:
             dim: The input netCDF4 dimension.
-            inlimited_dim_size: The size of the domain of the output TileDB dimension
+            unlimited_dim_size: The size of the domain of the output TileDB dimension
                 when the input NetCDF dimension is unlimited.
             dtype: The numpy dtype of the values and domain of the output TileDB
                 dimension.
+            dim_name: The name of the output TileDB dimension. If ``None``, the name
+                will be the same as the name of the input NetCDF dimension.
         """
         size = dim.size if not dim.isunlimited() else unlimited_dim_size
         return cls(
@@ -142,12 +142,12 @@ class NetCDFVariableConverter(AttrCreator):
 
         Parameters:
             ncvar: The input netCDF4 variable.
-            attr_name: The name of the output TileDB attribute. If None, the name will
-                be generated from the name of the NetCDF variable.
-            dtype: The numpy dtype of the output TileDB attribute. If None, the name
+            attr_name: The name of the output TileDB attribute. If ``None``, the name
+                will be generated from the name of the NetCDF variable.
+            dtype: The numpy dtype of the output TileDB attribute. If ``None``, the name
                 will be generated from the NetCDF variable.
-            fill: Fill value for unset values in the input NetCDF variable. If None, the
-                fill value will be generated from the NetCDF variable.
+            fill: Fill value for unset values in the input NetCDF variable. If ``None``,
+                the fill value will be generated from the NetCDF variable.
             var: Specifies if the attribute is variable length (automatic for
                 byte/strings).
             nullable: Specifies if the attribute is nullable using validity tiles.
