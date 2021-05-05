@@ -96,33 +96,35 @@ class NetCDFVariableConverter(AttrCreator):
     """Data for converting from a NetCDF variable to a TileDB attribute.
 
     Parameters:
-        input_name: The name of the input NetCDF variable.
-        input_dtype: The numpy dtype of the input NetCDF variable.
-        input_fill: Fill value for unset values in the input NetCDF variable.
-        input_chunks: If not ``None``, the chunk size of the input NetCDF variable.
-        output_name: The name of the output TileDB attribute.
-        output_dtype: The numpy dtype of the output TileDB attribute.
-        output_fill: Fill value for unset values i the output TileDB attribute.
+        name: Name of the new attribute.
+        dtype: Numpy dtype of the attribute.
+        fill: Fill value for unset cells.
+        var: Specifies if the attribute is variable length (automatic for
+            byte/strings).
+        nullable: Specifies if the attribute is nullable using validity tiles.
+        filters: Specifies compression filters for the attribute.
+        input_name: Name of the input NetCDF variable that will be converted.
+        input_dtype: Numpy dtype of the input NetCDF variable.
 
     Attributes:
-        input_name: The name of the input NetCDF variable.
-        input_dtype: The numpy dtype of the input NetCDF variable.
-        input_fill: Fill value for unset values in the input NetCDF variable.
-        input_chunks: If not ``None``, the chunk size of the input NetCDF variable.
-        output_name: The name of the output TileDB attribute.
-        output_dtype: The numpy dtype of the output TileDB attribute.
-        output_fill: Fill value for unset values i the output TileDB attribute.
+        name: Name of the new attribute.
+        dtype: Numpy dtype of the attribute.
+        fill: Fill value for unset cells.
+        var: Specifies if the attribute is variable length (automatic for
+            byte/strings).
+        nullable: Specifies if the attribute is nullable using validity tiles.
+        filters: Specifies compression filters for the attribute.
+        input_name: Name of the input NetCDF variable that will be converted.
+        input_dtype: Numpy dtype of the input NetCDF variable.
     """
 
     input_name: Optional[str] = None
     input_dtype: Optional[np.dtype] = None
-    input_fill: Optional[Union[int, float, str]] = None
-    input_chunks: Optional[Tuple[int, ...]] = None
 
     def __repr__(self):
         return (
-            f"Variable(name={self.input_name}, dtype={self.input_dtype}, _FillValue="
-            f"{self.input_fill}, chunks={self.input_chunks}) ->  {super().__repr__()}"
+            f"Variable(name={self.input_name}, dtype={self.input_dtype}) -> "
+            f"{super().__repr__()}"
         )
 
     @classmethod
@@ -139,13 +141,20 @@ class NetCDFVariableConverter(AttrCreator):
         """Returns a :class:`NetCDFVariableConverter` from a :class:`netCDF4.Variable`.
 
         Parameters:
-            var: The input netCDF4 variable.
+            ncvar: The input netCDF4 variable.
+            attr_name: The name of the output TileDB attribute. If None, the name will
+                be generated from the name of the NetCDF variable.
+            dtype: The numpy dtype of the output TileDB attribute. If None, the name
+                will be generated from the NetCDF variable.
+            fill: Fill value for unset values in the input NetCDF variable. If None, the
+                fill value will be generated from the NetCDF variable.
+            var: Specifies if the attribute is variable length (automatic for
+                byte/strings).
+            nullable: Specifies if the attribute is nullable using validity tiles.
+            filters: Specifies compression filters for the attribute.
         """
-        fill = (
-            ncvar.getncattr("_FillValue") if "_FillValue" in ncvar.ncattrs() else None
-        )
-        chunks = ncvar.chunking()
-        chunks = None if chunks == "contiguous" or chunks is None else tuple(chunks)
+        if fill is None and "_FillValue" in ncvar.ncattrs():
+            fill = ncvar.getncattr("_FillValue")
         if attr_name is None:
             attr_name = (
                 ncvar.name
@@ -160,10 +169,8 @@ class NetCDFVariableConverter(AttrCreator):
             var,
             nullable,
             filters,
-            ncvar.name,
-            ncvar.dtype,
-            fill,
-            chunks,
+            input_name=ncvar.name,
+            input_dtype=ncvar.dtype,
         )
 
 
@@ -298,7 +305,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     None
                     if ncvar.dimensions in autotiles
                     and chunks != autotiles.get(ncvar.dimensions)
-                    else chunks
+                    else tuple(chunks)
                 )
         if tiles is not None:
             autotiles.update(tiles)
