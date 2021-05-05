@@ -15,7 +15,7 @@ def from_netcdf(
     output_uri: str,
     input_group_path: str = "/",
     recursive: bool = True,
-    output_key: Optional[Union[str, Dict[str, str]]] = None,
+    output_key: Optional[str] = None,
     output_ctx: Optional[tiledb.Ctx] = None,
     unlimited_dim_size: int = 10000,
     dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
@@ -33,8 +33,7 @@ def from_netcdf(
             for the root group.
         recursive: If ``True``, recursively convert groups in a NetCDF file. Otherwise,
             only convert group provided.
-        output_key: If not ``None``, encryption key, or dictionary of encryption keys,
-            to decrypt arrays.
+        output_key: If not ``None``, encryption key to decrypt arrays.
         output_ctx: If not ``None``, TileDB context wrapper for a TileDB storage
             manager.
         dim_dtype: The numpy dtype for the TileDB dimensions created from NetCDF
@@ -75,7 +74,7 @@ def from_netcdf_group(
     netcdf_input,
     output_uri: str,
     input_group_path: str = "/",
-    output_key: Optional[Union[Dict[str, str], str]] = None,
+    output_key: Optional[str] = None,
     output_ctx: Optional[tiledb.Ctx] = None,
     unlimited_dim_size: int = 10000,
     dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
@@ -93,8 +92,7 @@ def from_netcdf_group(
         output_uri: Uniform resource identifier for the TileDB group to be created.
         input_group_path: The path to the NetCDF group to copy data from. Use ``'/'``
             for the root group. This is only used if ``netcdf_input`` is a filepath.
-        output_key: If not ``None``, encryption key, or dictionary of encryption keys,
-            to decrypt arrays.
+        output_key: If not ``None``, encryption key to decrypt arrays.
         output_ctx: If not ``None``, TileDB context wrapper for a TileDB storage
             manager.
         unlimited_dim_size: The size of the domain for TileDB dimensions created

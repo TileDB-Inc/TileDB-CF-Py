@@ -513,7 +513,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     def convert(
         self,
         group_uri: str,
-        key: Optional[Union[Dict[str, str], str]] = None,
+        key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         netcdf_group: Optional[netCDF4.Group] = None,
         input_file: Optional[Union[str, Path]] = None,
@@ -524,8 +524,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
 
         Parameters:
             group_uri: Uniform resource identifier for the TileDB group to be created.
-            key: If not ``None``, encryption key, or dictionary of encryption keys, to
-                decrypt arrays.
+            key: If not ``None``, encryption key to decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             kwargs: Keyword arguments for the specific converter engine
         """
@@ -535,7 +534,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     def copy(
         self,
         group_uri: str,
-        key: Optional[Union[Dict[str, str], str]] = None,
+        key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         netcdf_group: Optional[netCDF4.Group] = None,
         input_file: Optional[Union[str, Path]] = None,
@@ -553,8 +552,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         Parameters:
             group_uri: Uniform resource identifier for the TileDB group data is being
                 copied to.
-            key: If not ``None``, encryption key, or dictionary of encryption keys, to
-                decrypt arrays.
+            key: If not ``None``, encryption key to decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             input_file: If not ``None``, the NetCDF file to copy data from.
             group_path: If not ``None``, the path to the NetCDF group to copy data from.
