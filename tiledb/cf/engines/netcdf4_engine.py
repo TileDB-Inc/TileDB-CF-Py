@@ -252,7 +252,7 @@ class NetCDFArrayConverter(ArrayCreator):
         data = {}
         for attr_converter in self._attr_creators.values():
             if not isinstance(attr_converter, NetCDFVariableConverter):
-                raise RuntimeError(
+                raise TypeError(
                     "Cannot assign value for attribute {attr_converter.name} that is "
                     "of type {type(attr_converter)}."
                 )
