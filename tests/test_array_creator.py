@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf.creator import ArrayCreator, SharedDim
+from tiledb.cf.creator import ArrayCreator, AttrCreator, SharedDim
 
 
 class TestArrayCreatorSparseExample1:
@@ -45,7 +45,9 @@ class TestArrayCreatorSparseExample1:
                 tiledb.ZstdFilter(level=7),
             ]
         )
-        creator.add_attr("enthalpy", np.dtype("float64"), filters=attr_filters)
+        creator.add_attr(
+            AttrCreator("enthalpy", np.dtype("float64"), filters=attr_filters)
+        )
         return creator
 
     def test_repr(self, array_creator):
@@ -82,7 +84,7 @@ def test_rename_attr_set_attr_properties():
         SharedDim("temperature", (-200.0, 200.0), np.float64),
     ]
     creator = ArrayCreator(dims, sparse=True)
-    creator.add_attr("enthalp", np.float64)
+    creator.add_attr(AttrCreator("enthalp", np.dtype("float64")))
     assert set(creator.attr_names) == {"enthalp"}
     creator.set_attr_properties("enthalp", name="enthalpy")
     assert set(creator.attr_names) == {"enthalpy"}
@@ -99,9 +101,9 @@ def test_name_exists_error():
         SharedDim("temperature", (-200.0, 200.0), np.float64),
     ]
     creator = ArrayCreator(dims, sparse=True)
-    creator.add_attr("enthalpy", np.float64)
+    creator.add_attr(AttrCreator("enthalpy", np.float64))
     with pytest.raises(ValueError):
-        creator.add_attr("enthalpy", np.float64)
+        creator.add_attr(AttrCreator("enthalpy", np.float64))
 
 
 def test_dim_name_exists_error():
@@ -110,9 +112,9 @@ def test_dim_name_exists_error():
         SharedDim("temperature", (-200.0, 200.0), np.float64),
     ]
     creator = ArrayCreator(dims, sparse=True)
-    creator.add_attr("enthalpy", np.float64)
+    creator.add_attr(AttrCreator("enthalpy", np.float64))
     with pytest.raises(ValueError):
-        creator.add_attr("pressure", np.float64)
+        creator.add_attr(AttrCreator("pressure", np.float64))
 
 
 def test_dense_array_dim_type_error():

@@ -11,13 +11,12 @@ from typing import (
     Any,
     Collection,
     Dict,
-    Generic,
     List,
     Mapping,
+    MutableMapping,
     Optional,
     Sequence,
     Tuple,
-    TypeVar,
     Union,
 )
 
@@ -27,7 +26,7 @@ import tiledb
 
 from .core import METADATA_ARRAY_NAME, Group, GroupSchema
 
-DType = TypeVar("DType", covariant=True)
+DType = Union[int, float, str, None]
 DATA_SUFFIX = ".data"
 INDEX_SUFFIX = ".index"
 
@@ -75,7 +74,7 @@ class DataspaceCreator:
 
     def __init__(self):
         """Constructs a :class:`DataspaceCreator`."""
-        self._dims: Dict[str, SharedDim] = {}
+        self._dims: MutableMapping[str, SharedDim] = {}
         self._array_creators: Dict[str, ArrayCreator] = {}
         self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
         self._attr_to_array: Dict[str, str] = {}
@@ -270,14 +269,15 @@ class DataspaceCreator:
             raise ValueError(
                 f"Cannot add new attribute '{attr_name}'. {str(err)}"
             ) from err
-        array_creator.add_attr(
+        attr_creator = AttrCreator(
             attr_name,
-            dtype,
+            np.dtype(dtype),
             fill,
             var,
             nullable,
             filters,
         )
+        array_creator.add_attr(attr_creator)
         self._attr_to_array[attr_name] = array_name
         self._attr_dataspace_names[dataspace_name(attr_name)] = attr_name
 
@@ -657,15 +657,7 @@ class ArrayCreator:
         output.write("  )")
         return output.getvalue()
 
-    def add_attr(
-        self,
-        attr_name: str,
-        dtype: np.dtype,
-        fill: Optional[Union[int, float, str]] = None,
-        var: bool = False,
-        nullable: bool = False,
-        filters: Optional[tiledb.FilterList] = None,
-    ):
+    def add_attr(self, attr_creator: AttrCreator):
         """Adds a new attribute to an array in the CF dataspace.
 
         Each attribute name must be unique. It also cannot conflict with the name of a
@@ -680,6 +672,7 @@ class ArrayCreator:
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
         """
+        attr_name = attr_creator.name
         if attr_name in self._attr_creators:
             raise ValueError(
                 f"Cannot create new attribute with name '{attr_name}'. An attribute "
@@ -690,14 +683,7 @@ class ArrayCreator:
                 f"Cannot create new attribute with name '{attr_name}'. A dimension with"
                 f" that name already exists in this array."
             )
-        self._attr_creators[attr_name] = AttrCreator(
-            attr_name,
-            np.dtype(dtype),
-            fill,
-            var,
-            nullable,
-            filters,
-        )
+        self._attr_creators[attr_name] = attr_creator
 
     @property
     def attr_names(self):
@@ -863,7 +849,7 @@ class ArrayCreator:
 
 
 @dataclass
-class AttrCreator(Generic[DType]):
+class AttrCreator:
     """Creator for a TileDB attribute.
 
     Parameters:
@@ -922,7 +908,7 @@ class AttrCreator(Generic[DType]):
 
 
 @dataclass
-class DimCreator(Generic[DType]):
+class DimCreator:
     """Creator for a TileDB dimension using a SharedDim.
 
     Attributes:
@@ -931,7 +917,7 @@ class DimCreator(Generic[DType]):
         filters: Specifies compression filters for the dimension.
     """
 
-    base: SharedDim[DType]
+    base: SharedDim
     tile: Optional[Union[int, float]] = None
     filters: Optional[Union[tiledb.FilterList]] = None
 
@@ -976,7 +962,7 @@ class DimCreator(Generic[DType]):
 
 
 @dataclass
-class SharedDim(Generic[DType]):
+class SharedDim:
     """A class for a shared one-dimensional dimension.
 
     Parameters:

@@ -39,6 +39,19 @@ def simple2_netcdf_file(tmpdir_factory):
 
 
 @pytest.fixture(scope="session")
+def simple_same_chunks_netcdf_file(tmpdir_factory):
+    filepath = str(tmpdir_factory.mktemp("sample_netcdf").join("simple1.nc"))
+    with netCDF4.Dataset(filepath, mode="w") as dataset:
+        dataset.createDimension("row", 8)
+        dataset.createDimensions("col", 8)
+        x1 = dataset.createVariable("x1", np.int32, ("row", "col"), chunksize=(4, 4))
+        x1[:] = np.arange(16).reshape(4, 4)
+        x2 = dataset.createVariable("x2", np.int32, ("row", "col"), chunksize=(4, 4))
+        x2[:] = np.arange(16, 32).reshape(4, 4)
+    return filepath
+
+
+@pytest.fixture(scope="session")
 def group1_netcdf_file(tmpdir_factory):
     """Sample NetCDF file with groups
 
