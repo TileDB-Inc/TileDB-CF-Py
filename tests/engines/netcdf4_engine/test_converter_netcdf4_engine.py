@@ -60,6 +60,7 @@ scalar_variables = NetCDF4TestCase(
     },
 )
 
+examples = [simple_coord_1, simple_unlim_dim, scalar_variables]
 
 attr_to_var_map = {
     "simple_coord_1": {"data": "data", "x": "x", "y": "y", "row.data": "row"},
@@ -68,11 +69,7 @@ attr_to_var_map = {
 }
 
 
-@pytest.mark.parametrize(
-    "netcdf4_test_case",
-    [simple_coord_1, simple_unlim_dim, scalar_variables],
-    indirect=True,
-)
+@pytest.mark.parametrize("netcdf4_test_case", examples, indirect=True)
 def test_from_netcdf(netcdf4_test_case, tmpdir):
     """Integration test for `from_netcdf_file` function call."""
     name, filename, test_case = netcdf4_test_case
@@ -87,11 +84,7 @@ def test_from_netcdf(netcdf4_test_case, tmpdir):
         ), f"unexpected values for attribute '{attr_name}'"
 
 
-@pytest.mark.parametrize(
-    "netcdf4_test_case",
-    [simple_coord_1, simple_unlim_dim, scalar_variables],
-    indirect=True,
-)
+@pytest.mark.parametrize("netcdf4_test_case", examples, indirect=True)
 def test_from_netcdf_group(netcdf4_test_case, tmpdir):
     """Integration test for `from_netcdf_group` function call."""
     name, filename, test_case = netcdf4_test_case
@@ -107,11 +100,7 @@ def test_from_netcdf_group(netcdf4_test_case, tmpdir):
         ), f"unexpected values for attribute '{attr_name}'"
 
 
-@pytest.mark.parametrize(
-    "netcdf4_test_case",
-    [simple_coord_1, simple_unlim_dim, scalar_variables],
-    indirect=True,
-)
+@pytest.mark.parametrize("netcdf4_test_case", examples, indirect=True)
 def test_from_netcdf_group2(netcdf4_test_case, tmpdir):
     """Integration test for `from_netcdf_group` function call."""
     name, filename, test_case = netcdf4_test_case
@@ -126,9 +115,7 @@ def test_from_netcdf_group2(netcdf4_test_case, tmpdir):
         ), f"unexpected values for attribute '{attr_name}'"
 
 
-@pytest.mark.parametrize(
-    "netcdf4_test_case", [simple_coord_1, simple_unlim_dim], indirect=True
-)
+@pytest.mark.parametrize("netcdf4_test_case", examples, indirect=True)
 def test_converter_from_netcdf(netcdf4_test_case, tmpdir):
     name, filename, test_case = netcdf4_test_case
     converter = NetCDF4ConverterEngine.from_file(filename)
@@ -142,7 +129,7 @@ def test_converter_from_netcdf(netcdf4_test_case, tmpdir):
         assert np.array_equal(result[attr_name], test_case.variable_data[var_name])
 
 
-@pytest.mark.parametrize("netcdf4_test_case", [simple_coord_1], indirect=True)
+@pytest.mark.parametrize("netcdf4_test_case", examples, indirect=True)
 def test_converter_from_netcdf_2(netcdf4_test_case, tmpdir):
     name, filename, test_case = netcdf4_test_case
     converter = NetCDF4ConverterEngine.from_file(filename)
@@ -217,34 +204,34 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
 
 
 def test_not_implemented(empty_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(empty_netcdf_file)
+    converter = NetCDF4ConverterEngine.from_file(empty_netcdf_file.filepath)
     converter.add_array("A1", [])
     with pytest.raises(NotImplementedError):
         converter.add_attr("a1", "A1", np.float64)
 
 
 def test_rename_array(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file)
+    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
     converter.rename_array("array0", "A1")
     assert set(converter.array_names) == set(["A1"])
 
 
 def test_rename_attr(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file)
+    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
     print(converter.attr_names)
     converter.rename_attr("x1", "y1")
     assert set(converter.attr_names) == set(["y1"])
 
 
 def test_rename_dim(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file)
+    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
     converter.rename_dim("row", "col")
     assert set(converter.dim_names) == set(["col"])
 
 
 def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple2_netcdf_file)
+    converter = NetCDF4ConverterEngine.from_file(simple2_netcdf_file.filepath)
     uri = str(tmpdir.mkdir("output").join("test_copy_error"))
     converter.create(uri)
     with pytest.raises(KeyError):
-        converter.copy(uri, input_file=simple1_netcdf_file)
+        converter.copy(uri, input_file=simple1_netcdf_file.filepath)

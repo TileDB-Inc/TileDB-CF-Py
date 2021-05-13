@@ -10,7 +10,7 @@ def test_netcdf_convert(tmpdir, simple1_netcdf_file):
     runner = CliRunner()
     result = runner.invoke(
         tiledb.cf.cli,
-        ["netcdf-convert", "-i", simple1_netcdf_file, "-o", uri],
+        ["netcdf-convert", "-i", simple1_netcdf_file.filepath, "-o", uri],
     )
     assert result.exit_code == 0
     array_schema = tiledb.ArraySchema.load(uri + "/array0")
