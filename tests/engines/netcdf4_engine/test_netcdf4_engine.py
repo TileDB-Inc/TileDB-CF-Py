@@ -3,22 +3,11 @@
 import numpy as np
 import pytest
 
-try:
-    import netCDF4
-
-    HAS_NETCDF4 = True
-except ImportError:
-    HAS_NETCDF4 = False
-
 from tiledb.cf.engines.netcdf4_engine import NetCDFDimensionConverter, open_netcdf_group
 
-from . import NetCDF4TestCase
 
-simple_dim_1 = NetCDF4TestCase("simple_dim_1", (("row", 8),), tuple(), {})
-
-
-@pytest.mark.skipif(not HAS_NETCDF4, reason="netCDF4 not found")
 def test_dim_converter_simple(tmpdir_factory):
+    netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir_factory.mktemp("dim_converter").join("simple_dim.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         dim = dataset.createDimension("row", 8)
@@ -32,8 +21,8 @@ def test_dim_converter_simple(tmpdir_factory):
         assert converter.dtype == np.uint64
 
 
-@pytest.mark.skipif(not HAS_NETCDF4, reason="netCDF4 not found")
 def test_dim_converter_unlim(tmpdir_factory):
+    netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir_factory.mktemp("dim_converter").join("unlim_dim.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         dim = dataset.createDimension("row", None)
@@ -49,6 +38,7 @@ def test_dim_converter_unlim(tmpdir_factory):
 
 
 def test_open_netcdf_group_with_group(tmpdir):
+    netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir.mkdir("open_group").join("simple_dataset.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         with open_netcdf_group(dataset) as group:
@@ -56,13 +46,8 @@ def test_open_netcdf_group_with_group(tmpdir):
             assert group == dataset
 
 
-def test_open_netcdf_group_bad_type_error():
-    with pytest.raises(TypeError):
-        with open_netcdf_group("input_file"):
-            pass
-
-
 def test_open_netcdf_group_with_file(tmpdir):
+    netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir.mkdir("open_group").join("simple_dataset.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         group1 = dataset.createGroup("group1")
@@ -70,6 +55,12 @@ def test_open_netcdf_group_with_file(tmpdir):
     with open_netcdf_group(input_file=filepath, group_path="/group1/group2") as group:
         assert isinstance(group, netCDF4.Group)
         assert group.path == "/group1/group2"
+
+
+def test_open_netcdf_group_bad_type_error():
+    with pytest.raises(TypeError):
+        with open_netcdf_group("input_file"):
+            pass
 
 
 def test_open_netcdf_group_no_file_error():
