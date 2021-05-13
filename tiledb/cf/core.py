@@ -171,6 +171,7 @@ class Group:
         group_schema: GroupSchema,
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
+        is_virtual: bool = False,
     ):
         """Create the TileDB group and arrays from a :class:`GroupSchema`.
 
@@ -180,8 +181,11 @@ class Group:
             key: If not ``None``, encryption key, or dictionary of encryption keys to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            is_virtual: If ``True``, skip initializing the TileDB group and only create
+                the TileDB arrays and metadata array.
         """
-        tiledb.group_create(uri, ctx)
+        if not is_virtual:
+            tiledb.group_create(uri, ctx)
         if group_schema.metadata_schema is not None:
             tiledb.Array.create(
                 _get_array_uri(uri, METADATA_ARRAY_NAME),
@@ -196,17 +200,6 @@ class Group:
                 key.get(array_name) if isinstance(key, dict) else key,
                 ctx,
             )
-
-    __slots__ = [
-        "_array",
-        "_attr",
-        "_ctx",
-        "_key",
-        "_metadata_array",
-        "_mode",
-        "_schema",
-        "_uri",
-    ]
 
     def __init__(
         self,
@@ -227,13 +220,12 @@ class Group:
         self._metadata_array = self._get_metadata_array(timestamp)
         self._attr = attr
         if array is None and attr is not None:
-            group_schema = GroupSchema.load(uri, ctx, key)
-            array = group_schema.get_attr_array(attr)
+            array = self._schema.get_attr_array(attr)
         self._array = (
             None
             if array is None
             else tiledb.open(
-                _get_array_uri(self._uri, array),
+                self._array_uri(array),
                 mode=self._mode,
                 key=key.get(array) if isinstance(key, dict) else key,
                 attr=attr,
@@ -248,6 +240,9 @@ class Group:
 
     def __exit__(self, exception_type, exception_value, exception_traceback):
         self.close()
+
+    def _array_uri(self, array):
+        return _get_array_uri(self._uri, array)
 
     def _get_metadata_array(self, timestamp: Optional[int]) -> tiledb.Array:
         return (
@@ -434,11 +429,40 @@ class GroupSchema(Mapping):
                 )
         return cls(array_schemas, metadata_schema)
 
-    __slots__ = [
-        "_array_schema_table",
-        "_attr_to_arrays",
-        "_metadata_schema",
-    ]
+    @classmethod
+    def load_virtual(
+        cls,
+        array_uris: Dict[str, str],
+        metadata_uri: Optional[str] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+        key: Optional[Union[Dict[str, str], str]] = None,
+    ):
+        """Load a schema for a TileDB group from a TileDB URI.
+
+        Parameters:
+            array_uris: Mapping from array names to array uniform resource identifiers.
+            metadata_uri: Array uniform resource identifier for array where metadata is
+                stored.
+            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            key: If not ``None``, encryption key, or dictionary of encryption keys, to
+                decrypt arrays.
+        """
+        array_schemas = {
+            array_name: tiledb.ArraySchema.load(
+                array_uri, ctx, key.get(array_name) if isinstance(key, dict) else key
+            )
+            for array_name, array_uri in array_uris.items()
+        }
+        metadata_schema = (
+            tiledb.ArraySchema.load(
+                metadata_uri,
+                ctx,
+                key.get(METADATA_ARRAY_NAME) if isinstance(key, dict) else key,
+            )
+            if metadata_uri is not None
+            else None
+        )
+        return cls(array_schemas, metadata_schema)
 
     def __init__(
         self,
