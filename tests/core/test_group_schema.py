@@ -180,8 +180,9 @@ def test_create_virtual(tmpdir):
     array_uris = {
         "array1": a1_uri,
         "array2": a2_uri,
+        "__tiledb_group": metadata_uri,
     }
-    group_schema = GroupSchema.load_virtual(array_uris, metadata_uri)
+    group_schema = GroupSchema.load_virtual(array_uris)
     assert group_schema["array1"] == _array_schema_1
     assert group_schema["array2"] == _array_schema_2
     assert group_schema.metadata_schema == _empty_array_schema
