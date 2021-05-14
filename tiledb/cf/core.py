@@ -46,7 +46,6 @@ def _get_array_key(
 
     Returns:
        Key for the array with name ``array_name``.
-
     """
     return key.get(array_name) if isinstance(key, dict) else key
 
@@ -235,10 +234,10 @@ class Group:
         ctx: Optional[tiledb.Ctx] = None,
     ):
         """Constructs a new :class:`Group`."""
-        self._schema = GroupSchema.load(uri, ctx, key)
+        group_schema = GroupSchema.load(uri, ctx, key)
         self._metadata_array = (
             None
-            if self._schema.metadata_schema is None
+            if group_schema.metadata_schema is None
             else tiledb.open(
                 uri=_get_array_uri(uri, METADATA_ARRAY_NAME),
                 mode=mode,
@@ -249,7 +248,7 @@ class Group:
         )
         self._attr = attr
         if array is None and attr is not None:
-            array = self._schema.get_attr_array(attr)
+            array = group_schema.get_attr_array(attr)
         self._array = (
             None
             if array is None
@@ -345,6 +344,66 @@ class Group:
         if self._metadata_array is None:
             return None
         return self._metadata_array.meta
+
+
+class VirtualGroup(Group):
+    """Class for opening TileDB metadata, arrays, and attributes of a virtual group.
+
+    Parameters:
+        array_uris: Mapping from array names to array uniform resource identifiers.
+        mode: Mode the array and metadata objects are opened in. Either read 'r' or
+            write 'w' mode.
+        key: If not ``None``, encryption key, or dictionary of encryption keys, to
+            decrypt arrays.
+        timestamp: If not ``None``, timestamp to open the group metadata and array at.
+        array: If not ``None``, open the array with this name.
+        attr: If not ``None``, open one attribute of the group; indexing a dense array
+            will return a Numpy ndarray directly rather than a dictionary. If ``array``
+            is specified, the attribute must be inside the specified array. If ``array``
+            is not specified, there must be only one attribute in the group with this
+            name.
+        ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+    """
+
+    def __init__(
+        self,
+        array_uris: Dict[str, str],
+        mode: str = "r",
+        key: Optional[Union[Dict[str, str], str]] = None,
+        timestamp: Optional[int] = None,
+        array: Optional[str] = None,
+        attr: Optional[str] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ):
+        """Constructs a new :class:`Group`."""
+        self._metadata_array = (
+            tiledb.open(
+                uri=array_uris[METADATA_ARRAY_NAME],
+                mode=mode,
+                key=_get_array_key(key, METADATA_ARRAY_NAME),
+                timestamp=timestamp,
+                ctx=ctx,
+            )
+            if METADATA_ARRAY_NAME in array_uris
+            else None
+        )
+        self._attr = attr
+        if array is None and attr is not None:
+            schema = GroupSchema.load_virtual(array_uris, ctx, key)
+            array = schema.get_attr_array(attr)
+        self._array = (
+            None
+            if array is None
+            else tiledb.open(
+                uri=array_uris[METADATA_ARRAY_NAME],
+                mode=mode,
+                key=_get_array_key(key, array),
+                attr=attr,
+                config=None,
+                timestamp=timestamp,
+                ctx=ctx,
+            )
+        )
 
 
 class GroupSchema(Mapping):
