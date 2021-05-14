@@ -19,19 +19,42 @@ METADATA_ARRAY_NAME = "__tiledb_group"
 ATTR_METADATA_FLAG = "__tiledb_attr."
 
 
-def _get_array_uri(group_uri: str, array_name: str) -> str:
+def _get_array_uri(group_uri: str, array_name: str, is_virtual: bool) -> str:
     """Returns a URI for an array with name ``array_name`` inside a group at URI
         ``group_uri``.
 
     Parameters:
         group_uri: URI of the group containing the array
         array_name: name of the array
+        is_virtual: If ``True``, return the URI for an array in a virtual group.
+             Otherwise, return the URI for an array inside a "standard" group.
 
     Returns:
         Array URI of an array with name ``array_name`` inside a group at URI
             ``group_uri``.
     """
+    if is_virtual:
+        return f"{group_uri}_{array_name}"
     return os.path.join(group_uri, array_name)
+
+
+def _get_metadata_array_uri(group_uri: str, is_virtual: bool) -> str:
+    """Returns a URI for an array with name ``array_name`` inside a group at URI
+        ``group_uri``.
+
+    Parameters:
+        group_uri: URI of the group containing the array
+        array_name: name of the array
+        is_virtual: If ``True``, return the URI for the metadata array in a virtual
+             group. Otherwise, return the URI for an array inside a "standard" group.
+
+    Returns:
+        Array URI of an array with name ``array_name`` inside a group at URI
+            ``group_uri``.
+    """
+    if is_virtual:
+        return group_uri
+    return os.path.join(group_uri, METADATA_ARRAY_NAME)
 
 
 def _get_array_key(
@@ -203,21 +226,23 @@ class Group:
             key: If not ``None``, encryption key, or dictionary of encryption keys to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            is_virtual: If ``True``, skip initializing the TileDB group and only create
-                the TileDB arrays and metadata array.
+            is_virtual: If ``True``, create a virtual group using ``uri`` as the name
+                for the group metadata array. All other arrays will be named using the
+                convention ``{uri}_{array_name}`` where ``array_name`` is the name of
+                the array.
         """
         if not is_virtual:
             tiledb.group_create(uri, ctx)
         if group_schema.metadata_schema is not None:
             tiledb.Array.create(
-                _get_array_uri(uri, METADATA_ARRAY_NAME),
+                _get_metadata_array_uri(uri, is_virtual),
                 group_schema.metadata_schema,
                 _get_array_key(key, METADATA_ARRAY_NAME),
                 ctx,
             )
         for array_name, array_schema in group_schema.items():
             tiledb.Array.create(
-                _get_array_uri(uri, array_name),
+                _get_array_uri(uri, array_name, is_virtual),
                 array_schema,
                 _get_array_key(key, array_name),
                 ctx,
@@ -239,7 +264,7 @@ class Group:
             None
             if group_schema.metadata_schema is None
             else tiledb.open(
-                uri=_get_array_uri(uri, METADATA_ARRAY_NAME),
+                uri=_get_metadata_array_uri(uri, False),
                 mode=mode,
                 key=_get_array_key(key, METADATA_ARRAY_NAME),
                 timestamp=timestamp,
@@ -253,7 +278,7 @@ class Group:
             None
             if array is None
             else tiledb.open(
-                _get_array_uri(uri, array),
+                _get_array_uri(uri, array, False),
                 mode=mode,
                 key=_get_array_key(key, array),
                 attr=attr,
