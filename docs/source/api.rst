@@ -46,8 +46,10 @@ NetCDF4ConverterEngine
 ^^^^^^^^^^^^^^^^^^^^^^
 
 .. autoclass:: tiledb.cf.engines.netcdf4_engine.NetCDF4ConverterEngine
-   :members: from_file, from_group, copy
+   :members:
+   :inherited-members:
    :noindex:
+
 
 Core Classes
 ------------
@@ -57,6 +59,14 @@ Group
 
 .. autoclass:: tiledb.cf.Group
    :members:
+   :noindex:
+
+VirtualGroup
+^^^^^^^^^^^^
+
+.. autoclass:: tiledb.cf.VirtualGroup
+   :members:
+   :inherited-members:
    :noindex:
 
 
