@@ -200,7 +200,7 @@ class Group:
         key: If not ``None``, encryption key, or dictionary of encryption keys, to
             decrypt arrays.
         timestamp: If not ``None``, timestamp to open the group metadata and array at.
-        array: If not ``None``, open the array with this name.
+        array: If not ``None``, open the array in the group with this name.
         attr: If not ``None``, open one attribute of the group; indexing a dense array
             will return a Numpy ndarray directly rather than a dictionary. If ``array``
             is specified, the attribute must be inside the specified array. If ``array``
@@ -247,6 +247,25 @@ class Group:
                 _get_array_key(key, array_name),
                 ctx,
             )
+
+    @classmethod
+    def create_virtual(
+        cls,
+        uri: str,
+        group_schema: GroupSchema,
+        key: Optional[Union[Dict[str, str], str]] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ):
+        """Create the arrays from a :class:`GroupSchema`.
+
+        Parameters:
+            uri: Uniform resource identifier for TileDB group or array.
+            group_schema: Schema that defines the group to be created.
+            key: If not ``None``, encryption key, or dictionary of encryption keys to
+                decrypt arrays.
+            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        """
+        cls.create(uri, group_schema, key, ctx, is_virtual=True)
 
     def __init__(
         self,
@@ -420,7 +439,7 @@ class VirtualGroup(Group):
             None
             if array is None
             else tiledb.open(
-                uri=array_uris[METADATA_ARRAY_NAME],
+                uri=array_uris[array],
                 mode=mode,
                 key=_get_array_key(key, array),
                 attr=attr,
