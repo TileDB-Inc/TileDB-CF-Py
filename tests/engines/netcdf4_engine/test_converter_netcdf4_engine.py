@@ -216,6 +216,20 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
     assert np.array_equal(A3, np.identity(4, dtype=np.int32))
 
 
+def test_variable_fill(tmpdir):
+    """Test converting a NetCDF variable will the _FillValue NetCDF attribute set."""
+    netCDF4 = pytest.importorskip("netCDF4")
+    filepath = str(tmpdir.mkdir("sample_netcdf").join("test_fill.nc"))
+    with netCDF4.Dataset(filepath, mode="w") as dataset:
+        dataset.createDimension("row", 4)
+        dataset.createVariable("x1", np.dtype("int64"), ("row",), fill_value=-1)
+        converter = NetCDF4ConverterEngine.from_group(dataset)
+        group_schema = converter.to_schema()
+        array_schema = group_schema[group_schema.get_attr_array("x1")]
+        x1_attr = array_schema.attr("x1")
+        assert x1_attr.fill == -1
+
+
 def test_not_implemented(empty_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(empty_netcdf_file.filepath)
     converter.add_array("A1", [])
