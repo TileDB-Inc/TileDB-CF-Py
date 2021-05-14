@@ -93,35 +93,6 @@ def simple2_netcdf_file(tmpdir_factory):
 
 
 @pytest.fixture(scope="session")
-def small_matching_chunks_netcdf_file(tmpdir_factory):
-    directory_path = tmpdir_factory.mktemp("sample_netcdf")
-    example = NetCDFSingleGroupExample(
-        "small_matching_chunks",
-        directory_path,
-        dimension_args=[("row", 8), ("col", 8)],
-        variable_kwargs=[
-            {
-                "varname": "x1",
-                "datatype": np.int32,
-                "dimensions": ("row", "col"),
-                "chunksize": (4, 4),
-            },
-            {
-                "varname": "x2",
-                "datatype": np.int32,
-                "dimensions": ("row", "col"),
-                "chunksize": (4, 4),
-            },
-        ],
-        variable_data={
-            "x1": np.arange(16).reshape(4, 4),
-            "x2": np.arange(16, 32).reshape(4, 4),
-        },
-    )
-    return example
-
-
-@pytest.fixture(scope="session")
 def group1_netcdf_file(tmpdir_factory):
     """Sample NetCDF file with groups
 
@@ -167,7 +138,7 @@ def group1_netcdf_file(tmpdir_factory):
     return filepath
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def netcdf_test_case(tmpdir_factory, request):
     """Creates a NetCDF file and returns the filepath stem, filepath, and dict of
     expected attribtues.
