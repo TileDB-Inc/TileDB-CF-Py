@@ -316,6 +316,15 @@ def test_tile_from_mismatching_chunks(netcdf_test_case):
     assert tiles == (8, 8)
 
 
+@pytest.mark.parametrize("netcdf_test_case", [single_chunk_variable], indirect=True)
+def test_tile_from_single_variable_chunks(netcdf_test_case):
+    converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
+    group_schema = converter.to_schema()
+    print(f"GROUP: {group_schema}")
+    tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
+    assert tiles == (4, 4)
+
+
 def test_rename_array(simple1_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
     converter.rename_array("array0", "A1")
