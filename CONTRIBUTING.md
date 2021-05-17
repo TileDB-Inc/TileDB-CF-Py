@@ -48,7 +48,6 @@ git push --set-upstream origin <my_initials>/<my_bugfix_branch>
 Branch conventions:
 
 * `dev` is the development branch of TileDB-CF-Py, all PR's are merged into `dev`.
-* `main` tracks the latest stable / released version.
 * `release-x.y.z` are major / bugfix release branches.
 
 ### Building Locally for Development
