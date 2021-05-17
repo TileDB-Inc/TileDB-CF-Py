@@ -128,7 +128,7 @@ class Metadata(MutableMapping):
         Raises
             KeyError: If `key` cannot be mapped.
         """
-        return key
+        return key  # pragma: no cover
 
     def _from_tiledb_key(self, tiledb_key: str) -> Optional[str]:
         """Map an internal tiledb key to an external user metadata key.
@@ -137,7 +137,7 @@ class Metadata(MutableMapping):
             The external user metadata key corresponding to `tiledb_key`,
             or None if there is no such corresponding key.
         """
-        return tiledb_key
+        return tiledb_key  # pragma: no cover
 
 
 class ArrayMetadata(Metadata):
