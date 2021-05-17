@@ -16,6 +16,7 @@
 
 ### Bug fixes
 
+* Fix detection of tiles from NetCDF variables with matching chunk sizes.
 
 ## TileDB-CF-Py Release 0.2.0
 

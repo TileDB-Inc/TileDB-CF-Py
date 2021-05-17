@@ -347,6 +347,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dims_to_vars[ncvar.dimensions].append(ncvar.name)
             chunks = ncvar.chunking()
             if not (chunks is None or chunks == "contiguous"):
+                chunks = tuple(chunks)
                 autotiles[ncvar.dimensions] = (
                     None
                     if ncvar.dimensions in autotiles

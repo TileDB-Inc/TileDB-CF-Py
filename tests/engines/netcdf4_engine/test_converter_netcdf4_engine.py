@@ -64,14 +64,83 @@ scalar_variables = {
     },
 }
 
-examples = [
-    simple_coord_1,
-]
+matching_chunks = {
+    "name": "matching_chunks",
+    "dimension_args": [("row", 8), ("col", 8)],
+    "variable_kwargs": [
+        {
+            "varname": "x1",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (4, 4),
+        },
+        {
+            "varname": "x2",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (4, 4),
+        },
+    ],
+    "variable_data": {
+        "x1": np.arange(64).reshape(8, 8),
+        "x2": np.arange(64, 128).reshape(8, 8),
+    },
+}
+
+mismatching_chunks = {
+    "name": "mismatching_chunks",
+    "dimension_args": [("row", 8), ("col", 8)],
+    "variable_kwargs": [
+        {
+            "varname": "x1",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (4, 4),
+        },
+        {
+            "varname": "x2",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (2, 2),
+        },
+    ],
+    "variable_data": {
+        "x1": np.arange(64).reshape(8, 8),
+        "x2": np.arange(64, 128).reshape(8, 8),
+    },
+}
+
+single_chunk_variable = {
+    "name": "single_chunk_variable",
+    "dimension_args": [("row", 8), ("col", 8)],
+    "variable_kwargs": [
+        {
+            "varname": "x1",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (4, 4),
+        },
+        {
+            "varname": "x2",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+        },
+    ],
+    "variable_data": {
+        "x1": np.arange(64).reshape(8, 8),
+        "x2": np.arange(64, 128).reshape(8, 8),
+    },
+}
+
+
+examples = [simple_coord_1, simple_unlim_dim, scalar_variables, matching_chunks]
 
 attr_to_var_map = {
     "simple_coord_1": {"data": "data", "x": "x", "y": "y", "row.data": "row"},
     "simple_unlim_dim": {"data": "data", "x": "x", "y": "y"},
     "scalar_variables": {"x": "x", "y": "y"},
+    "matching_chunks": {"x1": "x1", "x2": "x2"},
+    "mismatching_chunks": {"x1": "x1", "x2": "x2"},
 }
 
 
@@ -230,11 +299,21 @@ def test_variable_fill(tmpdir):
         assert x1_attr.fill == -1
 
 
-def test_not_implemented(empty_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(empty_netcdf_file.filepath)
-    converter.add_array("A1", [])
-    with pytest.raises(NotImplementedError):
-        converter.add_attr("a1", "A1", np.float64)
+@pytest.mark.parametrize("netcdf_test_case", [matching_chunks], indirect=True)
+def test_tile_from_matching_chunks(netcdf_test_case):
+    converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
+    group_schema = converter.to_schema()
+    print(f"GROUP: {group_schema}")
+    tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
+    assert tiles == (4, 4)
+
+
+@pytest.mark.parametrize("netcdf_test_case", [mismatching_chunks], indirect=True)
+def test_tile_from_mismatching_chunks(netcdf_test_case):
+    converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
+    group_schema = converter.to_schema()
+    tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
+    assert tiles == (8, 8)
 
 
 def test_rename_array(simple1_netcdf_file):
@@ -254,6 +333,13 @@ def test_rename_dim(simple1_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
     converter.rename_dim("row", "col")
     assert set(converter.dim_names) == set(["col"])
+
+
+def test_not_implemented_error(empty_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(empty_netcdf_file.filepath)
+    converter.add_array("A1", [])
+    with pytest.raises(NotImplementedError):
+        converter.add_attr("a1", "A1", np.float64)
 
 
 def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
