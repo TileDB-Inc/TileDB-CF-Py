@@ -4,6 +4,8 @@
 
 ### Breaking Behavior
 
+* Makes `NetCDF4ConverterEngine` methods `add_ncvar_to_attr` and `add_ncdim_to_dim` private.
+
 ### New Features
 
 * Adds the parameter `is_virtual` to classmethod `Group.create` for flagging if the created group should be a virtual group.
@@ -16,6 +18,7 @@
 
 ### Bug fixes
 
+* Fix detection of tiles from NetCDF variables with matching chunk sizes.
 
 ## TileDB-CF-Py Release 0.2.0
 
