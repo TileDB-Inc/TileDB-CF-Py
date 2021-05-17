@@ -368,3 +368,9 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
     converter.create(uri)
     with pytest.raises(KeyError):
         converter.copy(uri, input_file=simple1_netcdf_file.filepath)
+
+
+def test_bad_array_name_error(simple2_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(simple2_netcdf_file.filepath)
+    with pytest.raises(ValueError):
+        converter.add_array("array0", tuple())
