@@ -341,7 +341,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
                 if dim.name not in converter.dim_names:
-                    converter.add_ncdim_to_dim_converter(
+                    converter._add_ncdim_to_dim_converter(
                         dim,
                         unlimited_dim_size,
                         dim_dtype,
@@ -364,7 +364,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 f"array{count}", dim_names, tiles=autotiles.get(dim_names)
             )
             for var_name in dims_to_vars[dim_names]:
-                converter.add_ncvar_to_attr_converter(
+                converter._add_ncvar_to_attr_converter(
                     netcdf_group.variables[var_name], f"array{count}"
                 )
         return converter
@@ -459,13 +459,21 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         for dim_name in dims:
             self._dim_to_arrays[dim_name].append(array_name)
 
-    def add_ncdim_to_dim_converter(
+    def _add_ncdim_to_dim_converter(
         self,
-        ncdim: netCDF4,
+        ncdim: netCDF4.Dimension,
         unlimited_dim_size: int = 10000,
         dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         dim_name: Optional[str] = None,
     ):
+        """Adds a new NetCDF dimension to TileDB dimension converter.
+
+        Parameters:
+            ncdim: NetCDF dimension to be converted.
+            unlimited_dim_size: Size for an unlimited dimension type.
+            dtype: Numpy type to use for the NetCDF dimension.
+            dim_name: Output name of the dimension.
+        """
         dim_converter = NetCDFDimensionConverter.from_netcdf(
             ncdim,
             unlimited_dim_size,
@@ -474,7 +482,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         )
         try:
             self._check_new_dim_name(dim_converter)
-        except ValueError as err:
+        except ValueError as err:  # pragma: no cover
             raise ValueError(
                 f"Cannot add new dimension '{dim_converter.name}'. {str(err)}"
             ) from err
@@ -483,7 +491,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dataspace_name(dim_converter.name)
         ] = dim_converter.name
 
-    def add_ncvar_to_attr_converter(
+    def _add_ncvar_to_attr_converter(
         self,
         ncvar: netCDF4.Variable,
         array_name: str,
@@ -518,17 +526,17 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         """
         try:
             array_creator = self._array_creators[array_name]
-        except KeyError as err:
+        except KeyError as err:  # pragma: no cover
             raise KeyError(
                 f"Cannot add attribute to array '{array_name}'. No array named "
                 f"'{array_name}' exists."
             ) from err
-        if ncvar.ndim != 0 and ncvar.ndim != array_creator.ndim:
+        if ncvar.ndim != 0 and ncvar.ndim != array_creator.ndim:  # pragma: no cover
             raise ValueError(
                 f"Cannot convert a NetCDF variable with {ncvar.ndim} dimensions to an "
                 f"array with {array_creator.ndim} dimensions."
             )
-        if ncvar.ndim == 0 and array_creator.ndim != 1:
+        if ncvar.ndim == 0 and array_creator.ndim != 1:  # pragma: no cover
             raise ValueError(
                 f"Cannot add a scalar NetCDF variable to an array with "
                 f"{array_creator.ndim} dimensions > 1."
@@ -544,7 +552,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         )
         try:
             self._check_new_attr_name(ncvar_converter.name)
-        except ValueError as err:
+        except ValueError as err:  # pragma: no cover
             raise ValueError(
                 f"Cannot add new attribute '{ncvar_converter.name}'. {str(err)}"
             ) from err
