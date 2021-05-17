@@ -382,9 +382,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         output = StringIO()
         output.write(f"{super().__repr__()}\n")
         if self.default_input_file is not None:
-            output.write("Default NetCDF file: {self.default_input_file}\n")
+            output.write(f"Default NetCDF file: {self.default_input_file}\n")
         if self.default_group_path is not None:
-            output.write("Deault NetCDF group path: {self.default_group_path}\n")
+            output.write(f"Deault NetCDF group path: {self.default_group_path}\n")
         return output.getvalue()
 
     def add_array(

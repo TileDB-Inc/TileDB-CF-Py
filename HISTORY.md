@@ -18,7 +18,8 @@
 
 ### Bug fixes
 
-* Fix detection of tiles from NetCDF variables with matching chunk sizes.
+* Fixes detection of tiles from NetCDF variables with matching chunk sizes.
+* Fixes f-strings in NetCDF4ConverterEngine `__repr__` method
 
 ## TileDB-CF-Py Release 0.2.0
 
