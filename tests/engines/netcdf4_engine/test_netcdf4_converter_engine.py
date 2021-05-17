@@ -197,7 +197,7 @@ def test_converter_from_netcdf(netcdf_test_case, tmpdir):
     converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
     uri = str(tmpdir.mkdir("output").join(name))
     assert isinstance(repr(converter), str)
-    converter.convert(uri)
+    converter.convert_to_group(uri)
     for attr_name, var_name in attr_to_var_map[name].items():
         with Group(uri, attr=attr_name) as group:
             nonempty_domain = group.array.nonempty_domain()
@@ -213,8 +213,8 @@ def test_converter_from_netcdf_2(netcdf_test_case, tmpdir):
     converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
     uri = str(tmpdir.mkdir("output").join(name))
     assert isinstance(repr(converter), str)
-    converter.create(uri)
-    converter.copy(uri)
+    converter.create_group(uri)
+    converter.copy_to_group(uri)
     for attr_name, var_name in attr_to_var_map[name].items():
         with Group(uri, attr=attr_name) as group:
             nonempty_domain = group.array.nonempty_domain()
@@ -365,9 +365,9 @@ def test_not_implemented_error(empty_netcdf_file):
 def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(simple2_netcdf_file.filepath)
     uri = str(tmpdir.mkdir("output").join("test_copy_error"))
-    converter.create(uri)
+    converter.create_group(uri)
     with pytest.raises(KeyError):
-        converter.copy(uri, input_file=simple1_netcdf_file.filepath)
+        converter.copy_to_group(uri, input_file=simple1_netcdf_file.filepath)
 
 
 def test_bad_array_name_error(simple2_netcdf_file):
