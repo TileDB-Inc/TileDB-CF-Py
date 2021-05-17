@@ -339,22 +339,6 @@ class DataspaceCreator:
         """
         Group.create(group_uri, self.to_schema(ctx), key, ctx, is_virtual)
 
-    def create_virtual(
-        self,
-        group_uri: str,
-        key: Optional[Union[Dict[str, str], str]] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        """Creates the TileDB arrays for the CF dataspace in a virtual group.
-
-        Parameters:
-            group_uri: Uniform resource identifier for the TileDB group to be created.
-            key: If not ``None``, encryption key, or dictionary of encryption keys, to
-                decrypt arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-        """
-        Group.create_virtual(group_uri, self.to_schema(ctx), key, ctx)
-
     @property
     def dim_names(self):
         """A view of the names of dimensions in the CF dataspace."""
