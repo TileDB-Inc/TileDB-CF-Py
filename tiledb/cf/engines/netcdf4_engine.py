@@ -251,7 +251,9 @@ class NetCDFArrayConverter(ArrayCreator):
         """
         data = {}
         for attr_converter in self._attr_creators.values():
-            if not isinstance(attr_converter, NetCDFVariableConverter):
+            if not isinstance(
+                attr_converter, NetCDFVariableConverter
+            ):  # pragma: no cover
                 raise TypeError(
                     "Cannot assign value for attribute {attr_converter.name} that is "
                     "of type {type(attr_converter)}."
@@ -477,14 +479,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 f"Cannot add new dimension '{dim_converter.name}'. {str(err)}"
             ) from err
         self._dims[dim_converter.name] = dim_converter
-        if dim_converter.is_data_dim:
-            self._data_dim_dataspace_names[
-                dataspace_name(dim_converter.name)
-            ] = dim_converter.name
-        else:
-            self._index_dim_dataspace_names[
-                dataspace_name(dim_converter.name)
-            ] = dim_converter.name
+        self._index_dim_dataspace_names[
+            dataspace_name(dim_converter.name)
+        ] = dim_converter.name
 
     def add_ncvar_to_attr_converter(
         self,
@@ -641,7 +638,7 @@ def copy_metadata_item(meta, netcdf_item, key):
         value = (value.tolist(),)
     try:
         meta[key] = value
-    except ValueError as err:
+    except ValueError as err:  # pragma: no cover
         warnings.warn(f"Failed to set group metadata {value} with error: " f"{err}")
 
 
