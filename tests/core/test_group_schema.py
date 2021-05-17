@@ -166,3 +166,23 @@ class TestLoadGroup:
     def test_not_group_exception(self, group_uri):
         with pytest.raises(ValueError):
             GroupSchema.load(group_uri + "/A1")
+
+
+def test_create_virtual(tmpdir):
+    group1 = tmpdir.mkdir("virtual1")
+    group2 = tmpdir.mkdir("virtual2")
+    a1_uri = str(group1.join("array"))
+    a2_uri = str(group2.join("array"))
+    metadata_uri = str(group2.join("group_metadata"))
+    tiledb.Array.create(a1_uri, _array_schema_1)
+    tiledb.Array.create(a2_uri, _array_schema_2)
+    tiledb.Array.create(metadata_uri, _empty_array_schema)
+    array_uris = {
+        "array1": a1_uri,
+        "array2": a2_uri,
+        "__tiledb_group": metadata_uri,
+    }
+    group_schema = GroupSchema.load_virtual(array_uris)
+    assert group_schema["array1"] == _array_schema_1
+    assert group_schema["array2"] == _array_schema_2
+    assert group_schema.metadata_schema == _empty_array_schema
