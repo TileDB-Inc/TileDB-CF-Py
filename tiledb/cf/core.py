@@ -582,10 +582,9 @@ class GroupSchema(Mapping):
     def __repr__(self) -> str:
         """Returns the object representation of this GroupSchema in string form."""
         output = StringIO()
-        output.write("  GroupSchema (\n")
+        output.write("GroupSchema:\n")
         for name, schema in self.items():
-            output.write(f"{name} {repr(schema)}")
-        output.write(")\n")
+            output.write(f"'{name}': {repr(schema)}")
         return output.getvalue()
 
     def check(self):
