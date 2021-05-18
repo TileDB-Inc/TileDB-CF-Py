@@ -318,26 +318,41 @@ class DataspaceCreator:
         """A view of the names of attributes in the CF dataspace."""
         return self._attr_to_array.keys()
 
-    def create(
+    def create_group(
         self,
-        group_uri: str,
+        uri: str,
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
-        is_virtual: bool = False,
     ):
         """Creates a TileDB group and arrays for the CF dataspace.
 
         Parameters:
-            group_uri: Uniform resource identifier for the TileDB group to be created.
+            uri: Uniform resource identifier for the TileDB group to be created, or
+                prefix URIs for the TileDB arrays that will be created if
+                ``use_virtual_groups=True``.
             key: If not ``None``, encryption key, or dictionary of encryption keys, to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            is_virtual: If ``True``, create a virtual group using ``uri`` as the name
-                for the group metadata array. All other arrays will be named using the
-                convention ``{uri}_{array_name}`` where ``array_name`` is the name of
-                the array.
         """
-        Group.create(group_uri, self.to_schema(ctx), key, ctx, is_virtual)
+        Group.create(uri, self.to_schema(ctx), key, ctx)
+
+    def create_virtual_group(
+        self,
+        uri: str,
+        key: Optional[Union[Dict[str, str], str]] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ):
+        """Creates TileDB arrays for the CF dataspace.
+
+        Parameters:
+            uri: Uniform resource identifier for the TileDB group to be created, or
+                prefix URIs for the TileDB arrays that will be created if
+                ``use_virtual_groups=True``.
+            key: If not ``None``, encryption key, or dictionary of encryption keys, to
+                decrypt arrays.
+            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        """
+        Group.create_virtual(uri, self.to_schema(ctx), key, ctx)
 
     @property
     def dim_names(self):

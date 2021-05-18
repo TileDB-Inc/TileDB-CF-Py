@@ -20,6 +20,7 @@ def from_netcdf(
     unlimited_dim_size: int = 10000,
     dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
     tiles: Dict[str, Dict[Tuple[str, ...], Tuple[int, ...]]] = None,
+    use_virtual_groups: bool = False,
 ):
     """Converts a NetCDF input file to nested TileDB CF dataspaces.
 
@@ -42,32 +43,63 @@ def from_netcdf(
             from unlimited NetCDF dimensions.
         dim_dtype: The numpy dtype for TileDB dimensions.
         tiles: A map from the NetCDF group name to a map from the name of NetCDF
-
             dimensions defining a variable to the tiles of those dimensions in the
             generated NetCDF array.
+        use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
+            as the name for the group metadata array. All other arrays will be named
+            using the convention ``{uri}_{array_name}`` where ``array_name`` is the
+            name of the array.
     """
     from .netcdf4_engine import NetCDF4ConverterEngine, open_netcdf_group
 
     output_uri = output_uri if not output_uri.endswith("/") else output_uri[:-1]
 
-    def recursive_convert_group(group):
-        group_uri = output_uri + group.path
+    def recursive_convert_to_virtual_group(netcdf_group):
         converter = NetCDF4ConverterEngine.from_group(
-            group,
+            netcdf_group,
             unlimited_dim_size,
             dim_dtype,
-            tiles.get(group.path) if tiles is not None else None,
+            tiles.get(netcdf_group.path) if tiles is not None else None,
         )
-        converter.convert(group_uri, output_key, output_ctx, netcdf_group=group)
+        group_uri = (
+            output_uri
+            if netcdf_group.path == "/"
+            else output_uri + netcdf_group.path.replace("/", "_")
+        )
+        converter.convert_to_virtual_group(
+            group_uri, output_key, output_ctx, input_netcdf_group=netcdf_group
+        )
         if recursive:
-            for subgroup in group.groups.values():
-                recursive_convert_group(subgroup)
+            for subgroup in netcdf_group.groups.values():
+                recursive_convert_to_virtual_group(subgroup)
 
-    with open_netcdf_group(
-        input_file=input_file,
-        group_path=input_group_path,
-    ) as dataset:
-        recursive_convert_group(dataset)
+    def recursive_convert_to_group(netcdf_group):
+        converter = NetCDF4ConverterEngine.from_group(
+            netcdf_group,
+            unlimited_dim_size,
+            dim_dtype,
+            tiles.get(netcdf_group.path) if tiles is not None else None,
+        )
+        group_uri = output_uri + netcdf_group.path
+        converter.convert_to_group(
+            group_uri, output_key, output_ctx, input_netcdf_group=netcdf_group
+        )
+        if recursive:
+            for subgroup in netcdf_group.groups.values():
+                recursive_convert_to_group(subgroup)
+
+    if use_virtual_groups:
+        with open_netcdf_group(
+            input_file=input_file,
+            group_path=input_group_path,
+        ) as dataset:
+            recursive_convert_to_virtual_group(dataset)
+    else:
+        with open_netcdf_group(
+            input_file=input_file,
+            group_path=input_group_path,
+        ) as dataset:
+            recursive_convert_to_group(dataset)
 
 
 def from_netcdf_group(
@@ -79,6 +111,7 @@ def from_netcdf_group(
     unlimited_dim_size: int = 10000,
     dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
     tiles: Optional[Dict[Tuple[str, ...], Optional[Tuple[int, ...]]]] = None,
+    use_virtual_groups: bool = False,
 ):
     """Converts a group in a NetCDF file or :class:`netCDF4.Group` to a TileDB CF
     dataspace.
@@ -100,6 +133,10 @@ def from_netcdf_group(
         dim_dtype: The numpy dtype for TileDB dimensions.
         tiles: A map from the name of NetCDF dimensions defining a variable to the
             tiles of those dimensions in the generated NetCDF array.
+        use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
+            as the name for the group metadata array. All other arrays will be named
+            using the convention ``{uri}_{array_name}`` where ``array_name`` is the
+            name of the array.
     """
     from .netcdf4_engine import NetCDF4ConverterEngine
 
@@ -111,7 +148,10 @@ def from_netcdf_group(
             dim_dtype,
             tiles,
         )
-        converter.convert(output_uri, output_key, output_ctx)
+        if use_virtual_groups:
+            converter.convert_to_virtual_group(output_uri, output_key, output_ctx)
+        else:
+            converter.convert_to_group(output_uri, output_key, output_ctx)
     else:
         converter = NetCDF4ConverterEngine.from_group(
             netcdf_input,
@@ -119,4 +159,11 @@ def from_netcdf_group(
             dim_dtype,
             tiles,
         )
-        converter.convert(output_uri, output_key, output_ctx, netcdf_group=netcdf_input)
+        if use_virtual_groups:
+            converter.convert_to_virtual_group(
+                output_uri, output_key, output_ctx, input_netcdf_group=netcdf_input
+            )
+        else:
+            converter.convert_to_group(
+                output_uri, output_key, output_ctx, input_netcdf_group=netcdf_input
+            )
