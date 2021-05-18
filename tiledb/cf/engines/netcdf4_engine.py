@@ -15,7 +15,7 @@ import numpy as np
 
 import tiledb
 
-from ..core import Group
+from ..core import AttrMetadata, Group
 from ..creator import (
     ArrayCreator,
     AttrCreator,
@@ -240,14 +240,14 @@ class NetCDFArrayConverter(ArrayCreator):
     def copy(
         self,
         netcdf_group: netCDF4.Group,
-        tiledb_group: Group,
+        tiledb_array: tiledb.Array,
     ):
-        """Copies data from a NetCDF group to a TileDB CF dataspace.
+        """Copies data from a NetCDF group to a TileDB CF array.
 
         Parameters:
             netcdf_group: The NetCDF group to copy data from.
-            tiledb_group: The tiledb group to copy data into. Must be open into the
-                array the data is being copied into.
+            tiledb_arary: The TileDB array to copy data into. The array must be open
+                in write mode.
         """
         data = {}
         for attr_converter in self._attr_creators.values():
@@ -266,11 +266,11 @@ class NetCDFArrayConverter(ArrayCreator):
                     f"requested NetCDF group."
                 ) from err
             data[attr_converter.name] = variable[...]
-            attr_meta = tiledb_group.get_attr_metadata(attr_converter.name)
+            attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
             for meta_key in variable.ncattrs():
                 copy_metadata_item(attr_meta, variable, meta_key)
         dim_slice = tuple(slice(dim.size) for dim in variable.get_dims())
-        tiledb_group.array[dim_slice or slice(None)] = data
+        tiledb_array[dim_slice or slice(None)] = data
 
 
 @dataclass
@@ -686,7 +686,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     with Group(
                         output_uri, mode="w", array=array_name, key=key, ctx=ctx
                     ) as tiledb_group:
-                        array_creator.copy(netcdf_group, tiledb_group)
+                        array_creator.copy(netcdf_group, tiledb_group.array)
 
     def copy_to_virtual_group(
         self,
@@ -727,7 +727,21 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 if input_group_path is not None
                 else self.default_group_path
             )
-        raise NotImplementedError("Copying to virtual groups is not yet implemented.")
+        with open_netcdf_group(
+            input_netcdf_group,
+            input_file,
+            input_group_path,
+        ) as netcdf_group:
+            # Copy group metadata
+            with tiledb.Array(output_uri, mode="w", key=key, ctx=ctx) as array:
+                for group_key in netcdf_group.ncattrs():
+                    copy_metadata_item(array.meta, netcdf_group, group_key)
+            # Copy variables and variable metadata to arrays
+            for array_name, array_creator in self._array_creators.items():
+                array_uri = output_uri + "_" + array_name
+                if isinstance(array_creator, NetCDFArrayConverter):
+                    with tiledb.open(array_uri, mode="w", key=key, ctx=ctx) as array:
+                        array_creator.copy(netcdf_group, array)
 
 
 def copy_metadata_item(meta, netcdf_item, key):

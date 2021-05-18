@@ -88,6 +88,7 @@ def simple2_netcdf_file(tmpdir_factory):
             {"varname": "x2", "datatype": np.float64, "dimensions": ("row",)},
         ],
         variable_data={"x1": xdata, "x2": xdata ** 2},
+        group_metadata={"name": "simple2"},
     )
     return example
 

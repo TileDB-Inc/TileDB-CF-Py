@@ -224,6 +224,44 @@ def test_converter_from_netcdf_2(netcdf_test_case, tmpdir):
         )
 
 
+def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
+    uri = str(tmpdir.mkdir("output").join("virtual1"))
+    from_netcdf(group1_netcdf_file, uri, use_virtual_groups=True)
+    x = np.linspace(-1.0, 1.0, 8)
+    y = np.linspace(-1.0, 1.0, 4)
+    # Test root
+    with tiledb.open(f"{uri}_array0", attr="x1") as array:
+        x1 = array[:]
+    assert np.array_equal(x1, x)
+    # # Test group 3
+    with tiledb.open(f"{uri}_group3_array0") as array:
+        array0 = array[:, :]
+        A1 = array0["A1"]
+        A2 = array0["A2"]
+        A3 = array0["A3"]
+    assert np.array_equal(A1, np.outer(y, y))
+    assert np.array_equal(A2, np.zeros((4, 4), dtype=np.float64))
+    assert np.array_equal(A3, np.identity(4, dtype=np.int32))
+
+
+def test_virtual_from_netcdf_group_1(simple2_netcdf_file, tmpdir):
+    uri = str(tmpdir.mkdir("output").join("virtual2"))
+    from_netcdf_group(str(simple2_netcdf_file.filepath), uri, use_virtual_groups=True)
+    assert isinstance(tiledb.ArraySchema.load(f"{uri}_array0"), tiledb.ArraySchema)
+    with tiledb.open(uri) as array:
+        assert array.meta["name"] == "simple2"
+
+
+def test_virtual_from_netcdf_group_2(simple2_netcdf_file, tmpdir):
+    netCDF4 = pytest.importorskip("netCDF4")
+    uri = str(tmpdir.mkdir("output").join("virtual3"))
+    with netCDF4.Dataset(simple2_netcdf_file.filepath, mode="r") as dataset:
+        from_netcdf_group(dataset, uri, use_virtual_groups=True)
+    assert isinstance(tiledb.ArraySchema.load(f"{uri}_array0"), tiledb.ArraySchema)
+    with tiledb.open(uri) as array:
+        assert array.meta["name"] == "simple2"
+
+
 def test_group_metadata(tmpdir):
     netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir.mkdir("data").join("test_group_metadata.nc"))
