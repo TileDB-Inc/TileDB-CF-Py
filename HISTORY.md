@@ -5,12 +5,19 @@
 ### Breaking Behavior
 
 * Makes `NetCDF4ConverterEngine` methods `add_ncvar_to_attr` and `add_ncdim_to_dim` private.
+* Renames method `create` in `DataspaceConverter` to `create_group` and changes method parameters.
+* Renames method `convert` in `NetCDF4ConverterEngine` to `convert_to_group` and changes method parameters.
+* Renames method `copy` in `NetCDF4ConverterEninge` to `copy_group` and changes method parameters.
+* Adds `use_virtual_groups` parameter to `from_netcdf` and `from_netcdf_group` functions.
 
 ### New Features
 
 * Adds the parameter `is_virtual` to classmethod `Group.create` for flagging if the created group should be a virtual group.
 * Adds the classmethod `Group.create_virtual` that creates a virtual group from a mapping of array names to URIs.
 * Adds a classmethod `GroupSchema.load_virtual` for loading a virtual group defined by a mapping from array names to URIs.
+* Adds method `create_virtual_group` to `DataspaceConverter`.
+* Adds method `convert_to_virtual_group` in `NetCDF4ConverterEngine`.
+* Adds method `copy_to_virtual_group` in NetCDF4ConverterEngine`.
 
 ### Improvements
 
@@ -20,6 +27,7 @@
 
 * Fixes detection of tiles from NetCDF variables with matching chunk sizes.
 * Fixes f-strings in NetCDF4ConverterEngine `__repr__` method
+* Fixes
 
 ## TileDB-CF-Py Release 0.2.0
 
