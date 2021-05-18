@@ -26,6 +26,12 @@ disable = "C0330, C0326"
 [tool.pylint.format]
 max-line-length = "88"
 
+[tool.pytest.ini_options]
+markers = [
+    "flaky: flaky tests",
+    "network: tests requiring a network connection",
+]
+
 [tool.tox]
 legacy_tox_ini="""
 [tox]

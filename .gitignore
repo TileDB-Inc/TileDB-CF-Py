@@ -10,7 +10,7 @@ dist/
 .tox/
 .pytest_cache/
 .mypy_cache/
-.coverage
+.coverage*
 
 # Sphinx documentation
 docs/_build/
