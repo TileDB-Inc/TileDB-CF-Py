@@ -311,10 +311,6 @@ class TileDBDataStore(AbstractDataStore):
         timestamp : Optional[int]
             If not None, time in milliseconds to open the array at.
         """
-        if tiledb.object_type(uri) != "array":
-            raise ValueError(
-                f"Unable to read from URI '{uri}'. URI is not a TileDB array."
-            )
         self._uri = uri
         self._key = key
         self._timestamp = timestamp
