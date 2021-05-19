@@ -21,6 +21,8 @@ def from_netcdf(
     dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
     tiles: Dict[str, Dict[Tuple[str, ...], Tuple[int, ...]]] = None,
     use_virtual_groups: bool = False,
+    collect_attrs: bool = True,
+    collect_scalar_attrs: bool = True,
 ):
     """Converts a NetCDF input file to nested TileDB CF dataspaces.
 
@@ -49,6 +51,10 @@ def from_netcdf(
             as the name for the group metadata array. All other arrays will be named
             using the convention ``{uri}_{array_name}`` where ``array_name`` is the
             name of the array.
+        collect_attrs: If True, store all attributes with the same dimensions
+            in the same array. Otherwise, store each attribute in a scalar array.
+        collect_scalar_attrs: If true, store all attributes with no dimensions
+            in the same array. This is always done if collect_attributes=True.
     """
     from .netcdf4_engine import NetCDF4ConverterEngine, open_netcdf_group
 
@@ -60,6 +66,8 @@ def from_netcdf(
             unlimited_dim_size,
             dim_dtype,
             tiles.get(netcdf_group.path) if tiles is not None else None,
+            collect_attrs=collect_attrs,
+            collect_scalar_attrs=collect_scalar_attrs,
         )
         group_uri = (
             output_uri
@@ -79,6 +87,8 @@ def from_netcdf(
             unlimited_dim_size,
             dim_dtype,
             tiles.get(netcdf_group.path) if tiles is not None else None,
+            collect_attrs=collect_attrs,
+            collect_scalar_attrs=collect_scalar_attrs,
         )
         group_uri = output_uri + netcdf_group.path
         converter.convert_to_group(
@@ -112,6 +122,8 @@ def from_netcdf_group(
     dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
     tiles: Optional[Dict[Tuple[str, ...], Optional[Tuple[int, ...]]]] = None,
     use_virtual_groups: bool = False,
+    collect_attrs: bool = True,
+    collect_scalar_attrs: bool = True,
 ):
     """Converts a group in a NetCDF file or :class:`netCDF4.Group` to a TileDB CF
     dataspace.
@@ -147,6 +159,8 @@ def from_netcdf_group(
             unlimited_dim_size,
             dim_dtype,
             tiles,
+            collect_attrs=collect_attrs,
+            collect_scalar_attrs=collect_scalar_attrs,
         )
         if use_virtual_groups:
             converter.convert_to_virtual_group(output_uri, output_key, output_ctx)
@@ -158,6 +172,8 @@ def from_netcdf_group(
             unlimited_dim_size,
             dim_dtype,
             tiles,
+            collect_attrs=collect_attrs,
+            collect_scalar_attrs=collect_scalar_attrs,
         )
         if use_virtual_groups:
             converter.convert_to_virtual_group(

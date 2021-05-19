@@ -52,6 +52,18 @@ def cli():
     help="Recursively convert all groups contained in the input group path.",
 )
 @click.option(
+    "--collect-attrs/--array-per-attr",
+    default=True,
+    show_default=True,
+    help="Collect variables with the same dimensions into a single array.",
+)
+@click.option(
+    "--collect-scalar-attrs/--no-collect-scalar-attrs",
+    default=True,
+    show_default=True,
+    help="Collect scalary variables into a single array.",
+)
+@click.option(
     "-k",
     "--output-key",
     type=str,
@@ -92,6 +104,8 @@ def netcdf_convert(
     output_key: Optional[str],
     unlimited_dim_size: int,
     dim_dtype: str,
+    collect_attrs: bool,
+    collect_scalar_attrs: bool,
 ):
     """Converts a NetCDF input file to nested TileDB groups."""
     from_netcdf(
@@ -104,4 +118,6 @@ def netcdf_convert(
         unlimited_dim_size=unlimited_dim_size,
         dim_dtype=np.dtype(dim_dtype),
         tiles=None,
+        collect_attrs=collect_attrs,
+        collect_scalar_attrs=collect_scalar_attrs,
     )

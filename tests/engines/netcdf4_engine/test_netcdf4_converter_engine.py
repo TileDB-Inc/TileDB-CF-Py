@@ -226,19 +226,20 @@ def test_converter_from_netcdf_2(netcdf_test_case, tmpdir):
 
 def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("virtual1"))
-    from_netcdf(group1_netcdf_file, uri, use_virtual_groups=True)
+    from_netcdf(group1_netcdf_file, uri, use_virtual_groups=True, collect_attrs=False)
     x = np.linspace(-1.0, 1.0, 8)
     y = np.linspace(-1.0, 1.0, 4)
     # Test root
-    with tiledb.open(f"{uri}_array0", attr="x1") as array:
+    with tiledb.open(f"{uri}_x1", attr="x1") as array:
         x1 = array[:]
     assert np.array_equal(x1, x)
     # # Test group 3
-    with tiledb.open(f"{uri}_group3_array0") as array:
-        array0 = array[:, :]
-        A1 = array0["A1"]
-        A2 = array0["A2"]
-        A3 = array0["A3"]
+    with tiledb.open(f"{uri}_group3_A1", attr="A1") as array:
+        A1 = array[:, :]
+    with tiledb.open(f"{uri}_group3_A2", attr="A2") as array:
+        A2 = array[:, :]
+    with tiledb.open(f"{uri}_group3_A3", attr="A3") as array:
+        A3 = array[:, :]
     assert np.array_equal(A1, np.outer(y, y))
     assert np.array_equal(A2, np.zeros((4, 4), dtype=np.float64))
     assert np.array_equal(A3, np.identity(4, dtype=np.int32))
