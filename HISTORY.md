@@ -18,6 +18,7 @@
 * Adds method `create_virtual_group` to `DataspaceConverter`.
 * Adds method `convert_to_virtual_group` in `NetCDF4ConverterEngine`.
 * Adds method `copy_to_virtual_group` in NetCDF4ConverterEngine`.
+* Adds TileDB backend engine for xarray (previously in TileDB-xarray package).
 
 ### Improvements
 
