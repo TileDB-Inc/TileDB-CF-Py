@@ -259,6 +259,7 @@ class TileDBDenseArrayWrapper(BackendArray):
                 f"key of length {len(xarray_indices)} cannot be used for a TileDB array"
                 f" of length {len(self._index_converters)}"
             )
+        # Compute the shape, collapsing any dimensions with integer input.
         shape = tuple(
             len(range(converter.size)[index] if isinstance(index, slice) else index)
             for index, converter in zip(xarray_indices, self._index_converters)
