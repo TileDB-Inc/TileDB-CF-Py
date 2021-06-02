@@ -38,7 +38,6 @@ pip install -e '.[parallel]'
 git checkout -b <my_initials>/<my_bugfix/feature_branch>
 # ... code changes ...
 ./tools/lint.sh # run linters
-tox # run all test suites with tox
 git commit -a -m "descriptive commit message"
 git push --set-upstream origin <my_initials>/<my_bugfix_branch>
 ```
@@ -64,7 +63,6 @@ The following tools are used for testing, linting, and formatting. You may want 
 * flake8
 * mypy
 * pytest (with pytest-cov)
-* tox
 
 
 ### Formatting, Style, and Linting
@@ -88,9 +86,7 @@ git stash pop
 
 ### Testing
 
-The testing for this project uses pytest and tox. Currently, tox is set-up to test Python versions 3.7, 3.8, and 3.9. This requires you to have `python3.7`, `python3.8`, and `python3.9` accessible to tox. Tests can be run by executing `tox`.
-
-It is strongly recommended that you run the full tox test suite before submitting code for a pull request.
+The testing for this project uses pytest and GitHub workflows for testing. The test suite will be run on GitHub when you submit your pull request.
 
 ### Pull Requests
 
@@ -98,9 +94,7 @@ It is strongly recommended that you run the full tox test suite before submittin
 
 * Commit changes to a local branch.  The convention is to use your initials to identify branches.  Branch names should be identifiable and reflect the feature or bug that they want to address / fix. This helps in deleting old branches later.
 
-* Make sure the test suite passes by running `tox`.
-
-* When ready to submit a PR, `git rebase` the branch on top of the latest `dev` commit.  Be sure to squash / cleanup the commit history so that the PR preferably one, or a couple commits at most.  Each atomic commit in a PR should be able to pass the test suite.
+* When ready to submit a PR, `git rebase` the branch on top of the latest `dev` commit.  Be sure to squash / cleanup the commit history so that the PR preferably one, or a couple commits at most.  All commits will be squashed into a single commit upon merging.
 
 * Run the formatting (`isort`, `black`) and linting tools (`flake8`, `mypy`) before submitting a final PR. Make sure that your contribution generally follows the format and naming conventions used by surrounding code.
 
