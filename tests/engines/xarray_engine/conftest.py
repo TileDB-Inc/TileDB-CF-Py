@@ -46,7 +46,7 @@ def create_tiledb_example(tmpdir):
         ],
     )
     tiledb.DenseArray.create(array_uri, schema)
-    with tiledb.DenseArray(array_uri, mode="w") as array:
+    with tiledb.open(array_uri, mode="w") as array:
         array[:, :] = {
             "pressure": float_data,
             "count": int_data,
@@ -60,12 +60,12 @@ def create_tiledb_example(tmpdir):
 
 @pytest.fixture
 def create_tiledb_datetime_example(tmpdir):
-    _data = np.linspace(-1.0, 20.0, num=16, endpoint=True, dtype=np.float64)
-    _date = np.arange(np.datetime64("2000-01-01"), np.datetime64("2000-01-17"))
+    data = np.linspace(-1.0, 20.0, num=16, endpoint=True, dtype=np.float64)
+    date = np.arange(np.datetime64("2000-01-01"), np.datetime64("2000-01-17"))
     # Create expected dataset
     expected = xr.Dataset(
-        data_vars={"temperature": xr.DataArray(data=_data, dims="date")},
-        coords={"date": _date},
+        data_vars={"temperature": xr.DataArray(data=data, dims="date")},
+        coords={"date": date},
     )
     # Create TileDB array
     array_uri = str(tmpdir.join("tiledb_example_2"))
@@ -82,5 +82,5 @@ def create_tiledb_datetime_example(tmpdir):
     )
     tiledb.DenseArray.create(array_uri, schema)
     with tiledb.DenseArray(array_uri, mode="w") as array:
-        array[:] = {"temperature": _data}
+        array[:] = {"temperature": data}
     return array_uri, expected

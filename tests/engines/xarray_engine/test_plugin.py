@@ -177,7 +177,7 @@ class TestTileDB:
     )
     def test_indexing_array_1D(self, simple_data_arrays, index):
         (tiledb_data_array, xarray_data_array) = simple_data_arrays
-        xr.testing.assert_allclose(tiledb_data_array, xarray_data_array)
+        xr.testing.assert_allclose(tiledb_data_array[index], xarray_data_array[index])
 
     @pytest.mark.parametrize("simple_data_arrays", simple_examples_2d, indirect=True)
     @pytest.mark.parametrize(
@@ -199,7 +199,10 @@ class TestTileDB:
     )
     def test_indexing_array_2D(self, simple_data_arrays, index1, index2):
         (tiledb_data_array, xarray_data_array) = simple_data_arrays
-        xr.testing.assert_allclose(tiledb_data_array, xarray_data_array)
+        xr.testing.assert_allclose(
+            tiledb_data_array[index1, index2],
+            xarray_data_array[index1, index2],
+        )
 
     @pytest.mark.parametrize("simple_data_arrays", simple_examples_2d, indirect=True)
     def test_indexing_array_nested_2D(self, simple_data_arrays):
