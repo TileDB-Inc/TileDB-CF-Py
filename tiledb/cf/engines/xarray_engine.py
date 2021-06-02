@@ -56,16 +56,6 @@ class TileDBIndexConverter:
            of the array starting at -1.
     """
 
-    __slots__ = (
-        "name",
-        "dtype",
-        "min_value",
-        "max_value",
-        "size",
-        "shape",
-        "delta_dtype",
-    )
-
     def __init__(self, dim):
         dtype_kind = dim.dtype.kind
         if dtype_kind not in ("i", "u", "M"):
@@ -188,8 +178,6 @@ class TileDBCoordinateWrapper(BackendArray):
     through a :class:`LazilyIndexedArray` object.
     """
 
-    __slots__ = ("_converter",)
-
     def __init__(self, index_converter: TileDBIndexConverter):
         """
         Parameters
@@ -209,8 +197,7 @@ class TileDBCoordinateWrapper(BackendArray):
         index = key[0]
         if isinstance(index, integer_types):
             return self._converter.to_coordinate(index)
-        else:
-            return self._converter.to_coordinates(index)
+        return self._converter.to_coordinates(index)
 
     @property
     def dtype(self) -> np.dtype:
@@ -229,8 +216,6 @@ class TileDBDenseArrayWrapper(BackendArray):
     This class is not intended to accessed directly. Instead it should be used
     through a :class:`LazilyIndexedArray` object.
     """
-
-    __slots__ = ("_array_args", "_index_converters", "shape", "dtype")
 
     def __init__(self, attr, uri, key, timestamp, index_converters):
         """
@@ -257,7 +242,13 @@ class TileDBDenseArrayWrapper(BackendArray):
                 "Support for anonymnous TileDB attributes has not been implemented."
             )
         self.dtype = attr.dtype
-        self._array_args = (uri, "r", key, timestamp, attr.name)
+        self._array_kwargs = {
+            "uri": uri,
+            "mode": "r",
+            "key": key,
+            "timestamp": timestamp,
+            "attr": attr.name,
+        }
         self._index_converters = index_converters
         self.shape = tuple(converter.size for converter in index_converters)
 
@@ -281,8 +272,8 @@ class TileDBDenseArrayWrapper(BackendArray):
             converter[index]
             for index, converter in zip(xarray_indices, self._index_converters)
         )
-        with tiledb.DenseArray(*self._array_args) as array:
-            result = array.multi_index[tiledb_indices][self._array_args[-1]]
+        with tiledb.open(**self._array_kwargs) as array:
+            result = array.multi_index[tiledb_indices][self._array_kwargs["attr"]]
         # Note: TileDB multi_index returns the same number of dimensions as the initial
         # array. To match the expected xarray output, we need to reshape the result to
         # remove any dimensions corresponding to scalar-valued input.
@@ -291,8 +282,6 @@ class TileDBDenseArrayWrapper(BackendArray):
 
 class TileDBDataStore(AbstractDataStore):
     """Data store for reading TileDB arrays."""
-
-    __slots__ = ("_key", "_timestamp", "_uri")
 
     def __init__(
         self,
