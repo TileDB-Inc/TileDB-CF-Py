@@ -10,7 +10,6 @@ exclude = '''
   | \.git
   | \.mypy_cache
   | \.pytest_cache
-  | \.tox
   | docs
   | dist
 )/
@@ -31,16 +30,3 @@ markers = [
     "flaky: flaky tests",
     "network: tests requiring a network connection",
 ]
-
-[tool.tox]
-legacy_tox_ini="""
-[tox]
-isolated_build = true
-extras = parallel
-minversion = 3.18.0
-envlist = py37, py38, py39
-
-[testenv]
-changedir = tests
-deps = pytest
-"""

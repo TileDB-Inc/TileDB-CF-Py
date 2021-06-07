@@ -28,7 +28,7 @@
 
 * Fixes detection of tiles from NetCDF variables with matching chunk sizes.
 * Fixes ouput in NetCDF4ConverterEngine and GroupSchema `__repr__` methods.
-
+* Fixes build error when installing with `python setup.py install`.
 
 ## TileDB-CF-Py Release 0.2.0
 
