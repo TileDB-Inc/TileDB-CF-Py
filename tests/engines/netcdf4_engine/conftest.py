@@ -94,6 +94,23 @@ def simple2_netcdf_file(tmpdir_factory):
 
 
 @pytest.fixture(scope="session")
+def multiscalars_netcdf_file(tmpdir_factory):
+    directory_path = tmpdir_factory.mktemp("sample_netcdf")
+    example = NetCDFSingleGroupExample(
+        "multiscalars",
+        directory_path,
+        dimension_args=[],
+        variable_kwargs=[
+            {"varname": "s1", "datatype": np.float64, "dimensions": tuple()},
+            {"varname": "s2", "datatype": np.float64, "dimensions": tuple()},
+            {"varname": "s3", "datatype": np.float64, "dimensions": tuple()},
+        ],
+        variable_data={"s1": 1.0, "s2": 2.0, "s3": 3.0},
+    )
+    return example
+
+
+@pytest.fixture(scope="session")
 def group1_netcdf_file(tmpdir_factory):
     """Sample NetCDF file with groups
 

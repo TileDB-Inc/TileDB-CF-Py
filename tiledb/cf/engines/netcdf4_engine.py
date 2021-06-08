@@ -444,7 +444,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         ncvar.dimensions,
                         tiles=array_tiles,
                     )
-                converter._add_ncvar_to_attr_converter(ncvar, array_name)
+            converter._add_ncvar_to_attr_converter(ncvar, array_name)
         return converter
 
     @classmethod

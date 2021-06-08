@@ -324,6 +324,29 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
     assert np.array_equal(A3, np.identity(4, dtype=np.int32))
 
 
+def test_collect_scalar_attrs(multiscalars_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        multiscalars_netcdf_file.filepath,
+        collect_attrs=False,
+        collect_scalar_attrs=True,
+    )
+    assert set(converter.array_names) == {"scalars"}
+    print(converter._array_creators["scalars"].attr_names)
+    assert set(converter._array_creators["scalars"].attr_names) == {"s1", "s2", "s3"}
+
+
+def test_no_collect_scalars(multiscalars_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        multiscalars_netcdf_file.filepath,
+        collect_attrs=False,
+        collect_scalar_attrs=False,
+    )
+    assert set(converter.array_names) == {"s1", "s2", "s3"}
+    assert set(converter._array_creators["s1"].attr_names) == {"s1"}
+    assert set(converter._array_creators["s2"].attr_names) == {"s2"}
+    assert set(converter._array_creators["s3"].attr_names) == {"s3"}
+
+
 def test_variable_fill(tmpdir):
     """Test converting a NetCDF variable will the _FillValue NetCDF attribute set."""
     netCDF4 = pytest.importorskip("netCDF4")
