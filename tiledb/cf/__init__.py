@@ -117,7 +117,8 @@ def netcdf_convert(
         output_ctx=None,
         unlimited_dim_size=unlimited_dim_size,
         dim_dtype=np.dtype(dim_dtype),
-        tiles=None,
+        tiles_by_var=None,
+        tiles_by_dims=None,
         collect_attrs=collect_attrs,
         collect_scalar_attrs=collect_scalar_attrs,
     )

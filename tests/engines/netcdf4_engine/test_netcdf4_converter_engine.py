@@ -367,7 +367,7 @@ def test_tile_from_single_variable_chunks(netcdf_test_case):
 @pytest.mark.parametrize("netcdf_test_case", [matching_chunks], indirect=True)
 def test_overwrite_autotile(netcdf_test_case):
     converter = NetCDF4ConverterEngine.from_file(
-        netcdf_test_case.filepath, tiles={("row", "col"): (2, 4)}
+        netcdf_test_case.filepath, tiles_by_dims={("row", "col"): (2, 4)}
     )
     group_schema = converter.to_schema()
     print(f"GROUP: {group_schema}")
