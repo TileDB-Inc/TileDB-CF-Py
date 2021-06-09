@@ -637,30 +637,6 @@ class GroupSchema(Mapping):
         """
         return self._attr_to_arrays.get(attr_name)
 
-    def get_attr_array(self, attr_name: str) -> str:
-        """Returns the name of the array in which the `attr_name` is contained.
-
-        Parameters:
-            attr_name: Name of the attribute to look up array for.
-
-        Returns:
-            Name of the array that contains the attribute with a matching name.
-
-        Raises:
-            KeyError: No attribute with name `attr_name` found.
-            ValueError: More than one array with `attr_name` found.
-        """
-        arrays = self._attr_to_arrays.get(attr_name)
-        if arrays is None:
-            raise KeyError(f"No attribute with name {attr_name} found.")
-        assert len(arrays) > 0
-        if len(arrays) > 1:
-            raise ValueError(
-                f"More than one array with attribute name {attr_name} found."
-                f"Arrays with that attribute are: {arrays}."
-            )
-        return arrays[0]
-
     @property
     def metadata_schema(self) -> Optional[tiledb.ArraySchema]:
         """ArraySchema for the group-level metadata."""
