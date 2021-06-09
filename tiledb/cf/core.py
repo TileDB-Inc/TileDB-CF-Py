@@ -637,6 +637,9 @@ class GroupSchema(Mapping):
         """
         return self._attr_to_arrays.get(attr_name)
 
+    def has_attr(self, attr_name: str) -> bool:
+        return attr_name in self._attr_to_arrays
+
     @property
     def metadata_schema(self) -> Optional[tiledb.ArraySchema]:
         """ArraySchema for the group-level metadata."""

@@ -83,6 +83,7 @@ class TestGroupSchema:
             assert result == list(
                 arrays
             ), f"Get all arrays for attribute '{attr_name}' failed."
+            assert group_schema.has_attr(attr_name)
 
     def test_not_equal(self):
         schema1 = GroupSchema({"A1": _array_schema_1})
