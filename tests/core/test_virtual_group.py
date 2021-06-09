@@ -79,3 +79,13 @@ class TestVirtualGroupWithArrays:
             group.meta["test_key"] = "test_value"
         with VirtualGroup(array_uris, mode="r") as group:
             assert group.meta["test_key"] == "test_value"
+
+    def test_no_array_with_attr_exception(self, array_uris):
+        with pytest.raises(KeyError):
+            with VirtualGroup(array_uris, attr="bad_name"):
+                pass
+
+    def test_ambiguous_array_exception(self, array_uris):
+        with pytest.raises(ValueError):
+            with VirtualGroup(array_uris, attr="c"):
+                pass

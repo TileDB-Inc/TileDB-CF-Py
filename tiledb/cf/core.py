@@ -294,12 +294,12 @@ class Group:
         if array is None and attr is not None:
             array_names = group_schema.arrays_with_attr(attr)
             if array_names is None:
-                raise KeyError(f"No attribute with name {attr} found.")
+                raise KeyError(f"No attribute with name '{attr}' found.")
             if len(array_names) > 1:
                 raise ValueError(
                     f"The array must be specified when opening an attribute that "
                     f"exists in multiple arrays in a group. Arrays with attribute "
-                    f"{attr} include: {array_names}."
+                    f"'{attr}' include: {array_names}."
                 )
             array = array_names[0]
         self._array = (
@@ -452,12 +452,12 @@ class VirtualGroup(Group):
                 if array_schema.has_attr(attr):
                     array_names.append(array_name)
             if len(array_names) == 0:
-                raise KeyError(f"No attribute with name {attr} found.")
+                raise KeyError(f"No attribute with name '{attr}' found.")
             if len(array_names) > 1:
                 raise ValueError(
                     f"The array must be specified when opening an attribute that "
                     f"exists in multiple arrays in a group. Arrays with attribute "
-                    f"{attr} include: {array_names}."
+                    f"'{attr}' include: {array_names}."
                 )
             array = array_names[0]
         self._array = (

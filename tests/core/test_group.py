@@ -196,6 +196,16 @@ class TestGroupWithArrays:
             with pytest.raises(RuntimeError):
                 _ = group.get_attr_metadata("a")
 
+    def test_no_array_with_attr_exception(self, group_uri):
+        with pytest.raises(KeyError):
+            with Group(group_uri, attr="bad_name"):
+                pass
+
+    def test_ambiguous_array_exception(self, group_uri):
+        with pytest.raises(ValueError):
+            with Group(group_uri, attr="c"):
+                pass
+
 
 class TestNoMetadataArray:
     @pytest.fixture(scope="class")
