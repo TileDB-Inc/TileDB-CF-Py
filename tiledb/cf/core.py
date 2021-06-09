@@ -292,7 +292,16 @@ class Group:
         )
         self._attr = attr
         if array is None and attr is not None:
-            array = group_schema.get_attr_array(attr)
+            array_names = group_schema.arrays_with_attr(attr)
+            if array_names is None:
+                raise KeyError(f"No attribute with name {attr} found.")
+            if len(array_names) > 1:
+                raise ValueError(
+                    f"The array must be specified when opening an attribute that "
+                    f"exists in multiple arrays in a group. Arrays with attribute "
+                    f"{attr} include: {array_names}."
+                )
+            array = array_names[0]
         self._array = (
             None
             if array is None
@@ -433,8 +442,24 @@ class VirtualGroup(Group):
         )
         self._attr = attr
         if array is None and attr is not None:
-            schema = GroupSchema.load_virtual(array_uris, ctx, key)
-            array = schema.get_attr_array(attr)
+            array_names = []
+            for array_name, array_uri in array_uris.items():
+                if array_name == METADATA_ARRAY_NAME:
+                    continue
+                array_schema = tiledb.ArraySchema.load(
+                    array_uri, ctx, _get_array_key(key, array_name)
+                )
+                if array_schema.has_attr(attr):
+                    array_names.append(array_name)
+            if len(array_names) == 0:
+                raise KeyError(f"No attribute with name {attr} found.")
+            if len(array_names) > 1:
+                raise ValueError(
+                    f"The array must be specified when opening an attribute that "
+                    f"exists in multiple arrays in a group. Arrays with attribute "
+                    f"{attr} include: {array_names}."
+                )
+            array = array_names[0]
         self._array = (
             None
             if array is None
@@ -600,7 +625,7 @@ class GroupSchema(Mapping):
         if self._metadata_schema is not None:
             self._metadata_schema.check()
 
-    def get_all_attr_arrays(self, attr_name: str) -> Optional[List[str]]:
+    def arrays_with_attr(self, attr_name: str) -> Optional[List[str]]:
         """Returns a tuple of the names of all arrays with a matching attribute.
 
         Parameter:

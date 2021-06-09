@@ -79,7 +79,7 @@ class TestGroupSchema:
         assert repr(group_schema) is not None
         assert len(group_schema) == scenario["num_schemas"]
         for attr_name, arrays in attr_map.items():
-            result = group_schema.get_all_attr_arrays(attr_name)
+            result = group_schema.arrays_with_attr(attr_name)
             assert result == list(
                 arrays
             ), f"Get all arrays for attribute '{attr_name}' failed."
