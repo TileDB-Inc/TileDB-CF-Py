@@ -382,20 +382,47 @@ def test_tile_from_mismatching_chunks(netcdf_test_case):
 def test_tile_from_single_variable_chunks(netcdf_test_case):
     converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
     group_schema = converter.to_schema()
-    print(f"GROUP: {group_schema}")
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
     assert tiles == (4, 4)
 
 
 @pytest.mark.parametrize("netcdf_test_case", [matching_chunks], indirect=True)
-def test_overwrite_autotile(netcdf_test_case):
+def test_collect_attrs_tile_by_dims(netcdf_test_case):
     converter = NetCDF4ConverterEngine.from_file(
         netcdf_test_case.filepath, tiles_by_dims={("row", "col"): (2, 4)}
     )
     group_schema = converter.to_schema()
-    print(f"GROUP: {group_schema}")
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
     assert tiles == (2, 4)
+
+
+def test_collect_attrs_tile_by_var(simple2_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        simple2_netcdf_file.filepath, tiles_by_var={"x1": (4,)}
+    )
+    group_schema = converter.to_schema()
+    tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
+    assert tiles == (4,)
+
+
+def test_no_collect_tiles_by_var(simple1_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        simple1_netcdf_file.filepath, collect_attrs=False, tiles_by_var={"x1": (2,)}
+    )
+    group_schema = converter.to_schema()
+    tiles = tuple(dim.tile for dim in group_schema["x1"].domain)
+    assert tiles == (2,)
+
+
+def test_no_collect_tiles_by_dims(simple1_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        simple1_netcdf_file.filepath,
+        collect_attrs=False,
+        tiles_by_dims={("row",): (2,)},
+    )
+    group_schema = converter.to_schema()
+    tiles = tuple(dim.tile for dim in group_schema["x1"].domain)
+    assert tiles == (2,)
 
 
 def test_rename_array(simple1_netcdf_file):
