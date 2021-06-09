@@ -481,7 +481,10 @@ class GroupSchema(Mapping):
     Parameters:
         array_schemas: A collection of (name, ArraySchema) tuples for Arrays that belong
             to this group.
-        metadata_schema: If not None, a schema for the group metadata array.
+        metadata_schema: If not ``None``, a schema for the group metadata array.
+        use_default_metadata_schema: If ``True`` and ``metadata_schema=None`` a default
+            schema will be created for the metadata array.
+        ctx: TileDB Context used for generatign default metadata schema.
     """
 
     @classmethod
@@ -520,7 +523,7 @@ class GroupSchema(Mapping):
                     ctx,
                     local_key,
                 )
-        return cls(array_schemas, metadata_schema)
+        return cls(array_schemas, metadata_schema, False)
 
     @classmethod
     def load_virtual(
@@ -550,19 +553,30 @@ class GroupSchema(Mapping):
             if METADATA_ARRAY_NAME in array_schemas
             else None
         )
-        return cls(array_schemas, metadata_schema)
+        return cls(array_schemas, metadata_schema, False)
 
     def __init__(
         self,
         array_schemas: Optional[Dict[str, tiledb.ArraySchema]] = None,
         metadata_schema: Optional[tiledb.ArraySchema] = None,
+        use_default_metadata_schema: bool = True,
+        ctx: Optional[tiledb.Ctx] = None,
     ):
         """Constructs a :class:`GroupSchema`.
 
         Raises:
             ValueError: ArraySchema has duplicate names.
         """
-        self._metadata_schema = metadata_schema
+        if metadata_schema is None and use_default_metadata_schema:
+            self._metadata_schema = tiledb.ArraySchema(
+                domain=tiledb.Domain(
+                    tiledb.Dim(name="dim", domain=(0, 0), dtype=np.int32, ctx=ctx)
+                ),
+                attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
+                sparse=False,
+            )
+        else:
+            self._metadata_schema = metadata_schema
         if array_schemas is None:
             self._array_schema_table = {}
         else:
@@ -644,13 +658,3 @@ class GroupSchema(Mapping):
     def metadata_schema(self) -> Optional[tiledb.ArraySchema]:
         """ArraySchema for the group-level metadata."""
         return self._metadata_schema
-
-    def set_default_metadata_schema(self, ctx=None):
-        """Set the metadata schema to a default placeholder DenseArray."""
-        self._metadata_schema = tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(name="dim", domain=(0, 0), tile=1, dtype=np.int32, ctx=ctx)
-            ),
-            attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
-            sparse=False,
-        )

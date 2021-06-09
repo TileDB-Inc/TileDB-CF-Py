@@ -571,7 +571,6 @@ class DataspaceCreator:
             for array_name, array_creator in self._array_creators.items()
         }
         group_schema = GroupSchema(array_schemas)
-        group_schema.set_default_metadata_schema(ctx)
         return group_schema
 
 

@@ -72,7 +72,7 @@ class TestGroupSchema:
         array_schemas = scenario["array_schemas"]
         metadata_schema = scenario["metadata_schema"]
         attr_map = scenario["attr_map"]
-        group_schema = GroupSchema(array_schemas, metadata_schema)
+        group_schema = GroupSchema(array_schemas, metadata_schema, False)
         group_schema.check()
         assert group_schema == group_schema
         assert group_schema.metadata_schema == metadata_schema
@@ -86,9 +86,9 @@ class TestGroupSchema:
             assert group_schema.has_attr(attr_name)
 
     def test_not_equal(self):
-        schema1 = GroupSchema({"A1": _array_schema_1})
+        schema1 = GroupSchema({"A1": _array_schema_1}, None, False)
         schema2 = GroupSchema({"A1": _array_schema_1}, _empty_array_schema)
-        schema3 = GroupSchema({"A2": _array_schema_1})
+        schema3 = GroupSchema({"A2": _array_schema_1}, None, False)
         schema4 = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
         assert schema1 != schema2
         assert schema2 != schema1
@@ -97,14 +97,6 @@ class TestGroupSchema:
         assert schema1 != schema4
         assert schema4 != schema1
         assert schema1 != "not a group schema"
-
-    def test_set_metadata_array(self):
-        """Test setting default metadata schema."""
-        group_schema = GroupSchema()
-        assert group_schema.metadata_schema is None
-        group_schema.set_default_metadata_schema()
-        group_schema.metadata_schema.check()
-        group_schema.set_default_metadata_schema()
 
 
 class TestLoadEmptyGroup:
