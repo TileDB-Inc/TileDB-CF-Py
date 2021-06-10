@@ -226,19 +226,20 @@ def test_converter_from_netcdf_2(netcdf_test_case, tmpdir):
 
 def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("virtual1"))
-    from_netcdf(group1_netcdf_file, uri, use_virtual_groups=True)
+    from_netcdf(group1_netcdf_file, uri, use_virtual_groups=True, collect_attrs=False)
     x = np.linspace(-1.0, 1.0, 8)
     y = np.linspace(-1.0, 1.0, 4)
     # Test root
-    with tiledb.open(f"{uri}_array0", attr="x1") as array:
+    with tiledb.open(f"{uri}_x1", attr="x1") as array:
         x1 = array[:]
     assert np.array_equal(x1, x)
     # # Test group 3
-    with tiledb.open(f"{uri}_group3_array0") as array:
-        array0 = array[:, :]
-        A1 = array0["A1"]
-        A2 = array0["A2"]
-        A3 = array0["A3"]
+    with tiledb.open(f"{uri}_group3_A1", attr="A1") as array:
+        A1 = array[:, :]
+    with tiledb.open(f"{uri}_group3_A2", attr="A2") as array:
+        A2 = array[:, :]
+    with tiledb.open(f"{uri}_group3_A3", attr="A3") as array:
+        A3 = array[:, :]
     assert np.array_equal(A1, np.outer(y, y))
     assert np.array_equal(A2, np.zeros((4, 4), dtype=np.float64))
     assert np.array_equal(A3, np.identity(4, dtype=np.int32))
@@ -323,6 +324,29 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
     assert np.array_equal(A3, np.identity(4, dtype=np.int32))
 
 
+def test_collect_scalar_attrs(multiscalars_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        multiscalars_netcdf_file.filepath,
+        collect_attrs=False,
+        collect_scalar_attrs=True,
+    )
+    assert set(converter.array_names) == {"scalars"}
+    print(converter._array_creators["scalars"].attr_names)
+    assert set(converter._array_creators["scalars"].attr_names) == {"s1", "s2", "s3"}
+
+
+def test_no_collect_scalars(multiscalars_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        multiscalars_netcdf_file.filepath,
+        collect_attrs=False,
+        collect_scalar_attrs=False,
+    )
+    assert set(converter.array_names) == {"s1", "s2", "s3"}
+    assert set(converter._array_creators["s1"].attr_names) == {"s1"}
+    assert set(converter._array_creators["s2"].attr_names) == {"s2"}
+    assert set(converter._array_creators["s3"].attr_names) == {"s3"}
+
+
 def test_variable_fill(tmpdir):
     """Test converting a NetCDF variable will the _FillValue NetCDF attribute set."""
     netCDF4 = pytest.importorskip("netCDF4")
@@ -358,20 +382,47 @@ def test_tile_from_mismatching_chunks(netcdf_test_case):
 def test_tile_from_single_variable_chunks(netcdf_test_case):
     converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
     group_schema = converter.to_schema()
-    print(f"GROUP: {group_schema}")
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
     assert tiles == (4, 4)
 
 
 @pytest.mark.parametrize("netcdf_test_case", [matching_chunks], indirect=True)
-def test_overwrite_autotile(netcdf_test_case):
+def test_collect_attrs_tile_by_dims(netcdf_test_case):
     converter = NetCDF4ConverterEngine.from_file(
-        netcdf_test_case.filepath, tiles={("row", "col"): (2, 4)}
+        netcdf_test_case.filepath, tiles_by_dims={("row", "col"): (2, 4)}
     )
     group_schema = converter.to_schema()
-    print(f"GROUP: {group_schema}")
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
     assert tiles == (2, 4)
+
+
+def test_collect_attrs_tile_by_var(simple2_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        simple2_netcdf_file.filepath, tiles_by_var={"x1": (4,)}
+    )
+    group_schema = converter.to_schema()
+    tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
+    assert tiles == (4,)
+
+
+def test_no_collect_tiles_by_var(simple1_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        simple1_netcdf_file.filepath, collect_attrs=False, tiles_by_var={"x1": (2,)}
+    )
+    group_schema = converter.to_schema()
+    tiles = tuple(dim.tile for dim in group_schema["x1"].domain)
+    assert tiles == (2,)
+
+
+def test_no_collect_tiles_by_dims(simple1_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        simple1_netcdf_file.filepath,
+        collect_attrs=False,
+        tiles_by_dims={("row",): (2,)},
+    )
+    group_schema = converter.to_schema()
+    tiles = tuple(dim.tile for dim in group_schema["x1"].domain)
+    assert tiles == (2,)
 
 
 def test_rename_array(simple1_netcdf_file):

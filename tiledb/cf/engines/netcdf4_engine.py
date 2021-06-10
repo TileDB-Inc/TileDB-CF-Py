@@ -284,7 +284,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         group_path: str = "/",
         unlimited_dim_size: int = 10000,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-        tiles: Optional[Dict[Tuple[str, ...], Optional[Tuple[int, ...]]]] = None,
+        tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
+        tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
+        collect_attrs: bool = True,
+        collect_scalar_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a group in a NetCDF file.
 
@@ -295,8 +298,14 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             unlimited_dim_size: The size of the domain for TileDB dimensions created
                 from unlimited NetCDF dimensions.
             dim_dtype: The numpy dtype for TileDB dimensions.
-            tiles: A map from the name of NetCDF dimensions defining a variable to the
-                tiles of those dimensions in the generated NetCDF array.
+            tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
+                dimensions of the variable in the generated NetCDF array.
+            tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
+                to the tiles of those dimensions in the generated NetCDF array.
+            collect_attrs: If True, store all attributes with the same dimensions
+                in the same array. Otherwise, store each attribute in a scalar array.
+            collect_scalar_attrs: If true, store all attributes with no dimensions
+                in the same array. This is always done if collect_attributes=True.
         """
         with open_netcdf_group(
             input_file=input_file,
@@ -306,9 +315,12 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 group,
                 unlimited_dim_size,
                 dim_dtype,
-                tiles,
+                tiles_by_var,
+                tiles_by_dims,
                 input_file,
                 group_path,
+                collect_attrs,
+                collect_scalar_attrs,
             )
 
     @classmethod
@@ -317,7 +329,136 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         netcdf_group: netCDF4.Group,
         unlimited_dim_size: int = 10000,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-        tiles: Optional[Dict[Tuple[str, ...], Optional[Tuple[int, ...]]]] = None,
+        tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
+        tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
+        default_input_file: Optional[Union[str, Path]] = None,
+        default_group_path: Optional[str] = None,
+        collect_attrs: bool = True,
+        collect_scalar_attrs: bool = True,
+    ):
+        """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
+
+        Parameters:
+            group: The NetCDF group to convert.
+            unlimited_dim_size: The size of the domain for TileDB dimensions created
+                from unlimited NetCDF dimensions.
+            dim_dtype: The numpy dtype for TileDB dimensions.
+            tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
+                dimensions of the variable in the generated NetCDF array.
+            tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
+                to the tiles of those dimensions in the generated NetCDF array.
+            default_input_file: If not ``None``, the default NetCDF input file to copy
+                data from.
+            default_group_path: If not ``None``, the default NetCDF group to copy data
+                from. Use ``'/'`` to specify the root group.
+            collect_attrs: If True, store all attributes with the same dimensions
+                in the same array. Otherwise, store each attribute in a scalar array.
+            collect_scalar_attrs: If true, store all attributes with no dimensions
+                in the same array. This is always done if collect_attributes=True.
+        """
+        if collect_attrs:
+            return cls.from_group_to_collected_attrs(
+                netcdf_group,
+                unlimited_dim_size,
+                dim_dtype,
+                tiles_by_var,
+                tiles_by_dims,
+                default_input_file,
+                default_group_path,
+            )
+        return cls.from_group_to_attr_per_array(
+            netcdf_group,
+            unlimited_dim_size,
+            dim_dtype,
+            tiles_by_var,
+            tiles_by_dims,
+            default_input_file,
+            default_group_path,
+            collect_scalar_attrs,
+        )
+
+    @classmethod
+    def from_group_to_attr_per_array(
+        cls,
+        netcdf_group: netCDF4.Group,
+        unlimited_dim_size: int = 10000,
+        dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
+        tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
+        tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
+        default_input_file: Optional[Union[str, Path]] = None,
+        default_group_path: Optional[str] = None,
+        collect_scalar_attrs: bool = True,
+    ):
+        """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
+
+        Parameters:
+            group: The NetCDF group to convert.
+            unlimited_dim_size: The size of the domain for TileDB dimensions created
+                from unlimited NetCDF dimensions.
+            dim_dtype: The numpy dtype for TileDB dimensions.
+            tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
+                dimensions of the variable in the generated NetCDF array. The tile
+                sizes defined by this dict take priority over the ``tiles_by_dims``
+                parameter and the NetCDF variable chunksize.
+            tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
+                to the tiles of those dimensions in the generated NetCDF array. The
+                tile size defined by this dict are used if they are not defined by the
+                parameter ``tiles_by_var``.
+            default_input_file: If not ``None``, the default NetCDF input file to copy
+                data from.
+            default_group_path: If not ``None``, the default NetCDF group to copy data
+                from. Use ``'/'`` to specify the root group.
+            collect_scalar_attrs: If true, store all attributes with no dimensions
+                in the same array. This is always done if collect_attributes=True.
+        """
+        converter = cls(default_input_file, default_group_path)
+        for ncvar in netcdf_group.variables.values():
+            for dim in ncvar.get_dims():
+                if dim.name not in converter.dim_names:
+                    converter._add_ncdim_to_dim_converter(
+                        dim,
+                        unlimited_dim_size,
+                        dim_dtype,
+                    )
+            if collect_scalar_attrs and not ncvar.dimensions:
+                array_name = (
+                    "scalars" if "scalars" not in netcdf_group.variables else "_scalars"
+                )
+                if array_name not in converter.array_names:
+                    converter.add_array("scalars", tuple())
+            else:
+                print(f"tiles by variable: {tiles_by_var}")
+                print(f"tiles by dimensions: {tiles_by_dims}")
+                print(f"variable name: {ncvar.name}")
+                print(f"dimensions: {ncvar.dimensions}")
+                if tiles_by_var is not None and ncvar.name in tiles_by_var:
+                    array_tiles = tiles_by_var[ncvar.name]
+                elif tiles_by_dims is not None and ncvar.dimensions in tiles_by_dims:
+                    array_tiles = tiles_by_dims[ncvar.dimensions]
+                else:
+                    chunks = ncvar.chunking()
+                    array_tiles = (
+                        None
+                        if chunks is None or chunks == "contiguous"
+                        else tuple(chunks)
+                    )
+                array_name = ncvar.name
+                converter.add_array(
+                    array_name,
+                    ncvar.dimensions,
+                    tiles=array_tiles,
+                )
+            converter._add_ncvar_to_attr_converter(ncvar, array_name)
+        return converter
+
+    @classmethod
+    def from_group_to_collected_attrs(
+        cls,
+        netcdf_group: netCDF4.Group,
+        unlimited_dim_size: int = 10000,
+        dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
+        tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
+        tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
@@ -328,8 +469,13 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             unlimited_dim_size: The size of the domain for TileDB dimensions created
                 from unlimited NetCDF dimensions.
             dim_dtype: The numpy dtype for TileDB dimensions.
-            tiles: A map from the name of NetCDF dimensions defining a variable to the
-                tiles of those dimensions in the generated NetCDF array.
+            tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
+                dimensions of the variable in the generated NetCDF array. This will
+                take priority over NetCDF variable chunksize.
+            tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
+                to the tiles of those dimensions in the generated NetCDF array. This
+                will take priority over tile sizes defined by the ``tiles_by_var``
+                parameter and the NetCDF variable chunksize.
             default_input_file: If not ``None``, the default NetCDF input file to copy
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
@@ -337,7 +483,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         """
         converter = cls(default_input_file, default_group_path)
         dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
-        autotiles: Dict[Tuple[str, ...], Optional[Tuple[int, ...]]] = {}
+        autotiles: Dict[Sequence[str], Optional[Sequence[int]]] = {}
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
                 if dim.name not in converter.dim_names:
@@ -347,19 +493,21 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         dim_dtype,
                     )
             dims_to_vars[ncvar.dimensions].append(ncvar.name)
-            chunks = ncvar.chunking()
+            if tiles_by_var is not None and ncvar.name in tiles_by_var:
+                chunks = tiles_by_var[ncvar.name]
+            else:
+                chunks = ncvar.chunking()
             if not (chunks is None or chunks == "contiguous"):
                 chunks = tuple(chunks)
                 autotiles[ncvar.dimensions] = (
                     None
                     if ncvar.dimensions in autotiles
                     and chunks != autotiles.get(ncvar.dimensions)
-                    else tuple(chunks)
+                    else chunks
                 )
-        if tiles is not None:
-            autotiles.update(tiles)
-        sorted_keys = sorted(dims_to_vars.keys())
-        for count, dim_names in enumerate(sorted_keys):
+        if tiles_by_dims is not None:
+            autotiles.update(tiles_by_dims)
+        for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
             converter.add_array(
                 f"array{count}", dim_names, tiles=autotiles.get(dim_names)
             )
