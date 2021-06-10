@@ -292,7 +292,16 @@ class Group:
         )
         self._attr = attr
         if array is None and attr is not None:
-            array = group_schema.get_attr_array(attr)
+            array_names = group_schema.arrays_with_attr(attr)
+            if array_names is None:
+                raise KeyError(f"No attribute with name '{attr}' found.")
+            if len(array_names) > 1:
+                raise ValueError(
+                    f"The array must be specified when opening an attribute that "
+                    f"exists in multiple arrays in a group. Arrays with attribute "
+                    f"'{attr}' include: {array_names}."
+                )
+            array = array_names[0]
         self._array = (
             None
             if array is None
@@ -433,8 +442,24 @@ class VirtualGroup(Group):
         )
         self._attr = attr
         if array is None and attr is not None:
-            schema = GroupSchema.load_virtual(array_uris, ctx, key)
-            array = schema.get_attr_array(attr)
+            array_names = []
+            for array_name, array_uri in array_uris.items():
+                if array_name == METADATA_ARRAY_NAME:
+                    continue
+                array_schema = tiledb.ArraySchema.load(
+                    array_uri, ctx, _get_array_key(key, array_name)
+                )
+                if array_schema.has_attr(attr):
+                    array_names.append(array_name)
+            if len(array_names) == 0:
+                raise KeyError(f"No attribute with name '{attr}' found.")
+            if len(array_names) > 1:
+                raise ValueError(
+                    f"The array must be specified when opening an attribute that "
+                    f"exists in multiple arrays in a group. Arrays with attribute "
+                    f"'{attr}' include: {array_names}."
+                )
+            array = array_names[0]
         self._array = (
             None
             if array is None
@@ -456,7 +481,10 @@ class GroupSchema(Mapping):
     Parameters:
         array_schemas: A collection of (name, ArraySchema) tuples for Arrays that belong
             to this group.
-        metadata_schema: If not None, a schema for the group metadata array.
+        metadata_schema: If not ``None``, a schema for the group metadata array.
+        use_default_metadata_schema: If ``True`` and ``metadata_schema=None`` a default
+            schema will be created for the metadata array.
+        ctx: TileDB Context used for generatign default metadata schema.
     """
 
     @classmethod
@@ -495,7 +523,7 @@ class GroupSchema(Mapping):
                     ctx,
                     local_key,
                 )
-        return cls(array_schemas, metadata_schema)
+        return cls(array_schemas, metadata_schema, False)
 
     @classmethod
     def load_virtual(
@@ -525,19 +553,30 @@ class GroupSchema(Mapping):
             if METADATA_ARRAY_NAME in array_schemas
             else None
         )
-        return cls(array_schemas, metadata_schema)
+        return cls(array_schemas, metadata_schema, False)
 
     def __init__(
         self,
         array_schemas: Optional[Dict[str, tiledb.ArraySchema]] = None,
         metadata_schema: Optional[tiledb.ArraySchema] = None,
+        use_default_metadata_schema: bool = True,
+        ctx: Optional[tiledb.Ctx] = None,
     ):
         """Constructs a :class:`GroupSchema`.
 
         Raises:
             ValueError: ArraySchema has duplicate names.
         """
-        self._metadata_schema = metadata_schema
+        if metadata_schema is None and use_default_metadata_schema:
+            self._metadata_schema = tiledb.ArraySchema(
+                domain=tiledb.Domain(
+                    tiledb.Dim(name="dim", domain=(0, 0), dtype=np.int32, ctx=ctx)
+                ),
+                attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
+                sparse=False,
+            )
+        else:
+            self._metadata_schema = metadata_schema
         if array_schemas is None:
             self._array_schema_table = {}
         else:
@@ -583,6 +622,8 @@ class GroupSchema(Mapping):
         """Returns the object representation of this GroupSchema in string form."""
         output = StringIO()
         output.write("GroupSchema:\n")
+        if self._metadata_schema is not None:
+            output.write(f"Group metadata schema: {repr(self._metadata_schema)}")
         for name, schema in self.items():
             output.write(f"'{name}': {repr(schema)}")
         return output.getvalue()
@@ -600,7 +641,7 @@ class GroupSchema(Mapping):
         if self._metadata_schema is not None:
             self._metadata_schema.check()
 
-    def get_all_attr_arrays(self, attr_name: str) -> Optional[List[str]]:
+    def arrays_with_attr(self, attr_name: str) -> Optional[List[str]]:
         """Returns a tuple of the names of all arrays with a matching attribute.
 
         Parameter:
@@ -612,41 +653,10 @@ class GroupSchema(Mapping):
         """
         return self._attr_to_arrays.get(attr_name)
 
-    def get_attr_array(self, attr_name: str) -> str:
-        """Returns the name of the array in which the `attr_name` is contained.
-
-        Parameters:
-            attr_name: Name of the attribute to look up array for.
-
-        Returns:
-            Name of the array that contains the attribute with a matching name.
-
-        Raises:
-            KeyError: No attribute with name `attr_name` found.
-            ValueError: More than one array with `attr_name` found.
-        """
-        arrays = self._attr_to_arrays.get(attr_name)
-        if arrays is None:
-            raise KeyError(f"No attribute with name {attr_name} found.")
-        assert len(arrays) > 0
-        if len(arrays) > 1:
-            raise ValueError(
-                f"More than one array with attribute name {attr_name} found."
-                f"Arrays with that attribute are: {arrays}."
-            )
-        return arrays[0]
+    def has_attr(self, attr_name: str) -> bool:
+        return attr_name in self._attr_to_arrays
 
     @property
     def metadata_schema(self) -> Optional[tiledb.ArraySchema]:
         """ArraySchema for the group-level metadata."""
         return self._metadata_schema
-
-    def set_default_metadata_schema(self, ctx=None):
-        """Set the metadata schema to a default placeholder DenseArray."""
-        self._metadata_schema = tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(name="dim", domain=(0, 0), tile=1, dtype=np.int32, ctx=ctx)
-            ),
-            attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
-            sparse=False,
-        )

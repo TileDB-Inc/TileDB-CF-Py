@@ -8,8 +8,10 @@
 * Renames method `create` in `DataspaceConverter` to `create_group` and changes method parameters.
 * Renames method `convert` in `NetCDF4ConverterEngine` to `convert_to_group` and changes method parameters.
 * Renames method `copy` in `NetCDF4ConverterEninge` to `copy_group` and changes method parameters.
-* Adds `use_virtual_groups` parameter to `from_netcdf` and `from_netcdf_group` functions.
+* Adds `use_virtual_groups` parameter to `from_netcdf` and `from_netcdf_group` functions.I
 * Replaces parameter `tiles` with `tiles_by_dims` and `tiles_by_var` in `from_netcdf` and `from_netcdf_group` functions.
+* Renames method `get_all_attr_arrays` in `GroupSchema` to `arrays_with_attr`.
+* Removes methods `get_attr_array` and `set_default_metadata_schema` from `GroupSchema` class.
 
 ### New Features
 
@@ -21,6 +23,7 @@
 * Adds method `copy_to_virtual_group` in `NetCDF4ConverterEngine`.
 * Adds TileDB backend engine for xarray (previously in TileDB-xarray package).
 * Adds methods to convert NetCDF group where all attributes are stored in separate arrays.
+* Adds parameter to set default metadata schema in `GroupSchema` instance in not otherwise specified.
 
 ### Improvements
 

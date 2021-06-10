@@ -72,24 +72,23 @@ class TestGroupSchema:
         array_schemas = scenario["array_schemas"]
         metadata_schema = scenario["metadata_schema"]
         attr_map = scenario["attr_map"]
-        group_schema = GroupSchema(array_schemas, metadata_schema)
+        group_schema = GroupSchema(array_schemas, metadata_schema, False)
         group_schema.check()
         assert group_schema == group_schema
         assert group_schema.metadata_schema == metadata_schema
         assert repr(group_schema) is not None
         assert len(group_schema) == scenario["num_schemas"]
         for attr_name, arrays in attr_map.items():
-            result = group_schema.get_all_attr_arrays(attr_name)
+            result = group_schema.arrays_with_attr(attr_name)
             assert result == list(
                 arrays
             ), f"Get all arrays for attribute '{attr_name}' failed."
-            if len(result) == 1:
-                assert result[0] == group_schema.get_attr_array(attr_name)
+            assert group_schema.has_attr(attr_name)
 
     def test_not_equal(self):
-        schema1 = GroupSchema({"A1": _array_schema_1})
+        schema1 = GroupSchema({"A1": _array_schema_1}, None, False)
         schema2 = GroupSchema({"A1": _array_schema_1}, _empty_array_schema)
-        schema3 = GroupSchema({"A2": _array_schema_1})
+        schema3 = GroupSchema({"A2": _array_schema_1}, None, False)
         schema4 = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
         assert schema1 != schema2
         assert schema2 != schema1
@@ -98,30 +97,6 @@ class TestGroupSchema:
         assert schema1 != schema4
         assert schema4 != schema1
         assert schema1 != "not a group schema"
-
-    def test_set_metadata_array(self):
-        """Test setting default metadata schema."""
-        group_schema = GroupSchema()
-        assert group_schema.metadata_schema is None
-        group_schema.set_default_metadata_schema()
-        group_schema.metadata_schema.check()
-        group_schema.set_default_metadata_schema()
-
-    def test_no_attr_error(self):
-        """Test a KeyError is raised when querying for an attribute that isn't in
-        schema"""
-        group_schema = GroupSchema({"dense": _array_schema_1})
-        with pytest.raises(KeyError):
-            group_schema.get_attr_array("missing")
-
-    def test_multi_attr_array_error(self):
-        """Test a ValueError is raised when calling `get_attr_array` for an
-        attribute that exists in multiple array schemas."""
-        group_schema = GroupSchema(
-            {"dense": _array_schema_1, "sparse": _array_schema_2}
-        )
-        with pytest.raises(ValueError):
-            group_schema.get_attr_array("a")
 
 
 class TestLoadEmptyGroup:

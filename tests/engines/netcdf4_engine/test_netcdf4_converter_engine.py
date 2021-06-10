@@ -355,10 +355,9 @@ def test_variable_fill(tmpdir):
         dataset.createDimension("row", 4)
         dataset.createVariable("x1", np.dtype("int64"), ("row",), fill_value=-1)
         converter = NetCDF4ConverterEngine.from_group(dataset)
-        group_schema = converter.to_schema()
-        array_schema = group_schema[group_schema.get_attr_array("x1")]
-        x1_attr = array_schema.attr("x1")
-        assert x1_attr.fill == -1
+        array_converter = converter._array_creators[converter._attr_to_array["x1"]]
+        attr_creator = array_converter._attr_creators["x1"]
+        assert attr_creator.fill == -1
 
 
 @pytest.mark.parametrize("netcdf_test_case", [matching_chunks], indirect=True)
