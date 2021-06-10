@@ -622,6 +622,8 @@ class GroupSchema(Mapping):
         """Returns the object representation of this GroupSchema in string form."""
         output = StringIO()
         output.write("GroupSchema:\n")
+        if self._metadata_schema is not None:
+            output.write(f"Group metadata schema: {repr(self._metadata_schema)}")
         for name, schema in self.items():
             output.write(f"'{name}': {repr(schema)}")
         return output.getvalue()
