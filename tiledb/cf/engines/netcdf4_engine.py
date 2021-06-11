@@ -269,8 +269,15 @@ class NetCDFArrayConverter(ArrayCreator):
             attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
             for meta_key in variable.ncattrs():
                 copy_metadata_item(attr_meta, variable, meta_key)
-        dim_slice = tuple(slice(dim.size) for dim in variable.get_dims())
-        tiledb_array[dim_slice or slice(None)] = data
+        if self.sparse:
+            dim_query = tuple(np.arange(0, dim.size) for dim in variable.get_dims())
+            if not dim_query:
+                tiledb_array[0] = data
+            else:
+                tiledb_array[dim_query] = data
+        else:
+            dim_slice = tuple(slice(dim.size) for dim in variable.get_dims())
+            tiledb_array[dim_slice or slice(None)] = data
 
 
 @dataclass

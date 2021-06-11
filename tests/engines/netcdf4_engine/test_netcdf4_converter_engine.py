@@ -263,6 +263,37 @@ def test_virtual_from_netcdf_group_2(simple2_netcdf_file, tmpdir):
         assert array.meta["name"] == "simple2"
 
 
+def test_convert_to_sparse_array(simple1_netcdf_file, tmpdir):
+    uri = str(tmpdir.mkdir("output").join("sparse_example"))
+    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
+    for array_name in converter.array_names:
+        converter.set_array_properties(array_name, sparse=True)
+    converter.convert_to_group(uri)
+    with tiledb.cf.Group(uri, attr="x1") as group:
+        data = group.array[:]
+    index = np.argsort(data["row"])
+    x1 = data["x1"][index]
+    expected = np.linspace(1.0, 4.0, 8)
+    assert np.array_equal(x1, expected)
+
+
+def test_convert_to_scalar_sparse_array(multiscalars_netcdf_file, tmpdir):
+    uri = str(tmpdir.mkdir("output").join("sparse_scalar_example"))
+    converter = NetCDF4ConverterEngine.from_file(
+        multiscalars_netcdf_file.filepath,
+        collect_attrs=False,
+        collect_scalar_attrs=True,
+    )
+    for array_name in converter.array_names:
+        converter.set_array_properties(array_name, sparse=True)
+    converter.convert_to_group(uri)
+    with tiledb.cf.Group(uri, array="scalars") as group:
+        data = group.array[0]
+    assert np.array_equal(data["s1"], np.array([1.0]))
+    assert np.array_equal(data["s2"], np.array([2.0]))
+    assert np.array_equal(data["s3"], np.array([3.0]))
+
+
 def test_group_metadata(tmpdir):
     netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir.mkdir("data").join("test_group_metadata.nc"))
