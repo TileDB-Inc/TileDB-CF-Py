@@ -362,7 +362,6 @@ def test_collect_scalar_attrs(multiscalars_netcdf_file):
         collect_scalar_attrs=True,
     )
     assert set(converter.array_names) == {"scalars"}
-    print(converter._array_creators["scalars"].attr_names)
     assert set(converter._array_creators["scalars"].attr_names) == {"s1", "s2", "s3"}
 
 
@@ -395,7 +394,6 @@ def test_variable_fill(tmpdir):
 def test_tile_from_matching_chunks(netcdf_test_case):
     converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
     group_schema = converter.to_schema()
-    print(f"GROUP: {group_schema}")
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
     assert tiles == (4, 4)
 
@@ -463,7 +461,6 @@ def test_rename_array(simple1_netcdf_file):
 
 def test_rename_attr(simple1_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
-    print(converter.attr_names)
     converter.rename_attr("x1", "y1")
     assert set(converter.attr_names) == set(["y1"])
 
