@@ -434,10 +434,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 if array_name not in converter.array_names:
                     converter.add_array("scalars", tuple())
             else:
-                print(f"tiles by variable: {tiles_by_var}")
-                print(f"tiles by dimensions: {tiles_by_dims}")
-                print(f"variable name: {ncvar.name}")
-                print(f"dimensions: {ncvar.dimensions}")
                 if tiles_by_var is not None and ncvar.name in tiles_by_var:
                     array_tiles = tiles_by_var[ncvar.name]
                 elif tiles_by_dims is not None and ncvar.dimensions in tiles_by_dims:
