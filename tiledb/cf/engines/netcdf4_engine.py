@@ -106,6 +106,14 @@ class NetCDFCoordToDimConverter(SharedDim):
             input_unsigned=unsigned,
         )
 
+    @property
+    def is_data_dim(self) -> bool:
+        return True
+
+    @property
+    def is_index_dim(self) -> bool:
+        return False
+
 
 @dataclass
 class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
@@ -806,6 +814,19 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         )
         for dim_name in dims:
             self._dim_to_arrays[dim_name].append(array_name)
+
+    def add_coord_to_dim_converter(self, var: netCDF4.Variable, dim_name: str):
+        dim_converter = NetCDFCoordToDimConverter.from_netcdf(var, dim_name=dim_name)
+        try:
+            self._check_new_dim_name(dim_converter)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new dimension '{dim_converter.name}'. {str(err)}"
+            )
+        self._dims[dim_converter.name] = dim_converter
+        self._data_dim_dataspace_names[
+            dataspace_name(dim_converter.name)
+        ] = dim_converter.name
 
     def add_dim_to_dim_converter(
         self,
