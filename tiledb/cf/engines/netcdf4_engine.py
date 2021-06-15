@@ -464,6 +464,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
+        coords_to_dims: bool = True,
         collect_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a group in a NetCDF file.
@@ -479,6 +480,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 dimensions of the variable in the generated NetCDF array.
             tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
                 to the tiles of those dimensions in the generated NetCDF array.
+            coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
+                TileDB dimension for sparse arrays. Otherwise, convert the coordinate
+                dimension into a TileDB dimension and the coordinate variable into a
+                TileDB attribute.
             collect_attrs: If True, store all attributes with the same dimensions
                 in the same array. Otherwise, store each attribute in a scalar array.
         """
@@ -492,9 +497,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 dim_dtype,
                 tiles_by_var,
                 tiles_by_dims,
-                input_file,
-                group_path,
-                collect_attrs,
+                default_input_file=input_file,
+                default_group_path=group_path,
+                coords_to_dims=coords_to_dims,
+                collect_attrs=collect_attrs,
             )
 
     @classmethod
@@ -505,9 +511,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
+        coords_to_dims: bool = True,
+        collect_attrs: bool = True,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
-        collect_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
 
@@ -520,12 +527,16 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 dimensions of the variable in the generated NetCDF array.
             tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
                 to the tiles of those dimensions in the generated NetCDF array.
+            coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
+                TileDB dimension for sparse arrays. Otherwise, convert the coordinate
+                dimension into a TileDB dimension and the coordinate variable into a
+                TileDB attribute.
+            collect_attrs: If ``True``, store all attributes with the same dimensions
+                in the same array. Otherwise, store each attribute in a scalar array.
             default_input_file: If not ``None``, the default NetCDF input file to copy
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
                 from. Use ``'/'`` to specify the root group.
-            collect_attrs: If True, store all attributes with the same dimensions
-                in the same array. Otherwise, store each attribute in a scalar array.
         """
         if collect_attrs:
             return cls.from_group_to_collected_attrs(
@@ -534,8 +545,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 dim_dtype,
                 tiles_by_var,
                 tiles_by_dims,
-                default_input_file,
-                default_group_path,
+                coords_to_dims=coords_to_dims,
+                default_input_file=default_input_file,
+                default_group_path=default_group_path,
             )
         return cls.from_group_to_attr_per_array(
             netcdf_group,
@@ -543,8 +555,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dim_dtype,
             tiles_by_var,
             tiles_by_dims,
-            default_input_file,
-            default_group_path,
+            coords_to_dims=coords_to_dims,
+            default_input_file=default_input_file,
+            default_group_path=default_group_path,
         )
 
     @classmethod
@@ -555,6 +568,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
+        coords_to_dims: bool = True,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
@@ -573,12 +587,18 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 to the tiles of those dimensions in the generated NetCDF array. The
                 tile size defined by this dict are used if they are not defined by the
                 parameter ``tiles_by_var``.
+            coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
+                TileDB dimension for sparse arrays. Otherwise, convert the coordinate
+                dimension into a TileDB dimension and the coordinate variable into a
+                TileDB attribute.
             default_input_file: If not ``None``, the default NetCDF input file to copy
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
                 from. Use ``'/'`` to specify the root group.
         """
         converter = cls(default_input_file, default_group_path)
+        if coords_to_dims:
+            raise NotImplementedError
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
                 if dim.name == "__scalars":
@@ -628,6 +648,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
+        coords_to_dims: bool = True,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
@@ -645,11 +666,17 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 to the tiles of those dimensions in the generated NetCDF array. This
                 will take priority over tile sizes defined by the ``tiles_by_var``
                 parameter and the NetCDF variable chunksize.
+            coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
+                TileDB dimension for sparse arrays. Otherwise, convert the coordinate
+                dimension into a TileDB dimension and the coordinate variable into a
+                TileDB attribute.
             default_input_file: If not ``None``, the default NetCDF input file to copy
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
                 from. Use ``'/'`` to specify the root group.
         """
+        if coords_to_dims:
+            raise NotImplementedError
         converter = cls(default_input_file, default_group_path)
         dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
         autotiles: Dict[Sequence[str], Optional[Sequence[int]]] = {}

@@ -151,7 +151,7 @@ def test_from_netcdf(netcdf_test_case, tmpdir):
     """Integration test for `from_netcdf_file` function call."""
     name = netcdf_test_case.name
     uri = str(tmpdir.mkdir("output").join(name))
-    from_netcdf(netcdf_test_case.filepath, uri)
+    from_netcdf(netcdf_test_case.filepath, uri, coords_to_dims=False)
     for attr_name, var_name in attr_to_var_map[name].items():
         with Group(uri, attr=attr_name) as group:
             nonempty_domain = group.array.nonempty_domain()
@@ -167,7 +167,7 @@ def test_from_netcdf_group(netcdf_test_case, tmpdir):
     name = netcdf_test_case.name
     uri = str(tmpdir.mkdir("output").join(name))
     with netCDF4.Dataset(netcdf_test_case.filepath) as dataset:
-        from_netcdf_group(dataset, uri)
+        from_netcdf_group(dataset, uri, coords_to_dims=False)
     for attr_name, var_name in attr_to_var_map[name].items():
         with Group(uri, attr=attr_name) as group:
             nonempty_domain = group.array.nonempty_domain()
@@ -182,7 +182,7 @@ def test_from_netcdf_group2(netcdf_test_case, tmpdir):
     """Integration test for `from_netcdf_group` function call."""
     name = netcdf_test_case.name
     uri = str(tmpdir.mkdir("output").join(name))
-    from_netcdf_group(str(netcdf_test_case.filepath), uri)
+    from_netcdf_group(str(netcdf_test_case.filepath), uri, coords_to_dims=False)
     for attr_name, var_name in attr_to_var_map[name].items():
         with Group(uri, attr=attr_name) as group:
             nonempty_domain = group.array.nonempty_domain()
@@ -195,7 +195,9 @@ def test_from_netcdf_group2(netcdf_test_case, tmpdir):
 @pytest.mark.parametrize("netcdf_test_case", examples, indirect=True)
 def test_converter_from_netcdf(netcdf_test_case, tmpdir):
     name = netcdf_test_case.name
-    converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        netcdf_test_case.filepath, coords_to_dims=False
+    )
     uri = str(tmpdir.mkdir("output").join(name))
     assert isinstance(repr(converter), str)
     converter.convert_to_group(uri)
@@ -211,7 +213,9 @@ def test_converter_from_netcdf(netcdf_test_case, tmpdir):
 @pytest.mark.parametrize("netcdf_test_case", examples, indirect=True)
 def test_converter_from_netcdf_2(netcdf_test_case, tmpdir):
     name = netcdf_test_case.name
-    converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        netcdf_test_case.filepath, coords_to_dims=False
+    )
     uri = str(tmpdir.mkdir("output").join(name))
     assert isinstance(repr(converter), str)
     converter.create_group(uri)
@@ -227,7 +231,13 @@ def test_converter_from_netcdf_2(netcdf_test_case, tmpdir):
 
 def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("virtual1"))
-    from_netcdf(group1_netcdf_file, uri, use_virtual_groups=True, collect_attrs=False)
+    from_netcdf(
+        group1_netcdf_file,
+        uri,
+        coords_to_dims=False,
+        use_virtual_groups=True,
+        collect_attrs=False,
+    )
     x = np.linspace(-1.0, 1.0, 8)
     y = np.linspace(-1.0, 1.0, 4)
     # Test root
@@ -248,7 +258,12 @@ def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
 
 def test_virtual_from_netcdf_group_1(simple2_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("virtual2"))
-    from_netcdf_group(str(simple2_netcdf_file.filepath), uri, use_virtual_groups=True)
+    from_netcdf_group(
+        str(simple2_netcdf_file.filepath),
+        uri,
+        coords_to_dims=False,
+        use_virtual_groups=True,
+    )
     assert isinstance(tiledb.ArraySchema.load(f"{uri}_array0"), tiledb.ArraySchema)
     with tiledb.open(uri) as array:
         assert array.meta["name"] == "simple2"
@@ -257,7 +272,7 @@ def test_virtual_from_netcdf_group_1(simple2_netcdf_file, tmpdir):
 def test_virtual_from_netcdf_group_2(simple2_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("virtual3"))
     with netCDF4.Dataset(simple2_netcdf_file.filepath, mode="r") as dataset:
-        from_netcdf_group(dataset, uri, use_virtual_groups=True)
+        from_netcdf_group(dataset, uri, use_virtual_groups=True, coords_to_dims=False)
     assert isinstance(tiledb.ArraySchema.load(f"{uri}_array0"), tiledb.ArraySchema)
     with tiledb.open(uri) as array:
         assert array.meta["name"] == "simple2"
@@ -265,7 +280,9 @@ def test_virtual_from_netcdf_group_2(simple2_netcdf_file, tmpdir):
 
 def test_convert_to_sparse_array(simple1_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("sparse_example"))
-    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        simple1_netcdf_file.filepath, coords_to_dims=False
+    )
     for array_name in converter.array_names:
         converter.set_array_properties(array_name, sparse=True)
     converter.convert_to_group(uri)
@@ -281,6 +298,7 @@ def test_convert_to_scalar_sparse_array(multiscalars_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("sparse_scalar_example"))
     converter = NetCDF4ConverterEngine.from_file(
         multiscalars_netcdf_file.filepath,
+        coords_to_dims=False,
         collect_attrs=False,
     )
     for array_name in converter.array_names:
@@ -299,7 +317,7 @@ def test_group_metadata(tmpdir):
         dataset.setncattr("name", "Group metadata example")
         dataset.setncattr("array", [0.0, 1.0, 2.0])
     uri = str(tmpdir.mkdir("output").join("test_group_metadata"))
-    from_netcdf(filepath, uri)
+    from_netcdf(filepath, uri, coords_to_dims=False)
     with Group(uri) as group:
         assert group.meta["name"] == "Group metadata example"
         assert group.meta["array"] == (0.0, 1.0, 2.0)
@@ -315,7 +333,7 @@ def test_variable_metadata(tmpdir):
         variable.setncattr("array", [1, 2])
         variable.setncattr("singleton", [1.0])
     uri = str(tmpdir.mkdir("output").join("test_variable_metadata"))
-    from_netcdf(filepath, uri)
+    from_netcdf(filepath, uri, coords_to_dims=False)
     with Group(uri, attr="x1") as group:
         attr_meta = group.attr_metadata
         assert attr_meta is not None
@@ -326,7 +344,7 @@ def test_variable_metadata(tmpdir):
 
 def test_nested_groups(tmpdir, group1_netcdf_file):
     root_uri = str(tmpdir.mkdir("output").join("test_example_group1"))
-    from_netcdf(group1_netcdf_file, root_uri)
+    from_netcdf(group1_netcdf_file, root_uri, coords_to_dims=False)
     x = np.linspace(-1.0, 1.0, 8)
     y = np.linspace(-1.0, 1.0, 4)
     # Test root
@@ -355,10 +373,24 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
 def test_collect_scalar_attrs(multiscalars_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(
         multiscalars_netcdf_file.filepath,
+        coords_to_dims=False,
         collect_attrs=False,
     )
     assert set(converter.array_names) == {"scalars"}
     assert set(converter._array_creators["scalars"].attr_names) == {"s1", "s2", "s3"}
+
+
+def test_no_collect_scalars(multiscalars_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        multiscalars_netcdf_file.filepath,
+        coords_to_dims=False,
+        collect_attrs=False,
+        collect_scalar_attrs=False,
+    )
+    assert set(converter.array_names) == {"s1", "s2", "s3"}
+    assert set(converter._array_creators["s1"].attr_names) == {"s1"}
+    assert set(converter._array_creators["s2"].attr_names) == {"s2"}
+    assert set(converter._array_creators["s3"].attr_names) == {"s3"}
 
 
 def test_variable_fill(tmpdir):
@@ -367,7 +399,7 @@ def test_variable_fill(tmpdir):
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         dataset.createDimension("row", 4)
         dataset.createVariable("x1", np.dtype("int64"), ("row",), fill_value=-1)
-        converter = NetCDF4ConverterEngine.from_group(dataset)
+        converter = NetCDF4ConverterEngine.from_group(dataset, coords_to_dims=False)
         array_converter = converter._array_creators[converter._attr_to_array["x1"]]
         attr_creator = array_converter._attr_creators["x1"]
         assert attr_creator.fill == -1
@@ -375,7 +407,9 @@ def test_variable_fill(tmpdir):
 
 @pytest.mark.parametrize("netcdf_test_case", [matching_chunks], indirect=True)
 def test_tile_from_matching_chunks(netcdf_test_case):
-    converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        netcdf_test_case.filepath, coords_to_dims=False
+    )
     group_schema = converter.to_schema()
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
     assert tiles == (4, 4)
@@ -383,7 +417,9 @@ def test_tile_from_matching_chunks(netcdf_test_case):
 
 @pytest.mark.parametrize("netcdf_test_case", [mismatching_chunks], indirect=True)
 def test_tile_from_mismatching_chunks(netcdf_test_case):
-    converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        netcdf_test_case.filepath, coords_to_dims=False
+    )
     group_schema = converter.to_schema()
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
     assert tiles == (8, 8)
@@ -391,7 +427,9 @@ def test_tile_from_mismatching_chunks(netcdf_test_case):
 
 @pytest.mark.parametrize("netcdf_test_case", [single_chunk_variable], indirect=True)
 def test_tile_from_single_variable_chunks(netcdf_test_case):
-    converter = NetCDF4ConverterEngine.from_file(netcdf_test_case.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        netcdf_test_case.filepath, coords_to_dims=False
+    )
     group_schema = converter.to_schema()
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
     assert tiles == (4, 4)
@@ -400,7 +438,9 @@ def test_tile_from_single_variable_chunks(netcdf_test_case):
 @pytest.mark.parametrize("netcdf_test_case", [matching_chunks], indirect=True)
 def test_collect_attrs_tile_by_dims(netcdf_test_case):
     converter = NetCDF4ConverterEngine.from_file(
-        netcdf_test_case.filepath, tiles_by_dims={("row", "col"): (2, 4)}
+        netcdf_test_case.filepath,
+        tiles_by_dims={("row", "col"): (2, 4)},
+        coords_to_dims=False,
     )
     group_schema = converter.to_schema()
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
@@ -409,7 +449,9 @@ def test_collect_attrs_tile_by_dims(netcdf_test_case):
 
 def test_collect_attrs_tile_by_var(simple2_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(
-        simple2_netcdf_file.filepath, tiles_by_var={"x1": (4,)}
+        simple2_netcdf_file.filepath,
+        tiles_by_var={"x1": (4,)},
+        coords_to_dims=False,
     )
     group_schema = converter.to_schema()
     tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
@@ -418,7 +460,10 @@ def test_collect_attrs_tile_by_var(simple2_netcdf_file):
 
 def test_no_collect_tiles_by_var(simple1_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(
-        simple1_netcdf_file.filepath, collect_attrs=False, tiles_by_var={"x1": (2,)}
+        simple1_netcdf_file.filepath,
+        coords_to_dims=False,
+        collect_attrs=False,
+        tiles_by_var={"x1": (2,)},
     )
     group_schema = converter.to_schema()
     tiles = tuple(dim.tile for dim in group_schema["x1"].domain)
@@ -428,6 +473,7 @@ def test_no_collect_tiles_by_var(simple1_netcdf_file):
 def test_no_collect_tiles_by_dims(simple1_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(
         simple1_netcdf_file.filepath,
+        coords_to_dims=False,
         collect_attrs=False,
         tiles_by_dims={("row",): (2,)},
     )
@@ -437,25 +483,38 @@ def test_no_collect_tiles_by_dims(simple1_netcdf_file):
 
 
 def test_rename_array(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        simple1_netcdf_file.filepath,
+        coords_to_dims=False,
+    )
     converter.rename_array("array0", "A1")
     assert set(converter.array_names) == set(["A1"])
 
 
 def test_rename_attr(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        simple1_netcdf_file.filepath,
+        coords_to_dims=False,
+    )
     converter.rename_attr("x1", "y1")
     assert set(converter.attr_names) == set(["y1"])
 
 
 def test_rename_dim(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        simple1_netcdf_file.filepath,
+        coords_to_dims=False,
+    )
     converter.rename_dim("row", "col")
     assert set(converter.dim_names) == set(["col"])
 
 
-def test_not_implemented_error(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
+def test_not_implemented_error(empty_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(
+        empty_netcdf_file.filepath,
+        coords_to_dims=False,
+    )
+    converter.add_array("A1", [])
     with pytest.raises(NotImplementedError):
         converter.add_attr("a1", "array0", np.float64)
 
@@ -468,7 +527,10 @@ def test_bad_dims_error(simple1_netcdf_file):
 
 
 def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple2_netcdf_file.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        simple2_netcdf_file.filepath,
+        coords_to_dims=False,
+    )
     uri = str(tmpdir.mkdir("output").join("test_copy_error"))
     converter.create_group(uri)
     with pytest.raises(KeyError):
@@ -476,7 +538,10 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
 
 
 def test_bad_array_name_error(simple2_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(simple2_netcdf_file.filepath)
+    converter = NetCDF4ConverterEngine.from_file(
+        simple2_netcdf_file.filepath,
+        coords_to_dims=False,
+    )
     with pytest.raises(ValueError):
         converter.add_array("array0", tuple())
 
