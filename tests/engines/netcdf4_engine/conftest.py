@@ -111,6 +111,21 @@ def multiscalars_netcdf_file(tmpdir_factory):
 
 
 @pytest.fixture(scope="session")
+def simple_coord_netcdf_example(tmpdir_factory):
+    directory_path = tmpdir_factory.mktemp("sample_netcdf")
+    example = NetCDFSingleGroupExample(
+        "simple_coord",
+        directory_path,
+        dimension_args=[("x", 4)],
+        variable_kwargs=[
+            {"varname": "x", "datatype": np.float64, "dimensions": ("x",)},
+        ],
+        variable_data={"x": np.array([1.0, 2.0, 3.0, 4.0])},
+    )
+    return example
+
+
+@pytest.fixture(scope="session")
 def group1_netcdf_file(tmpdir_factory):
     """Sample NetCDF file with groups
 

@@ -81,8 +81,8 @@ class NetCDFCoordToDimConverter(SharedDim):
         """
         if len(var.dimensions) != 1:
             raise ValueError(
-                f"Cannot create dimension from variable {var.name} with shape "
-                f"{var.shape}. Cannot only convert 1D variables to coordinates."
+                f"Cannot create dimension from variable '{var.name}' with shape "
+                f"{var.shape}. Coordinate variables must have only one dimension."
             )
         add_offset = get_ncattr(var, "add_offset")
         scale_factor = get_ncattr(var, "scale_factor")
@@ -93,7 +93,7 @@ class NetCDFCoordToDimConverter(SharedDim):
                 f"for converting scaled coordinates has not yet been implemented."
             )
         dtype = np.dtype(var.dtype)
-        if domain is not None:
+        if domain is None:
             domain = (None, None)
         return cls(
             dim_name if dim_name is not None else var.name,
