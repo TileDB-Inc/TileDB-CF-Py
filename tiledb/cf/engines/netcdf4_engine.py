@@ -903,8 +903,12 @@ def copy_metadata_item(meta, netcdf_item, key):
         netcdf_item: NetCDF variable or group to copy from.
         key: Name of the NetCDF attribute that is being copied.
     """
+    import time 
+
     value = netcdf_item.getncattr(key)
-    if isinstance(value, np.ndarray):
+    if key == 'history':
+        value = value + " - TileDB array created on " + time.ctime(time.time())
+    elif isinstance(value, np.ndarray):
         value = tuple(value.tolist())
     elif isinstance(value, np.generic):
         value = (value.tolist(),)
