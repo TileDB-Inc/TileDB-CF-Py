@@ -398,19 +398,6 @@ def test_collect_scalar_attrs(multiscalars_netcdf_file):
     assert set(converter._array_creators["scalars"].attr_names) == {"s1", "s2", "s3"}
 
 
-def test_no_collect_scalars(multiscalars_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        multiscalars_netcdf_file.filepath,
-        coords_to_dims=False,
-        collect_attrs=False,
-        collect_scalar_attrs=False,
-    )
-    assert set(converter.array_names) == {"s1", "s2", "s3"}
-    assert set(converter._array_creators["s1"].attr_names) == {"s1"}
-    assert set(converter._array_creators["s2"].attr_names) == {"s2"}
-    assert set(converter._array_creators["s3"].attr_names) == {"s3"}
-
-
 def test_variable_fill(tmpdir):
     """Test converting a NetCDF variable will the _FillValue NetCDF attribute set."""
     filepath = str(tmpdir.mkdir("sample_netcdf").join("test_fill.nc"))
@@ -527,12 +514,12 @@ def test_rename_dim(simple1_netcdf_file):
     assert set(converter.dim_names) == set(["col"])
 
 
-def test_not_implemented_error(empty_netcdf_file):
+def test_not_implemented_error(simple1_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(
-        empty_netcdf_file.filepath,
+        simple1_netcdf_file.filepath,
         coords_to_dims=False,
     )
-    converter.add_array("A1", [])
+    converter.add_array("A1", ["row",])
     with pytest.raises(NotImplementedError):
         converter.add_attr("a1", "array0", np.float64)
 

@@ -607,7 +607,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         "name '__scalars' is not yet implemented."
                     )
                 if dim.name not in converter.dim_names:
-                    converter._add_ncdim_to_dim_converter(
+                    converter.add_dim_to_dim_converter(
                         dim,
                         unlimited_dim_size,
                         dim_dtype,
@@ -617,7 +617,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     "scalars" if "scalars" not in netcdf_group.variables else "_scalars"
                 )
                 if array_name not in converter.array_names:
-                    converter._add_scalar_dim_converter("__scalars", dim_dtype)
+                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
                     converter.add_array("scalars", ("__scalars",))
             else:
                 if tiles_by_var is not None and ncvar.name in tiles_by_var:
@@ -637,7 +637,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     ncvar.dimensions,
                     tiles=array_tiles,
                 )
-            converter._add_ncvar_to_attr_converter(ncvar, array_name)
+            converter.add_var_to_attr_converter(ncvar, array_name)
         return converter
 
     @classmethod
@@ -690,14 +690,14 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         "name '__scalars' is not yet implemented."
                     )
                 if dim.name not in converter.dim_names:
-                    converter._add_ncdim_to_dim_converter(
+                    converter.add_dim_to_dim_converter(
                         dim,
                         unlimited_dim_size,
                         dim_dtype,
                     )
             if not ncvar.dimensions:
                 if "__scalars" not in converter.dim_names:
-                    converter._add_scalar_dim_converter("__scalars", dim_dtype)
+                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
                 dims_to_vars[("__scalars",)].append(ncvar.name)
             else:
                 dims_to_vars[ncvar.dimensions].append(ncvar.name)
@@ -716,7 +716,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 f"array{count}", dim_names, tiles=autotiles.get(dim_names)
             )
             for var_name in dims_to_vars[dim_names]:
-                converter._add_ncvar_to_attr_converter(
+                converter.add_var_to_attr_converter(
                     netcdf_group.variables[var_name], f"array{count}"
                 )
         return converter
@@ -808,7 +808,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         for dim_name in dims:
             self._dim_to_arrays[dim_name].append(array_name)
 
-    def _add_ncdim_to_dim_converter(
+    def add_dim_to_dim_converter(
         self,
         ncdim: netCDF4.Dimension,
         unlimited_dim_size: int = 10000,
@@ -840,7 +840,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dataspace_name(dim_converter.name)
         ] = dim_converter.name
 
-    def _add_scalar_dim_converter(
+    def add_scalar_dim_converter(
         self,
         dim_name: str = "__scalars",
         dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
@@ -863,7 +863,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dataspace_name(dim_converter.name)
         ] = dim_converter.name
 
-    def _add_ncvar_to_attr_converter(
+    def add_var_to_attr_converter(
         self,
         ncvar: netCDF4.Variable,
         array_name: str,
