@@ -451,7 +451,6 @@ class NetCDFArrayConverter(ArrayCreator):
         tiledb_array[tuple(dim_query)] = data
 
 
-@dataclass
 class NetCDF4ConverterEngine(DataspaceCreator):
     """Converter for NetCDF to TileDB using netCDF4."""
 
