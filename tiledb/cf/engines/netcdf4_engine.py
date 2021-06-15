@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 import netCDF4
 import numpy as np
@@ -21,6 +21,7 @@ from ..creator import (
     ArrayCreator,
     AttrCreator,
     DataspaceCreator,
+    DType,
     SharedDim,
     dataspace_name,
 )
@@ -46,6 +47,64 @@ class NetCDFDimConverter(ABC):
             The coordinates needed for querying the create TileDB dimension in the form
                 of a numpy array if sparse is ``True`` and a slice otherwise.
         """
+
+
+@dataclass
+class NetCDFCoordToDimConverter(SharedDim):
+
+    input_name: str
+    input_dtype: np.dtype
+    input_add_offset: Optional[DType] = None
+    input_scale_factor: Optional[DType] = None
+    input_unsigned: Optional[bool] = None
+
+    def __repr__(self):
+        return (
+            f"Variable(name={self.input_name}, dtype={self.input_dtype}) -> "
+            f"{super().__repr__()}"
+        )
+
+    @classmethod
+    def from_netcdf(
+        cls,
+        var: netCDF4.Variable,
+        dim_name: Optional[str] = None,
+        domain: Optional[Tuple[DType, DType]] = None,
+    ):
+        """Returns a :class:`NetCDFCoordToDimConverter` from a
+        :class:`netcdf4.Variable`.
+
+        Parameters:
+            var: The input netCDF4 variable to convert.
+            dim_name: The name of the output TileDB dimension. If ``None``, the name
+                will be the same as the name of the input NetCDF variable.
+        """
+        if len(var.dimensions) != 1:
+            raise ValueError(
+                f"Cannot create dimension from variable {var.name} with shape "
+                f"{var.shape}. Cannot only convert 1D variables to coordinates."
+            )
+        add_offset = get_ncattr(var, "add_offset")
+        scale_factor = get_ncattr(var, "scale_factor")
+        unsigned = get_ncattr(var, "_Unsigned")
+        if add_offset is not None or scale_factor is not None or unsigned is not None:
+            raise NotImplementedError(
+                f"Cannot convert variable {var.name} into a TileDB dimension. Support "
+                f"for converting scaled coordinates has not yet been implemented."
+            )
+        dtype = np.dtype(var.dtype)
+        if domain is not None:
+            domain = (None, None)
+        return cls(
+            dim_name if dim_name is not None else var.name,
+            (None, None),
+            dtype,
+            input_name=var.name,
+            input_dtype=dtype,
+            input_add_offset=add_offset,
+            input_scale_factor=scale_factor,
+            input_unsigned=unsigned,
+        )
 
 
 @dataclass
@@ -1051,6 +1110,12 @@ def copy_metadata_item(meta, netcdf_item, key):
         meta[key] = value
     except ValueError as err:  # pragma: no cover
         warnings.warn(f"Failed to set group metadata {value} with error: " f"{err}")
+
+
+def get_ncattr(netcdf_item, key: str) -> Any:
+    if key in netcdf_item.ncattrs():
+        return netcdf_item.getncattr(key)
+    return None
 
 
 @contextmanager
