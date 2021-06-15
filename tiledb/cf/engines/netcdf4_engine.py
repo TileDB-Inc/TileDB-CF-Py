@@ -539,7 +539,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from. Use ``'/'`` to specify the root group.
         """
         if collect_attrs:
-            return cls.from_group_to_collected_attrs(
+            return cls._from_group_to_collected_attrs(
                 netcdf_group,
                 unlimited_dim_size,
                 dim_dtype,
@@ -549,7 +549,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 default_input_file=default_input_file,
                 default_group_path=default_group_path,
             )
-        return cls.from_group_to_attr_per_array(
+        return cls._from_group_to_attr_per_array(
             netcdf_group,
             unlimited_dim_size,
             dim_dtype,
@@ -561,7 +561,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         )
 
     @classmethod
-    def from_group_to_attr_per_array(
+    def _from_group_to_attr_per_array(
         cls,
         netcdf_group: netCDF4.Group,
         unlimited_dim_size: int = 10000,
@@ -641,7 +641,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         return converter
 
     @classmethod
-    def from_group_to_collected_attrs(
+    def _from_group_to_collected_attrs(
         cls,
         netcdf_group: netCDF4.Group,
         unlimited_dim_size: int = 10000,
