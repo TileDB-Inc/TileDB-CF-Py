@@ -278,6 +278,24 @@ def test_virtual_from_netcdf_group_2(simple2_netcdf_file, tmpdir):
         assert array.meta["name"] == "simple2"
 
 
+def test_convert_coord(simple_coord_netcdf_example, tmpdir):
+    uri = str(tmpdir.mkdir("output").join("sparse_example"))
+    converter = NetCDF4ConverterEngine.from_file(
+        simple_coord_netcdf_example.filepath,
+        coords_to_dims=True,
+    )
+    converter.convert_to_group(uri)
+    with tiledb.cf.Group(uri, attr="y") as group:
+        schema = group.array.schema
+        assert schema.sparse
+        data = group.array[:]
+    index = np.argsort(data["x"])
+    x = data["x"][index]
+    y = data["y"][index]
+    assert np.array_equal(x, np.array([1.0, 2.0, 3.0, 4.0]))
+    assert np.array_equal(y, np.array([1.0, 4.0, 9.0, 16.0]))
+
+
 def test_convert_to_sparse_array(simple1_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("sparse_example"))
     converter = NetCDF4ConverterEngine.from_file(
