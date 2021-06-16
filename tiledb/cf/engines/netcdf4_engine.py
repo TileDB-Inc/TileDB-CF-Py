@@ -682,13 +682,35 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             default_group_path: If not ``None``, the default NetCDF group to copy data
                 from. Use ``'/'`` to specify the root group.
         """
-        if coords_to_dims:
-            raise NotImplementedError
         converter = cls(default_input_file, default_group_path)
+        coord_names = []
         dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
         autotiles: Dict[Sequence[str], Optional[Sequence[int]]] = {}
-        tiles_by_var = {} if tiles_by_var is None else tiles_by_var
         tiles_by_dims = {} if tiles_by_dims is None else tiles_by_dims
+        tiles_by_var = {} if tiles_by_var is None else tiles_by_var
+        # Add data/coordinate dimension to converter, partition variables into arrays,
+        # and compute the tile sizes for array dimensions.
+        for ncvar in netcdf_group.variables.values():
+            if coords_to_dims and ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name:
+                converter.add_coord_to_dim_converter(ncvar)
+                coord_names.append(ncvar.name)
+            elif ncvar.dimensions:
+                dims_to_vars[ncvar.dimensions].append(ncvar.name)
+                chunks = tiles_by_var.get(ncvar.name, ncvar.chunking())
+                if not (chunks is None or chunks == "contiguous"):
+                    chunks = tuple(chunks)
+                    autotiles[ncvar.dimensions] = (
+                        None
+                        if ncvar.dimensions in autotiles
+                        and chunks != autotiles.get(ncvar.dimensions)
+                        else chunks
+                    )
+            else:
+                if "__scalars" not in converter.dim_names:
+                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
+                dims_to_vars[("__scalars",)].append(ncvar.name)
+        autotiles.update(tiles_by_dims)
+        # Add index dimensions to converter.
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
                 if dim.name == "__scalars":
@@ -702,25 +724,14 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         unlimited_dim_size,
                         dim_dtype,
                     )
-            if not ncvar.dimensions:
-                if "__scalars" not in converter.dim_names:
-                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
-                dims_to_vars[("__scalars",)].append(ncvar.name)
-            else:
-                dims_to_vars[ncvar.dimensions].append(ncvar.name)
-                chunks = tiles_by_var.get(ncvar.name, ncvar.chunking())
-                if not (chunks is None or chunks == "contiguous"):
-                    chunks = tuple(chunks)
-                    autotiles[ncvar.dimensions] = (
-                        None
-                        if ncvar.dimensions in autotiles
-                        and chunks != autotiles[ncvar.dimensions]
-                        else chunks
-                    )
-        autotiles.update(tiles_by_dims)
+        # Add arrays and attributes to the converter.
         for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
+            is_sparse = any(dim_name in coord_names for dim_name in dim_names)
             converter.add_array(
-                f"array{count}", dim_names, tiles=autotiles.get(dim_names)
+                f"array{count}",
+                dim_names,
+                tiles=autotiles.get(dim_names),
+                sparse=is_sparse,
             )
             for var_name in dims_to_vars[dim_names]:
                 converter.add_var_to_attr_converter(
@@ -815,7 +826,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         for dim_name in dims:
             self._dim_to_arrays[dim_name].append(array_name)
 
-    def add_coord_to_dim_converter(self, var: netCDF4.Variable, dim_name: str):
+    def add_coord_to_dim_converter(
+        self,
+        var: netCDF4.Variable,
+        dim_name: Optional[str] = None,
+    ):
         dim_converter = NetCDFCoordToDimConverter.from_netcdf(var, dim_name=dim_name)
         try:
             self._check_new_dim_name(dim_converter)

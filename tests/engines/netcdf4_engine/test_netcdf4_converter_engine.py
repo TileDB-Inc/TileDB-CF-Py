@@ -519,7 +519,12 @@ def test_not_implemented_error(simple1_netcdf_file):
         simple1_netcdf_file.filepath,
         coords_to_dims=False,
     )
-    converter.add_array("A1", ["row",])
+    converter.add_array(
+        "A1",
+        [
+            "row",
+        ],
+    )
     with pytest.raises(NotImplementedError):
         converter.add_attr("a1", "array0", np.float64)
 
