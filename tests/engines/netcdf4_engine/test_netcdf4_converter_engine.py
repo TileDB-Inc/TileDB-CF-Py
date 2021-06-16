@@ -292,8 +292,8 @@ def test_convert_coord(simple_coord_netcdf_example, tmpdir):
     index = np.argsort(data["x"])
     x = data["x"][index]
     y = data["y"][index]
-    assert np.array_equal(x, np.array([1.0, 2.0, 3.0, 4.0]))
-    assert np.array_equal(y, np.array([1.0, 4.0, 9.0, 16.0]))
+    assert np.array_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
+    assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
 
 
 def test_convert_to_sparse_array(simple1_netcdf_file, tmpdir):

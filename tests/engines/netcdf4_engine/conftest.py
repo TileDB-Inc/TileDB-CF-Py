@@ -137,8 +137,8 @@ def simple_coord_netcdf_example(tmpdir_factory):
             {"varname": "y", "datatype": np.float64, "dimensions": ("x",)},
         ],
         variable_data={
-            "x": np.array([2.0, 3.0, 1.0, 4.0]),
-            "y": np.array([4.0, 9.0, 1.0, 16.0]),
+            "x": np.array([2.0, 5.0, -1.0, 4.0]),
+            "y": np.array([4.0, 25.0, 1.0, 16.0]),
         },
     )
     return example
