@@ -3,6 +3,7 @@
 """Classes for converting NetCDF4 files to TileDB."""
 
 import warnings
+from abc import abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -28,8 +29,22 @@ _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
 
 
+class NetCDFDimConverter(SharedDim):
+    @abstractmethod
+    def get_values(self, netcdf_group: netCDF4.Dataset, sparse: bool):
+        """Returns the values of the NetCDF dimension that is being copied, or None if
+        the dimension is of size 0.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the dimension values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+        """
+        raise NotImplementedError("Called into abstract base class.")  # pragma no cover
+
+
 @dataclass
-class NetCDFDimensionConverter(SharedDim):
+class NetCDFDimToDimConverter(NetCDFDimConverter):
     """Data for converting from a NetCDF dimension to a TileDB dimension.
 
     Parameters:
@@ -68,7 +83,7 @@ class NetCDFDimensionConverter(SharedDim):
         dtype: np.dtype,
         dim_name: Optional[str] = None,
     ):
-        """Returns a :class:`NetCDFDimensionConverter` from a
+        """Returns a :class:`NetCDFDimToDimConverter` from a
         :class:`netcdf4.Dimension`.
 
         Parameters:
@@ -88,6 +103,36 @@ class NetCDFDimensionConverter(SharedDim):
             dim.name,
             dim.size,
             dim.isunlimited(),
+        )
+
+    def get_values(self, netcdf_group: netCDF4.Dataset, sparse: bool):
+        """Returns the values of the NetCDF dimension that is being copied, or None if
+        the dimension is of size 0.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the dimension values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+        """
+        group = netcdf_group
+        while group is not None:
+            if self.input_name in group.dimensions:
+                dim = group.dimensions[self.input_name]
+                if dim.size == 0:
+                    return None
+                if self.domain[1] is not None and dim.size - 1 > self.domain[1]:
+                    raise IndexError(
+                        f"Cannot copy dimension of size {dim.size} to a TileDB "
+                        f"dimension with domain {self.domain}."
+                    )
+                if sparse:
+                    return np.arange(dim.size)
+                return slice(dim.size)
+            group = group.parent
+        raise KeyError(
+            f"Unable to copy NetCDF dimension '{self.input_name}' to the TileDB "
+            f"dimension '{self.name}'. No NetCDF dimension with that name exists in "
+            f"the NetCDF group '{netcdf_group.path}' or its parent groups."
         )
 
 
@@ -625,7 +670,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dtype: Numpy type to use for the NetCDF dimension.
             dim_name: Output name of the dimension.
         """
-        dim_converter = NetCDFDimensionConverter.from_netcdf(
+        dim_converter = NetCDFDimToDimConverter.from_netcdf(
             ncdim,
             unlimited_dim_size,
             dtype,
