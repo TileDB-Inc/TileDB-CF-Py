@@ -386,7 +386,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         collect_attrs: bool = True,
-        collect_scalar_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a group in a NetCDF file.
 
@@ -403,8 +402,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 to the tiles of those dimensions in the generated NetCDF array.
             collect_attrs: If True, store all attributes with the same dimensions
                 in the same array. Otherwise, store each attribute in a scalar array.
-            collect_scalar_attrs: If true, store all attributes with no dimensions
-                in the same array. This is always done if collect_attributes=True.
         """
         with open_netcdf_group(
             input_file=input_file,
@@ -419,7 +416,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 input_file,
                 group_path,
                 collect_attrs,
-                collect_scalar_attrs,
             )
 
     @classmethod
@@ -433,7 +429,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
         collect_attrs: bool = True,
-        collect_scalar_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
 
@@ -452,8 +447,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from. Use ``'/'`` to specify the root group.
             collect_attrs: If True, store all attributes with the same dimensions
                 in the same array. Otherwise, store each attribute in a scalar array.
-            collect_scalar_attrs: If true, store all attributes with no dimensions
-                in the same array. This is always done if collect_attributes=True.
         """
         if collect_attrs:
             return cls.from_group_to_collected_attrs(
@@ -473,7 +466,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             tiles_by_dims,
             default_input_file,
             default_group_path,
-            collect_scalar_attrs,
         )
 
     @classmethod
@@ -486,7 +478,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
-        collect_scalar_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
 
@@ -507,24 +498,28 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
                 from. Use ``'/'`` to specify the root group.
-            collect_scalar_attrs: If true, store all attributes with no dimensions
-                in the same array. This is always done if collect_attributes=True.
         """
         converter = cls(default_input_file, default_group_path)
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
+                if dim.name == "__scalars":
+                    raise NotImplementedError(
+                        "Support for converting a NetCDF file with reserved dimension "
+                        "name '__scalars' not yet implemented."
+                    )
                 if dim.name not in converter.dim_names:
                     converter._add_ncdim_to_dim_converter(
                         dim,
                         unlimited_dim_size,
                         dim_dtype,
                     )
-            if collect_scalar_attrs and not ncvar.dimensions:
+            if not ncvar.dimensions:
                 array_name = (
                     "scalars" if "scalars" not in netcdf_group.variables else "_scalars"
                 )
                 if array_name not in converter.array_names:
-                    converter.add_array("scalars", tuple())
+                    converter._add_scalar_dim_converter("__scalars", dim_dtype)
+                    converter.add_array("scalars", ("__scalars",))
             else:
                 if tiles_by_var is not None and ncvar.name in tiles_by_var:
                     array_tiles = tiles_by_var[ncvar.name]
@@ -579,29 +574,41 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         converter = cls(default_input_file, default_group_path)
         dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
         autotiles: Dict[Sequence[str], Optional[Sequence[int]]] = {}
+        tiles_by_var = {} if tiles_by_var is None else tiles_by_var
+        tiles_by_dims = {} if tiles_by_dims is None else tiles_by_dims
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
+                if dim.name == "__scalars":
+                    raise NotImplementedError(
+                        "Support for converting a NetCDF file with reserved dimension "
+                        "name '__scalars' not yet implemented."
+                    )
                 if dim.name not in converter.dim_names:
                     converter._add_ncdim_to_dim_converter(
                         dim,
                         unlimited_dim_size,
                         dim_dtype,
                     )
-            dims_to_vars[ncvar.dimensions].append(ncvar.name)
-            if tiles_by_var is not None and ncvar.name in tiles_by_var:
-                chunks = tiles_by_var[ncvar.name]
+            if not ncvar.dimensions:
+                if "__scalars" not in converter.dim_names:
+                    converter._add_scalar_dim_converter("__scalars", dim_dtype)
+                dims_to_vars[("__scalars",)].append(ncvar.name)
             else:
-                chunks = ncvar.chunking()
-            if not (chunks is None or chunks == "contiguous"):
-                chunks = tuple(chunks)
-                autotiles[ncvar.dimensions] = (
-                    None
-                    if ncvar.dimensions in autotiles
-                    and chunks != autotiles.get(ncvar.dimensions)
-                    else chunks
+                dims_to_vars[ncvar.dimensions].append(ncvar.name)
+                chunks = (
+                    tiles_by_var[ncvar.name]
+                    if ncvar.name in tiles_by_var
+                    else ncvar.chunking()
                 )
-        if tiles_by_dims is not None:
-            autotiles.update(tiles_by_dims)
+                if not (chunks is None or chunks == "contiguous"):
+                    chunks = tuple(chunks)
+                    autotiles[ncvar.dimensions] = (
+                        None
+                        if ncvar.dimensions in autotiles
+                        and chunks != autotiles.get(ncvar.dimensions)
+                        else chunks
+                    )
+        autotiles.update(tiles_by_dims)
         for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
             converter.add_array(
                 f"array{count}", dim_names, tiles=autotiles.get(dim_names)
@@ -728,6 +735,29 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         except ValueError as err:  # pragma: no cover
             raise ValueError(
                 f"Cannot add new dimension '{dim_converter.name}'. {str(err)}"
+            ) from err
+        self._dims[dim_converter.name] = dim_converter
+        self._index_dim_dataspace_names[
+            dataspace_name(dim_converter.name)
+        ] = dim_converter.name
+
+    def _add_scalar_dim_converter(
+        self,
+        dim_name: str = "__scalars",
+        dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
+    ):
+        """Adds a new NetCDF scalar dimension.
+
+        Parameters:
+            dim_name: Output name of the dimension.
+            dtype: Numpy type to use for the scalar dimension
+        """
+        dim_converter = NetCDFScalarDimConverter.create(dim_name, dtype)
+        try:
+            self._check_new_dim_name(dim_converter)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new scalar dimension '{dim_name}'. {str(err)}"
             ) from err
         self._dims[dim_converter.name] = dim_converter
         self._index_dim_dataspace_names[

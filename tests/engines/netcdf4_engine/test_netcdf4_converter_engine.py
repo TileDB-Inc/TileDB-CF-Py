@@ -282,7 +282,6 @@ def test_convert_to_scalar_sparse_array(multiscalars_netcdf_file, tmpdir):
     converter = NetCDF4ConverterEngine.from_file(
         multiscalars_netcdf_file.filepath,
         collect_attrs=False,
-        collect_scalar_attrs=True,
     )
     for array_name in converter.array_names:
         converter.set_array_properties(array_name, sparse=True)
@@ -359,22 +358,9 @@ def test_collect_scalar_attrs(multiscalars_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(
         multiscalars_netcdf_file.filepath,
         collect_attrs=False,
-        collect_scalar_attrs=True,
     )
     assert set(converter.array_names) == {"scalars"}
     assert set(converter._array_creators["scalars"].attr_names) == {"s1", "s2", "s3"}
-
-
-def test_no_collect_scalars(multiscalars_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        multiscalars_netcdf_file.filepath,
-        collect_attrs=False,
-        collect_scalar_attrs=False,
-    )
-    assert set(converter.array_names) == {"s1", "s2", "s3"}
-    assert set(converter._array_creators["s1"].attr_names) == {"s1"}
-    assert set(converter._array_creators["s2"].attr_names) == {"s2"}
-    assert set(converter._array_creators["s3"].attr_names) == {"s3"}
 
 
 def test_variable_fill(tmpdir):
