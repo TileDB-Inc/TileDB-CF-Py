@@ -3,7 +3,10 @@
 import numpy as np
 import pytest
 
-from tiledb.cf.engines.netcdf4_engine import NetCDFDimToDimConverter
+from tiledb.cf.engines.netcdf4_engine import (
+    NetCDFDimToDimConverter,
+    NetCDFScalarDimConverter,
+)
 
 
 class TestNetCDFDimToDimConverterSimpleDim:
@@ -136,3 +139,29 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
             converter = NetCDFDimToDimConverter.from_netcdf(dim, 10, np.uint64)
             with pytest.raises(IndexError):
                 converter.get_values(dataset, sparse=True)
+
+
+class TestNetCDFScalarDimConverter:
+    def test_class_properties(self):
+        converter = NetCDFScalarDimConverter.create("__scalars", np.uint32)
+        assert converter.name == "__scalars"
+        assert converter.domain == (0, 0)
+        assert converter.dtype == np.dtype(np.uint32)
+
+    def test_repr(self):
+        converter = NetCDFScalarDimConverter.create("__scalars", np.uint32)
+        isinstance(repr(converter), str)
+
+    def test_sparse_values(self):
+        netCDF4 = pytest.importorskip("netCDF4")
+        converter = NetCDFScalarDimConverter.create("__scalars", np.uint32)
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            values = converter.get_values(dataset, sparse=True)
+            assert np.array_equal(values, np.array([0]))
+
+    def test_dense_values(self):
+        netCDF4 = pytest.importorskip("netCDF4")
+        converter = NetCDFScalarDimConverter.create("__scalars", np.uint32)
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            values = converter.get_values(dataset, sparse=False)
+            assert np.array_equal(values, slice(1))

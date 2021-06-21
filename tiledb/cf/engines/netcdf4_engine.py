@@ -137,6 +137,53 @@ class NetCDFDimToDimConverter(NetCDFDimConverter):
 
 
 @dataclass
+class NetCDFScalarDimConverter(NetCDFDimConverter):
+    """Data for converting from a NetCDF dimension to a TileDB dimension.
+
+    Parameters:
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+
+    Attributes:
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+    """
+
+    def __repr__(self):
+        return f" Scalar dimensions -> {super().__repr__()}"
+
+    def get_values(self, netcdf_group: netCDF4.Dataset, sparse: bool):
+        """Get dimension values from a NetCDF group.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the dimension values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+        """
+        if sparse:
+            return np.array([0])
+        return slice(1)
+
+    @classmethod
+    def create(cls, dim_name: str, dtype: np.dtype):
+        """Returns a :class:`NetCDFDimToDimConverter` from a
+        :class:`netcdf4.Dimension`.
+
+        Parameters:
+            dim: The input netCDF4 dimension.
+            unlimited_dim_size: The size of the domain of the output TileDB
+                dimension when the input NetCDF dimension is unlimited.
+            dtype: The numpy dtype of the values and domain of the output TileDB
+                dimension.
+            dim_name: The name of the output TileDB dimension. If ``None``, the name
+                will be the same as the name of the input NetCDF dimension.
+        """
+        return cls(dim_name, (0, 0), np.dtype(dtype))
+
+
+@dataclass
 class NetCDFVariableConverter(AttrCreator):
     """Data for converting from a NetCDF variable to a TileDB attribute.
 
