@@ -98,14 +98,16 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", None)
             converter = NetCDFDimToDimConverter.from_netcdf(dim, 100, np.uint64)
-            assert converter.get_values(dataset, sparse=True) is None
+            with pytest.raises(ValueError):
+                converter.get_values(dataset, sparse=True)
 
     def test_dense_values_no_data(self):
         netCDF4 = pytest.importorskip("netCDF4")
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", None)
             converter = NetCDFDimToDimConverter.from_netcdf(dim, 100, np.uint64)
-            assert converter.get_values(dataset, sparse=False) is None
+            with pytest.raises(ValueError):
+                converter.get_values(dataset, sparse=False)
 
     def test_get_sparse_values(self):
         netCDF4 = pytest.importorskip("netCDF4")

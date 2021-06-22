@@ -119,11 +119,17 @@ class NetCDFDimToDimConverter(NetCDFDimConverter):
             if self.input_name in group.dimensions:
                 dim = group.dimensions[self.input_name]
                 if dim.size == 0:
-                    return None
+                    raise ValueError(
+                        f"Cannot copy dimension data from NetCDF dimension "
+                        f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
+                        f"NetCDF dimension is of size 0; there is no data to copy."
+                    )
                 if self.domain[1] is not None and dim.size - 1 > self.domain[1]:
                     raise IndexError(
-                        f"Cannot copy dimension of size {dim.size} to a TileDB "
-                        f"dimension with domain {self.domain}."
+                        f"Cannot copy dimension data from NetCDF dimension "
+                        f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
+                        f"NetCDF dimension size of {dim.size} does not fit in the "
+                        f"domain {self.domain} of the TileDB dimension."
                     )
                 if sparse:
                     return np.arange(dim.size)
@@ -307,6 +313,15 @@ class NetCDFArrayConverter(ArrayCreator):
              coordinate. Only allowed for sparse arrays.
     """
 
+    def _post_init(self):
+        for dim_creator in self._dim_creators:
+            if not isinstance(dim_creator.base, NetCDFDimConverter):
+                raise ValueError(
+                    f"Cannot create NetCDFArrayConverter with dimension creator "
+                    f"{repr(dim_creator)}. The dimension does not describe a NetCDF "
+                    f"dimension."
+                )
+
     def add_attr(self, attr_creator: AttrCreator):
         """Adds a new attribute to an array in the CF dataspace.
 
@@ -341,15 +356,15 @@ class NetCDFArrayConverter(ArrayCreator):
             tiledb_arary: The TileDB array to copy data into. The array must be open
                 in write mode.
         """
+        dim_query = []
+        for dim_creator in self._dim_creators:
+            assert isinstance(dim_creator.base, NetCDFDimConverter)
+            dim_query.append(
+                dim_creator.base.get_values(netcdf_group, sparse=self.sparse)
+            )
         data = {}
         for attr_converter in self._attr_creators.values():
-            if not isinstance(
-                attr_converter, NetCDFVariableConverter
-            ):  # pragma: no cover
-                raise TypeError(
-                    "Cannot assign value for attribute {attr_converter.name} that is "
-                    "of type {type(attr_converter)}."
-                )
+            assert isinstance(attr_converter, NetCDFVariableConverter)
             try:
                 variable = netcdf_group.variables[attr_converter.input_name]
             except KeyError as err:
@@ -361,15 +376,7 @@ class NetCDFArrayConverter(ArrayCreator):
             attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
             for meta_key in variable.ncattrs():
                 copy_metadata_item(attr_meta, variable, meta_key)
-        if self.sparse:
-            dim_query = tuple(np.arange(0, dim.size) for dim in variable.get_dims())
-            if not dim_query:
-                tiledb_array[0] = data
-            else:
-                tiledb_array[dim_query] = data
-        else:
-            dim_slice = tuple(slice(dim.size) for dim in variable.get_dims())
-            tiledb_array[dim_slice or slice(None)] = data
+        tiledb_array[tuple(dim_query)] = data
 
 
 @dataclass

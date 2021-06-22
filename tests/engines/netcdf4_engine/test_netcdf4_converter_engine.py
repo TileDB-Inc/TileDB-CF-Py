@@ -457,11 +457,10 @@ def test_rename_dim(simple1_netcdf_file):
     assert set(converter.dim_names) == set(["col"])
 
 
-def test_not_implemented_error(empty_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(empty_netcdf_file.filepath)
-    converter.add_array("A1", [])
+def test_not_implemented_error(simple1_netcdf_file):
+    converter = NetCDF4ConverterEngine.from_file(simple1_netcdf_file.filepath)
     with pytest.raises(NotImplementedError):
-        converter.add_attr("a1", "A1", np.float64)
+        converter.add_attr("a1", "array0", np.float64)
 
 
 def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
