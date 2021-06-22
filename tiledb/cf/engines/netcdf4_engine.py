@@ -512,7 +512,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 if dim.name == "__scalars":
                     raise NotImplementedError(
                         "Support for converting a NetCDF file with reserved dimension "
-                        "name '__scalars' not yet implemented."
+                        "name '__scalars' is not yet implemented."
                     )
                 if dim.name not in converter.dim_names:
                     converter._add_ncdim_to_dim_converter(
@@ -588,7 +588,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 if dim.name == "__scalars":
                     raise NotImplementedError(
                         "Support for converting a NetCDF file with reserved dimension "
-                        "name '__scalars' not yet implemented."
+                        "name '__scalars' is not yet implemented."
                     )
                 if dim.name not in converter.dim_names:
                     converter._add_ncdim_to_dim_converter(
@@ -697,9 +697,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             raise ValueError(
                 f"Cannot add new array with name '{array_name}'. {str(err)}"
             ) from err
-        if not dims:
-            dims = ("__scalars",)
-            self.add_dim("__scalars", (0, 0), np.dtype(np.uint32))
         array_dims = tuple(self._dims[dim_name] for dim_name in dims)
         self._array_creators[array_name] = NetCDFArrayConverter(
             array_dims,

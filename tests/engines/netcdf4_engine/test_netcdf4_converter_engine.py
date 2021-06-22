@@ -463,6 +463,13 @@ def test_not_implemented_error(simple1_netcdf_file):
         converter.add_attr("a1", "array0", np.float64)
 
 
+def test_bad_dims_error(simple1_netcdf_file):
+    converter = NetCDF4ConverterEngine()
+    converter.add_dim("row", (0, 10), np.uint32)
+    with pytest.raises(ValueError):
+        converter.add_array("array0", ("row",))
+
+
 def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(simple2_netcdf_file.filepath)
     uri = str(tmpdir.mkdir("output").join("test_copy_error"))
@@ -475,3 +482,21 @@ def test_bad_array_name_error(simple2_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(simple2_netcdf_file.filepath)
     with pytest.raises(ValueError):
         converter.add_array("array0", tuple())
+
+
+def test_collect_reserved_dim_name_error():
+    netCDF4 = pytest.importorskip("netCDF4")
+    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+        dataset.createDimension("__scalars", 1)
+        dataset.createVariable("scalar", np.float64, ("__scalars",))
+        with pytest.raises(NotImplementedError):
+            NetCDF4ConverterEngine.from_group(dataset, collect_attrs=True)
+
+
+def test_no_collect_reserved_dim_name_error():
+    netCDF4 = pytest.importorskip("netCDF4")
+    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+        dataset.createDimension("__scalars", 1)
+        dataset.createVariable("scalar", np.float64, ("__scalars",))
+        with pytest.raises(NotImplementedError):
+            NetCDF4ConverterEngine.from_group(dataset, collect_attrs=False)
