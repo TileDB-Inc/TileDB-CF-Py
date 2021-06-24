@@ -3,6 +3,7 @@
 """Classes for converting NetCDF4 files to TileDB."""
 
 import warnings
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -28,8 +29,27 @@ _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
 
 
+class NetCDFDimConverter(ABC):
+    @abstractmethod
+    def get_values(
+        self, netcdf_group: netCDF4.Dataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
+        """Returns the values of the NetCDF dimension that is being copied, or None if
+        the dimension is of size 0.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the dimension values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
+        """
+
+
 @dataclass
-class NetCDFDimensionConverter(SharedDim):
+class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
     """Data for converting from a NetCDF dimension to a TileDB dimension.
 
     Parameters:
@@ -68,7 +88,7 @@ class NetCDFDimensionConverter(SharedDim):
         dtype: np.dtype,
         dim_name: Optional[str] = None,
     ):
-        """Returns a :class:`NetCDFDimensionConverter` from a
+        """Returns a :class:`NetCDFDimToDimConverter` from a
         :class:`netcdf4.Dimension`.
 
         Parameters:
@@ -89,6 +109,97 @@ class NetCDFDimensionConverter(SharedDim):
             dim.size,
             dim.isunlimited(),
         )
+
+    def get_values(
+        self, netcdf_group: netCDF4.Dataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
+        """Returns the values of the NetCDF dimension that is being copied, or None if
+        the dimension is of size 0.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the dimension values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
+        """
+        group = netcdf_group
+        while group is not None:
+            if self.input_name in group.dimensions:
+                dim = group.dimensions[self.input_name]
+                if dim.size == 0:
+                    raise ValueError(
+                        f"Cannot copy dimension data from NetCDF dimension "
+                        f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
+                        f"NetCDF dimension is of size 0; there is no data to copy."
+                    )
+                if self.domain[1] is not None and dim.size - 1 > self.domain[1]:
+                    raise IndexError(
+                        f"Cannot copy dimension data from NetCDF dimension "
+                        f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
+                        f"NetCDF dimension size of {dim.size} does not fit in the "
+                        f"domain {self.domain} of the TileDB dimension."
+                    )
+                if sparse:
+                    return np.arange(dim.size)
+                return slice(dim.size)
+            group = group.parent
+        raise KeyError(
+            f"Unable to copy NetCDF dimension '{self.input_name}' to the TileDB "
+            f"dimension '{self.name}'. No NetCDF dimension with that name exists in "
+            f"the NetCDF group '{netcdf_group.path}' or its parent groups."
+        )
+
+
+@dataclass
+class NetCDFScalarDimConverter(SharedDim, NetCDFDimConverter):
+    """Data for converting from a NetCDF dimension to a TileDB dimension.
+
+    Parameters:
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+
+    Attributes:
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+    """
+
+    def __repr__(self):
+        return f" Scalar dimensions -> {super().__repr__()}"
+
+    def get_values(
+        self, netcdf_group: netCDF4.Dataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
+        """Get dimension values from a NetCDF group.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the dimension values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
+        """
+        if sparse:
+            return np.array([0])
+        return slice(1)
+
+    @classmethod
+    def create(cls, dim_name: str, dtype: np.dtype):
+        """Returns a :class:`NetCDFDimToDimConverter` from a
+        :class:`netcdf4.Dimension`.
+
+        Parameters:
+            dim_name: The name of the output TileDB dimension.
+            dtype: The numpy dtype of the values and domain of the output TileDB
+                dimension.
+        """
+        return cls(dim_name, (0, 0), np.dtype(dtype))
 
 
 @dataclass
@@ -215,6 +326,15 @@ class NetCDFArrayConverter(ArrayCreator):
              coordinate. Only allowed for sparse arrays.
     """
 
+    def __post_init__(self):
+        for dim_creator in self._dim_creators:
+            if not isinstance(dim_creator.base, NetCDFDimConverter):
+                raise TypeError(
+                    f"Cannot create NetCDFArrayConverter with dimension creator "
+                    f"{repr(dim_creator)}. The dimension does not describe a NetCDF "
+                    f"dimension."
+                )
+
     def add_attr(self, attr_creator: AttrCreator):
         """Adds a new attribute to an array in the CF dataspace.
 
@@ -249,15 +369,15 @@ class NetCDFArrayConverter(ArrayCreator):
             tiledb_arary: The TileDB array to copy data into. The array must be open
                 in write mode.
         """
+        dim_query = []
+        for dim_creator in self._dim_creators:
+            assert isinstance(dim_creator.base, NetCDFDimConverter)
+            dim_query.append(
+                dim_creator.base.get_values(netcdf_group, sparse=self.sparse)
+            )
         data = {}
         for attr_converter in self._attr_creators.values():
-            if not isinstance(
-                attr_converter, NetCDFVariableConverter
-            ):  # pragma: no cover
-                raise TypeError(
-                    "Cannot assign value for attribute {attr_converter.name} that is "
-                    "of type {type(attr_converter)}."
-                )
+            assert isinstance(attr_converter, NetCDFVariableConverter)
             try:
                 variable = netcdf_group.variables[attr_converter.input_name]
             except KeyError as err:
@@ -269,15 +389,7 @@ class NetCDFArrayConverter(ArrayCreator):
             attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
             for meta_key in variable.ncattrs():
                 copy_metadata_item(attr_meta, variable, meta_key)
-        if self.sparse:
-            dim_query = tuple(np.arange(0, dim.size) for dim in variable.get_dims())
-            if not dim_query:
-                tiledb_array[0] = data
-            else:
-                tiledb_array[dim_query] = data
-        else:
-            dim_slice = tuple(slice(dim.size) for dim in variable.get_dims())
-            tiledb_array[dim_slice or slice(None)] = data
+        tiledb_array[tuple(dim_query)] = data
 
 
 @dataclass
@@ -294,7 +406,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         collect_attrs: bool = True,
-        collect_scalar_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a group in a NetCDF file.
 
@@ -311,8 +422,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 to the tiles of those dimensions in the generated NetCDF array.
             collect_attrs: If True, store all attributes with the same dimensions
                 in the same array. Otherwise, store each attribute in a scalar array.
-            collect_scalar_attrs: If true, store all attributes with no dimensions
-                in the same array. This is always done if collect_attributes=True.
         """
         with open_netcdf_group(
             input_file=input_file,
@@ -327,7 +436,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 input_file,
                 group_path,
                 collect_attrs,
-                collect_scalar_attrs,
             )
 
     @classmethod
@@ -341,7 +449,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
         collect_attrs: bool = True,
-        collect_scalar_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
 
@@ -360,8 +467,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from. Use ``'/'`` to specify the root group.
             collect_attrs: If True, store all attributes with the same dimensions
                 in the same array. Otherwise, store each attribute in a scalar array.
-            collect_scalar_attrs: If true, store all attributes with no dimensions
-                in the same array. This is always done if collect_attributes=True.
         """
         if collect_attrs:
             return cls.from_group_to_collected_attrs(
@@ -381,7 +486,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             tiles_by_dims,
             default_input_file,
             default_group_path,
-            collect_scalar_attrs,
         )
 
     @classmethod
@@ -394,7 +498,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
-        collect_scalar_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
 
@@ -415,24 +518,28 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
                 from. Use ``'/'`` to specify the root group.
-            collect_scalar_attrs: If true, store all attributes with no dimensions
-                in the same array. This is always done if collect_attributes=True.
         """
         converter = cls(default_input_file, default_group_path)
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
+                if dim.name == "__scalars":
+                    raise NotImplementedError(
+                        "Support for converting a NetCDF file with reserved dimension "
+                        "name '__scalars' is not yet implemented."
+                    )
                 if dim.name not in converter.dim_names:
                     converter._add_ncdim_to_dim_converter(
                         dim,
                         unlimited_dim_size,
                         dim_dtype,
                     )
-            if collect_scalar_attrs and not ncvar.dimensions:
+            if not ncvar.dimensions:
                 array_name = (
                     "scalars" if "scalars" not in netcdf_group.variables else "_scalars"
                 )
                 if array_name not in converter.array_names:
-                    converter.add_array("scalars", tuple())
+                    converter._add_scalar_dim_converter("__scalars", dim_dtype)
+                    converter.add_array("scalars", ("__scalars",))
             else:
                 if tiles_by_var is not None and ncvar.name in tiles_by_var:
                     array_tiles = tiles_by_var[ncvar.name]
@@ -487,29 +594,37 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         converter = cls(default_input_file, default_group_path)
         dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
         autotiles: Dict[Sequence[str], Optional[Sequence[int]]] = {}
+        tiles_by_var = {} if tiles_by_var is None else tiles_by_var
+        tiles_by_dims = {} if tiles_by_dims is None else tiles_by_dims
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
+                if dim.name == "__scalars":
+                    raise NotImplementedError(
+                        "Support for converting a NetCDF file with reserved dimension "
+                        "name '__scalars' is not yet implemented."
+                    )
                 if dim.name not in converter.dim_names:
                     converter._add_ncdim_to_dim_converter(
                         dim,
                         unlimited_dim_size,
                         dim_dtype,
                     )
-            dims_to_vars[ncvar.dimensions].append(ncvar.name)
-            if tiles_by_var is not None and ncvar.name in tiles_by_var:
-                chunks = tiles_by_var[ncvar.name]
+            if not ncvar.dimensions:
+                if "__scalars" not in converter.dim_names:
+                    converter._add_scalar_dim_converter("__scalars", dim_dtype)
+                dims_to_vars[("__scalars",)].append(ncvar.name)
             else:
-                chunks = ncvar.chunking()
-            if not (chunks is None or chunks == "contiguous"):
-                chunks = tuple(chunks)
-                autotiles[ncvar.dimensions] = (
-                    None
-                    if ncvar.dimensions in autotiles
-                    and chunks != autotiles.get(ncvar.dimensions)
-                    else chunks
-                )
-        if tiles_by_dims is not None:
-            autotiles.update(tiles_by_dims)
+                dims_to_vars[ncvar.dimensions].append(ncvar.name)
+                chunks = tiles_by_var.get(ncvar.name, ncvar.chunking())
+                if not (chunks is None or chunks == "contiguous"):
+                    chunks = tuple(chunks)
+                    autotiles[ncvar.dimensions] = (
+                        None
+                        if ncvar.dimensions in autotiles
+                        and chunks != autotiles[ncvar.dimensions]
+                        else chunks
+                    )
+        autotiles.update(tiles_by_dims)
         for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
             converter.add_array(
                 f"array{count}", dim_names, tiles=autotiles.get(dim_names)
@@ -591,9 +706,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             raise ValueError(
                 f"Cannot add new array with name '{array_name}'. {str(err)}"
             ) from err
-        if not dims:
-            dims = ("__scalars",)
-            self.add_dim("__scalars", (0, 0), np.dtype(np.uint32))
         array_dims = tuple(self._dims[dim_name] for dim_name in dims)
         self._array_creators[array_name] = NetCDFArrayConverter(
             array_dims,
@@ -625,7 +737,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dtype: Numpy type to use for the NetCDF dimension.
             dim_name: Output name of the dimension.
         """
-        dim_converter = NetCDFDimensionConverter.from_netcdf(
+        dim_converter = NetCDFDimToDimConverter.from_netcdf(
             ncdim,
             unlimited_dim_size,
             dtype,
@@ -636,6 +748,29 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         except ValueError as err:  # pragma: no cover
             raise ValueError(
                 f"Cannot add new dimension '{dim_converter.name}'. {str(err)}"
+            ) from err
+        self._dims[dim_converter.name] = dim_converter
+        self._index_dim_dataspace_names[
+            dataspace_name(dim_converter.name)
+        ] = dim_converter.name
+
+    def _add_scalar_dim_converter(
+        self,
+        dim_name: str = "__scalars",
+        dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
+    ):
+        """Adds a new NetCDF scalar dimension.
+
+        Parameters:
+            dim_name: Output name of the dimension.
+            dtype: Numpy type to use for the scalar dimension
+        """
+        dim_converter = NetCDFScalarDimConverter.create(dim_name, dtype)
+        try:
+            self._check_new_dim_name(dim_converter)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new scalar dimension '{dim_name}'. {str(err)}"
             ) from err
         self._dims[dim_converter.name] = dim_converter
         self._index_dim_dataspace_names[

@@ -58,12 +58,6 @@ def cli():
     help="Collect variables with the same dimensions into a single array.",
 )
 @click.option(
-    "--collect-scalar-attrs/--no-collect-scalar-attrs",
-    default=True,
-    show_default=True,
-    help="Collect scalary variables into a single array.",
-)
-@click.option(
     "-k",
     "--output-key",
     type=str,
@@ -105,7 +99,6 @@ def netcdf_convert(
     unlimited_dim_size: int,
     dim_dtype: str,
     collect_attrs: bool,
-    collect_scalar_attrs: bool,
 ):
     """Converts a NetCDF input file to nested TileDB groups."""
     from_netcdf(
@@ -120,5 +113,4 @@ def netcdf_convert(
         tiles_by_var=None,
         tiles_by_dims=None,
         collect_attrs=collect_attrs,
-        collect_scalar_attrs=collect_scalar_attrs,
     )
