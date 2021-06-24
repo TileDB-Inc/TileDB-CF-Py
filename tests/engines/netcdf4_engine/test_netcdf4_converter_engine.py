@@ -466,7 +466,7 @@ def test_not_implemented_error(simple1_netcdf_file):
 def test_bad_dims_error(simple1_netcdf_file):
     converter = NetCDF4ConverterEngine()
     converter.add_dim("row", (0, 10), np.uint32)
-    with pytest.raises(ValueError):
+    with pytest.raises(TypeError):
         converter.add_array("array0", ("row",))
 
 

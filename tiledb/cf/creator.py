@@ -646,9 +646,9 @@ class ArrayCreator:
         self.offsets_filters = offsets_filters
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
-        self._post_init()
+        self.__post_init__()
 
-    def _post_init(self):
+    def __post_init__(self):
         pass
 
     def __repr__(self) -> str:

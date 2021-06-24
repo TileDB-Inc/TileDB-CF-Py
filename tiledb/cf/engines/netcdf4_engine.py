@@ -3,7 +3,7 @@
 """Classes for converting NetCDF4 files to TileDB."""
 
 import warnings
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -29,9 +29,11 @@ _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
 
 
-class NetCDFDimConverter(SharedDim):
+class NetCDFDimConverter(ABC):
     @abstractmethod
-    def get_values(self, netcdf_group: netCDF4.Dataset, sparse: bool):
+    def get_values(
+        self, netcdf_group: netCDF4.Dataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
         """Returns the values of the NetCDF dimension that is being copied, or None if
         the dimension is of size 0.
 
@@ -39,12 +41,15 @@ class NetCDFDimConverter(SharedDim):
             netcdf_group: NetCDF group to get the dimension values from.
             sparse: ``True`` if copying into a sparse array and ``False`` if copying
                 into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
         """
-        raise NotImplementedError("Called into abstract base class.")  # pragma no cover
 
 
 @dataclass
-class NetCDFDimToDimConverter(NetCDFDimConverter):
+class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
     """Data for converting from a NetCDF dimension to a TileDB dimension.
 
     Parameters:
@@ -105,7 +110,9 @@ class NetCDFDimToDimConverter(NetCDFDimConverter):
             dim.isunlimited(),
         )
 
-    def get_values(self, netcdf_group: netCDF4.Dataset, sparse: bool):
+    def get_values(
+        self, netcdf_group: netCDF4.Dataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
         """Returns the values of the NetCDF dimension that is being copied, or None if
         the dimension is of size 0.
 
@@ -113,6 +120,10 @@ class NetCDFDimToDimConverter(NetCDFDimConverter):
             netcdf_group: NetCDF group to get the dimension values from.
             sparse: ``True`` if copying into a sparse array and ``False`` if copying
                 into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
         """
         group = netcdf_group
         while group is not None:
@@ -143,7 +154,7 @@ class NetCDFDimToDimConverter(NetCDFDimConverter):
 
 
 @dataclass
-class NetCDFScalarDimConverter(NetCDFDimConverter):
+class NetCDFScalarDimConverter(SharedDim, NetCDFDimConverter):
     """Data for converting from a NetCDF dimension to a TileDB dimension.
 
     Parameters:
@@ -160,13 +171,19 @@ class NetCDFScalarDimConverter(NetCDFDimConverter):
     def __repr__(self):
         return f" Scalar dimensions -> {super().__repr__()}"
 
-    def get_values(self, netcdf_group: netCDF4.Dataset, sparse: bool):
+    def get_values(
+        self, netcdf_group: netCDF4.Dataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
         """Get dimension values from a NetCDF group.
 
         Parameters:
             netcdf_group: NetCDF group to get the dimension values from.
             sparse: ``True`` if copying into a sparse array and ``False`` if copying
                 into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
         """
         if sparse:
             return np.array([0])
@@ -178,13 +195,9 @@ class NetCDFScalarDimConverter(NetCDFDimConverter):
         :class:`netcdf4.Dimension`.
 
         Parameters:
-            dim: The input netCDF4 dimension.
-            unlimited_dim_size: The size of the domain of the output TileDB
-                dimension when the input NetCDF dimension is unlimited.
+            dim_name: The name of the output TileDB dimension.
             dtype: The numpy dtype of the values and domain of the output TileDB
                 dimension.
-            dim_name: The name of the output TileDB dimension. If ``None``, the name
-                will be the same as the name of the input NetCDF dimension.
         """
         return cls(dim_name, (0, 0), np.dtype(dtype))
 
@@ -313,10 +326,10 @@ class NetCDFArrayConverter(ArrayCreator):
              coordinate. Only allowed for sparse arrays.
     """
 
-    def _post_init(self):
+    def __post_init__(self):
         for dim_creator in self._dim_creators:
             if not isinstance(dim_creator.base, NetCDFDimConverter):
-                raise ValueError(
+                raise TypeError(
                     f"Cannot create NetCDFArrayConverter with dimension creator "
                     f"{repr(dim_creator)}. The dimension does not describe a NetCDF "
                     f"dimension."
@@ -602,17 +615,13 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 dims_to_vars[("__scalars",)].append(ncvar.name)
             else:
                 dims_to_vars[ncvar.dimensions].append(ncvar.name)
-                chunks = (
-                    tiles_by_var[ncvar.name]
-                    if ncvar.name in tiles_by_var
-                    else ncvar.chunking()
-                )
+                chunks = tiles_by_var.get(ncvar.name, ncvar.chunking())
                 if not (chunks is None or chunks == "contiguous"):
                     chunks = tuple(chunks)
                     autotiles[ncvar.dimensions] = (
                         None
                         if ncvar.dimensions in autotiles
-                        and chunks != autotiles.get(ncvar.dimensions)
+                        and chunks != autotiles[ncvar.dimensions]
                         else chunks
                     )
         autotiles.update(tiles_by_dims)
