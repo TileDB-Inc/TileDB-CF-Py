@@ -7,6 +7,8 @@ import tiledb
 from tiledb.cf import Group, from_netcdf, from_netcdf_group
 from tiledb.cf.engines.netcdf4_engine import NetCDF4ConverterEngine
 
+netCDF4 = pytest.importorskip("netCDF4")
+
 simple_coord_1 = {
     "name": "simple_coord_1",
     "dimension_args": [("row", 4), ("col", 4)],
@@ -162,7 +164,6 @@ def test_from_netcdf(netcdf_test_case, tmpdir):
 @pytest.mark.parametrize("netcdf_test_case", examples, indirect=True)
 def test_from_netcdf_group(netcdf_test_case, tmpdir):
     """Integration test for `from_netcdf_group` function call."""
-    netCDF4 = pytest.importorskip("netCDF4")
     name = netcdf_test_case.name
     uri = str(tmpdir.mkdir("output").join(name))
     with netCDF4.Dataset(netcdf_test_case.filepath) as dataset:
@@ -254,7 +255,6 @@ def test_virtual_from_netcdf_group_1(simple2_netcdf_file, tmpdir):
 
 
 def test_virtual_from_netcdf_group_2(simple2_netcdf_file, tmpdir):
-    netCDF4 = pytest.importorskip("netCDF4")
     uri = str(tmpdir.mkdir("output").join("virtual3"))
     with netCDF4.Dataset(simple2_netcdf_file.filepath, mode="r") as dataset:
         from_netcdf_group(dataset, uri, use_virtual_groups=True)
@@ -294,7 +294,6 @@ def test_convert_to_scalar_sparse_array(multiscalars_netcdf_file, tmpdir):
 
 
 def test_group_metadata(tmpdir):
-    netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir.mkdir("data").join("test_group_metadata.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         dataset.setncattr("name", "Group metadata example")
@@ -307,7 +306,6 @@ def test_group_metadata(tmpdir):
 
 
 def test_variable_metadata(tmpdir):
-    netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir.mkdir("data").join("test_variable_metadata.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         dataset.createDimension("row", 4)
@@ -365,7 +363,6 @@ def test_collect_scalar_attrs(multiscalars_netcdf_file):
 
 def test_variable_fill(tmpdir):
     """Test converting a NetCDF variable will the _FillValue NetCDF attribute set."""
-    netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir.mkdir("sample_netcdf").join("test_fill.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         dataset.createDimension("row", 4)
@@ -484,19 +481,10 @@ def test_bad_array_name_error(simple2_netcdf_file):
         converter.add_array("array0", tuple())
 
 
-def test_collect_reserved_dim_name_error():
-    netCDF4 = pytest.importorskip("netCDF4")
+@pytest.mark.parametrize("collect_attrs", [True, False])
+def test_reserved_dim_name_error(collect_attrs):
     with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
         dataset.createDimension("__scalars", 1)
         dataset.createVariable("scalar", np.float64, ("__scalars",))
         with pytest.raises(NotImplementedError):
-            NetCDF4ConverterEngine.from_group(dataset, collect_attrs=True)
-
-
-def test_no_collect_reserved_dim_name_error():
-    netCDF4 = pytest.importorskip("netCDF4")
-    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-        dataset.createDimension("__scalars", 1)
-        dataset.createVariable("scalar", np.float64, ("__scalars",))
-        with pytest.raises(NotImplementedError):
-            NetCDF4ConverterEngine.from_group(dataset, collect_attrs=False)
+            NetCDF4ConverterEngine.from_group(dataset, collect_attrs=collect_attrs)

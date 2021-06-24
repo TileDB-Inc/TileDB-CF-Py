@@ -8,6 +8,8 @@ from tiledb.cf.engines.netcdf4_engine import (
     NetCDFScalarDimConverter,
 )
 
+netCDF4 = pytest.importorskip("netCDF4")
+
 
 class TestNetCDFDimToDimConverterSimpleDim:
     """This class tests the NetCDFDimToDimConverter class for a simple NetCDF
@@ -18,7 +20,6 @@ class TestNetCDFDimToDimConverterSimpleDim:
     """
 
     def test_class_properties(self):
-        netCDF4 = pytest.importorskip("netCDF4")
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
             converter = NetCDFDimToDimConverter.from_netcdf(dim, 1000, np.uint64)
@@ -30,42 +31,28 @@ class TestNetCDFDimToDimConverterSimpleDim:
             assert converter.domain == (0, dim.size - 1)
             assert converter.dtype == np.uint64
 
-    def test_sparse_values(self):
-        netCDF4 = pytest.importorskip("netCDF4")
+    @pytest.mark.parametrize(
+        "sparse,values", [(True, np.arange(0, 8)), (False, slice(8))]
+    )
+    def test_get_values(self, sparse, values):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
             converter = NetCDFDimToDimConverter.from_netcdf(dim, 1000, np.uint64)
-            values = converter.get_values(dataset, sparse=True)
-            assert np.array_equal(np.arange(0, 8), values)
+            result = converter.get_values(dataset, sparse=sparse)
+            assert np.array_equal(result, values)
 
-    def test_sparse_values_from_subgroup(self):
-        netCDF4 = pytest.importorskip("netCDF4")
+    @pytest.mark.parametrize(
+        "sparse,values", [(True, np.arange(0, 8)), (False, slice(8))]
+    )
+    def test_get_values_from_subgroup(self, sparse, values):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
             group = dataset.createGroup("group1")
             converter = NetCDFDimToDimConverter.from_netcdf(dim, 1000, np.uint64)
-            values = converter.get_values(group, sparse=True)
-            assert np.array_equal(np.arange(0, 8), values)
-
-    def test_dense_values(self):
-        netCDF4 = pytest.importorskip("netCDF4")
-        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-            dim = dataset.createDimension("row", 8)
-            converter = NetCDFDimToDimConverter.from_netcdf(dim, 1000, np.uint64)
-            values = converter.get_values(dataset, sparse=False)
-            assert slice(8) == values
-
-    def test_dense_values_from_subgroup(self):
-        netCDF4 = pytest.importorskip("netCDF4")
-        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-            dim = dataset.createDimension("row", 8)
-            group = dataset.createGroup("group1")
-            converter = NetCDFDimToDimConverter.from_netcdf(dim, 1000, np.uint64)
-            values = converter.get_values(group, sparse=False)
-            assert slice(8) == values
+            result = converter.get_values(group, sparse=sparse)
+            assert np.array_equal(result, values)
 
     def test_no_dim_error(self):
-        netCDF4 = pytest.importorskip("netCDF4")
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
             converter = NetCDFDimToDimConverter.from_netcdf(dim, 1000, np.uint64)
@@ -80,7 +67,6 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
     NetCDF dimension."""
 
     def test_class_properties(self):
-        netCDF4 = pytest.importorskip("netCDF4")
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", None)
             max_size = 100
@@ -93,46 +79,28 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
             assert converter.domain == (0, max_size - 1)
             assert converter.dtype == np.uint64
 
-    def test_sparse_values_no_data(self):
-        netCDF4 = pytest.importorskip("netCDF4")
+    @pytest.mark.parametrize("sparse", [True, False])
+    def test_get_values_no_data(self, sparse):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", None)
             converter = NetCDFDimToDimConverter.from_netcdf(dim, 100, np.uint64)
             with pytest.raises(ValueError):
-                converter.get_values(dataset, sparse=True)
+                converter.get_values(dataset, sparse=sparse)
 
-    def test_dense_values_no_data(self):
-        netCDF4 = pytest.importorskip("netCDF4")
-        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-            dim = dataset.createDimension("row", None)
-            converter = NetCDFDimToDimConverter.from_netcdf(dim, 100, np.uint64)
-            with pytest.raises(ValueError):
-                converter.get_values(dataset, sparse=False)
-
-    def test_get_sparse_values(self):
-        netCDF4 = pytest.importorskip("netCDF4")
+    @pytest.mark.parametrize(
+        "sparse,values", [(True, np.arange(0, 10)), (False, slice(10))]
+    )
+    def test_get_values(self, sparse, values):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", None)
             var = dataset.createVariable("data", np.int32, ("row",))
             size = 10
             var[:] = np.arange(size)
             converter = NetCDFDimToDimConverter.from_netcdf(dim, 100, np.uint64)
-            values = converter.get_values(dataset, sparse=True)
-            assert np.array_equal(np.arange(0, size), values)
-
-    def test_get_dense_values(self):
-        netCDF4 = pytest.importorskip("netCDF4")
-        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-            dim = dataset.createDimension("row", None)
-            var = dataset.createVariable("data", np.int32, ("row",))
-            size = 10
-            var[:] = np.arange(size)
-            converter = NetCDFDimToDimConverter.from_netcdf(dim, 100, np.uint64)
-            values = converter.get_values(dataset, sparse=False)
-            assert slice(size) == values
+            result = converter.get_values(dataset, sparse=sparse)
+            assert np.array_equal(result, values)
 
     def test_data_too_large_error(self):
-        netCDF4 = pytest.importorskip("netCDF4")
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", None)
             var = dataset.createVariable("data", np.int32, ("row",))
@@ -154,16 +122,11 @@ class TestNetCDFScalarDimConverter:
         converter = NetCDFScalarDimConverter.create("__scalars", np.uint32)
         isinstance(repr(converter), str)
 
-    def test_sparse_values(self):
-        netCDF4 = pytest.importorskip("netCDF4")
+    @pytest.mark.parametrize(
+        "sparse,values", [(True, np.arange(0, 1)), (False, slice(1))]
+    )
+    def test_get_values(self, sparse, values):
         converter = NetCDFScalarDimConverter.create("__scalars", np.uint32)
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-            values = converter.get_values(dataset, sparse=True)
-            assert np.array_equal(values, np.array([0]))
-
-    def test_dense_values(self):
-        netCDF4 = pytest.importorskip("netCDF4")
-        converter = NetCDFScalarDimConverter.create("__scalars", np.uint32)
-        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-            values = converter.get_values(dataset, sparse=False)
-            assert np.array_equal(values, slice(1))
+            result = converter.get_values(dataset, sparse=sparse)
+            assert np.array_equal(result, values)
