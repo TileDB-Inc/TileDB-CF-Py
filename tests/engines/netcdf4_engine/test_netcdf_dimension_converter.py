@@ -63,7 +63,7 @@ class TestNetCDFDimToDimConverterSimpleDim:
 
 
 class TestNetCDFDimToDimConverterUnlimitedDim:
-    """This class teests the NetCDFDimToDimConverter class for an unlimited
+    """This class tests the NetCDFDimToDimConverter class for an unlimited
     NetCDF dimension."""
 
     def test_class_properties(self):
