@@ -6,11 +6,10 @@ import pytest
 
 import tiledb
 
-xr = pytest.importorskip("xarray")
-
 
 @pytest.fixture
 def create_tiledb_example(tmpdir):
+    xr = pytest.importorskip("xarray")
     # Define data
     float_data = np.linspace(
         -1.0, 1.0, num=32, endpoint=True, dtype=np.float64
@@ -60,6 +59,7 @@ def create_tiledb_example(tmpdir):
 
 @pytest.fixture
 def create_tiledb_datetime_example(tmpdir):
+    xr = pytest.importorskip("xarray")
     data = np.linspace(-1.0, 20.0, num=16, endpoint=True, dtype=np.float64)
     date = np.arange(np.datetime64("2000-01-01"), np.datetime64("2000-01-17"))
     # Create expected dataset
