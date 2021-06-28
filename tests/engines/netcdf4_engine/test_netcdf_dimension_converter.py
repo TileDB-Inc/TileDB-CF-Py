@@ -4,11 +4,91 @@ import numpy as np
 import pytest
 
 from tiledb.cf.engines.netcdf4_engine import (
+    NetCDFCoordToDimConverter,
     NetCDFDimToDimConverter,
     NetCDFScalarDimConverter,
 )
 
 netCDF4 = pytest.importorskip("netCDF4")
+
+
+class TestNetCDFCoordToDimConverterUnlimCoord:
+    """This class tests the NetCDFCoordToDimConverter class for a simple NetCDF
+    coordinate.
+
+    This test use an example NetCDF file with the following root group:
+
+    Dimensions:
+      value(unlim)
+
+    Variables:
+      float64 value(value)
+    """
+
+    def test_class_properties(self):
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dataset.createDimension("value")
+            var = dataset.createVariable("value", np.float64, ("value",))
+            var[:] = np.random.rand((8))
+            converter = NetCDFCoordToDimConverter.from_netcdf(var)
+            assert converter.name == var.name
+            assert converter.domain == (None, None)
+            assert converter.dtype == np.dtype(np.float64)
+            assert isinstance(repr(converter), str)
+            assert converter.input_name == var.name
+            assert converter.input_dtype == np.dtype(np.float64)
+            assert converter.input_add_offset is None
+            assert converter.input_scale_factor is None
+            assert converter.input_unsigned is None
+            assert converter.is_data_dim
+            assert not converter.is_index_dim
+
+    def test_get_values(self):
+        data = np.random.rand((8))
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dataset.createDimension("value")
+            var = dataset.createVariable("value", np.float64, ("value",))
+            var[:] = data
+            converter = NetCDFCoordToDimConverter.from_netcdf(var)
+            result = converter.get_values(dataset, sparse=True)
+        assert np.array_equal(result, data)
+
+    def test_get_values_no_data(self):
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dataset.createDimension("value")
+            var = dataset.createVariable("value", np.float64, ("value",))
+            converter = NetCDFCoordToDimConverter.from_netcdf(var)
+            result = converter.get_values(dataset, sparse=True)
+            assert result is None
+
+    def test_get_values_dense_error(self):
+        data = np.random.rand((8))
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dataset.createDimension("value")
+            var = dataset.createVariable("value", np.float64, ("value",))
+            var[:] = data
+            converter = NetCDFCoordToDimConverter.from_netcdf(var)
+            with pytest.raises(NotImplementedError):
+                converter.get_values(dataset, sparse=False)
+
+    def test_get_value_no_variable_error(self):
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dataset.createDimension("value")
+            var = dataset.createVariable("value", np.float64, ("value",))
+            converter = NetCDFCoordToDimConverter.from_netcdf(var)
+            group = dataset.createGroup("group1")
+            with pytest.raises(KeyError):
+                converter.get_values(group, sparse=True)
+
+    def test_get_value_wrong_ndim_error(self):
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dataset.createDimension("value")
+            var = dataset.createVariable("value", np.float64, ("value",))
+            converter = NetCDFCoordToDimConverter.from_netcdf(var)
+            group = dataset.createGroup("group1")
+            group.createVariable("value", np.float64, tuple())
+            with pytest.raises(ValueError):
+                converter.get_values(group, sparse=True)
 
 
 class TestNetCDFDimToDimConverterSimpleDim:
