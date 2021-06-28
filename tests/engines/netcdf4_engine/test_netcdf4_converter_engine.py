@@ -278,11 +278,13 @@ def test_virtual_from_netcdf_group_2(simple2_netcdf_file, tmpdir):
         assert array.meta["name"] == "simple2"
 
 
-def test_convert_coord(simple_coord_netcdf_example, tmpdir):
+@pytest.mark.parametrize("collect_attrs", [(True,), (False,)])
+def test_convert_coord(simple_coord_netcdf_example, tmpdir, collect_attrs):
     uri = str(tmpdir.mkdir("output").join("sparse_example"))
     converter = NetCDF4ConverterEngine.from_file(
         simple_coord_netcdf_example.filepath,
         coords_to_dims=True,
+        collect_attrs=collect_attrs,
     )
     converter.convert_to_group(uri)
     with tiledb.cf.Group(uri, attr="y") as group:
@@ -561,5 +563,14 @@ def test_reserved_dim_name_error(collect_attrs):
     with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
         dataset.createDimension("__scalars", 1)
         dataset.createVariable("scalar", np.float64, ("__scalars",))
+        with pytest.raises(NotImplementedError):
+            NetCDF4ConverterEngine.from_group(dataset, collect_attrs=collect_attrs)
+
+
+@pytest.mark.parametrize("collect_attrs", [True, False])
+def test_reserved_coord_name_error(collect_attrs):
+    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+        dataset.createDimension("__scalars", 1)
+        dataset.createVariable("__scalars", np.float64, ("__scalars",))
         with pytest.raises(NotImplementedError):
             NetCDF4ConverterEngine.from_group(dataset, collect_attrs=collect_attrs)
