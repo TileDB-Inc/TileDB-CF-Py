@@ -98,6 +98,19 @@ class DataspaceCreator:
             output.write("DataspaceCreator()")
         return output.getvalue()
 
+    def _add_shared_dimension(self, dim: SharedDim):
+        try:
+            self._check_new_dim_name(dim)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new dimension '{dim.name}'. {str(err)}"
+            ) from err
+        self._dims[dim.name] = dim
+        if dim.is_data_dim:
+            self._data_dim_dataspace_names[dataspace_name(dim.name)] = dim.name
+        else:
+            self._index_dim_dataspace_names[dataspace_name(dim.name)] = dim.name
+
     def _check_new_array_name(self, array_name: str):
         if array_name in self._array_creators:
             raise ValueError(f"An array with name '{array_name}' already exists.")
@@ -296,17 +309,7 @@ class DataspaceCreator:
             ValueError: Cannot create a new dimension with the provided ``dim_name``.
         """
         shared_dim: SharedDim = SharedDim(dim_name, domain, np.dtype(dtype))
-        try:
-            self._check_new_dim_name(shared_dim)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new dimension '{dim_name}'. {str(err)}"
-            ) from err
-        self._dims[dim_name] = shared_dim
-        if shared_dim.is_data_dim:
-            self._data_dim_dataspace_names[dataspace_name(dim_name)] = dim_name
-        else:
-            self._index_dim_dataspace_names[dataspace_name(dim_name)] = dim_name
+        self._add_shared_dimension(shared_dim)
 
     @property
     def array_names(self):

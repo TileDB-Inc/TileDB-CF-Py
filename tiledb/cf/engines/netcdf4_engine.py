@@ -646,11 +646,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             raise NotImplementedError
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
-                if dim.name == "__scalars":
-                    raise NotImplementedError(
-                        "Support for converting a NetCDF file with reserved dimension "
-                        "name '__scalars' is not yet implemented."
-                    )
                 if dim.name not in converter.dim_names:
                     converter.add_dim_to_dim_converter(
                         dim,
@@ -751,11 +746,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         # Add index dimensions to converter.
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
-                if dim.name == "__scalars":
-                    raise NotImplementedError(
-                        "Support for converting a NetCDF file with reserved dimension "
-                        "name '__scalars' is not yet implemented."
-                    )
                 if dim.name not in converter.dim_names:
                     converter.add_dim_to_dim_converter(
                         dim,
@@ -869,17 +859,19 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         var: netCDF4.Variable,
         dim_name: Optional[str] = None,
     ):
+        """Adds a new NetCDF coordinate to TileDB dimension converter.
+
+        Parameters:
+            var: NetCDF coordinate variable to be converted.
+            dim_name: If not ``None``, name to use for the TileDB dimension.
+        """
         dim_converter = NetCDFCoordToDimConverter.from_netcdf(var, dim_name=dim_name)
-        try:
-            self._check_new_dim_name(dim_converter)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new dimension '{dim_converter.name}'. {str(err)}"
+        if dim_converter.name == "__scalars":
+            raise NotImplementedError(
+                "Support for converting a NetCDF file with reserved dimension "
+                "name '__scalars' is not implemented."
             )
-        self._dims[dim_converter.name] = dim_converter
-        self._data_dim_dataspace_names[
-            dataspace_name(dim_converter.name)
-        ] = dim_converter.name
+        super()._add_shared_dimension(dim_converter)
 
     def add_dim_to_dim_converter(
         self,
@@ -894,7 +886,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             ncdim: NetCDF dimension to be converted.
             unlimited_dim_size: Size for an unlimited dimension type.
             dtype: Numpy type to use for the NetCDF dimension.
-            dim_name: Output name of the dimension.
+            dim_name: If not ``None``, output name of the TileDB dimension.
         """
         dim_converter = NetCDFDimToDimConverter.from_netcdf(
             ncdim,
@@ -902,16 +894,12 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dtype,
             dim_name,
         )
-        try:
-            self._check_new_dim_name(dim_converter)
-        except ValueError as err:  # pragma: no cover
-            raise ValueError(
-                f"Cannot add new dimension '{dim_converter.name}'. {str(err)}"
-            ) from err
-        self._dims[dim_converter.name] = dim_converter
-        self._index_dim_dataspace_names[
-            dataspace_name(dim_converter.name)
-        ] = dim_converter.name
+        if dim_converter.name == "__scalars":
+            raise NotImplementedError(
+                "Support for converting a NetCDF file with reserved dimension "
+                "name '__scalars' is not implemented."
+            )
+        super()._add_shared_dimension(dim_converter)
 
     def add_scalar_dim_converter(
         self,
@@ -925,16 +913,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dtype: Numpy type to use for the scalar dimension
         """
         dim_converter = NetCDFScalarDimConverter.create(dim_name, dtype)
-        try:
-            self._check_new_dim_name(dim_converter)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new scalar dimension '{dim_name}'. {str(err)}"
-            ) from err
-        self._dims[dim_converter.name] = dim_converter
-        self._index_dim_dataspace_names[
-            dataspace_name(dim_converter.name)
-        ] = dim_converter.name
+        super()._add_shared_dimension(dim_converter)
 
     def add_var_to_attr_converter(
         self,
