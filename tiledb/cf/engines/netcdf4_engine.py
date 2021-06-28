@@ -727,21 +727,19 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             if coords_to_dims and ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name:
                 converter.add_coord_to_dim_converter(ncvar)
                 coord_names.append(ncvar.name)
-            elif ncvar.dimensions:
-                dims_to_vars[ncvar.dimensions].append(ncvar.name)
+            else:
+                if not ncvar.dimensions and "__scalars" not in converter.dim_names:
+                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
+                dim_names = ncvar.dimensions if ncvar.dimensions else ("__scalars",)
+                dims_to_vars[dim_names].append(ncvar.name)
                 chunks = tiles_by_var.get(ncvar.name, ncvar.chunking())
                 if not (chunks is None or chunks == "contiguous"):
                     chunks = tuple(chunks)
-                    autotiles[ncvar.dimensions] = (
+                    autotiles[dim_names] = (
                         None
-                        if ncvar.dimensions in autotiles
-                        and chunks != autotiles.get(ncvar.dimensions)
+                        if dim_names in autotiles and chunks != autotiles.get(dim_names)
                         else chunks
                     )
-            else:
-                if "__scalars" not in converter.dim_names:
-                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
-                dims_to_vars[("__scalars",)].append(ncvar.name)
         autotiles.update(tiles_by_dims)
         # Add index dimensions to converter.
         for ncvar in netcdf_group.variables.values():
