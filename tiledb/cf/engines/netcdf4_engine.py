@@ -50,7 +50,7 @@ class NetCDFDimConverter(ABC):
 
 
 @dataclass
-class NetCDFCoordToDimConverter(SharedDim):
+class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
 
     input_name: str
     input_dtype: np.dtype
@@ -105,6 +105,44 @@ class NetCDFCoordToDimConverter(SharedDim):
             input_scale_factor=scale_factor,
             input_unsigned=unsigned,
         )
+
+    def get_values(
+        self,
+        netcdf_group: netCDF4.Dataset,
+        sparse: bool,
+    ):
+        """Returns the values of the NetCDF coordinate that is being copied, or
+        None if the coordinate is of size 0.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the coordinate values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The coordinate values needed for querying the TileDB dimension in the
+                form a numpy array.
+        """
+        if not sparse:
+            raise NotImplementedError(
+                "Support for copying NetCDF coordinates to dense arrays has not "
+                "been implemented."
+            )
+        try:
+            variable = netcdf_group.variables[self.input_name]
+        except KeyError as err:
+            raise KeyError(
+                f"The variable {self.input_name} was not found in requested "
+                f"NetCDF group. Cannot copy date to TileDB dimension {self.name}."
+            ) from err
+        if variable.ndim != 1:
+            raise ValueError(
+                f"The variable {self.input_name} is not a NetCDF coordinate. Error in "
+                f"provided NetCDF group."
+            )
+        if variable.get_dims()[0].size < 1:
+            return None
+        return variable[:]
 
     @property
     def is_data_dim(self) -> bool:
