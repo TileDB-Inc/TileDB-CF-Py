@@ -416,7 +416,6 @@ def test_rename_dim_used():
     assert set(creator.dim_names) == {"unit"}
     creator.add_attr("x1", "A1", np.int32)
     group_schema = creator.to_schema()
-    print(group_schema["A1"].domain)
     assert group_schema["A1"].domain.has_dim("unit")
 
 
