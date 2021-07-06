@@ -52,6 +52,12 @@ def cli():
     help="Recursively convert all groups contained in the input group path.",
 )
 @click.option(
+    "--coords-to-dims/--coords-to-attrs",
+    default=True,
+    show_default=True,
+    help="Convert NetCDF coordinate variables to TileDB dimensions.",
+)
+@click.option(
     "--collect-attrs/--array-per-attr",
     default=True,
     show_default=True,
@@ -98,6 +104,7 @@ def netcdf_convert(
     output_key: Optional[str],
     unlimited_dim_size: int,
     dim_dtype: str,
+    coords_to_dims: bool,
     collect_attrs: bool,
 ):
     """Converts a NetCDF input file to nested TileDB groups."""
@@ -112,5 +119,6 @@ def netcdf_convert(
         dim_dtype=np.dtype(dim_dtype),
         tiles_by_var=None,
         tiles_by_dims=None,
+        coords_to_dims=coords_to_dims,
         collect_attrs=collect_attrs,
     )

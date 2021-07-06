@@ -23,8 +23,9 @@ def from_netcdf(
     tiles_by_dims: Optional[
         Dict[str, Dict[Sequence[str], Optional[Sequence[int]]]]
     ] = None,
-    use_virtual_groups: bool = False,
+    coords_to_dims: bool = True,
     collect_attrs: bool = True,
+    use_virtual_groups: bool = False,
 ):
     """Converts a NetCDF input file to nested TileDB CF dataspaces.
 
@@ -47,15 +48,19 @@ def from_netcdf(
             from unlimited NetCDF dimensions.
         dim_dtype: The numpy dtype for TileDB dimensions.
         tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
-            dimensions of the variable in the generated NetCDF array.
+            dimensions of the variable in the generated TileDB array.
         tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
-            to the tiles of those dimensions in the generated NetCDF array.
+            to the tiles of those dimensions in the generated TileDB array.
         use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
             as the name for the group metadata array. All other arrays will be named
             using the convention ``{uri}_{array_name}`` where ``array_name`` is the
             name of the array.
-        collect_attrs: If True, store all attributes with the same dimensions
-            in the same array. Otherwise, store each attribute in a scalar array.
+        coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
+            TileDB dimension for sparse arrays. Otherwise, convert the coordinate
+            dimension into a TileDB dimension and the coordinate variable into a
+            TileDB attribute.
+        collect_attrs: If ``True``, store all attributes with the same dimensions in
+            the same array. Otherwise, store each attribute in a scalar array.
     """
     from .netcdf4_engine import NetCDF4ConverterEngine, open_netcdf_group
 
@@ -73,6 +78,7 @@ def from_netcdf(
             dim_dtype,
             tiles_by_var.get(netcdf_group.path),
             tiles_by_dims.get(netcdf_group.path),
+            coords_to_dims=coords_to_dims,
             collect_attrs=collect_attrs,
         )
         group_uri = (
@@ -94,6 +100,7 @@ def from_netcdf(
             dim_dtype,
             tiles_by_var.get(netcdf_group.path),
             tiles_by_dims.get(netcdf_group.path),
+            coords_to_dims=coords_to_dims,
             collect_attrs=collect_attrs,
         )
         group_uri = output_uri + netcdf_group.path
@@ -128,6 +135,7 @@ def from_netcdf_group(
     dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
     tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
     tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
+    coords_to_dims: bool = True,
     use_virtual_groups: bool = False,
     collect_attrs: bool = True,
 ):
@@ -150,13 +158,19 @@ def from_netcdf_group(
             from unlimited NetCDF dimensions.
         dim_dtype: The numpy dtype for TileDB dimensions.
         tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
-            dimensions of the variable in the generated NetCDF array.
+            dimensions of the variable in the generated TileDB array.
         tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
-            to the tiles of those dimensions in the generated NetCDF array.
+            to the tiles of those dimensions in the generated TileDB array.
+        coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
+            TileDB dimension for sparse arrays. Otherwise, convert the coordinate
+            dimension into a TileDB dimension and the coordinate variable into a
+            TileDB attribute.
         use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
             as the name for the group metadata array. All other arrays will be named
             using the convention ``{uri}_{array_name}`` where ``array_name`` is the
             name of the array.
+        collect_attrs: If ``True``, store all attributes with the same dimensions in
+            the same array. Otherwise, store each attribute in a scalar array.
     """
     import netCDF4
 
@@ -169,6 +183,7 @@ def from_netcdf_group(
             dim_dtype,
             tiles_by_var,
             tiles_by_dims,
+            coords_to_dims=coords_to_dims,
             collect_attrs=collect_attrs,
         )
         if use_virtual_groups:
@@ -187,6 +202,7 @@ def from_netcdf_group(
             dim_dtype,
             tiles_by_var,
             tiles_by_dims,
+            coords_to_dims=coords_to_dims,
             collect_attrs=collect_attrs,
         )
         if use_virtual_groups:
