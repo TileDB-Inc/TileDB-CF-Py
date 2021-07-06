@@ -5,9 +5,10 @@ import pytest
 
 from tiledb.cf.engines.netcdf4_engine import NetCDFCoordToDimConverter
 
+netCDF4 = pytest.importorskip("netCDF4")
+
 
 def test_coord_converter_simple(simple_coord_netcdf_example):
-    netCDF4 = pytest.importorskip("netCDF4")
     with netCDF4.Dataset(simple_coord_netcdf_example.filepath, mode="r") as dataset:
         x = dataset.variables["x"]
         converter = NetCDFCoordToDimConverter.from_netcdf(x)
@@ -17,7 +18,6 @@ def test_coord_converter_simple(simple_coord_netcdf_example):
 
 
 def test_bad_size_error(tmpdir):
-    netCDF4 = pytest.importorskip("netCDF4")
     filepath = tmpdir.mkdir("examples").join("bad_size.nc")
     with netCDF4.Dataset(filepath, mode="w") as group:
         group.createDimension("x", 16)
