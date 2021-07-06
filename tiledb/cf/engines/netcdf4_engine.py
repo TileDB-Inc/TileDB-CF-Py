@@ -93,12 +93,10 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
                 f"for converting scaled coordinates has not yet been implemented."
             )
         dtype = np.dtype(var.dtype)
-        if domain is None:
-            domain = (None, None)
         return cls(
-            dim_name if dim_name is not None else var.name,
-            (None, None),
-            dtype,
+            name=dim_name if dim_name is not None else var.name,
+            domain=domain if domain is not None else (None, None),
+            dtype=dtype,
             input_name=var.name,
             input_dtype=dtype,
             input_add_offset=add_offset,
@@ -145,10 +143,6 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
         if variable.get_dims()[0].size < 1:
             return None
         return variable[:]
-
-    @property
-    def is_data_dim(self) -> bool:
-        return True
 
     @property
     def is_index_dim(self) -> bool:
@@ -739,7 +733,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     chunks = tuple(chunks)
                     autotiles[dim_names] = (
                         None
-                        if dim_names in autotiles and chunks != autotiles.get(dim_names)
+                        if dim_names in autotiles and chunks != autotiles[dim_names]
                         else chunks
                     )
         autotiles.update(tiles_by_dims)
