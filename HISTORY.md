@@ -12,6 +12,7 @@
 * Replaces parameter `tiles` with `tiles_by_dims` and `tiles_by_var` in `from_netcdf` and `from_netcdf_group` functions.
 * Renames method `get_all_attr_arrays` in `GroupSchema` to `arrays_with_attr`.
 * Removes methods `get_attr_array` and `set_default_metadata_schema` from `GroupSchema` class.
+* Change `from_group` and `from_file` in `NetCDF4ConverterEngine` to default to convertering NetCDF coordinates to dimensions.
 
 ### New Features
 
@@ -24,6 +25,7 @@
 * Adds TileDB backend engine for xarray (previously in TileDB-xarray package).
 * Adds methods to convert NetCDF group where all attributes are stored in separate arrays.
 * Adds parameter to set default metadata schema in `GroupSchema` instance in not otherwise specified.
+* Adds ability to convert NetCDF coordinates to TileDB dimensions.
 
 ### Improvements
 
