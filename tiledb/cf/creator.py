@@ -308,8 +308,7 @@ class DataspaceCreator:
         Raises:
             ValueError: Cannot create a new dimension with the provided ``dim_name``.
         """
-        shared_dim: SharedDim = SharedDim(dim_name, domain, np.dtype(dtype))
-        self._add_shared_dimension(shared_dim)
+        self._add_shared_dimension(SharedDim(dim_name, domain, np.dtype(dtype)))
 
     @property
     def array_names(self):
