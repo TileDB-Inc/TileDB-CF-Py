@@ -524,9 +524,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from unlimited NetCDF dimensions.
             dim_dtype: The numpy dtype for TileDB dimensions.
             tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
-                dimensions of the variable in the generated NetCDF array.
+                dimensions of the variable in the generated TileDB array.
             tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
-                to the tiles of those dimensions in the generated NetCDF array.
+                to the tiles of those dimensions in the generated TileDB array.
             coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
                 TileDB dimension for sparse arrays. Otherwise, convert the coordinate
                 dimension into a TileDB dimension and the coordinate variable into a
@@ -571,9 +571,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from unlimited NetCDF dimensions.
             dim_dtype: The numpy dtype for TileDB dimensions.
             tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
-                dimensions of the variable in the generated NetCDF array.
+                dimensions of the variable in the generated TileDB array.
             tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
-                to the tiles of those dimensions in the generated NetCDF array.
+                to the tiles of those dimensions in the generated TileDB array.
             coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
                 TileDB dimension for sparse arrays. Otherwise, convert the coordinate
                 dimension into a TileDB dimension and the coordinate variable into a
@@ -627,11 +627,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from unlimited NetCDF dimensions.
             dim_dtype: The numpy dtype for TileDB dimensions.
             tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
-                dimensions of the variable in the generated NetCDF array. The tile
+                dimensions of the variable in the generated TileDB array. The tile
                 sizes defined by this dict take priority over the ``tiles_by_dims``
                 parameter and the NetCDF variable chunksize.
             tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
-                to the tiles of those dimensions in the generated NetCDF array. The
+                to the tiles of those dimensions in the generated TileDB array. The
                 tile size defined by this dict are used if they are not defined by the
                 parameter ``tiles_by_var``.
             coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
@@ -702,10 +702,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from unlimited NetCDF dimensions.
             dim_dtype: The numpy dtype for TileDB dimensions.
             tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
-                dimensions of the variable in the generated NetCDF array. This will
+                dimensions of the variable in the generated TileDB array. This will
                 take priority over NetCDF variable chunksize.
             tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
-                to the tiles of those dimensions in the generated NetCDF array. This
+                to the tiles of those dimensions in the generated TileDB array. This
                 will take priority over tile sizes defined by the ``tiles_by_var``
                 parameter and the NetCDF variable chunksize.
             coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a

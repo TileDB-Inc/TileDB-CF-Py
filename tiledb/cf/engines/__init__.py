@@ -48,9 +48,9 @@ def from_netcdf(
             from unlimited NetCDF dimensions.
         dim_dtype: The numpy dtype for TileDB dimensions.
         tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
-            dimensions of the variable in the generated NetCDF array.
+            dimensions of the variable in the generated TileDB array.
         tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
-            to the tiles of those dimensions in the generated NetCDF array.
+            to the tiles of those dimensions in the generated TileDB array.
         use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
             as the name for the group metadata array. All other arrays will be named
             using the convention ``{uri}_{array_name}`` where ``array_name`` is the
@@ -158,9 +158,9 @@ def from_netcdf_group(
             from unlimited NetCDF dimensions.
         dim_dtype: The numpy dtype for TileDB dimensions.
         tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
-            dimensions of the variable in the generated NetCDF array.
+            dimensions of the variable in the generated TileDB array.
         tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
-            to the tiles of those dimensions in the generated NetCDF array.
+            to the tiles of those dimensions in the generated TileDB array.
         coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
             TileDB dimension for sparse arrays. Otherwise, convert the coordinate
             dimension into a TileDB dimension and the coordinate variable into a
