@@ -424,7 +424,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 in the same array. Otherwise, store each attribute in a scalar array.
         """
         with open_netcdf_group(
-            input_file=input_file,
+            input_file=input_file[0],
             group_path=group_path,
         ) as group:
             return cls.from_group(
@@ -436,7 +436,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 input_file,
                 group_path,
                 collect_attrs,
-            )
+            )    
 
     @classmethod
     def from_group(
@@ -972,7 +972,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     with Group(
                         output_uri, mode="w", array=array_name, key=key, ctx=ctx
                     ) as tiledb_group:
-                        array_creator.copy(netcdf_group, tiledb_group.array)
+                        if isinstance(input_file, list): 
+                            array_creator.copy(netCDF4.MFDataset(input_file), tiledb_group.array)
+                        else:
+                            array_creator.copy(netcdf_group, tiledb_group.array)
 
     def copy_to_virtual_group(
         self,
@@ -1087,7 +1090,12 @@ def open_netcdf_group(
                 "A group path must be provided; no default group path was set. Use "
                 "``'/'`` for the root group."
             )
-        root_group = netCDF4.Dataset(input_file)
+        if isinstance(input_file, list):
+            #root_group = [netCDF4.Dataset(input_file[0]).set_auto_maskandscale(False), netCDF4.MFDataset(input_file)]
+            #root_group = netCDF4.MFDataset(input_file)
+            root_group = netCDF4.Dataset(input_file[0])
+        else:
+            root_group = netCDF4.Dataset(input_file)
         root_group.set_auto_maskandscale(False)
         try:
             netcdf_group = root_group
