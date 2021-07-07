@@ -366,31 +366,72 @@ class NetCDFArrayConverter(ArrayCreator):
 
         Parameters:
             netcdf_group: The NetCDF group to copy data from.
-            tiledb_arary: The TileDB array to copy data into. The array must be open
+            tiledb_array: The TileDB array to copy data into. The array must be open
                 in write mode.
         """
         dim_query = []
         for dim_creator in self._dim_creators:
             assert isinstance(dim_creator.base, NetCDFDimConverter)
+            #print(netcdf_group)
             dim_query.append(
                 dim_creator.base.get_values(netcdf_group, sparse=self.sparse)
             )
         data = {}
         for attr_converter in self._attr_creators.values():
+            #print(attr_converter)
             assert isinstance(attr_converter, NetCDFVariableConverter)
             try:
                 variable = netcdf_group.variables[attr_converter.input_name]
+                #print(variable)
             except KeyError as err:
                 raise KeyError(
                     f"Variable {attr_converter.input_name} not found in "
                     f"requested NetCDF group."
                 ) from err
             data[attr_converter.name] = variable[...]
+            #print(attr_converter.name)
             attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
             for meta_key in variable.ncattrs():
                 copy_metadata_item(attr_meta, variable, meta_key)
         tiledb_array[tuple(dim_query)] = data
 
+    def copy_list(
+        self,
+        input_file: list,
+        tiledb_array: tiledb.Array,
+    ):
+        """Copies data from a list of NetCDF files to a TileDB CF array.
+
+        Parameters:
+            input_files: The list of NetCDF files to copy data from.
+            tiledb_array: The TileDB array to copy data into. The array must be open
+                in write mode.
+        """
+        dim_query = []
+        for dim_creator in self._dim_creators:
+            assert isinstance(dim_creator.base, NetCDFDimConverter)
+            #print(netcdf_group)
+            dim_query.append(
+                dim_creator.base.get_values(netcdf_group, sparse=self.sparse)
+            )
+        data = {}
+        for attr_converter in self._attr_creators.values():
+            #print(attr_converter)
+            assert isinstance(attr_converter, NetCDFVariableConverter)
+            try:
+                variable = netcdf_group.variables[attr_converter.input_name]
+                #print(variable)
+            except KeyError as err:
+                raise KeyError(
+                    f"Variable {attr_converter.input_name} not found in "
+                    f"requested NetCDF group."
+                ) from err
+            data[attr_converter.name] = variable[...]
+            #print(attr_converter.name)
+            attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
+            for meta_key in variable.ncattrs():
+                copy_metadata_item(attr_meta, variable, meta_key)
+        tiledb_array[tuple(dim_query)] = data
 
 @dataclass
 class NetCDF4ConverterEngine(DataspaceCreator):
@@ -399,7 +440,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     @classmethod
     def from_file(
         cls,
-        input_file: Union[str, Path],
+        input_file: Union[str, Path, list],
         group_path: str = "/",
         unlimited_dim_size: int = 10000,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
@@ -423,20 +464,36 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             collect_attrs: If True, store all attributes with the same dimensions
                 in the same array. Otherwise, store each attribute in a scalar array.
         """
-        with open_netcdf_group(
-            input_file=input_file[0],
-            group_path=group_path,
-        ) as group:
-            return cls.from_group(
-                group,
-                unlimited_dim_size,
-                dim_dtype,
-                tiles_by_var,
-                tiles_by_dims,
-                input_file,
-                group_path,
-                collect_attrs,
-            )    
+        if isinstance(input_file, list):
+            with open_netcdf_list(
+                input_file=input_file,
+                group_path=group_path,
+            ) as group:
+                return cls.from_list(
+                    group,
+                    unlimited_dim_size,
+                    dim_dtype,
+                    tiles_by_var,
+                    tiles_by_dims,
+                    input_file,
+                    group_path,
+                    collect_attrs,
+                )    
+        else:
+            with open_netcdf_group(
+                input_file=input_file,
+                group_path=group_path,
+            ) as group:
+                return cls.from_group(
+                    group,
+                    unlimited_dim_size,
+                    dim_dtype,
+                    tiles_by_var,
+                    tiles_by_dims,
+                    input_file,
+                    group_path,
+                    collect_attrs,
+                )    
 
     @classmethod
     def from_group(
@@ -446,7 +503,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
-        default_input_file: Optional[Union[str, Path]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
         default_group_path: Optional[str] = None,
         collect_attrs: bool = True,
     ):
@@ -489,6 +546,56 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         )
 
     @classmethod
+    def from_list(
+        cls,
+        netcdf_group: netCDF4.Group,
+        unlimited_dim_size: int = 10000,
+        dim_dtype: np.dty      pe = _DEFAULT_INDEX_DTYPE,
+        tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
+        tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
+        default_group_path: Optional[str] = None,
+        collect_attrs: bool = True,
+    ):
+        """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
+
+        Parameters:
+            group: The NetCDF group to convert.
+            unlimited_dim_size: The size of the domain for TileDB dimensions created
+                from unlimited NetCDF dimensions.
+            dim_dtype: The numpy dtype for TileDB dimensions.
+            tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
+                dimensions of the variable in the generated NetCDF array.
+            tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
+                to the tiles of those dimensions in the generated NetCDF array.
+            default_input_file: If not ``None``, the default NetCDF input file to copy
+                data from.
+            default_group_path: If not ``None``, the default NetCDF group to copy data
+                from. Use ``'/'`` to specify the root group.
+            collect_attrs: If True, store all attributes with the same dimensions
+                in the same array. Otherwise, store each attribute in a scalar array.
+        """
+        if collect_attrs:
+            return cls.from_group_to_collected_attrs(
+                netcdf_group,
+                unlimited_dim_size,
+                dim_dtype,
+                tiles_by_var,
+                tiles_by_dims,
+                default_input_file,
+                default_group_path,
+            )
+        return cls.from_group_to_attr_per_array(
+            netcdf_group,    
+            unlimited_dim_size,
+            dim_dtype,
+            tiles_by_var,
+            tiles_by_dims,
+            default_input_file,
+            default_group_path,
+        )
+
+    @classmethod
     def from_group_to_attr_per_array(
         cls,
         netcdf_group: netCDF4.Group,
@@ -496,7 +603,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
-        default_input_file: Optional[Union[str, Path]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
         default_group_path: Optional[str] = None,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
@@ -569,7 +676,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
-        default_input_file: Optional[Union[str, Path]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
         default_group_path: Optional[str] = None,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
@@ -637,7 +744,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
 
     def __init__(
         self,
-        default_input_file: Optional[Union[str, Path]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
         default_group_path: Optional[str] = None,
     ):
         self.default_input_file = default_input_file
@@ -854,7 +961,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
+        input_file: Optional[Union[str, Path, list]] = None,
         input_group_path: Optional[str] = None,
     ):
         """Creates a TileDB group and its arrays from the defined CF dataspace and
@@ -887,7 +994,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
+        input_file: Optional[Union[str, Path, list]] = None,
         input_group_path: Optional[str] = None,
     ):
         """Creates a TileDB group and its arrays from the defined CF dataspace and
@@ -920,7 +1027,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
+        input_file: Optional[Union[str, Path, list]] = None,
         input_group_path: Optional[str] = None,
     ):
         """Copies data from a NetCDF group to a TileDB CF dataspace.
@@ -966,15 +1073,15 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             with Group(output_uri, mode="w", key=key, ctx=ctx) as group:
                 for group_key in netcdf_group.ncattrs():
                     copy_metadata_item(group.meta, netcdf_group, group_key)
-            # Copy variables and variable metadata to arrays
+            # Copy variables and variable metadata to arrays                                                                                                                                                  
             for array_name, array_creator in self._array_creators.items():
                 if isinstance(array_creator, NetCDFArrayConverter):
                     with Group(
                         output_uri, mode="w", array=array_name, key=key, ctx=ctx
                     ) as tiledb_group:
-                        if isinstance(input_file, list): 
-                            array_creator.copy(netCDF4.MFDataset(input_file), tiledb_group.array)
-                        else:
+                        if isinstance(input_file, list):
+                            array_creator.copy_list(netcdf_group, tiledb_group.array)
+                        else:    
                             array_creator.copy(netcdf_group, tiledb_group.array)
 
     def copy_to_virtual_group(
@@ -983,7 +1090,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
+        input_file: Optional[Union[str, Path, list]] = None,
         input_group_path: Optional[str] = None,
     ):
         """Copies data from a NetCDF group to a TileDB CF dataspace.
@@ -1059,7 +1166,7 @@ def copy_metadata_item(meta, netcdf_item, key):
 @contextmanager
 def open_netcdf_group(
     group: Optional[Union[netCDF4.Dataset, netCDF4.Group]] = None,
-    input_file: Optional[Union[str, Path]] = None,
+    input_file: Optional[Union[str, Path, list]] = None,
     group_path: Optional[str] = None,
 ):
     """Context manager for opening a NetCDF group.
