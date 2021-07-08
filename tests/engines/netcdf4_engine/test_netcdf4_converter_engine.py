@@ -152,17 +152,48 @@ class ConvertNetCDFBase:
                     variable.setncattrs(self.variable_metadata[variable.name])
         return filepath
 
-    def test_from_netcdf(self, netcdf_file, tmpdir):
-        """Integration test for `from_netcdf_file` function call."""
-        uri = str(tmpdir.mkdir("output").join(self.name))
-        from_netcdf(netcdf_file, uri, coords_to_dims=False)
+    def check_attrs(self, group_uri):
         for attr_name, var_name in self.attr_to_var_map.items():
-            with Group(uri, attr=attr_name) as group:
+            with Group(group_uri, attr=attr_name) as group:
                 nonempty_domain = group.array.nonempty_domain()
                 result = group.array.multi_index[nonempty_domain]
             assert np.array_equal(
                 result[attr_name], self.variable_data[var_name]
             ), f"unexpected values for attribute '{attr_name}'"
+
+    def test_from_netcdf(self, netcdf_file, tmpdir):
+        """Integration test for `from_netcdf_file` function call."""
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        from_netcdf(netcdf_file, uri, coords_to_dims=False)
+        self.check_attrs(uri)
+
+    def test_from_netcdf_group(self, netcdf_file, tmpdir):
+        """Integration test for `from_netcdf_group` function call."""
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        with netCDF4.Dataset(netcdf_file) as dataset:
+            from_netcdf_group(dataset, uri, coords_to_dims=False)
+        self.check_attrs(uri)
+
+    def test_from_netcdf_group2(self, netcdf_file, tmpdir):
+        """Integration test for `from_netcdf_group` function call."""
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        from_netcdf_group(str(netcdf_file), uri, coords_to_dims=False)
+        self.check_attrs(uri)
+
+    def test_converter_from_netcdf(self, netcdf_file, tmpdir):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        assert isinstance(repr(converter), str)
+        converter.convert_to_group(uri)
+        self.check_attrs(uri)
+
+    def test_converter_from_netcdf_2(self, netcdf_file, tmpdir):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        assert isinstance(repr(converter), str)
+        converter.create_group(uri)
+        converter.copy_to_group(uri)
+        self.check_attrs(uri)
 
 
 class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
@@ -295,74 +326,6 @@ class TestConvertNetCDFSingleVariableChunk(ConvertNetCDFBase):
         "x2": np.arange(64, 128).reshape(8, 8),
     }
     attr_to_var_map = {"x1": "x1", "x2": "x2"}
-
-
-@pytest.mark.parametrize("netcdf_test_case", examples, indirect=True)
-def test_from_netcdf_group(netcdf_test_case, tmpdir):
-    """Integration test for `from_netcdf_group` function call."""
-    name = netcdf_test_case.name
-    uri = str(tmpdir.mkdir("output").join(name))
-    with netCDF4.Dataset(netcdf_test_case.filepath) as dataset:
-        from_netcdf_group(dataset, uri, coords_to_dims=False)
-    for attr_name, var_name in attr_to_var_map[name].items():
-        with Group(uri, attr=attr_name) as group:
-            nonempty_domain = group.array.nonempty_domain()
-            result = group.array.multi_index[nonempty_domain]
-        assert np.array_equal(
-            result[attr_name], netcdf_test_case.variable_data[var_name]
-        ), f"unexpected values for attribute '{attr_name}'"
-
-
-@pytest.mark.parametrize("netcdf_test_case", examples, indirect=True)
-def test_from_netcdf_group2(netcdf_test_case, tmpdir):
-    """Integration test for `from_netcdf_group` function call."""
-    name = netcdf_test_case.name
-    uri = str(tmpdir.mkdir("output").join(name))
-    from_netcdf_group(str(netcdf_test_case.filepath), uri, coords_to_dims=False)
-    for attr_name, var_name in attr_to_var_map[name].items():
-        with Group(uri, attr=attr_name) as group:
-            nonempty_domain = group.array.nonempty_domain()
-            result = group.array.multi_index[nonempty_domain]
-        assert np.array_equal(
-            result[attr_name], netcdf_test_case.variable_data[var_name]
-        ), f"unexpected values for attribute '{attr_name}'"
-
-
-@pytest.mark.parametrize("netcdf_test_case", examples, indirect=True)
-def test_converter_from_netcdf(netcdf_test_case, tmpdir):
-    name = netcdf_test_case.name
-    converter = NetCDF4ConverterEngine.from_file(
-        netcdf_test_case.filepath, coords_to_dims=False
-    )
-    uri = str(tmpdir.mkdir("output").join(name))
-    assert isinstance(repr(converter), str)
-    converter.convert_to_group(uri)
-    for attr_name, var_name in attr_to_var_map[name].items():
-        with Group(uri, attr=attr_name) as group:
-            nonempty_domain = group.array.nonempty_domain()
-            result = group.array.multi_index[nonempty_domain]
-        assert np.array_equal(
-            result[attr_name], netcdf_test_case.variable_data[var_name]
-        )
-
-
-@pytest.mark.parametrize("netcdf_test_case", examples, indirect=True)
-def test_converter_from_netcdf_2(netcdf_test_case, tmpdir):
-    name = netcdf_test_case.name
-    converter = NetCDF4ConverterEngine.from_file(
-        netcdf_test_case.filepath, coords_to_dims=False
-    )
-    uri = str(tmpdir.mkdir("output").join(name))
-    assert isinstance(repr(converter), str)
-    converter.create_group(uri)
-    converter.copy_to_group(uri)
-    for attr_name, var_name in attr_to_var_map[name].items():
-        with Group(uri, attr=attr_name) as group:
-            nonempty_domain = group.array.nonempty_domain()
-            result = group.array.multi_index[nonempty_domain]
-        assert np.array_equal(
-            result[attr_name], netcdf_test_case.variable_data[var_name]
-        )
 
 
 def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
