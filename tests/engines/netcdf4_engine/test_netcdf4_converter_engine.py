@@ -1,5 +1,7 @@
 # Copyright 2021 TileDB Inc.
 # Licensed under the MIT License.
+from typing import Any, Dict, Optional, Sequence, Tuple
+
 import numpy as np
 import pytest
 
@@ -9,28 +11,6 @@ from tiledb.cf.engines.netcdf4_engine import NetCDF4ConverterEngine
 
 netCDF4 = pytest.importorskip("netCDF4")
 
-simple_coord_1 = {
-    "name": "simple_coord_1",
-    "dimension_args": [("row", 4), ("col", 4)],
-    "variable_kwargs": [
-        {
-            "varname": "data",
-            "datatype": np.dtype("uint16"),
-            "dimensions": ("row", "col"),
-        },
-        {"varname": "x", "datatype": np.dtype("uint16"), "dimensions": ("row",)},
-        {"varname": "y", "datatype": np.dtype("uint16"), "dimensions": ("col",)},
-        {"varname": "row", "datatype": np.dtype("float64"), "dimensions": ("row",)},
-    ],
-    "variable_data": {
-        "data": np.array(
-            ([1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16])
-        ),
-        "x": np.array([1, 2, 3, 4]),
-        "y": np.array([5, 6, 7, 8]),
-        "row": np.array([1.0, 1.5, 2.0, 2.5], dtype=np.float64),
-    },
-}
 
 simple_unlim_dim = {
     "name": "simple_unlim_dim",
@@ -135,7 +115,7 @@ single_chunk_variable = {
 }
 
 
-examples = [simple_coord_1, simple_unlim_dim, scalar_variables, matching_chunks]
+examples = [simple_unlim_dim, scalar_variables, matching_chunks]
 
 attr_to_var_map = {
     "simple_coord_1": {"data": "data", "x": "x", "y": "y", "row.data": "row"},
@@ -146,19 +126,175 @@ attr_to_var_map = {
 }
 
 
-@pytest.mark.parametrize("netcdf_test_case", examples, indirect=True)
-def test_from_netcdf(netcdf_test_case, tmpdir):
-    """Integration test for `from_netcdf_file` function call."""
-    name = netcdf_test_case.name
-    uri = str(tmpdir.mkdir("output").join(name))
-    from_netcdf(netcdf_test_case.filepath, uri, coords_to_dims=False)
-    for attr_name, var_name in attr_to_var_map[name].items():
-        with Group(uri, attr=attr_name) as group:
-            nonempty_domain = group.array.nonempty_domain()
-            result = group.array.multi_index[nonempty_domain]
-        assert np.array_equal(
-            result[attr_name], netcdf_test_case.variable_data[var_name]
-        ), f"unexpected values for attribute '{attr_name}'"
+class ConvertNetCDFBase:
+
+    name = "base"
+    dimension_args: Sequence[Tuple[str, Optional[int]]] = []
+    variable_kwargs: Sequence[Dict[str, Any]] = []
+    variable_data: Dict[str, np.ndarray] = {}
+    variable_metadata: Dict[str, Dict[str, Any]] = {}
+    group_metadata: Dict[str, Any] = {}
+    attr_to_var_map: Dict[str, str] = {}
+
+    @pytest.fixture(scope="class")
+    def netcdf_file(self, tmpdir_factory):
+        filepath = tmpdir_factory.mktemp("input_file").join(f"{self.name}.nc")
+        with netCDF4.Dataset(filepath, mode="w") as dataset:
+            if self.group_metadata:
+                dataset.setncatts(self.group_metadata)
+            for dim_args in self.dimension_args:
+                dataset.createDimension(*dim_args)
+            for var_kwargs in self.variable_kwargs:
+                variable = dataset.createVariable(**var_kwargs)
+                if variable.name in self.variable_data:
+                    variable[...] = self.variable_data[variable.name]
+                if variable.name in self.variable_metadata:
+                    variable.setncattrs(self.variable_metadata[variable.name])
+        return filepath
+
+    def test_from_netcdf(self, netcdf_file, tmpdir):
+        """Integration test for `from_netcdf_file` function call."""
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        from_netcdf(netcdf_file, uri, coords_to_dims=False)
+        for attr_name, var_name in self.attr_to_var_map.items():
+            with Group(uri, attr=attr_name) as group:
+                nonempty_domain = group.array.nonempty_domain()
+                result = group.array.multi_index[nonempty_domain]
+            assert np.array_equal(
+                result[attr_name], self.variable_data[var_name]
+            ), f"unexpected values for attribute '{attr_name}'"
+
+
+class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
+
+    name = "simple_coord_1"
+    dimension_args = (("row", 4), ("col", 4))
+    variable_kwargs = (
+        {
+            "varname": "data",
+            "datatype": np.dtype("uint16"),
+            "dimensions": ("row", "col"),
+        },
+        {"varname": "x", "datatype": np.dtype("uint16"), "dimensions": ("row",)},
+        {"varname": "y", "datatype": np.dtype("uint16"), "dimensions": ("col",)},
+        {"varname": "row", "datatype": np.dtype("float64"), "dimensions": ("row",)},
+    )
+    variable_data = {
+        "data": np.array(
+            ([1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16])
+        ),
+        "x": np.array([1, 2, 3, 4]),
+        "y": np.array([5, 6, 7, 8]),
+        "row": np.array([1.0, 1.5, 2.0, 2.5], dtype=np.float64),
+    }
+    attr_to_var_map = {"data": "data", "x": "x", "y": "y", "row.data": "row"}
+
+
+class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
+
+    name = "simple_unlim_dim"
+    dimension_args = (("row", None), ("col", 4))
+    variable_kwargs = [
+        {
+            "varname": "data",
+            "datatype": np.dtype("uint16"),
+            "dimensions": ("row", "col"),
+        },
+        {"varname": "x", "datatype": np.dtype("uint16"), "dimensions": ("row",)},
+        {"varname": "y", "datatype": np.dtype("uint16"), "dimensions": ("col",)},
+    ]
+    variable_data = {
+        "data": np.array(
+            ([1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16])
+        ),
+        "x": np.array([1, 2, 3, 4]),
+        "y": np.array([5, 6, 7, 8]),
+    }
+    attr_to_var_map = {"data": "data", "x": "x", "y": "y"}
+
+
+class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
+    name = "scalar_variables"
+    variable_kwargs = [
+        {"varname": "x", "datatype": np.dtype("int32")},
+        {"varname": "y", "datatype": np.dtype("int32")},
+    ]
+    variable_data = {
+        "x": np.array([1]),
+        "y": np.array([5]),
+    }
+    attr_to_var_map = {"x": "x", "y": "y"}
+
+
+class TestConvertNetCDFMatchingChunks(ConvertNetCDFBase):
+    name = "matching_chunks"
+    dimension_args = [("row", 8), ("col", 8)]
+    variable_kwargs = [
+        {
+            "varname": "x1",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (4, 4),
+        },
+        {
+            "varname": "x2",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (4, 4),
+        },
+    ]
+    variable_data = {
+        "x1": np.arange(64).reshape(8, 8),
+        "x2": np.arange(64, 128).reshape(8, 8),
+    }
+    attr_to_var_map = {"x1": "x1", "x2": "x2"}
+
+
+class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
+    name = "mismatching_chunks"
+    dimension_args = (("row", 8), ("col", 8))
+    variable_kwargs = [
+        {
+            "varname": "x1",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (4, 4),
+        },
+        {
+            "varname": "x2",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (2, 2),
+        },
+    ]
+    variable_data = {
+        "x1": np.arange(64).reshape(8, 8),
+        "x2": np.arange(64, 128).reshape(8, 8),
+    }
+    attr_to_var_map = {"x1": "x1", "x2": "x2"}
+
+
+class TestConvertNetCDFSingleVariableChunk(ConvertNetCDFBase):
+    name = "single_chunk_variable"
+    dimension_args = (("row", 8), ("col", 8))
+    variable_kwargs = (
+        {
+            "varname": "x1",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+            "chunksizes": (4, 4),
+        },
+        {
+            "varname": "x2",
+            "datatype": np.int32,
+            "dimensions": ("row", "col"),
+        },
+    )
+    variable_data = {
+        "x1": np.arange(64).reshape(8, 8),
+        "x2": np.arange(64, 128).reshape(8, 8),
+    }
+    attr_to_var_map = {"x1": "x1", "x2": "x2"}
 
 
 @pytest.mark.parametrize("netcdf_test_case", examples, indirect=True)
