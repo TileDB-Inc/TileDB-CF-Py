@@ -15,7 +15,7 @@ from .core import (
     VirtualGroup,
 )
 from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
-from .engines import from_netcdf, from_netcdf_group
+from .engines import from_netcdf
 
 
 @click.group()

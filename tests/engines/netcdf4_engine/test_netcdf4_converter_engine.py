@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import Group, from_netcdf, from_netcdf_group
+from tiledb.cf import Group, from_netcdf
 from tiledb.cf.engines.netcdf4_engine import NetCDF4ConverterEngine
 
 netCDF4 = pytest.importorskip("netCDF4")
@@ -65,19 +65,6 @@ class ConvertNetCDFBase:
         """Integration test for `from_netcdf_file` function call."""
         uri = str(tmpdir.mkdir("output").join(self.name))
         from_netcdf(netcdf_file, uri, coords_to_dims=False, collect_attrs=collect_attrs)
-        self.check_attrs(uri)
-
-    def test_from_netcdf_group(self, netcdf_file, tmpdir):
-        """Integration test for `from_netcdf_group` function call."""
-        uri = str(tmpdir.mkdir("output").join(self.name))
-        with netCDF4.Dataset(netcdf_file) as dataset:
-            from_netcdf_group(dataset, uri, coords_to_dims=False)
-        self.check_attrs(uri)
-
-    def test_from_netcdf_group2(self, netcdf_file, tmpdir):
-        """Integration test for `from_netcdf_group` function call."""
-        uri = str(tmpdir.mkdir("output").join(self.name))
-        from_netcdf_group(str(netcdf_file), uri, coords_to_dims=False)
         self.check_attrs(uri)
 
     @pytest.mark.parametrize("collect_attrs", [(True,), (False,)])
@@ -437,23 +424,23 @@ def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
     assert np.array_equal(A3, np.identity(4, dtype=np.int32))
 
 
-def test_virtual_from_netcdf_group_1(simple2_netcdf_file, tmpdir):
+def test_virtual_from_file(simple2_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("virtual2"))
-    from_netcdf_group(
+    converter = NetCDF4ConverterEngine.from_file(
         str(simple2_netcdf_file.filepath),
-        uri,
         coords_to_dims=False,
-        use_virtual_groups=True,
     )
+    converter.convert_to_virtual_group(uri)
     assert isinstance(tiledb.ArraySchema.load(f"{uri}_array0"), tiledb.ArraySchema)
     with tiledb.open(uri) as array:
         assert array.meta["name"] == "simple2"
 
 
-def test_virtual_from_netcdf_group_2(simple2_netcdf_file, tmpdir):
+def test_virtual_from_group(simple2_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("virtual3"))
     with netCDF4.Dataset(simple2_netcdf_file.filepath, mode="r") as dataset:
-        from_netcdf_group(dataset, uri, use_virtual_groups=True, coords_to_dims=False)
+        converter = NetCDF4ConverterEngine.from_group(dataset, coords_to_dims=False)
+        converter.convert_to_virtual_group(uri, input_netcdf_group=dataset)
     assert isinstance(tiledb.ArraySchema.load(f"{uri}_array0"), tiledb.ArraySchema)
     with tiledb.open(uri) as array:
         assert array.meta["name"] == "simple2"
