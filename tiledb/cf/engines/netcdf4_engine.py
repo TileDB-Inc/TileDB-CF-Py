@@ -153,7 +153,7 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
         None if the coordinate is of size 0.
 
         Parameters:
-            netcdf_group: NetCDF group to get the coordinate values from.
+            netcdf_mf: The NetCDF multi-file dataset to copy data from.
             sparse: ``True`` if copying into a sparse array and ``False`` if copying
                 into a dense array.
 
@@ -294,14 +294,16 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
         )
 
     def get_values_mf(
-        self, netcdf_mf: netCDF4.MFDataset, sparse: bool
+        self, 
+        netcdf_mf: netCDF4.MFDataset, 
+        sparse: bool
     ) -> Union[np.ndarray, slice]:
 
         """Returns the values of the NetCDF dimension that is being copied, or None if
         the dimension is of size 0.
 
         Parameters:
-            netcdf_group: NetCDF group to get the dimension values from.
+            netcdf_mf: The NetCDF multi-file dataset to copy data from.
             sparse: ``True`` if copying into a sparse array and ``False`` if copying
                 into a dense array.
 
@@ -551,7 +553,7 @@ class NetCDFArrayConverter(ArrayCreator):
 
         Parameters:
             netcdf_group: The NetCDF group to copy data from.
-            tiledb_arary: The TileDB array to copy data into. The array must be open
+            tiledb_array: The TileDB array to copy data into. The array must be open
                 in write mode.
         """
         dim_query = []
@@ -597,6 +599,7 @@ class NetCDFArrayConverter(ArrayCreator):
                 dim_creator.base.get_values_mf(netcdf_mf, sparse=self.sparse)
             )
         data = {}
+        #print(dim_query)
         for attr_converter in self._attr_creators.values():
             assert isinstance(attr_converter, NetCDFVariableConverter)
             try:
@@ -607,10 +610,16 @@ class NetCDFArrayConverter(ArrayCreator):
                     f"Variable {attr_converter.input_name} not found in "
                     f"requested NetCDF files."
                 ) from err
+            #print(variable)
+            #print(variable_mf)
             data[attr_converter.name] = variable_mf[...]
+            print(attr_converter.name)
+            print(data[attr_converter.name].shape)
             attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
             for meta_key in variable.ncattrs():
                 copy_metadata_item(attr_meta, variable, meta_key)
+        print(data)
+        print(dim_query)        
         tiledb_array[tuple(dim_query)] = data
         
 class NetCDF4ConverterEngine(DataspaceCreator):
@@ -1191,7 +1200,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
-            input_file: If not ``None``, the NetCDF file to copy data from. This will
+            input_file: If not ``None``, the NetCDF file or list of files to copy data from. This will
                 not be used if ``netcdf_group`` is not ``None``.
             input_group_path: If not ``None``, the path to the NetCDF group to copy data
                 from.
