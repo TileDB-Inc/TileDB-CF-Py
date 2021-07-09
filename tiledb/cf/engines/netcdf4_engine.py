@@ -144,11 +144,7 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
             return None
         return variable[:]
 
-    def get_values_mf(
-        self, 
-        netcdf_mf: netCDF4.MFDataset, 
-        sparse: bool
-    ):
+    def get_values_mf(self, netcdf_mf: netCDF4.MFDataset, sparse: bool):
         """Returns the values of the NetCDF coordinate that is being copied, or
         None if the coordinate is of size 0.
 
@@ -294,9 +290,7 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
         )
 
     def get_values_mf(
-        self, 
-        netcdf_mf: netCDF4.MFDataset, 
-        sparse: bool
+        self, netcdf_mf: netCDF4.MFDataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
 
         """Returns the values of the NetCDF dimension that is being copied, or None if
@@ -337,7 +331,7 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
             f"Unable to copy NetCDF dimension '{self.input_name}' to the TileDB "
             f"dimension '{self.name}'. No NetCDF dimension with that name exists in "
             f"the NetCDF files '{netcdf_mf.path}'."
-        )        
+        )
 
 
 @dataclass
@@ -599,7 +593,6 @@ class NetCDFArrayConverter(ArrayCreator):
                 dim_creator.base.get_values_mf(netcdf_mf, sparse=self.sparse)
             )
         data = {}
-        #print(dim_query)
         for attr_converter in self._attr_creators.values():
             assert isinstance(attr_converter, NetCDFVariableConverter)
             try:
@@ -610,18 +603,13 @@ class NetCDFArrayConverter(ArrayCreator):
                     f"Variable {attr_converter.input_name} not found in "
                     f"requested NetCDF files."
                 ) from err
-            #print(variable)
-            #print(variable_mf)
             data[attr_converter.name] = variable_mf[...]
-            print(attr_converter.name)
-            print(data[attr_converter.name].shape)
             attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
             for meta_key in variable.ncattrs():
                 copy_metadata_item(attr_meta, variable, meta_key)
-        print(data)
-        print(dim_query)        
         tiledb_array[tuple(dim_query)] = data
-        
+
+
 class NetCDF4ConverterEngine(DataspaceCreator):
     """Converter for NetCDF to TileDB using netCDF4."""
 
@@ -814,7 +802,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         coords_to_dims: bool = True,
-        default_input_file: Optional[Union[str, Path]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
         default_group_path: Optional[str] = None,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
@@ -1200,8 +1188,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
-            input_file: If not ``None``, the NetCDF file or list of files to copy data from. This will
-                not be used if ``netcdf_group`` is not ``None``.
+            input_file: If not ``None``, the NetCDF file or list of files to copy data from.
+                This will not be used if ``netcdf_group`` is not ``None``.
             input_group_path: If not ``None``, the path to the NetCDF group to copy data
                 from.
             use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
@@ -1235,8 +1223,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     ) as tiledb_group:
                         if isinstance(input_file, list):
                             netcdf_mf = netCDF4.MFDataset(input_file)
-                            array_creator.copy_mf(netcdf_group, netcdf_mf, tiledb_group.array)
-                        else:    
+                            array_creator.copy_mf(
+                                netcdf_group, netcdf_mf, tiledb_group.array
+                            )
+                        else:
                             array_creator.copy(netcdf_group, tiledb_group.array)
 
     def copy_to_virtual_group(
