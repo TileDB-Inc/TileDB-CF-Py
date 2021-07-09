@@ -47,10 +47,11 @@ class ConvertNetCDFBase:
                 result[attr_name], self.variable_data[var_name]
             ), f"unexpected values for attribute '{attr_name}'"
 
-    def test_from_netcdf(self, netcdf_file, tmpdir):
+    @pytest.mark.parametrize("collect_attrs", [(True,), (False,)])
+    def test_from_netcdf(self, netcdf_file, tmpdir, collect_attrs):
         """Integration test for `from_netcdf_file` function call."""
         uri = str(tmpdir.mkdir("output").join(self.name))
-        from_netcdf(netcdf_file, uri, coords_to_dims=False)
+        from_netcdf(netcdf_file, uri, coords_to_dims=False, collect_attrs=collect_attrs)
         self.check_attrs(uri)
 
     def test_from_netcdf_group(self, netcdf_file, tmpdir):
@@ -66,8 +67,11 @@ class ConvertNetCDFBase:
         from_netcdf_group(str(netcdf_file), uri, coords_to_dims=False)
         self.check_attrs(uri)
 
-    def test_converter_from_netcdf(self, netcdf_file, tmpdir):
-        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+    @pytest.mark.parametrize("collect_attrs", [(True,), (False,)])
+    def test_converter_from_netcdf(self, netcdf_file, tmpdir, collect_attrs):
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file, coords_to_dims=False, collect_attrs=collect_attrs
+        )
         uri = str(tmpdir.mkdir("output").join(self.name))
         assert isinstance(repr(converter), str)
         converter.convert_to_group(uri)
