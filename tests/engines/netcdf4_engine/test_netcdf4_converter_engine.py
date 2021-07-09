@@ -12,120 +12,6 @@ from tiledb.cf.engines.netcdf4_engine import NetCDF4ConverterEngine
 netCDF4 = pytest.importorskip("netCDF4")
 
 
-simple_unlim_dim = {
-    "name": "simple_unlim_dim",
-    "dimension_args": (("row", None), ("col", 4)),
-    "variable_kwargs": [
-        {
-            "varname": "data",
-            "datatype": np.dtype("uint16"),
-            "dimensions": ("row", "col"),
-        },
-        {"varname": "x", "datatype": np.dtype("uint16"), "dimensions": ("row",)},
-        {"varname": "y", "datatype": np.dtype("uint16"), "dimensions": ("col",)},
-    ],
-    "variable_data": {
-        "data": np.array(
-            ([1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16])
-        ),
-        "x": np.array([1, 2, 3, 4]),
-        "y": np.array([5, 6, 7, 8]),
-    },
-}
-
-scalar_variables = {
-    "name": "scalar_variables",
-    "dimension_args": tuple(),
-    "variable_kwargs": [
-        {"varname": "x", "datatype": np.dtype("int32")},
-        {"varname": "y", "datatype": np.dtype("int32")},
-    ],
-    "variable_data": {
-        "x": np.array([1]),
-        "y": np.array([5]),
-    },
-}
-
-matching_chunks = {
-    "name": "matching_chunks",
-    "dimension_args": [("row", 8), ("col", 8)],
-    "variable_kwargs": [
-        {
-            "varname": "x1",
-            "datatype": np.int32,
-            "dimensions": ("row", "col"),
-            "chunksizes": (4, 4),
-        },
-        {
-            "varname": "x2",
-            "datatype": np.int32,
-            "dimensions": ("row", "col"),
-            "chunksizes": (4, 4),
-        },
-    ],
-    "variable_data": {
-        "x1": np.arange(64).reshape(8, 8),
-        "x2": np.arange(64, 128).reshape(8, 8),
-    },
-}
-
-mismatching_chunks = {
-    "name": "mismatching_chunks",
-    "dimension_args": [("row", 8), ("col", 8)],
-    "variable_kwargs": [
-        {
-            "varname": "x1",
-            "datatype": np.int32,
-            "dimensions": ("row", "col"),
-            "chunksizes": (4, 4),
-        },
-        {
-            "varname": "x2",
-            "datatype": np.int32,
-            "dimensions": ("row", "col"),
-            "chunksizes": (2, 2),
-        },
-    ],
-    "variable_data": {
-        "x1": np.arange(64).reshape(8, 8),
-        "x2": np.arange(64, 128).reshape(8, 8),
-    },
-}
-
-single_chunk_variable = {
-    "name": "single_chunk_variable",
-    "dimension_args": [("row", 8), ("col", 8)],
-    "variable_kwargs": [
-        {
-            "varname": "x1",
-            "datatype": np.int32,
-            "dimensions": ("row", "col"),
-            "chunksizes": (4, 4),
-        },
-        {
-            "varname": "x2",
-            "datatype": np.int32,
-            "dimensions": ("row", "col"),
-        },
-    ],
-    "variable_data": {
-        "x1": np.arange(64).reshape(8, 8),
-        "x2": np.arange(64, 128).reshape(8, 8),
-    },
-}
-
-
-examples = [simple_unlim_dim, scalar_variables, matching_chunks]
-
-attr_to_var_map = {
-    "simple_coord_1": {"data": "data", "x": "x", "y": "y", "row.data": "row"},
-    "simple_unlim_dim": {"data": "data", "x": "x", "y": "y"},
-    "scalar_variables": {"x": "x", "y": "y"},
-    "matching_chunks": {"x1": "x1", "x2": "x2"},
-    "mismatching_chunks": {"x1": "x1", "x2": "x2"},
-}
-
-
 class ConvertNetCDFBase:
 
     name = "base"
@@ -280,6 +166,22 @@ class TestConvertNetCDFMatchingChunks(ConvertNetCDFBase):
     }
     attr_to_var_map = {"x1": "x1", "x2": "x2"}
 
+    def test_tile(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        group_schema = converter.to_schema()
+        tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
+        assert tiles == (4, 4)
+
+    def test_collect_attrs_tiles_by_dims(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            tiles_by_dims={("row", "col"): (2, 4)},
+            coords_to_dims=False,
+        )
+        group_schema = converter.to_schema()
+        tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
+        assert tiles == (2, 4)
+
 
 class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
     name = "mismatching_chunks"
@@ -304,6 +206,12 @@ class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
     }
     attr_to_var_map = {"x1": "x1", "x2": "x2"}
 
+    def test_tile(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        group_schema = converter.to_schema()
+        tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
+        assert tiles == (8, 8)
+
 
 class TestConvertNetCDFSingleVariableChunk(ConvertNetCDFBase):
     name = "single_chunk_variable"
@@ -326,6 +234,12 @@ class TestConvertNetCDFSingleVariableChunk(ConvertNetCDFBase):
         "x2": np.arange(64, 128).reshape(8, 8),
     }
     attr_to_var_map = {"x1": "x1", "x2": "x2"}
+
+    def test_tile_from_single_variable_chunks(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        group_schema = converter.to_schema()
+        tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
+        assert tiles == (4, 4)
 
 
 def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
@@ -509,48 +423,6 @@ def test_variable_fill(tmpdir):
         array_converter = converter._array_creators[converter._attr_to_array["x1"]]
         attr_creator = array_converter._attr_creators["x1"]
         assert attr_creator.fill == -1
-
-
-@pytest.mark.parametrize("netcdf_test_case", [matching_chunks], indirect=True)
-def test_tile_from_matching_chunks(netcdf_test_case):
-    converter = NetCDF4ConverterEngine.from_file(
-        netcdf_test_case.filepath, coords_to_dims=False
-    )
-    group_schema = converter.to_schema()
-    tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
-    assert tiles == (4, 4)
-
-
-@pytest.mark.parametrize("netcdf_test_case", [mismatching_chunks], indirect=True)
-def test_tile_from_mismatching_chunks(netcdf_test_case):
-    converter = NetCDF4ConverterEngine.from_file(
-        netcdf_test_case.filepath, coords_to_dims=False
-    )
-    group_schema = converter.to_schema()
-    tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
-    assert tiles == (8, 8)
-
-
-@pytest.mark.parametrize("netcdf_test_case", [single_chunk_variable], indirect=True)
-def test_tile_from_single_variable_chunks(netcdf_test_case):
-    converter = NetCDF4ConverterEngine.from_file(
-        netcdf_test_case.filepath, coords_to_dims=False
-    )
-    group_schema = converter.to_schema()
-    tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
-    assert tiles == (4, 4)
-
-
-@pytest.mark.parametrize("netcdf_test_case", [matching_chunks], indirect=True)
-def test_collect_attrs_tile_by_dims(netcdf_test_case):
-    converter = NetCDF4ConverterEngine.from_file(
-        netcdf_test_case.filepath,
-        tiles_by_dims={("row", "col"): (2, 4)},
-        coords_to_dims=False,
-    )
-    group_schema = converter.to_schema()
-    tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
-    assert tiles == (2, 4)
 
 
 def test_collect_attrs_tile_by_var(simple2_netcdf_file):
