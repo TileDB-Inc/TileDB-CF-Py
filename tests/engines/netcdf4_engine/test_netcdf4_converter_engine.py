@@ -77,14 +77,6 @@ class ConvertNetCDFBase:
         converter.convert_to_group(uri)
         self.check_attrs(uri)
 
-    def test_converter_from_netcdf_2(self, netcdf_file, tmpdir):
-        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        uri = str(tmpdir.mkdir("output").join(self.name))
-        assert isinstance(repr(converter), str)
-        converter.create_group(uri)
-        converter.copy_to_group(uri)
-        self.check_attrs(uri)
-
 
 class TestConverterSimpleNetCDF(ConvertNetCDFBase):
 
@@ -461,16 +453,6 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
     assert np.array_equal(A1, np.outer(y, y))
     assert np.array_equal(A2, np.zeros((4, 4), dtype=np.float64))
     assert np.array_equal(A3, np.identity(4, dtype=np.int32))
-
-
-def test_collect_scalar_attrs(multiscalars_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        multiscalars_netcdf_file.filepath,
-        coords_to_dims=False,
-        collect_attrs=False,
-    )
-    assert set(converter.array_names) == {"scalars"}
-    assert set(converter._array_creators["scalars"].attr_names) == {"s1", "s2", "s3"}
 
 
 def test_variable_fill(tmpdir):
