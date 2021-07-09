@@ -82,6 +82,78 @@ class ConvertNetCDFBase:
         self.check_attrs(uri)
 
 
+class TestConverterSimpleNetCDF(ConvertNetCDFBase):
+
+    name = "simple1"
+    dimension_args = (("row", 8),)
+    variable_kwargs = (
+        {"varname": "x1", "datatype": np.float64, "dimensions": ("row",)},
+    )
+    variable_data = {"x1": np.linspace(1.0, 4.0, 8)}
+    attr_to_var_map = {"x1": "x1"}
+
+    def test_convert_to_sparse_array(self, netcdf_file, tmpdir):
+        uri = str(tmpdir.mkdir("output").join("sparse_example"))
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        for array_name in converter.array_names:
+            converter.set_array_properties(array_name, sparse=True)
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri, attr="x1") as group:
+            data = group.array[:]
+        index = np.argsort(data["row"])
+        x1 = data["x1"][index]
+        expected = np.linspace(1.0, 4.0, 8)
+        assert np.array_equal(x1, expected)
+
+    def test_no_collect_tiles_by_var(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=False,
+            collect_attrs=False,
+            tiles_by_var={"x1": (2,)},
+        )
+        group_schema = converter.to_schema()
+        tiles = tuple(dim.tile for dim in group_schema["x1"].domain)
+        assert tiles == (2,)
+
+    def test_no_collect_tiles_by_dims(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=False,
+            collect_attrs=False,
+            tiles_by_dims={("row",): (2,)},
+        )
+        group_schema = converter.to_schema()
+        tiles = tuple(dim.tile for dim in group_schema["x1"].domain)
+        assert tiles == (2,)
+
+    def test_rename_array(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        converter.rename_array("array0", "A1")
+        assert set(converter.array_names) == set(["A1"])
+
+    def test_rename_attr(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        converter.rename_attr("x1", "y1")
+        assert set(converter.attr_names) == set(["y1"])
+
+    def test_rename_dim(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        converter.rename_dim("row", "col")
+        assert set(converter.dim_names) == set(["col"])
+
+    def test_not_implemented_error(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        converter.add_array("A1", ("row",))
+        with pytest.raises(NotImplementedError):
+            converter.add_attr("a1", "array0", np.float64)
+
+    def test_bad_array_name_error(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        with pytest.raises(ValueError):
+            converter.add_array("array0", tuple())
+
+
 class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
 
     name = "simple_coord_1"
@@ -311,22 +383,6 @@ def test_convert_coord(simple_coord_netcdf_example, tmpdir, collect_attrs):
     assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
 
 
-def test_convert_to_sparse_array(simple1_netcdf_file, tmpdir):
-    uri = str(tmpdir.mkdir("output").join("sparse_example"))
-    converter = NetCDF4ConverterEngine.from_file(
-        simple1_netcdf_file.filepath, coords_to_dims=False
-    )
-    for array_name in converter.array_names:
-        converter.set_array_properties(array_name, sparse=True)
-    converter.convert_to_group(uri)
-    with tiledb.cf.Group(uri, attr="x1") as group:
-        data = group.array[:]
-    index = np.argsort(data["row"])
-    x1 = data["x1"][index]
-    expected = np.linspace(1.0, 4.0, 8)
-    assert np.array_equal(x1, expected)
-
-
 def test_convert_to_scalar_sparse_array(multiscalars_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("sparse_scalar_example"))
     converter = NetCDF4ConverterEngine.from_file(
@@ -436,79 +492,6 @@ def test_collect_attrs_tile_by_var(simple2_netcdf_file):
     assert tiles == (4,)
 
 
-def test_no_collect_tiles_by_var(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        simple1_netcdf_file.filepath,
-        coords_to_dims=False,
-        collect_attrs=False,
-        tiles_by_var={"x1": (2,)},
-    )
-    group_schema = converter.to_schema()
-    tiles = tuple(dim.tile for dim in group_schema["x1"].domain)
-    assert tiles == (2,)
-
-
-def test_no_collect_tiles_by_dims(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        simple1_netcdf_file.filepath,
-        coords_to_dims=False,
-        collect_attrs=False,
-        tiles_by_dims={("row",): (2,)},
-    )
-    group_schema = converter.to_schema()
-    tiles = tuple(dim.tile for dim in group_schema["x1"].domain)
-    assert tiles == (2,)
-
-
-def test_rename_array(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        simple1_netcdf_file.filepath,
-        coords_to_dims=False,
-    )
-    converter.rename_array("array0", "A1")
-    assert set(converter.array_names) == set(["A1"])
-
-
-def test_rename_attr(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        simple1_netcdf_file.filepath,
-        coords_to_dims=False,
-    )
-    converter.rename_attr("x1", "y1")
-    assert set(converter.attr_names) == set(["y1"])
-
-
-def test_rename_dim(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        simple1_netcdf_file.filepath,
-        coords_to_dims=False,
-    )
-    converter.rename_dim("row", "col")
-    assert set(converter.dim_names) == set(["col"])
-
-
-def test_not_implemented_error(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        simple1_netcdf_file.filepath,
-        coords_to_dims=False,
-    )
-    converter.add_array(
-        "A1",
-        [
-            "row",
-        ],
-    )
-    with pytest.raises(NotImplementedError):
-        converter.add_attr("a1", "array0", np.float64)
-
-
-def test_bad_dims_error(simple1_netcdf_file):
-    converter = NetCDF4ConverterEngine()
-    converter.add_dim("row", (0, 10), np.uint32)
-    with pytest.raises(TypeError):
-        converter.add_array("array0", ("row",))
-
-
 def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
     converter = NetCDF4ConverterEngine.from_file(
         simple2_netcdf_file.filepath,
@@ -520,13 +503,11 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
         converter.copy_to_group(uri, input_file=simple1_netcdf_file.filepath)
 
 
-def test_bad_array_name_error(simple2_netcdf_file):
-    converter = NetCDF4ConverterEngine.from_file(
-        simple2_netcdf_file.filepath,
-        coords_to_dims=False,
-    )
-    with pytest.raises(ValueError):
-        converter.add_array("array0", tuple())
+def test_bad_dims_error():
+    converter = NetCDF4ConverterEngine()
+    converter.add_dim("row", (0, 10), np.uint32)
+    with pytest.raises(TypeError):
+        converter.add_array("array0", ("row",))
 
 
 @pytest.mark.parametrize("collect_attrs", [True, False])
