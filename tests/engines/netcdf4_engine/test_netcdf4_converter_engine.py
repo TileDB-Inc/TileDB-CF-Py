@@ -13,6 +13,19 @@ netCDF4 = pytest.importorskip("netCDF4")
 
 
 class ConvertNetCDFBase:
+    """Base class for NetCDF converter tests of NetCDF files with a single group.
+
+    Parameters:
+        name: Short descriptive name for naming NetCDF file.
+        dimension_args: Arguments to use as input for creating NetCDF dimensions.
+        variable_kwargs: Keyword argurments to use as input for creating NetCDF
+            variables.
+        variable_data: Map for NetCDF variable name to variable data.
+        variable_metadata: Map from NetCDF variable name to a dictionary of metadata.
+        group_metadata: A dictionary of metadata for the NetCDF group.
+        attr_to_var_map: Map from TileDB attribute name to NetCDF variable name when
+            converting with ``coords_to_dims=False``.
+    """
 
     name = "base"
     dimension_args: Sequence[Tuple[str, Optional[int]]] = []
@@ -79,6 +92,13 @@ class ConvertNetCDFBase:
 
 
 class TestConverterSimpleNetCDF(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a simple NetCDF file.
+
+    Dimensions:
+        row (8)
+    Variables:
+        float x1(row)
+    """
 
     name = "simple1"
     dimension_args = (("row", 8),)
@@ -151,6 +171,14 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
 
 
 class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a NetCDF file with a coordinate variable.
+
+    Dimensions:
+        x (4)
+    Variables:
+        real x (x)
+        real y (x)
+    """
 
     name = "simple_coord_1"
     dimension_args = (("x", 4),)
@@ -185,6 +213,16 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
 
 
 class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a NetCDF file with an unlimited dimension.
+
+    Dimensions:
+        row (None)
+        col (4)
+    Variables:
+        uint16 x (row)
+        uint16 y (col)
+        uint16 data (row, col)
+    """
 
     name = "simple_unlim_dim"
     dimension_args = (("row", None), ("col", 4))
@@ -208,6 +246,13 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
 
 
 class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
+    """NetCDF conversion test cases for NetCDF with multiple scalar variables.
+
+    Variables:
+        int32 x () = [1]
+        int32 y () = [5]
+    """
+
     name = "scalar_variables"
     variable_kwargs = [
         {"varname": "x", "datatype": np.dtype("int32")},
@@ -234,6 +279,17 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
 
 
 class TestConvertNetCDFMatchingChunks(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a NetCDF file with two variables over the
+    same diemnsions with the same chunksizes.
+
+    Dimensions:
+        row (8)
+        col (8)
+    Variables:
+        int32 x1(row, col) with chunksizes (4, 4)
+        int32 x2(row, col) with chunksizes (4, 4)
+    """
+
     name = "matching_chunks"
     dimension_args = [("row", 8), ("col", 8)]
     variable_kwargs = [
@@ -274,6 +330,17 @@ class TestConvertNetCDFMatchingChunks(ConvertNetCDFBase):
 
 
 class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a NetCDF file with two variables over the same
+    dimensions and different chunksizes.
+
+    Dimensions:
+        row (8)
+        col (8)
+    Variables:
+        int32 x1 (row, col) with chunksizes (4, 4)
+        int32 x2 (row, col) with chunksizes (2, 2)
+    """
+
     name = "mismatching_chunks"
     dimension_args = (("row", 8), ("col", 8))
     variable_kwargs = [
@@ -304,6 +371,17 @@ class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
 
 
 class TestConvertNetCDFSingleVariableChunk(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a NetCDF file with two variables: one with the
+    chunksize defined and the other with no chunksize specified.
+
+    Dimensions:
+        row (8)
+        col (8)
+    Variables:
+        int32 x1 (row, col) with chunksize=(4,4)
+        int32 x2 (row, col)
+    """
+
     name = "single_chunk_variable"
     dimension_args = (("row", 8), ("col", 8))
     variable_kwargs = (
