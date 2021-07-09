@@ -153,26 +153,35 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
 class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
 
     name = "simple_coord_1"
-    dimension_args = (("row", 4), ("col", 4))
+    dimension_args = (("x", 4),)
     variable_kwargs = (
-        {
-            "varname": "data",
-            "datatype": np.dtype("uint16"),
-            "dimensions": ("row", "col"),
-        },
-        {"varname": "x", "datatype": np.dtype("uint16"), "dimensions": ("row",)},
-        {"varname": "y", "datatype": np.dtype("uint16"), "dimensions": ("col",)},
-        {"varname": "row", "datatype": np.dtype("float64"), "dimensions": ("row",)},
+        {"varname": "x", "datatype": np.float64, "dimensions": ("x",)},
+        {"varname": "y", "datatype": np.float64, "dimensions": ("x",)},
     )
     variable_data = {
-        "data": np.array(
-            ([1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16])
-        ),
-        "x": np.array([1, 2, 3, 4]),
-        "y": np.array([5, 6, 7, 8]),
-        "row": np.array([1.0, 1.5, 2.0, 2.5], dtype=np.float64),
+        "x": np.array([2.0, 5.0, -1.0, 4.0]),
+        "y": np.array([4.0, 25.0, 1.0, 16.0]),
     }
-    attr_to_var_map = {"data": "data", "x": "x", "y": "y", "row.data": "row"}
+    attr_to_var_map = {"x.data": "x", "y": "y"}
+
+    @pytest.mark.parametrize("collect_attrs", [(True,), (False,)])
+    def test_convert_coordinate(self, netcdf_file, tmpdir, collect_attrs):
+        uri = str(tmpdir.mkdir("output").join("coordinate_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=collect_attrs,
+        )
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri, attr="y") as group:
+            schema = group.array.schema
+            assert schema.sparse
+            data = group.array[:]
+        index = np.argsort(data["x"])
+        x = data["x"][index]
+        y = data["y"][index]
+        assert np.array_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
+        assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
 
 
 class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
@@ -209,6 +218,19 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         "y": np.array([5]),
     }
     attr_to_var_map = {"x": "x", "y": "y"}
+
+    def test_sparse_array(self, netcdf_file, tmpdir):
+        uri = str(tmpdir.mkdir("output").join("sparse_scalar_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file, coords_to_dims=False, collect_attrs=False
+        )
+        for array_name in converter.array_names:
+            converter.set_array_properties(array_name, sparse=True)
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri, array="scalars") as group:
+            data = group.array[0]
+        assert np.array_equal(data["x"], self.variable_data["x"])
+        assert np.array_equal(data["y"], self.variable_data["y"])
 
 
 class TestConvertNetCDFMatchingChunks(ConvertNetCDFBase):
@@ -357,43 +379,6 @@ def test_virtual_from_netcdf_group_2(simple2_netcdf_file, tmpdir):
     assert isinstance(tiledb.ArraySchema.load(f"{uri}_array0"), tiledb.ArraySchema)
     with tiledb.open(uri) as array:
         assert array.meta["name"] == "simple2"
-
-
-@pytest.mark.parametrize("collect_attrs", [(True,), (False,)])
-def test_convert_coord(simple_coord_netcdf_example, tmpdir, collect_attrs):
-    uri = str(tmpdir.mkdir("output").join("sparse_example"))
-    converter = NetCDF4ConverterEngine.from_file(
-        simple_coord_netcdf_example.filepath,
-        coords_to_dims=True,
-        collect_attrs=collect_attrs,
-    )
-    converter.convert_to_group(uri)
-    with tiledb.cf.Group(uri, attr="y") as group:
-        schema = group.array.schema
-        assert schema.sparse
-        data = group.array[:]
-    index = np.argsort(data["x"])
-    x = data["x"][index]
-    y = data["y"][index]
-    assert np.array_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
-    assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
-
-
-def test_convert_to_scalar_sparse_array(multiscalars_netcdf_file, tmpdir):
-    uri = str(tmpdir.mkdir("output").join("sparse_scalar_example"))
-    converter = NetCDF4ConverterEngine.from_file(
-        multiscalars_netcdf_file.filepath,
-        coords_to_dims=False,
-        collect_attrs=False,
-    )
-    for array_name in converter.array_names:
-        converter.set_array_properties(array_name, sparse=True)
-    converter.convert_to_group(uri)
-    with tiledb.cf.Group(uri, array="scalars") as group:
-        data = group.array[0]
-    assert np.array_equal(data["s1"], np.array([1.0]))
-    assert np.array_equal(data["s2"], np.array([2.0]))
-    assert np.array_equal(data["s3"], np.array([3.0]))
 
 
 def test_group_metadata(tmpdir):

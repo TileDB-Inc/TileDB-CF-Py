@@ -8,18 +8,18 @@ from tiledb.cf.engines.netcdf4_engine import NetCDFCoordToDimConverter
 netCDF4 = pytest.importorskip("netCDF4")
 
 
-def test_coord_converter_simple(simple_coord_netcdf_example):
-    with netCDF4.Dataset(simple_coord_netcdf_example.filepath, mode="r") as dataset:
-        x = dataset.variables["x"]
+def test_coord_converter_simple():
+    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+        dataset.createDimension("x", 4)
+        x = dataset.createVariable("x", datatype=np.float64, dimensions=("x",))
         converter = NetCDFCoordToDimConverter.from_netcdf(x)
         assert converter.name == "x"
         assert converter.dtype == np.dtype("float64")
         assert converter.domain == (None, None)
 
 
-def test_bad_size_error(tmpdir):
-    filepath = tmpdir.mkdir("examples").join("bad_size.nc")
-    with netCDF4.Dataset(filepath, mode="w") as group:
+def test_bad_size_error():
+    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as group:
         group.createDimension("x", 16)
         group.createDimension("y", 16)
         x = group.createVariable("x", np.dtype("float64"), ("x", "y"))
