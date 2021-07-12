@@ -601,7 +601,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             default_group_path=default_group_path,
         )
 
-    @classmethod
+    @classmethod  # noqa: C901
     def _from_group_to_attr_per_array(  # noqa: C901
         cls,
         netcdf_group: netCDF4.Group,
