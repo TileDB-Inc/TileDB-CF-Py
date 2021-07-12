@@ -361,6 +361,64 @@ class DataspaceCreator:
         """A view of the names of dimensions in the CF dataspace."""
         return self._dims.keys()
 
+    def get_array_property(self, array_name: str, property_name: str) -> Any:
+        """Returns a requested property from an array in the CF dataspaces.
+
+        Valid properties are:
+
+            * ``cell_order``: The order in which TileDB stores the cells on disk inside
+              a tile. Valid values are: ``row-major`` (default) or ``C`` for row
+              major; ``col-major`` or ``F`` for column major; or ``Hilbert`` for a
+              Hilbert curve.
+            * ``tile_order``: The order in which TileDB stores the tiles on disk. Valid
+              values are: ``row-major`` or ``C`` (default) for row major; or
+              ``col-major`` or ``F`` for column major.
+            * ``capacity``: The number of cells in a data tile of a sparse fragment.
+            * ``tiles``: An optional ordered list of tile sizes for the dimensions of
+              the array. The length must match the number of dimensions in the array.
+            * ``coords_filters``: Filters for all dimensions that do not otherwise have
+              a specified filter list.
+            * ``dim_filters``: A dict from dimension name to a ``FilterList`` for
+              dimensions in the array. Overrides the values set in ``coords_filters``.
+            * ``offsets_filters``: Filters for the offsets for variable length
+              attributes or dimensions.
+            * ``allows_duplicates``: Specifies if multiple values can be stored at the
+              same coordinate. Only allowed for sparse arrays.
+            * ``sparse``: Specifies if the array is a sparse TileDB array (true) or
+              dense TileDB array (false).
+
+        Parameters:
+            array_name: Name of the array to get the property from.
+            property_name: Name of the requested property.
+        """
+        array_creator = self._array_creators[array_name]
+        return getattr(array_creator, property_name)
+
+    def get_attr_property(self, attr_name: str, property_name: str) -> Any:
+        """Returns a requested property for an attribute in the CF dataspace.
+
+        Valid properties are:
+            * ``name``: The name of the attribute.
+            * ``dtype``: Numpy dtype of the attribute.
+            * ``fill``: Fill value for unset cells.
+            * ``var``: Specifies if the attribute is variable length (automatic for
+              bytes/strings).
+            * ``nullable``: Specifies if the attribute is nullable using validity tiles.
+            * ``filters``: Specifies compression filters for the attributes.
+
+        Parameters:
+            attr_name: Name of the attribute to get the property from.
+            property_name: Name of the requested property.
+        """
+        try:
+            array_name = self._attr_to_array[attr_name]
+        except KeyError as err:
+            raise KeyError(
+                f"Attribute with name '{attr_name}' does not exist."
+            ) from err
+        array_creator = self._array_creators[array_name]
+        return array_creator.get_attr_property(attr_name, property_name)
+
     def remove_array(self, array_name: str):
         """Removes the specified array and all its attributes from the CF dataspace.
 
@@ -753,6 +811,25 @@ class ArrayCreator:
     def dim_names(self) -> Tuple[str, ...]:
         """A static snapshot of the names of dimensions of the array."""
         return tuple(dim_creator.name for dim_creator in self._dim_creators)
+
+    def get_attr_property(self, attr_name: str, property_name: str) -> Any:
+        """Returns a requested property for an attribute in the array.
+
+        Valid properties are:
+            * ``name``: The name of the attribute.
+            * ``dtype``: Numpy dtype of the attribute.
+            * ``fill``: Fill value for unset cells.
+            * ``var``: Specifies if the attribute is variable length (automatic for
+              bytes/strings).
+            * ``nullable``: Specifies if the attribute is nullable using validity tiles.
+            * ``filters``: Specifies compression filters for the attributes.
+
+        Parameters:
+            attr_name: Name of the attribute to get the property from.
+            property_name: Name of requested property.
+        """
+        attr_creator = self._attr_creators[attr_name]
+        return getattr(attr_creator, property_name)
 
     @property
     def ndim(self) -> int:
