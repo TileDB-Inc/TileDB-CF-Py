@@ -638,14 +638,14 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from. Use ``'/'`` to specify the root group.
         """
         converter = cls(default_input_file, default_group_path)
-        coord_names = []
+        coord_names = set()
         tiles_by_var = {} if tiles_by_var is None else tiles_by_var
         tiles_by_dims = {} if tiles_by_dims is None else tiles_by_dims
         if coords_to_dims:
             for ncvar in netcdf_group.variables.values():
                 if ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name:
                     converter.add_coord_to_dim_converter(ncvar)
-                    coord_names.append(ncvar.name)
+                    coord_names.add(ncvar.name)
         for ncvar in netcdf_group.variables.values():
             if ncvar.name in coord_names:
                 continue
@@ -721,7 +721,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from. Use ``'/'`` to specify the root group.
         """
         converter = cls(default_input_file, default_group_path)
-        coord_names = []
+        coord_names = set()
         dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
         autotiles: Dict[Sequence[str], Optional[Sequence[int]]] = {}
         tiles_by_dims = {} if tiles_by_dims is None else tiles_by_dims
@@ -731,7 +731,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         for ncvar in netcdf_group.variables.values():
             if coords_to_dims and ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name:
                 converter.add_coord_to_dim_converter(ncvar)
-                coord_names.append(ncvar.name)
+                coord_names.add(ncvar.name)
             else:
                 if not ncvar.dimensions and "__scalars" not in converter.dim_names:
                     converter.add_scalar_dim_converter("__scalars", dim_dtype)
