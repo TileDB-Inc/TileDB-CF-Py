@@ -671,17 +671,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                             unlimited_dim_size,
                             dim_dtype,
                         )
-                if ncvar.name in tiles_by_var:
-                    array_tiles = tiles_by_var[ncvar.name]
-                elif ncvar.dimensions in tiles_by_dims:
-                    array_tiles = tiles_by_dims[ncvar.dimensions]
-                else:
-                    chunks = ncvar.chunking()
-                    array_tiles = (
-                        None
-                        if chunks is None or chunks == "contiguous"
-                        else tuple(chunks)
-                    )
+                array_tiles = tiles_by_var.get(
+                    ncvar.name,
+                    tiles_by_dims.get(ncvar.dimensions, get_variable_chunks(ncvar)),
+                )
                 array_name = ncvar.name
                 is_sparse = any(
                     dim_name in coord_names for dim_name in ncvar.dimensions
@@ -744,9 +737,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     converter.add_scalar_dim_converter("__scalars", dim_dtype)
                 dim_names = ncvar.dimensions if ncvar.dimensions else ("__scalars",)
                 dims_to_vars[dim_names].append(ncvar.name)
-                chunks = tiles_by_var.get(ncvar.name, ncvar.chunking())
-                if not (chunks is None or chunks == "contiguous"):
-                    chunks = tuple(chunks)
+                chunks = tiles_by_var.get(ncvar.name, get_variable_chunks(ncvar))
+                if chunks is not None:
                     autotiles[dim_names] = (
                         None
                         if dim_names in autotiles and chunks != autotiles[dim_names]
@@ -1205,6 +1197,11 @@ def get_ncattr(netcdf_item, key: str) -> Any:
     if key in netcdf_item.ncattrs():
         return netcdf_item.getncattr(key)
     return None
+
+
+def get_variable_chunks(variable: netCDF4.Variable) -> Optional[Tuple[int, ...]]:
+    chunks = variable.chunking()
+    return None if chunks is None or chunks == "contiguous" else tuple(chunks)
 
 
 @contextmanager
