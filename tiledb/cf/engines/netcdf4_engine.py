@@ -610,6 +610,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         coords_to_dims: bool = True,
+        scalar_array_name: str = "scalars",
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
@@ -632,6 +633,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 TileDB dimension for sparse arrays. Otherwise, convert the coordinate
                 dimension into a TileDB dimension and the coordinate variable into a
                 TileDB attribute.
+            scalar_array_name: Name for the array the stores all NetCDF scalar
+                variables. Cannot be the same name as any of the NetCDF variables in
+                the provided NetCDF group.
             default_input_file: If not ``None``, the default NetCDF input file to copy
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
@@ -650,12 +654,15 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             if ncvar.name in coord_names:
                 continue
             if not ncvar.dimensions:
-                array_name = (
-                    "scalars" if "scalars" not in netcdf_group.variables else "_scalars"
-                )
-                if array_name not in converter.array_names:
+                if scalar_array_name in netcdf_group.variables:
+                    raise ValueError(
+                        f"Cannot name array of scalar values `{scalar_array_name}`. An"
+                        f" array with that name already exists."
+                    )
+                if scalar_array_name not in converter.array_names:
                     converter.add_scalar_dim_converter("__scalars", dim_dtype)
-                    converter.add_array(array_name, ("__scalars",))
+                    converter.add_array(scalar_array_name, ("__scalars",))
+                converter.add_var_to_attr_converter(ncvar, scalar_array_name)
             else:
                 for dim in ncvar.get_dims():
                     if dim.name not in converter.dim_names:
@@ -682,7 +689,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 converter.add_array(
                     array_name, ncvar.dimensions, tiles=array_tiles, sparse=is_sparse
                 )
-            converter.add_var_to_attr_converter(ncvar, array_name)
+                converter.add_var_to_attr_converter(ncvar, array_name)
         return converter
 
     @classmethod
