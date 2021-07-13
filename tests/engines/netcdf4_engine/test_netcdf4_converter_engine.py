@@ -60,14 +60,14 @@ class ConvertNetCDFBase:
                 result[attr_name], self.variable_data[var_name]
             ), f"unexpected values for attribute '{attr_name}'"
 
-    @pytest.mark.parametrize("collect_attrs", [(True,), (False,)])
+    @pytest.mark.parametrize("collect_attrs", [True, False])
     def test_from_netcdf(self, netcdf_file, tmpdir, collect_attrs):
         """Integration test for `from_netcdf_file` function call."""
         uri = str(tmpdir.mkdir("output").join(self.name))
         from_netcdf(netcdf_file, uri, coords_to_dims=False, collect_attrs=collect_attrs)
         self.check_attrs(uri)
 
-    @pytest.mark.parametrize("collect_attrs", [(True,), (False,)])
+    @pytest.mark.parametrize("collect_attrs", [True, False])
     def test_converter_from_netcdf(self, netcdf_file, tmpdir, collect_attrs):
         converter = NetCDF4ConverterEngine.from_file(
             netcdf_file, coords_to_dims=False, collect_attrs=collect_attrs
@@ -179,7 +179,7 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
     }
     attr_to_var_map = {"x.data": "x", "y": "y"}
 
-    @pytest.mark.parametrize("collect_attrs", [(True,), (False,)])
+    @pytest.mark.parametrize("collect_attrs", [True, False])
     def test_convert_coordinate(self, netcdf_file, tmpdir, collect_attrs):
         uri = str(tmpdir.mkdir("output").join("coordinate_example"))
         converter = NetCDF4ConverterEngine.from_file(

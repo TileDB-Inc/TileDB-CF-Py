@@ -601,8 +601,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             default_group_path=default_group_path,
         )
 
-    @classmethod
-    def _from_group_to_attr_per_array(
+    @classmethod  # noqa: C901
+    def _from_group_to_attr_per_array(  # noqa: C901
         cls,
         netcdf_group: netCDF4.Group,
         unlimited_dim_size: int = 10000,
@@ -610,6 +610,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         coords_to_dims: bool = True,
+        scalar_array_name: str = "scalars",
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
@@ -632,48 +633,56 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 TileDB dimension for sparse arrays. Otherwise, convert the coordinate
                 dimension into a TileDB dimension and the coordinate variable into a
                 TileDB attribute.
+            scalar_array_name: Name for the array the stores all NetCDF scalar
+                variables. Cannot be the same name as any of the NetCDF variables in
+                the provided NetCDF group.
             default_input_file: If not ``None``, the default NetCDF input file to copy
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
                 from. Use ``'/'`` to specify the root group.
         """
         converter = cls(default_input_file, default_group_path)
+        coord_names = set()
+        tiles_by_var = {} if tiles_by_var is None else tiles_by_var
+        tiles_by_dims = {} if tiles_by_dims is None else tiles_by_dims
         if coords_to_dims:
-            raise NotImplementedError
+            for ncvar in netcdf_group.variables.values():
+                if ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name:
+                    converter.add_coord_to_dim_converter(ncvar)
+                    coord_names.add(ncvar.name)
         for ncvar in netcdf_group.variables.values():
-            for dim in ncvar.get_dims():
-                if dim.name not in converter.dim_names:
-                    converter.add_dim_to_dim_converter(
-                        dim,
-                        unlimited_dim_size,
-                        dim_dtype,
-                    )
+            if ncvar.name in coord_names:
+                continue
             if not ncvar.dimensions:
-                array_name = (
-                    "scalars" if "scalars" not in netcdf_group.variables else "_scalars"
-                )
-                if array_name not in converter.array_names:
-                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
-                    converter.add_array("scalars", ("__scalars",))
-            else:
-                if tiles_by_var is not None and ncvar.name in tiles_by_var:
-                    array_tiles = tiles_by_var[ncvar.name]
-                elif tiles_by_dims is not None and ncvar.dimensions in tiles_by_dims:
-                    array_tiles = tiles_by_dims[ncvar.dimensions]
-                else:
-                    chunks = ncvar.chunking()
-                    array_tiles = (
-                        None
-                        if chunks is None or chunks == "contiguous"
-                        else tuple(chunks)
+                if scalar_array_name in netcdf_group.variables:
+                    raise ValueError(
+                        f"Cannot name array of scalar values `{scalar_array_name}`. An"
+                        f" array with that name already exists."
                     )
-                array_name = ncvar.name
-                converter.add_array(
-                    array_name,
-                    ncvar.dimensions,
-                    tiles=array_tiles,
+                if scalar_array_name not in converter.array_names:
+                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
+                    converter.add_array(scalar_array_name, ("__scalars",))
+                converter.add_var_to_attr_converter(ncvar, scalar_array_name)
+            else:
+                for dim in ncvar.get_dims():
+                    if dim.name not in converter.dim_names:
+                        converter.add_dim_to_dim_converter(
+                            dim,
+                            unlimited_dim_size,
+                            dim_dtype,
+                        )
+                array_tiles = tiles_by_var.get(
+                    ncvar.name,
+                    tiles_by_dims.get(ncvar.dimensions, get_variable_chunks(ncvar)),
                 )
-            converter.add_var_to_attr_converter(ncvar, array_name)
+                array_name = ncvar.name
+                is_sparse = any(
+                    dim_name in coord_names for dim_name in ncvar.dimensions
+                )
+                converter.add_array(
+                    array_name, ncvar.dimensions, tiles=array_tiles, sparse=is_sparse
+                )
+                converter.add_var_to_attr_converter(ncvar, array_name)
         return converter
 
     @classmethod
@@ -712,7 +721,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from. Use ``'/'`` to specify the root group.
         """
         converter = cls(default_input_file, default_group_path)
-        coord_names = []
+        coord_names = set()
         dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
         autotiles: Dict[Sequence[str], Optional[Sequence[int]]] = {}
         tiles_by_dims = {} if tiles_by_dims is None else tiles_by_dims
@@ -722,15 +731,14 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         for ncvar in netcdf_group.variables.values():
             if coords_to_dims and ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name:
                 converter.add_coord_to_dim_converter(ncvar)
-                coord_names.append(ncvar.name)
+                coord_names.add(ncvar.name)
             else:
                 if not ncvar.dimensions and "__scalars" not in converter.dim_names:
                     converter.add_scalar_dim_converter("__scalars", dim_dtype)
                 dim_names = ncvar.dimensions if ncvar.dimensions else ("__scalars",)
                 dims_to_vars[dim_names].append(ncvar.name)
-                chunks = tiles_by_var.get(ncvar.name, ncvar.chunking())
-                if not (chunks is None or chunks == "contiguous"):
-                    chunks = tuple(chunks)
+                chunks = tiles_by_var.get(ncvar.name, get_variable_chunks(ncvar))
+                if chunks is not None:
                     autotiles[dim_names] = (
                         None
                         if dim_names in autotiles and chunks != autotiles[dim_names]
@@ -748,7 +756,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     )
         # Add arrays and attributes to the converter.
         for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
-            is_sparse = any(dim_name in coord_names for dim_name in dim_names)
+            is_sparse = any(dim_name in coord_names for dim_name in ncvar.dimensions)
             converter.add_array(
                 f"array{count}",
                 dim_names,
@@ -1189,6 +1197,11 @@ def get_ncattr(netcdf_item, key: str) -> Any:
     if key in netcdf_item.ncattrs():
         return netcdf_item.getncattr(key)
     return None
+
+
+def get_variable_chunks(variable: netCDF4.Variable) -> Optional[Tuple[int, ...]]:
+    chunks = variable.chunking()
+    return None if chunks is None or chunks == "contiguous" else tuple(chunks)
 
 
 @contextmanager
