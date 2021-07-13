@@ -98,6 +98,32 @@ class DataspaceCreator:
             output.write("DataspaceCreator()")
         return output.getvalue()
 
+    def _repr_html_(self):
+        output = StringIO()
+        output.write("<section>\n")
+        output.write("<h4>DataspaceCreator</h4>\n")
+        output.write("<ul>\n")
+        output.write("<li>\n")
+        output.write("Shared Dimensions\n")
+        if self._dims:
+            output.write("<p>\n<table>\n")
+            for dim_name, dim in self._dims.items():
+                output.write(f"<tr><th>'{dim_name}':  {repr(dim)}</th></tr>\n")
+            output.write("</table>\n</p>\n")
+            output.write("</details>\n")
+        output.write("</li>\n")
+        output.write("<li>\n")
+        output.write("Array Creators\n")
+        for array_name, array_creator in self._array_creators.items():
+            output.write("<details>\n")
+            output.write(f"<summary>{array_name}</summary>\n")
+            output.write(f"<p>\n{array_creator.html_summary()}\n</p>\n")
+            output.write("</details>\n")
+        output.write("</li>\n")
+        output.write("</ul>\n")
+        output.write("</section>\n")
+        return output.getvalue()
+
     def _add_shared_dimension(self, dim: SharedDim):
         try:
             self._check_new_dim_name(dim)
@@ -859,6 +885,46 @@ class ArrayCreator:
             attr_name: Name of the attribute that will be removed.
         """
         del self._attr_creators[attr_name]
+
+    def html_summary(self) -> str:
+        output = StringIO()
+        output.write("<ul>\n")
+        output.write("<li>\n")
+        output.write("Domain\n")
+        output.write("<table>\n")
+        for dim_creator in self._dim_creators:
+            output.write(f"<tr><th>{repr(dim_creator)}</th></tr>\n")
+        output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("<li>\n")
+        output.write("Attributes\n")
+        output.write("<table>\n")
+        for attr_creator in self._attr_creators.values():
+            output.write(f"<tr><th>{repr(attr_creator)}</th></tr>\n")
+        output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("<li>\n")
+        output.write("Array Properties\n")
+        output.write(
+            f"<table>\n"
+            f"<tr><th>cell_order</th><th>{self.cell_order}</th></tr>\n"
+            f"<tr><th>tile_order</th><th>{self.tile_order}</th></tr>\n"
+            f"<tr><th>capacity</th><th>{self.capacity}</th></tr>\n"
+            f"<tr><th>sparse</th><th>{self.sparse}</th></tr>\n"
+        )
+        if self.sparse:
+            output.write(
+                f"<tr><th>allows_duplicates</th>"
+                f"<th>{self.allows_duplicates}</th></tr>\n"
+            )
+        if self.coords_filters is not None:
+            output.write(
+                f"<tr><th>coords_filters</th><th>{self.coords_filters}</th></tr>\n"
+            )
+        output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("</ul>\n")
+        return output.getvalue()
 
     def set_attr_properties(self, attr_name: str, **properties):
         """Sets properties for an attribute in the array.

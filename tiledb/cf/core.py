@@ -49,7 +49,7 @@ def _array_schema_html(array_schema: tiledb.ArraySchema) -> str:
     )
     if array_schema.sparse:
         output.write(
-            f"<tr><th>allows_duplicates</th>i"
+            f"<tr><th>allows_duplicates</th>"
             f"<th>{array_schema.allows_duplicates}</th></tr>\n"
         )
     if array_schema.coords_filters is not None:
