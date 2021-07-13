@@ -57,6 +57,14 @@ class TestDataspaceCreatorExample1:
             "temperature",
         }
 
+    def test_get_array_property(self, dataspace_creator):
+        tiles = dataspace_creator.get_array_property("A1", "tiles")
+        assert tiles == (2,)
+
+    def test_get_attr_property(self, dataspace_creator):
+        dtype = dataspace_creator.get_attr_property("b", "dtype")
+        assert dtype == np.dtype(np.float64)
+
     def test_to_schema(self, dataspace_creator):
         group_schema = dataspace_creator.to_schema()
         assert isinstance(group_schema, GroupSchema)
@@ -243,6 +251,12 @@ def test_add_dim_coord_axis_data_name_exists_error():
     creator.add_attr("coord.index", "array1", np.float64)
     with pytest.raises(NotImplementedError):
         creator.add_dim("coord.data", (1, 4), np.uint64)
+
+
+def test_get_property_attr_key_error():
+    creator = DataspaceCreator()
+    with pytest.raises(KeyError):
+        creator.get_attr_property("a1", "nullable")
 
 
 def test_remove_empty_array():
