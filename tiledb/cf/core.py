@@ -19,6 +19,50 @@ METADATA_ARRAY_NAME = "__tiledb_group"
 ATTR_METADATA_FLAG = "__tiledb_attr."
 
 
+def _array_schema_html(array_schema: tiledb.ArraySchema) -> str:
+    """Returns a HTML representation of a TileDB array."""
+    output = StringIO()
+    output.write("<section>\n")
+    output.write("<ul>\n")
+    output.write("<li>\n")
+    output.write("Domain\n")
+    output.write("<table>\n")
+    for i in range(array_schema.domain.ndim):
+        output.write(f"<tr><th>{repr(array_schema.domain.dim(i))}</th></tr>\n")
+    output.write("</table>\n")
+    output.write("</li>\n")
+    output.write("<li>\n")
+    output.write("Attributes\n")
+    output.write("<table>\n")
+    for i in range(array_schema.nattr):
+        output.write(f"<tr><th>{repr(array_schema.attr(i))}</th></tr>\n")
+    output.write("</table>\n")
+    output.write("</li>\n")
+    output.write("<li>\n")
+    output.write("Array properties")
+    output.write(
+        f"<table>\n"
+        f"<tr><th>cell_order</th><th>{array_schema.cell_order}</th></tr>\n"
+        f"<tr><th>tile_order</th><th>{array_schema.tile_order}</th></tr>\n"
+        f"<tr><th>capacity</th><th>{array_schema.capacity}</th></tr>\n"
+        f"<tr><th>sparse</th><th>{array_schema.sparse}</th></tr>\n"
+    )
+    if array_schema.sparse:
+        output.write(
+            f"<tr><th>allows_duplicates</th>i"
+            f"<th>{array_schema.allows_duplicates}</th></tr>\n"
+        )
+    if array_schema.coords_filters is not None:
+        output.write(
+            f"<tr><th>coords_filters</th><th>{array_schema.coords_filters}</th>\n"
+        )
+    output.write("</table>\n")
+    output.write("</li>\n")
+    output.write("</ul>\n")
+    output.write("</section>\n")
+    return output.getvalue()
+
+
 def _get_array_uri(group_uri: str, array_name: str, is_virtual: bool) -> str:
     """Returns a URI for an array with name ``array_name`` inside a group at URI
         ``group_uri``.
@@ -626,6 +670,28 @@ class GroupSchema(Mapping):
             output.write(f"Group metadata schema: {repr(self._metadata_schema)}")
         for name, schema in self.items():
             output.write(f"'{name}': {repr(schema)}")
+        return output.getvalue()
+
+    def _repr_html_(self) -> str:
+        """Returns the object representation of this GroupSchame as HTML."""
+        output = StringIO()
+        output.write("<section>\n")
+        output.write("<h3>TileDB-CF GroupSchema</h3>\n")
+        if self._metadata_schema is not None:
+            output.write("<details>\n")
+            output.write("<summary>Group Metadata ArraySchema</summary>\n")
+            output.write("<p>\n")
+            output.write(_array_schema_html(self._metadata_schema))
+            output.write("</p>\n")
+            output.write("</details>\n")
+        for name, schema in self.items():
+            output.write("<details>\n")
+            output.write(f"<summary>'{name}' ArraySchema</summary>\n")
+            output.write("<p>")
+            output.write(_array_schema_html(schema))
+            output.write("</p>\n")
+            output.write("</details>\n")
+        output.write("</section>\n")
         return output.getvalue()
 
     def check(self):
