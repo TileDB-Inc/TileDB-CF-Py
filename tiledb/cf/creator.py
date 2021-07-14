@@ -100,15 +100,17 @@ class DataspaceCreator:
 
     def _repr_html_(self):
         output = StringIO()
-        output.write("<section>\n")
-        output.write("<h4>DataspaceCreator</h4>\n")
+        output.write(f"<h4>{self.__class__.__name__}</h4>\n")
         output.write("<ul>\n")
         output.write("<li>\n")
         output.write("Shared Dimensions\n")
         if self._dims:
             output.write("<p>\n<table>\n")
-            for dim_name, dim in self._dims.items():
-                output.write(f"<tr><th>'{dim_name}':  {repr(dim)}</th></tr>\n")
+            for dim in self._dims.values():
+                output.write(
+                    f"<tr><td>{dim.html_input_summary()} &rarr; "
+                    f"SharedDim({dim.html_output_summary()})</td>\n</tr>\n"
+                )
             output.write("</table>\n</p>\n")
             output.write("</details>\n")
         output.write("</li>\n")
@@ -116,12 +118,16 @@ class DataspaceCreator:
         output.write("Array Creators\n")
         for array_name, array_creator in self._array_creators.items():
             output.write("<details>\n")
-            output.write(f"<summary>{array_name}</summary>\n")
+            output.write("<summary>\n")
+            output.write(
+                f"{array_creator.__class__.__name__} {array_name}"
+                f"({', '.join(map(str, array_creator.dim_names))})\n"
+            )
+            output.write("</summary>\n")
             output.write(f"<p>\n{array_creator.html_summary()}\n</p>\n")
             output.write("</details>\n")
         output.write("</li>\n")
         output.write("</ul>\n")
-        output.write("</section>\n")
         return output.getvalue()
 
     def _add_shared_dimension(self, dim: SharedDim):
@@ -887,39 +893,41 @@ class ArrayCreator:
         del self._attr_creators[attr_name]
 
     def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`ArrayCreator`."""
         output = StringIO()
         output.write("<ul>\n")
         output.write("<li>\n")
         output.write("Domain\n")
         output.write("<table>\n")
         for dim_creator in self._dim_creators:
-            output.write(f"<tr><th>{repr(dim_creator)}</th></tr>\n")
+            output.write(f"<tr><td>{dim_creator.html_summary()}</td></tr>\n")
         output.write("</table>\n")
         output.write("</li>\n")
         output.write("<li>\n")
         output.write("Attributes\n")
         output.write("<table>\n")
         for attr_creator in self._attr_creators.values():
-            output.write(f"<tr><th>{repr(attr_creator)}</th></tr>\n")
+            output.write(f"<tr><td>{attr_creator.html_summary()}</td></tr>\n")
         output.write("</table>\n")
         output.write("</li>\n")
         output.write("<li>\n")
         output.write("Array Properties\n")
         output.write(
             f"<table>\n"
-            f"<tr><th>cell_order</th><th>{self.cell_order}</th></tr>\n"
-            f"<tr><th>tile_order</th><th>{self.tile_order}</th></tr>\n"
-            f"<tr><th>capacity</th><th>{self.capacity}</th></tr>\n"
-            f"<tr><th>sparse</th><th>{self.sparse}</th></tr>\n"
+            f"<tr><th>Property</th><th>Value</th></tr>\n"
+            f"<tr><td>cell_order</td><td>{self.cell_order}</td></tr>\n"
+            f"<tr><td>tile_order</td><td>{self.tile_order}</td></tr>\n"
+            f"<tr><td>capacity</td><td>{self.capacity}</td></tr>\n"
+            f"<tr><td>sparse</td><td>{self.sparse}</td></tr>\n"
         )
         if self.sparse:
             output.write(
-                f"<tr><th>allows_duplicates</th>"
-                f"<th>{self.allows_duplicates}</th></tr>\n"
+                f"<tr><td>allows_duplicates</td>"
+                f"<td>{self.allows_duplicates}</td></tr>\n"
             )
         if self.coords_filters is not None:
             output.write(
-                f"<tr><th>coords_filters</th><th>{self.coords_filters}</th></tr>\n"
+                f"<tr><td>coords_filters</td><td>{self.coords_filters}</td></tr>\n"
             )
         output.write("</table>\n")
         output.write("</li>\n")
@@ -1058,6 +1066,19 @@ class AttrCreator:
             f"nullable={self.nullable}{filters_str})"
         )
 
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`AttrCreator`."""
+        filters_str = ""
+        if self.filters:
+            filters_str = ", filters=FilterList(["
+            for attr_filter in self.filters:
+                filters_str += repr(attr_filter) + ", "
+            filters_str += "])"
+        return (
+            f" &rarr; tiledb.Attr(name={self.name}, dtype='{self.dtype!s}', "
+            f"var={self.var}, nullable={self.nullable}{filters_str})"
+        )
+
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
         """Returns a :class:`tiledb.Attr` using the current properties.
 
@@ -1107,6 +1128,19 @@ class DimCreator:
     def domain(self) -> Tuple[Optional[DType], Optional[DType]]:
         """The (inclusive) interval on which the dimension is valid."""
         return self.base.domain
+
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`DimCreator`."""
+        filters_str = ""
+        if self.filters:
+            filters_str = ", filters=FilterList(["
+            for dim_filter in self.filters:
+                filters_str += repr(dim_filter) + ", "
+            filters_str += "])"
+        return (
+            f"{self.base.html_input_summary()} &rarr; tiledb.Dim("
+            f"{self.base.html_output_summary()}, tile={self.tile}{filters_str})"
+        )
 
     @property
     def name(self) -> str:
@@ -1161,6 +1195,14 @@ class SharedDim:
         return (
             f"SharedDim(name={self.name}, domain={self.domain}, dtype='{self.dtype!s}')"
         )
+
+    def html_input_summary(self) -> str:
+        """Returns a HTML string summarizing the input for the dimension."""
+        return ""
+
+    def html_output_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`SharedDim`."""
+        return f"name={self.name}, domain={self.domain}, dtype='{self.dtype!s}'"
 
     @property
     def is_data_dim(self) -> bool:

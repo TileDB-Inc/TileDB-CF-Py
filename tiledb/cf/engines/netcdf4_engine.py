@@ -60,9 +60,13 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
 
     def __repr__(self):
         return (
-            f"Variable(name={self.input_name}, dtype={self.input_dtype}) -> "
+            f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype}) -> "
             f"{super().__repr__()}"
         )
+
+    def html_input_summary(self):
+        """Returns a HTML string summarizing the input for the dimension."""
+        return f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype})"
 
     @classmethod
     def from_netcdf(
@@ -177,9 +181,14 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
     def __repr__(self):
         size_str = "unlimited" if self.is_unlimited else str(self.input_size)
         return (
-            f"Dimension(name={self.input_name}, size={size_str}) -> "
+            f"NetCDFDimension(name={self.input_name}, size={size_str}) -> "
             f"{super().__repr__()}"
         )
+
+    def html_input_summary(self):
+        """Returns a HTML string summarizing the input for the dimension."""
+        size_str = "unlimited" if self.is_unlimited else str(self.input_size)
+        return f"NetCDFDimension(name={self.input_name}, size={size_str})"
 
     @classmethod
     def from_netcdf(
@@ -272,6 +281,10 @@ class NetCDFScalarDimConverter(SharedDim, NetCDFDimConverter):
     def __repr__(self):
         return f" Scalar dimensions -> {super().__repr__()}"
 
+    def html_input_summary(self):
+        """Returns a string HTML summary."""
+        return "NetCDF empty dimension"
+
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
@@ -335,8 +348,14 @@ class NetCDFVariableConverter(AttrCreator):
 
     def __repr__(self):
         return (
-            f"Variable(name={self.input_name}, dtype={self.input_dtype}) -> "
+            f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype}) -> "
             f"{super().__repr__()}"
+        )
+
+    def html_summary(self):
+        return (
+            f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype})"
+            f"{super().html_summary()}"
         )
 
     @classmethod
@@ -785,6 +804,17 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             output.write(f"Default NetCDF file: {self.default_input_file}\n")
         if self.default_group_path is not None:
             output.write(f"Deault NetCDF group path: {self.default_group_path}\n")
+        return output.getvalue()
+
+    def _repr_html_(self):
+        output = StringIO()
+        output.write(f"{super()._repr_html_()}\n")
+        output.write("<ul>\n")
+        output.write(f"<li>Default NetCDF file: '{self.default_input_file}'</li>\n")
+        output.write(
+            f"<li>Default NetCDF group path: '{self.default_group_path}'</li>\n"
+        )
+        output.write("</ul>\n")
         return output.getvalue()
 
     def add_array(
