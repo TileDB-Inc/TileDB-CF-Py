@@ -28,33 +28,35 @@ def _array_schema_html(array_schema: tiledb.ArraySchema) -> str:
     output.write("Domain\n")
     output.write("<table>\n")
     for i in range(array_schema.domain.ndim):
-        output.write(f"<tr><th>{repr(array_schema.domain.dim(i))}</th></tr>\n")
+        output.write(
+            f"<tr><td align=left>{repr(array_schema.domain.dim(i))}</td></tr>\n"
+        )
     output.write("</table>\n")
     output.write("</li>\n")
     output.write("<li>\n")
     output.write("Attributes\n")
     output.write("<table>\n")
     for i in range(array_schema.nattr):
-        output.write(f"<tr><th>{repr(array_schema.attr(i))}</th></tr>\n")
+        output.write(f"<tr><td align=left>{repr(array_schema.attr(i))}</td></tr>\n")
     output.write("</table>\n")
     output.write("</li>\n")
     output.write("<li>\n")
     output.write("Array properties")
     output.write(
         f"<table>\n"
-        f"<tr><th>cell_order</th><th>{array_schema.cell_order}</th></tr>\n"
-        f"<tr><th>tile_order</th><th>{array_schema.tile_order}</th></tr>\n"
-        f"<tr><th>capacity</th><th>{array_schema.capacity}</th></tr>\n"
-        f"<tr><th>sparse</th><th>{array_schema.sparse}</th></tr>\n"
+        f"<tr><td align=left>cell_order={array_schema.cell_order}</td></tr>\n"
+        f"<tr><td align=left>tile_order={array_schema.tile_order}</td></tr>\n"
+        f"<tr><td align=left>capacity={array_schema.capacity}</td></tr>\n"
+        f"<tr><td align=left>sparse={array_schema.sparse}</td></tr>\n"
     )
     if array_schema.sparse:
         output.write(
-            f"<tr><th>allows_duplicates</th>"
-            f"<th>{array_schema.allows_duplicates}</th></tr>\n"
+            f"<tr><td align=left>allows_duplicates"
+            f"={array_schema.allows_duplicates}</td></tr>\n"
         )
     if array_schema.coords_filters is not None:
         output.write(
-            f"<tr><th>coords_filters</th><th>{array_schema.coords_filters}</th>\n"
+            f"<tr><td align=left>coords_filters={array_schema.coords_filters}</td>\n"
         )
     output.write("</table>\n")
     output.write("</li>\n")
@@ -676,17 +678,17 @@ class GroupSchema(Mapping):
         """Returns the object representation of this GroupSchame as HTML."""
         output = StringIO()
         output.write("<section>\n")
-        output.write("<h3>TileDB-CF GroupSchema</h3>\n")
+        output.write(f"<h3>{self.__class__.__name__}</h3>\n")
         if self._metadata_schema is not None:
             output.write("<details>\n")
-            output.write("<summary>Group Metadata ArraySchema</summary>\n")
+            output.write("<summary>ArraySchema for Group Metadata Array</summary>\n")
             output.write("<p>\n")
             output.write(_array_schema_html(self._metadata_schema))
             output.write("</p>\n")
             output.write("</details>\n")
         for name, schema in self.items():
             output.write("<details>\n")
-            output.write(f"<summary>'{name}' ArraySchema</summary>\n")
+            output.write(f"<summary>ArraySchema <em>{name}</em></summary>\n")
             output.write("<p>")
             output.write(_array_schema_html(schema))
             output.write("</p>\n")

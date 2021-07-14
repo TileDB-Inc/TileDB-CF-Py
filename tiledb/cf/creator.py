@@ -108,7 +108,7 @@ class DataspaceCreator:
             output.write("<p>\n<table>\n")
             for dim in self._dims.values():
                 output.write(
-                    f"<tr><td>{dim.html_input_summary()} &rarr; "
+                    f"<tr><td align=left>{dim.html_input_summary()} &rarr; "
                     f"SharedDim({dim.html_output_summary()})</td>\n</tr>\n"
                 )
             output.write("</table>\n</p>\n")
@@ -120,7 +120,7 @@ class DataspaceCreator:
             output.write("<details>\n")
             output.write("<summary>\n")
             output.write(
-                f"{array_creator.__class__.__name__} {array_name}"
+                f"{array_creator.__class__.__name__} <em>{array_name}</em>"
                 f"({', '.join(map(str, array_creator.dim_names))})\n"
             )
             output.write("</summary>\n")
@@ -900,34 +900,35 @@ class ArrayCreator:
         output.write("Domain\n")
         output.write("<table>\n")
         for dim_creator in self._dim_creators:
-            output.write(f"<tr><td>{dim_creator.html_summary()}</td></tr>\n")
+            output.write(f"<tr><td align=left>{dim_creator.html_summary()}</td></tr>\n")
         output.write("</table>\n")
         output.write("</li>\n")
         output.write("<li>\n")
         output.write("Attributes\n")
         output.write("<table>\n")
         for attr_creator in self._attr_creators.values():
-            output.write(f"<tr><td>{attr_creator.html_summary()}</td></tr>\n")
+            output.write(
+                f"<tr><td align=left>{attr_creator.html_summary()}</td></tr>\n"
+            )
         output.write("</table>\n")
         output.write("</li>\n")
         output.write("<li>\n")
         output.write("Array Properties\n")
         output.write(
             f"<table>\n"
-            f"<tr><th>Property</th><th>Value</th></tr>\n"
-            f"<tr><td>cell_order</td><td>{self.cell_order}</td></tr>\n"
-            f"<tr><td>tile_order</td><td>{self.tile_order}</td></tr>\n"
-            f"<tr><td>capacity</td><td>{self.capacity}</td></tr>\n"
-            f"<tr><td>sparse</td><td>{self.sparse}</td></tr>\n"
+            f"<tr><td align=left>cell_order={self.cell_order}</td></tr>\n"
+            f"<tr><td align=left>tile_order={self.tile_order}</td></tr>\n"
+            f"<tr><td align=left>capacity={self.capacity}</td></tr>\n"
+            f"<tr><td align=left>sparse={self.sparse}</td></tr>\n"
         )
         if self.sparse:
             output.write(
-                f"<tr><td>allows_duplicates</td>"
-                f"<td>{self.allows_duplicates}</td></tr>\n"
+                f"<tr><td align=left>allows_duplicates"
+                f"={self.allows_duplicates}</td></tr>\n"
             )
         if self.coords_filters is not None:
             output.write(
-                f"<tr><td>coords_filters</td><td>{self.coords_filters}</td></tr>\n"
+                f"<tr><td align=left>coords_filters={self.coords_filters}</td></tr>\n"
             )
         output.write("</table>\n")
         output.write("</li>\n")
