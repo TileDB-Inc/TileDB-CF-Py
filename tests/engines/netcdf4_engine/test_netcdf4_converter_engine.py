@@ -258,6 +258,58 @@ class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
         assert result == expected
 
 
+class TestConvertNetCDFCoordWithTiles(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a NetCDF file with a coordinate variable.
+
+    Dimensions:
+        index (4)
+    Variables:
+        int index (index)
+        real y (index)
+    """
+
+    name = "coord_with_chunks"
+    dimension_args = (("index", 4),)
+    variable_kwargs = (
+        {
+            "varname": "index",
+            "datatype": np.int32,
+            "dimensions": ("index",),
+        },
+        {
+            "varname": "y",
+            "datatype": np.float64,
+            "dimensions": ("index",),
+            "chunksizes": (4,),
+        },
+    )
+    variable_data = {
+        "index": np.array([1, 2, 3, 4]),
+        "y": np.array([4.0, 25.0, 1.0, 16.0]),
+    }
+    attr_to_var_map = {"index.data": "index", "y": "y"}
+
+    @pytest.mark.parametrize("collect_attrs", [True, False])
+    def test_convert_coordinate(self, netcdf_file, tmpdir, collect_attrs):
+        uri = str(tmpdir.mkdir("output").join("coordinate_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=collect_attrs,
+        )
+        print(converter)
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri, attr="y") as group:
+            schema = group.array.schema
+            assert schema.sparse
+            data = group.array[:]
+        index_order = np.argsort(data["index"])
+        index = data["index"][index_order]
+        y = data["y"][index_order]
+        assert np.array_equal(index, self.variable_data["index"])
+        assert np.array_equal(y, self.variable_data["y"])
+
+
 class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
     """NetCDF conversion test cases for a NetCDF file with an unlimited dimension.
 
