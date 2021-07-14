@@ -105,14 +105,13 @@ class DataspaceCreator:
         output.write("<li>\n")
         output.write("Shared Dimensions\n")
         if self._dims:
-            output.write("<p>\n<table>\n")
+            output.write("<table>\n")
             for dim in self._dims.values():
                 output.write(
-                    f"<tr><td align=left>{dim.html_input_summary()} &rarr; "
-                    f"SharedDim({dim.html_output_summary()})</td>\n</tr>\n"
+                    f'<tr><td style="text-align: left;">{dim.html_input_summary()} '
+                    f"&rarr; SharedDim({dim.html_output_summary()})</td>\n</tr>\n"
                 )
-            output.write("</table>\n</p>\n")
-            output.write("</details>\n")
+            output.write("</table>\n")
         output.write("</li>\n")
         output.write("<li>\n")
         output.write("Array Creators\n")
@@ -124,7 +123,7 @@ class DataspaceCreator:
                 f"({', '.join(map(str, array_creator.dim_names))})\n"
             )
             output.write("</summary>\n")
-            output.write(f"<p>\n{array_creator.html_summary()}\n</p>\n")
+            output.write(f"{array_creator.html_summary()}\n")
             output.write("</details>\n")
         output.write("</li>\n")
         output.write("</ul>\n")
@@ -900,7 +899,9 @@ class ArrayCreator:
         output.write("Domain\n")
         output.write("<table>\n")
         for dim_creator in self._dim_creators:
-            output.write(f"<tr><td align=left>{dim_creator.html_summary()}</td></tr>\n")
+            output.write(
+                f'<tr><td style="text-align: left;">{dim_creator.html_summary()}</td></tr>\n'
+            )
         output.write("</table>\n")
         output.write("</li>\n")
         output.write("<li>\n")
@@ -908,7 +909,7 @@ class ArrayCreator:
         output.write("<table>\n")
         for attr_creator in self._attr_creators.values():
             output.write(
-                f"<tr><td align=left>{attr_creator.html_summary()}</td></tr>\n"
+                f'<tr><td style="text-align: left;">{attr_creator.html_summary()}</td></tr>\n'
             )
         output.write("</table>\n")
         output.write("</li>\n")
@@ -916,19 +917,20 @@ class ArrayCreator:
         output.write("Array Properties\n")
         output.write(
             f"<table>\n"
-            f"<tr><td align=left>cell_order={self.cell_order}</td></tr>\n"
-            f"<tr><td align=left>tile_order={self.tile_order}</td></tr>\n"
-            f"<tr><td align=left>capacity={self.capacity}</td></tr>\n"
-            f"<tr><td align=left>sparse={self.sparse}</td></tr>\n"
+            f'<tr><td style="text-align: left;">cell_order={self.cell_order}</td></tr>\n'
+            f'<tr><td style="text-align: left;">tile_order={self.tile_order}</td></tr>\n'
+            f'<tr><td style="text-align: left;">capacity={self.capacity}</td></tr>\n'
+            f'<tr><td style="text-align: left;">sparse={self.sparse}</td></tr>\n'
         )
         if self.sparse:
             output.write(
-                f"<tr><td align=left>allows_duplicates"
+                f'<tr><td style="text-align: left;">allows_duplicates'
                 f"={self.allows_duplicates}</td></tr>\n"
             )
         if self.coords_filters is not None:
             output.write(
-                f"<tr><td align=left>coords_filters={self.coords_filters}</td></tr>\n"
+                f'<tr><td style="text-align: left;">coords_filters='
+                f"{self.coords_filters}</td></tr>\n"
             )
         output.write("</table>\n")
         output.write("</li>\n")
