@@ -666,10 +666,14 @@ class DataspaceCreator:
         Parameters:
            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        array_schemas = {
-            array_name: array_creator.to_schema(ctx)
-            for array_name, array_creator in self._array_creators.items()
-        }
+        array_schemas = {}
+        for array_name, array_creator in self._array_creators.items():
+            try:
+                array_schemas[array_name] = array_creator.to_schema(ctx)
+            except tiledb.libtiledb.TileDBError as err:
+                raise RuntimeError(
+                    f"Failed to create an ArraySchema for array '{array_name}'."
+                ) from err
         group_schema = GroupSchema(array_schemas)
         return group_schema
 
