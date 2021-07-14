@@ -19,49 +19,50 @@ METADATA_ARRAY_NAME = "__tiledb_group"
 ATTR_METADATA_FLAG = "__tiledb_attr."
 
 
-def _array_schema_html(array_schema: tiledb.ArraySchema) -> str:
+def _array_schema_html(schema: tiledb.ArraySchema) -> str:
     """Returns a HTML representation of a TileDB array."""
     output = StringIO()
-    output.write("<section>\n")
     output.write("<ul>\n")
     output.write("<li>\n")
     output.write("Domain\n")
     output.write("<table>\n")
-    for i in range(array_schema.domain.ndim):
+    for i in range(schema.domain.ndim):
         output.write(
-            f"<tr><td align=left>{repr(array_schema.domain.dim(i))}</td></tr>\n"
+            f'<tr><td style="text-align: left;">{repr(schema.domain.dim(i))}</td>'
+            f"</tr>\n"
         )
     output.write("</table>\n")
     output.write("</li>\n")
     output.write("<li>\n")
     output.write("Attributes\n")
     output.write("<table>\n")
-    for i in range(array_schema.nattr):
-        output.write(f"<tr><td align=left>{repr(array_schema.attr(i))}</td></tr>\n")
+    for i in range(schema.nattr):
+        output.write(
+            f'<tr><td style="text-align: left;">{repr(schema.attr(i))}</td></tr>\n'
+        )
     output.write("</table>\n")
     output.write("</li>\n")
     output.write("<li>\n")
     output.write("Array properties")
     output.write(
         f"<table>\n"
-        f"<tr><td align=left>cell_order={array_schema.cell_order}</td></tr>\n"
-        f"<tr><td align=left>tile_order={array_schema.tile_order}</td></tr>\n"
-        f"<tr><td align=left>capacity={array_schema.capacity}</td></tr>\n"
-        f"<tr><td align=left>sparse={array_schema.sparse}</td></tr>\n"
+        f'<tr><td style="text-align: left;">cell_order={schema.cell_order}</td></tr>\n'
+        f'<tr><td style="text-align: left;">tile_order={schema.tile_order}</td></tr>\n'
+        f'<tr><td style="text-align: left;">capacity={schema.capacity}</td></tr>\n'
+        f'<tr><td style="text-align: left;">sparse={schema.sparse}</td></tr>\n'
     )
-    if array_schema.sparse:
+    if schema.sparse:
         output.write(
-            f"<tr><td align=left>allows_duplicates"
-            f"={array_schema.allows_duplicates}</td></tr>\n"
+            f'<tr><td style="text-align: left;">allows_duplicates'
+            f"={schema.allows_duplicates}</td></tr>\n"
         )
-    if array_schema.coords_filters is not None:
-        output.write(
-            f"<tr><td align=left>coords_filters={array_schema.coords_filters}</td>\n"
-        )
+    output.write(
+        f'<tr><td style="text-align: left">coords_filters={schema.coords_filters}'
+        f"</td>\n"
+    )
     output.write("</table>\n")
     output.write("</li>\n")
     output.write("</ul>\n")
-    output.write("</section>\n")
     return output.getvalue()
 
 
@@ -682,16 +683,12 @@ class GroupSchema(Mapping):
         if self._metadata_schema is not None:
             output.write("<details>\n")
             output.write("<summary>ArraySchema for Group Metadata Array</summary>\n")
-            output.write("<p>\n")
             output.write(_array_schema_html(self._metadata_schema))
-            output.write("</p>\n")
             output.write("</details>\n")
         for name, schema in self.items():
             output.write("<details>\n")
             output.write(f"<summary>ArraySchema <em>{name}</em></summary>\n")
-            output.write("<p>")
             output.write(_array_schema_html(schema))
-            output.write("</p>\n")
             output.write("</details>\n")
         output.write("</section>\n")
         return output.getvalue()

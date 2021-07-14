@@ -39,6 +39,15 @@ class TestDataspaceCreatorExample1:
     def test_repr(self, dataspace_creator):
         assert isinstance(repr(dataspace_creator), str)
 
+    def test_repr_html(self, dataspace_creator):
+        try:
+            tidylib = pytest.importorskip("tidylib")
+            html_summary = dataspace_creator._repr_html_()
+            _, errors = tidylib.tidy_fragment(html_summary)
+        except OSError:
+            pytest.skip("unable to import libtidy backend")
+        assert not bool(errors)
+
     def test_array_names(self, dataspace_creator):
         assert set(dataspace_creator.array_names) == {"A1", "A2", "A3"}
 

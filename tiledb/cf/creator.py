@@ -893,6 +893,7 @@ class ArrayCreator:
 
     def html_summary(self) -> str:
         """Returns a string HTML summary of the :class:`ArrayCreator`."""
+        cell_style = 'style="text-align: left;"'
         output = StringIO()
         output.write("<ul>\n")
         output.write("<li>\n")
@@ -900,7 +901,7 @@ class ArrayCreator:
         output.write("<table>\n")
         for dim_creator in self._dim_creators:
             output.write(
-                f'<tr><td style="text-align: left;">{dim_creator.html_summary()}</td></tr>\n'
+                f"<tr><td {cell_style}>{dim_creator.html_summary()}</td></tr>\n"
             )
         output.write("</table>\n")
         output.write("</li>\n")
@@ -909,7 +910,7 @@ class ArrayCreator:
         output.write("<table>\n")
         for attr_creator in self._attr_creators.values():
             output.write(
-                f'<tr><td style="text-align: left;">{attr_creator.html_summary()}</td></tr>\n'
+                f"<tr><td {cell_style}>{attr_creator.html_summary()}</td></tr>\n"
             )
         output.write("</table>\n")
         output.write("</li>\n")
@@ -917,21 +918,19 @@ class ArrayCreator:
         output.write("Array Properties\n")
         output.write(
             f"<table>\n"
-            f'<tr><td style="text-align: left;">cell_order={self.cell_order}</td></tr>\n'
-            f'<tr><td style="text-align: left;">tile_order={self.tile_order}</td></tr>\n'
-            f'<tr><td style="text-align: left;">capacity={self.capacity}</td></tr>\n'
-            f'<tr><td style="text-align: left;">sparse={self.sparse}</td></tr>\n'
+            f"<tr><td {cell_style}>cell_order={self.cell_order}</td></tr>\n"
+            f"<tr><td {cell_style}>tile_order={self.tile_order}</td></tr>\n"
+            f"<tr><td {cell_style}>capacity={self.capacity}</td></tr>\n"
+            f"<tr><td {cell_style}>sparse={self.sparse}</td></tr>\n"
         )
         if self.sparse:
             output.write(
-                f'<tr><td style="text-align: left;">allows_duplicates'
+                f"<tr><td {cell_style}>allows_duplicates"
                 f"={self.allows_duplicates}</td></tr>\n"
             )
-        if self.coords_filters is not None:
-            output.write(
-                f'<tr><td style="text-align: left;">coords_filters='
-                f"{self.coords_filters}</td></tr>\n"
-            )
+        output.write(
+            f"<tr><td {cell_style}>coords_filters={self.coords_filters}</td></tr>\n"
+        )
         output.write("</table>\n")
         output.write("</li>\n")
         output.write("</ul>\n")
