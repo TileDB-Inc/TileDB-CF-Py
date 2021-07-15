@@ -1057,12 +1057,7 @@ class AttrCreator:
     filters: Optional[tiledb.FilterList] = None
 
     def __repr__(self):
-        filters_str = ""
-        if self.filters:
-            filters_str = ", filters=FilterList(["
-            for attr_filter in self.filters:
-                filters_str += repr(attr_filter) + ", "
-            filters_str += "])"
+        filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
         return (
             f"AttrCreator(name={self.name}, dtype='{self.dtype!s}', var={self.var}, "
             f"nullable={self.nullable}{filters_str})"
@@ -1070,12 +1065,7 @@ class AttrCreator:
 
     def html_summary(self) -> str:
         """Returns a string HTML summary of the :class:`AttrCreator`."""
-        filters_str = ""
-        if self.filters:
-            filters_str = ", filters=FilterList(["
-            for attr_filter in self.filters:
-                filters_str += repr(attr_filter) + ", "
-            filters_str += "])"
+        filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
         return (
             f" &rarr; tiledb.Attr(name={self.name}, dtype='{self.dtype!s}', "
             f"var={self.var}, nullable={self.nullable}{filters_str})"
