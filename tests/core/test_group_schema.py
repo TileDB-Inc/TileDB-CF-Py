@@ -14,7 +14,7 @@ _col = tiledb.Dim(name="cols", domain=(1, 8), tile=2, dtype=np.uint64)
 _attr0 = tiledb.Attr(name="attr", dtype=np.int32)
 _attr_a = tiledb.Attr(name="a", dtype=np.uint64)
 _attr_b = tiledb.Attr(name="b", dtype=np.float64)
-_attr_c = tiledb.Attr(name="c", dtype=np.dtype("U"))
+_attr_c = tiledb.Attr(name="c", dtype=np.bytes_)
 _attr_d = tiledb.Attr(name="d", dtype=np.uint64)
 _empty_array_schema = tiledb.ArraySchema(
     domain=tiledb.Domain(_dim0),
@@ -84,6 +84,21 @@ class TestGroupSchema:
                 arrays
             ), f"Get all arrays for attribute '{attr_name}' failed."
             assert group_schema.has_attr(attr_name)
+
+    @pytest.mark.parametrize("scenario", _scenarios)
+    def test_repr_html(self, scenario):
+        try:
+            tidylib = pytest.importorskip("tidylib")
+            group_schema = GroupSchema(
+                array_schemas=scenario["array_schemas"],
+                metadata_schema=scenario["metadata_schema"],
+                use_default_metadata_schema=False,
+            )
+            html_summary = group_schema._repr_html_()
+            _, errors = tidylib.tidy_fragment(html_summary)
+        except OSError:
+            pytest.skip("unable to import libtidy backend")
+        assert not bool(errors), str(errors)
 
     def test_not_equal(self):
         schema1 = GroupSchema({"A1": _array_schema_1}, None, False)

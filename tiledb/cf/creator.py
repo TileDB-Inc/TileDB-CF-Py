@@ -98,6 +98,37 @@ class DataspaceCreator:
             output.write("DataspaceCreator()")
         return output.getvalue()
 
+    def _repr_html_(self):
+        output = StringIO()
+        output.write(f"<h4>{self.__class__.__name__}</h4>\n")
+        output.write("<ul>\n")
+        output.write("<li>\n")
+        output.write("Shared Dimensions\n")
+        if self._dims:
+            output.write("<table>\n")
+            for dim in self._dims.values():
+                output.write(
+                    f'<tr><td style="text-align: left;">{dim.html_input_summary()} '
+                    f"&rarr; SharedDim({dim.html_output_summary()})</td>\n</tr>\n"
+                )
+            output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("<li>\n")
+        output.write("Array Creators\n")
+        for array_name, array_creator in self._array_creators.items():
+            output.write("<details>\n")
+            output.write("<summary>\n")
+            output.write(
+                f"{array_creator.__class__.__name__} <em>{array_name}</em>"
+                f"({', '.join(map(str, array_creator.dim_names))})\n"
+            )
+            output.write("</summary>\n")
+            output.write(f"{array_creator.html_summary()}\n")
+            output.write("</details>\n")
+        output.write("</li>\n")
+        output.write("</ul>\n")
+        return output.getvalue()
+
     def _add_shared_dimension(self, dim: SharedDim):
         try:
             self._check_new_dim_name(dim)
@@ -860,6 +891,51 @@ class ArrayCreator:
         """
         del self._attr_creators[attr_name]
 
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`ArrayCreator`."""
+        cell_style = 'style="text-align: left;"'
+        output = StringIO()
+        output.write("<ul>\n")
+        output.write("<li>\n")
+        output.write("Domain\n")
+        output.write("<table>\n")
+        for dim_creator in self._dim_creators:
+            output.write(
+                f"<tr><td {cell_style}>{dim_creator.html_summary()}</td></tr>\n"
+            )
+        output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("<li>\n")
+        output.write("Attributes\n")
+        output.write("<table>\n")
+        for attr_creator in self._attr_creators.values():
+            output.write(
+                f"<tr><td {cell_style}>{attr_creator.html_summary()}</td></tr>\n"
+            )
+        output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("<li>\n")
+        output.write("Array Properties\n")
+        output.write(
+            f"<table>\n"
+            f"<tr><td {cell_style}>cell_order={self.cell_order}</td></tr>\n"
+            f"<tr><td {cell_style}>tile_order={self.tile_order}</td></tr>\n"
+            f"<tr><td {cell_style}>capacity={self.capacity}</td></tr>\n"
+            f"<tr><td {cell_style}>sparse={self.sparse}</td></tr>\n"
+        )
+        if self.sparse:
+            output.write(
+                f"<tr><td {cell_style}>allows_duplicates"
+                f"={self.allows_duplicates}</td></tr>\n"
+            )
+        output.write(
+            f"<tr><td {cell_style}>coords_filters={self.coords_filters}</td></tr>\n"
+        )
+        output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("</ul>\n")
+        return output.getvalue()
+
     def set_attr_properties(self, attr_name: str, **properties):
         """Sets properties for an attribute in the array.
 
@@ -981,15 +1057,18 @@ class AttrCreator:
     filters: Optional[tiledb.FilterList] = None
 
     def __repr__(self):
-        filters_str = ""
-        if self.filters:
-            filters_str = ", filters=FilterList(["
-            for attr_filter in self.filters:
-                filters_str += repr(attr_filter) + ", "
-            filters_str += "])"
+        filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
         return (
             f"AttrCreator(name={self.name}, dtype='{self.dtype!s}', var={self.var}, "
             f"nullable={self.nullable}{filters_str})"
+        )
+
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`AttrCreator`."""
+        filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
+        return (
+            f" &rarr; tiledb.Attr(name={self.name}, dtype='{self.dtype!s}', "
+            f"var={self.var}, nullable={self.nullable}{filters_str})"
         )
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
@@ -1041,6 +1120,19 @@ class DimCreator:
     def domain(self) -> Tuple[Optional[DType], Optional[DType]]:
         """The (inclusive) interval on which the dimension is valid."""
         return self.base.domain
+
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`DimCreator`."""
+        filters_str = ""
+        if self.filters:
+            filters_str = ", filters=FilterList(["
+            for dim_filter in self.filters:
+                filters_str += repr(dim_filter) + ", "
+            filters_str += "])"
+        return (
+            f"{self.base.html_input_summary()} &rarr; tiledb.Dim("
+            f"{self.base.html_output_summary()}, tile={self.tile}{filters_str})"
+        )
 
     @property
     def name(self) -> str:
@@ -1095,6 +1187,14 @@ class SharedDim:
         return (
             f"SharedDim(name={self.name}, domain={self.domain}, dtype='{self.dtype!s}')"
         )
+
+    def html_input_summary(self) -> str:
+        """Returns a HTML string summarizing the input for the dimension."""
+        return ""
+
+    def html_output_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`SharedDim`."""
+        return f"name={self.name}, domain={self.domain}, dtype='{self.dtype!s}'"
 
     @property
     def is_data_dim(self) -> bool:

@@ -77,6 +77,16 @@ class ConvertNetCDFBase:
         converter.convert_to_group(uri)
         self.check_attrs(uri)
 
+    def test_converter(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        try:
+            tidylib = pytest.importorskip("tidylib")
+            html_summary = converter._repr_html_()
+            _, errors = tidylib.tidy_fragment(html_summary)
+        except OSError:
+            pytest.skip("unable to import libtidy backend")
+        assert not bool(errors), str(errors)
+
 
 class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     """NetCDF conversion test cases for a simple NetCDF file.
