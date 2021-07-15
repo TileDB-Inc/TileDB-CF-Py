@@ -699,13 +699,17 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                             unlimited_dim_size,
                             dim_dtype,
                         )
-                array_tiles = tiles_by_var.get(
-                    ncvar.name,
-                    tiles_by_dims.get(ncvar.dimensions, get_variable_chunks(ncvar)),
-                )
                 array_name = ncvar.name
                 is_sparse = any(
                     dim_name in coord_names for dim_name in ncvar.dimensions
+                )
+                array_tiles = (
+                    None
+                    if is_sparse
+                    else tiles_by_var.get(
+                        ncvar.name,
+                        tiles_by_dims.get(ncvar.dimensions, get_variable_chunks(ncvar)),
+                    )
                 )
                 converter.add_array(
                     array_name, ncvar.dimensions, tiles=array_tiles, sparse=is_sparse
@@ -785,10 +789,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         # Add arrays and attributes to the converter.
         for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
             is_sparse = any(dim_name in coord_names for dim_name in ncvar.dimensions)
+            chunks = None if is_sparse else autotiles.get(dim_names)
             converter.add_array(
                 f"array{count}",
                 dim_names,
-                tiles=autotiles.get(dim_names),
+                tiles=chunks,
                 sparse=is_sparse,
             )
             for var_name in dims_to_vars[dim_names]:
