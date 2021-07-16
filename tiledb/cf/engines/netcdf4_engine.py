@@ -505,11 +505,20 @@ class NetCDFArrayConverter(ArrayCreator):
                     f"Variable {attr_converter.input_name} not found in "
                     f"requested NetCDF group."
                 ) from err
-            data[attr_converter.name] = variable[...]
+            data[attr_converter.name] = (
+                variable[...].flatten() if self.sparse else variable[...]
+            )
             attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
             for meta_key in variable.ncattrs():
                 copy_metadata_item(attr_meta, variable, meta_key)
-        tiledb_array[tuple(dim_query)] = data
+        if self.sparse:
+            mesh = tuple(
+                dim_data.flatten()
+                for dim_data in np.meshgrid(*dim_query, indexing="ij")
+            )
+            tiledb_array[mesh] = data
+        else:
+            tiledb_array[tuple(dim_query)] = data
 
 
 class NetCDF4ConverterEngine(DataspaceCreator):
