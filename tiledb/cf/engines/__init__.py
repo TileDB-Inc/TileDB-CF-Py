@@ -23,7 +23,7 @@ def from_netcdf(
     tiles_by_dims: Optional[
         Dict[str, Dict[Sequence[str], Optional[Sequence[int]]]]
     ] = None,
-    coords_to_dims: bool = True,
+    coords_to_dims: bool = False,
     collect_attrs: bool = True,
     use_virtual_groups: bool = False,
 ):

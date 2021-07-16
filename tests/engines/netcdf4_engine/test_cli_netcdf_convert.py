@@ -16,7 +16,6 @@ def test_netcdf_convert_collect(tmpdir, simple1_netcdf_file):
             simple1_netcdf_file.filepath,
             "-o",
             uri,
-            "--coords-to-attrs",
             "--collect-attrs",
         ],
     )
@@ -42,7 +41,6 @@ def test_netcdf_convert_separate(tmpdir, simple1_netcdf_file):
             simple1_netcdf_file.filepath,
             "-o",
             uri,
-            "--coords-to-attrs",
             "--array-per-attr",
         ],
     )
