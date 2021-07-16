@@ -524,7 +524,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
-        coords_to_dims: bool = True,
+        coords_to_dims: bool = False,
         collect_attrs: bool = True,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a group in a NetCDF file.
@@ -571,7 +571,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
-        coords_to_dims: bool = True,
+        coords_to_dims: bool = False,
         collect_attrs: bool = True,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
@@ -628,7 +628,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
-        coords_to_dims: bool = True,
+        coords_to_dims: bool = False,
         scalar_array_name: str = "scalars",
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
@@ -712,7 +712,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
-        coords_to_dims: bool = True,
+        coords_to_dims: bool = False,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
