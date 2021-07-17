@@ -415,6 +415,25 @@ class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
         tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
         assert tiles == (8, 8)
 
+    @pytest.mark.parametrize("collect_attrs", [True, False])
+    def test_convert_sparse_arrays(self, tmpdir, netcdf_file, collect_attrs):
+        uri = str(tmpdir.mkdir("output").join("sparse_multidim_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=False,
+        )
+        for array_name in converter.array_names:
+            converter.set_array_properties(array_name, sparse=True)
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri, attr="x1") as group:
+            x1_result = group.array[:, :]["x1"]
+        x1_expected = np.arange(64, dtype=np.int32)
+        assert np.array_equal(x1_result, x1_expected)
+        with tiledb.cf.Group(uri, attr="x2") as group:
+            x2_result = group.array[:, :]["x2"]
+        x2_expected = np.arange(64, 128, dtype=np.int32)
+        assert np.array_equal(x2_result, x2_expected)
+
 
 class TestConvertNetCDFSingleVariableChunk(ConvertNetCDFBase):
     """NetCDF conversion test cases for a NetCDF file with two variables: one with the
