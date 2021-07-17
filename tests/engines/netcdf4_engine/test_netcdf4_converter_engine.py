@@ -209,6 +209,55 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
         assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
 
 
+class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a NetCDF file with a coordinate variable.
+
+    Dimensions:
+        x (4)
+    Variables:
+        real x (x)
+        real y (y)
+    """
+
+    name = "multicoords"
+    dimension_args = (("x", 2), ("y", 2))
+    variable_kwargs = (
+        {"varname": "x", "datatype": np.float64, "dimensions": ("x",)},
+        {"varname": "y", "datatype": np.float64, "dimensions": ("y",)},
+        {"varname": "z", "datatype": np.float64, "dimensions": ("x", "y")},
+    )
+    variable_data = {
+        "x": np.array([2.0, 5.0]),
+        "y": np.array([-1.0, 4.0]),
+        "z": np.array([[4.0, 25.0], [1.0, 16.0]]),
+    }
+    attr_to_var_map = {"x.data": "x", "y.data": "y", "z": "z"}
+
+    @pytest.mark.parametrize("collect_attrs", [True, False])
+    def test_convert_coordinate(self, netcdf_file, tmpdir, collect_attrs):
+        uri = str(tmpdir.mkdir("output").join("coordinate_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=collect_attrs,
+        )
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri, attr="z") as group:
+            schema = group.array.schema
+            assert schema.sparse
+            data = group.array[:]
+        result = tuple(zip(data["x"], data["y"], data["z"]))
+        expected = (
+            (2.0, -1.0, 4.0),
+            (2.0, 4.0, 25.0),
+            (5.0, -1.0, 1.0),
+            (5.0, 4.0, 16.0),
+        )
+        print(f"result: {result}")
+        print(f"expected: {expected}")
+        assert result == expected
+
+
 class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
     """NetCDF conversion test cases for a NetCDF file with an unlimited dimension.
 
@@ -365,6 +414,25 @@ class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
         group_schema = converter.to_schema()
         tiles = tuple(dim.tile for dim in group_schema["array0"].domain)
         assert tiles == (8, 8)
+
+    @pytest.mark.parametrize("collect_attrs", [True, False])
+    def test_convert_sparse_arrays(self, tmpdir, netcdf_file, collect_attrs):
+        uri = str(tmpdir.mkdir("output").join("sparse_multidim_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=False,
+        )
+        for array_name in converter.array_names:
+            converter.set_array_properties(array_name, sparse=True)
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri, attr="x1") as group:
+            x1_result = group.array[:, :]["x1"]
+        x1_expected = np.arange(64, dtype=np.int32)
+        assert np.array_equal(x1_result, x1_expected)
+        with tiledb.cf.Group(uri, attr="x2") as group:
+            x2_result = group.array[:, :]["x2"]
+        x2_expected = np.arange(64, 128, dtype=np.int32)
+        assert np.array_equal(x2_result, x2_expected)
 
 
 class TestConvertNetCDFSingleVariableChunk(ConvertNetCDFBase):
