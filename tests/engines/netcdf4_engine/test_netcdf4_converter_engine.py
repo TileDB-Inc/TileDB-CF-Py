@@ -246,14 +246,15 @@ class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
             schema = group.array.schema
             assert schema.sparse
             data = group.array[:]
-        print(data)
-        result = set(zip(data["x"], data["y"], data["z"]))
-        expected = {
+        result = tuple(zip(data["x"], data["y"], data["z"]))
+        expected = (
             (2.0, -1.0, 4.0),
             (2.0, 4.0, 25.0),
             (5.0, -1.0, 1.0),
             (5.0, 4.0, 16.0),
-        }
+        )
+        print(f"result: {result}")
+        print(f"expected: {expected}")
         assert result == expected
 
 
