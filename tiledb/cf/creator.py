@@ -98,6 +98,50 @@ class DataspaceCreator:
             output.write("DataspaceCreator()")
         return output.getvalue()
 
+    def _repr_html_(self):
+        output = StringIO()
+        output.write(f"<h4>{self.__class__.__name__}</h4>\n")
+        output.write("<ul>\n")
+        output.write("<li>\n")
+        output.write("Shared Dimensions\n")
+        if self._dims:
+            output.write("<table>\n")
+            for dim in self._dims.values():
+                output.write(
+                    f'<tr><td style="text-align: left;">{dim.html_input_summary()} '
+                    f"&rarr; SharedDim({dim.html_output_summary()})</td>\n</tr>\n"
+                )
+            output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("<li>\n")
+        output.write("Array Creators\n")
+        for array_name, array_creator in self._array_creators.items():
+            output.write("<details>\n")
+            output.write("<summary>\n")
+            output.write(
+                f"{array_creator.__class__.__name__} <em>{array_name}</em>"
+                f"({', '.join(map(str, array_creator.dim_names))})\n"
+            )
+            output.write("</summary>\n")
+            output.write(f"{array_creator.html_summary()}\n")
+            output.write("</details>\n")
+        output.write("</li>\n")
+        output.write("</ul>\n")
+        return output.getvalue()
+
+    def _add_shared_dimension(self, dim: SharedDim):
+        try:
+            self._check_new_dim_name(dim)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new dimension '{dim.name}'. {str(err)}"
+            ) from err
+        self._dims[dim.name] = dim
+        if dim.is_data_dim:
+            self._data_dim_dataspace_names[dataspace_name(dim.name)] = dim.name
+        else:
+            self._index_dim_dataspace_names[dataspace_name(dim.name)] = dim.name
+
     def _check_new_array_name(self, array_name: str):
         if array_name in self._array_creators:
             raise ValueError(f"An array with name '{array_name}' already exists.")
@@ -295,18 +339,7 @@ class DataspaceCreator:
         Raises:
             ValueError: Cannot create a new dimension with the provided ``dim_name``.
         """
-        shared_dim: SharedDim = SharedDim(dim_name, domain, np.dtype(dtype))
-        try:
-            self._check_new_dim_name(shared_dim)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new dimension '{dim_name}'. {str(err)}"
-            ) from err
-        self._dims[dim_name] = shared_dim
-        if shared_dim.is_data_dim:
-            self._data_dim_dataspace_names[dataspace_name(dim_name)] = dim_name
-        else:
-            self._index_dim_dataspace_names[dataspace_name(dim_name)] = dim_name
+        self._add_shared_dimension(SharedDim(dim_name, domain, np.dtype(dtype)))
 
     @property
     def array_names(self):
@@ -358,6 +391,64 @@ class DataspaceCreator:
     def dim_names(self):
         """A view of the names of dimensions in the CF dataspace."""
         return self._dims.keys()
+
+    def get_array_property(self, array_name: str, property_name: str) -> Any:
+        """Returns a requested property from an array in the CF dataspaces.
+
+        Valid properties are:
+
+            * ``cell_order``: The order in which TileDB stores the cells on disk inside
+              a tile. Valid values are: ``row-major`` (default) or ``C`` for row
+              major; ``col-major`` or ``F`` for column major; or ``Hilbert`` for a
+              Hilbert curve.
+            * ``tile_order``: The order in which TileDB stores the tiles on disk. Valid
+              values are: ``row-major`` or ``C`` (default) for row major; or
+              ``col-major`` or ``F`` for column major.
+            * ``capacity``: The number of cells in a data tile of a sparse fragment.
+            * ``tiles``: An optional ordered list of tile sizes for the dimensions of
+              the array. The length must match the number of dimensions in the array.
+            * ``coords_filters``: Filters for all dimensions that do not otherwise have
+              a specified filter list.
+            * ``dim_filters``: A dict from dimension name to a ``FilterList`` for
+              dimensions in the array. Overrides the values set in ``coords_filters``.
+            * ``offsets_filters``: Filters for the offsets for variable length
+              attributes or dimensions.
+            * ``allows_duplicates``: Specifies if multiple values can be stored at the
+              same coordinate. Only allowed for sparse arrays.
+            * ``sparse``: Specifies if the array is a sparse TileDB array (true) or
+              dense TileDB array (false).
+
+        Parameters:
+            array_name: Name of the array to get the property from.
+            property_name: Name of the requested property.
+        """
+        array_creator = self._array_creators[array_name]
+        return getattr(array_creator, property_name)
+
+    def get_attr_property(self, attr_name: str, property_name: str) -> Any:
+        """Returns a requested property for an attribute in the CF dataspace.
+
+        Valid properties are:
+            * ``name``: The name of the attribute.
+            * ``dtype``: Numpy dtype of the attribute.
+            * ``fill``: Fill value for unset cells.
+            * ``var``: Specifies if the attribute is variable length (automatic for
+              bytes/strings).
+            * ``nullable``: Specifies if the attribute is nullable using validity tiles.
+            * ``filters``: Specifies compression filters for the attributes.
+
+        Parameters:
+            attr_name: Name of the attribute to get the property from.
+            property_name: Name of the requested property.
+        """
+        try:
+            array_name = self._attr_to_array[attr_name]
+        except KeyError as err:
+            raise KeyError(
+                f"Attribute with name '{attr_name}' does not exist."
+            ) from err
+        array_creator = self._array_creators[array_name]
+        return array_creator.get_attr_property(attr_name, property_name)
 
     def remove_array(self, array_name: str):
         """Removes the specified array and all its attributes from the CF dataspace.
@@ -752,6 +843,25 @@ class ArrayCreator:
         """A static snapshot of the names of dimensions of the array."""
         return tuple(dim_creator.name for dim_creator in self._dim_creators)
 
+    def get_attr_property(self, attr_name: str, property_name: str) -> Any:
+        """Returns a requested property for an attribute in the array.
+
+        Valid properties are:
+            * ``name``: The name of the attribute.
+            * ``dtype``: Numpy dtype of the attribute.
+            * ``fill``: Fill value for unset cells.
+            * ``var``: Specifies if the attribute is variable length (automatic for
+              bytes/strings).
+            * ``nullable``: Specifies if the attribute is nullable using validity tiles.
+            * ``filters``: Specifies compression filters for the attributes.
+
+        Parameters:
+            attr_name: Name of the attribute to get the property from.
+            property_name: Name of requested property.
+        """
+        attr_creator = self._attr_creators[attr_name]
+        return getattr(attr_creator, property_name)
+
     @property
     def ndim(self) -> int:
         """Number of dimensions in the array."""
@@ -780,6 +890,51 @@ class ArrayCreator:
             attr_name: Name of the attribute that will be removed.
         """
         del self._attr_creators[attr_name]
+
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`ArrayCreator`."""
+        cell_style = 'style="text-align: left;"'
+        output = StringIO()
+        output.write("<ul>\n")
+        output.write("<li>\n")
+        output.write("Domain\n")
+        output.write("<table>\n")
+        for dim_creator in self._dim_creators:
+            output.write(
+                f"<tr><td {cell_style}>{dim_creator.html_summary()}</td></tr>\n"
+            )
+        output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("<li>\n")
+        output.write("Attributes\n")
+        output.write("<table>\n")
+        for attr_creator in self._attr_creators.values():
+            output.write(
+                f"<tr><td {cell_style}>{attr_creator.html_summary()}</td></tr>\n"
+            )
+        output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("<li>\n")
+        output.write("Array Properties\n")
+        output.write(
+            f"<table>\n"
+            f"<tr><td {cell_style}>cell_order={self.cell_order}</td></tr>\n"
+            f"<tr><td {cell_style}>tile_order={self.tile_order}</td></tr>\n"
+            f"<tr><td {cell_style}>capacity={self.capacity}</td></tr>\n"
+            f"<tr><td {cell_style}>sparse={self.sparse}</td></tr>\n"
+        )
+        if self.sparse:
+            output.write(
+                f"<tr><td {cell_style}>allows_duplicates"
+                f"={self.allows_duplicates}</td></tr>\n"
+            )
+        output.write(
+            f"<tr><td {cell_style}>coords_filters={self.coords_filters}</td></tr>\n"
+        )
+        output.write("</table>\n")
+        output.write("</li>\n")
+        output.write("</ul>\n")
+        return output.getvalue()
 
     def set_attr_properties(self, attr_name: str, **properties):
         """Sets properties for an attribute in the array.
@@ -902,15 +1057,18 @@ class AttrCreator:
     filters: Optional[tiledb.FilterList] = None
 
     def __repr__(self):
-        filters_str = ""
-        if self.filters:
-            filters_str = ", filters=FilterList(["
-            for attr_filter in self.filters:
-                filters_str += repr(attr_filter) + ", "
-            filters_str += "])"
+        filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
         return (
             f"AttrCreator(name={self.name}, dtype='{self.dtype!s}', var={self.var}, "
             f"nullable={self.nullable}{filters_str})"
+        )
+
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`AttrCreator`."""
+        filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
+        return (
+            f" &rarr; tiledb.Attr(name={self.name}, dtype='{self.dtype!s}', "
+            f"var={self.var}, nullable={self.nullable}{filters_str})"
         )
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
@@ -962,6 +1120,19 @@ class DimCreator:
     def domain(self) -> Tuple[Optional[DType], Optional[DType]]:
         """The (inclusive) interval on which the dimension is valid."""
         return self.base.domain
+
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`DimCreator`."""
+        filters_str = ""
+        if self.filters:
+            filters_str = ", filters=FilterList(["
+            for dim_filter in self.filters:
+                filters_str += repr(dim_filter) + ", "
+            filters_str += "])"
+        return (
+            f"{self.base.html_input_summary()} &rarr; tiledb.Dim("
+            f"{self.base.html_output_summary()}, tile={self.tile}{filters_str})"
+        )
 
     @property
     def name(self) -> str:
@@ -1016,6 +1187,14 @@ class SharedDim:
         return (
             f"SharedDim(name={self.name}, domain={self.domain}, dtype='{self.dtype!s}')"
         )
+
+    def html_input_summary(self) -> str:
+        """Returns a HTML string summarizing the input for the dimension."""
+        return ""
+
+    def html_output_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`SharedDim`."""
+        return f"name={self.name}, domain={self.domain}, dtype='{self.dtype!s}'"
 
     @property
     def is_data_dim(self) -> bool:

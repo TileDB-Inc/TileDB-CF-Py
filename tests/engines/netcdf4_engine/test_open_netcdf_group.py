@@ -4,18 +4,17 @@ import pytest
 
 from tiledb.cf.engines.netcdf4_engine import open_netcdf_group
 
+netCDF4 = pytest.importorskip("netCDF4")
+
 
 def test_open_netcdf_group_with_group(tmpdir):
-    netCDF4 = pytest.importorskip("netCDF4")
-    filepath = str(tmpdir.mkdir("open_group").join("simple_dataset.nc"))
-    with netCDF4.Dataset(filepath, mode="w") as dataset:
+    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
         with open_netcdf_group(dataset) as group:
             assert isinstance(group, netCDF4.Dataset)
             assert group == dataset
 
 
 def test_open_netcdf_group_with_file(tmpdir):
-    netCDF4 = pytest.importorskip("netCDF4")
     filepath = str(tmpdir.mkdir("open_group").join("simple_dataset.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         group1 = dataset.createGroup("group1")

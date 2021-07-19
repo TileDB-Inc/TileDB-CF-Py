@@ -29,12 +29,12 @@ class TestArrayMetadata:
             meta = ArrayMetadata(array.meta)
             assert len(meta) == 0
             assert "__tiledb_attr.attr" not in meta
-        with tiledb.DenseArray(array_uri, mode="w") as array:
+        with tiledb.DenseArray(array_uri, mode="w", timestamp=1) as array:
             meta = ArrayMetadata(array.meta)
             meta["key0"] = "array value"
             meta["key1"] = 10
             meta["key2"] = 0.1
-        with tiledb.DenseArray(array_uri, mode="w") as array:
+        with tiledb.DenseArray(array_uri, mode="w", timestamp=2) as array:
             meta = ArrayMetadata(array.meta)
             del meta["key2"]
         with tiledb.DenseArray(array_uri, mode="r") as array:

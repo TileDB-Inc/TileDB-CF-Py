@@ -2,8 +2,8 @@
 # Licensed under the MIT License.
 
 import pytest
-import xarray as xr
 
+xr = pytest.importorskip("xarray")  # isort:skip
 dask = pytest.importorskip("dask")  # isort:skip
 distributed = pytest.importorskip("distributed")  # isort:skip
 
@@ -12,6 +12,7 @@ from distributed.utils_test import cluster, loop
 from xarray.tests import assert_allclose
 
 da = pytest.importorskip("dask.array")
+
 loop = loop  # loop is an imported fixture, which flake8 has issues ack-ing
 
 

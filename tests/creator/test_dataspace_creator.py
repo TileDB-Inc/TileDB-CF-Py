@@ -39,6 +39,15 @@ class TestDataspaceCreatorExample1:
     def test_repr(self, dataspace_creator):
         assert isinstance(repr(dataspace_creator), str)
 
+    def test_repr_html(self, dataspace_creator):
+        try:
+            tidylib = pytest.importorskip("tidylib")
+            html_summary = dataspace_creator._repr_html_()
+            _, errors = tidylib.tidy_fragment(html_summary)
+        except OSError:
+            pytest.skip("unable to import libtidy backend")
+        assert not bool(errors)
+
     def test_array_names(self, dataspace_creator):
         assert set(dataspace_creator.array_names) == {"A1", "A2", "A3"}
 
@@ -56,6 +65,14 @@ class TestDataspaceCreatorExample1:
             "pressure.index",
             "temperature",
         }
+
+    def test_get_array_property(self, dataspace_creator):
+        tiles = dataspace_creator.get_array_property("A1", "tiles")
+        assert tiles == (2,)
+
+    def test_get_attr_property(self, dataspace_creator):
+        dtype = dataspace_creator.get_attr_property("b", "dtype")
+        assert dtype == np.dtype(np.float64)
 
     def test_to_schema(self, dataspace_creator):
         group_schema = dataspace_creator.to_schema()
@@ -243,6 +260,12 @@ def test_add_dim_coord_axis_data_name_exists_error():
     creator.add_attr("coord.index", "array1", np.float64)
     with pytest.raises(NotImplementedError):
         creator.add_dim("coord.data", (1, 4), np.uint64)
+
+
+def test_get_property_attr_key_error():
+    creator = DataspaceCreator()
+    with pytest.raises(KeyError):
+        creator.get_attr_property("a1", "nullable")
 
 
 def test_remove_empty_array():
