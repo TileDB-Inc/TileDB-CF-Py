@@ -1,8 +1,8 @@
-# TileDB CF Dataspace Specification
+# TileDB CF Dataspace
 
 :information_source: **Notes:**
 
-* The current TileDB-CF format version number is **0.1.0**.
+* The current TileDB-CF format version number is **0.2.0**.
 
 ## Introduction
 
@@ -36,20 +36,17 @@ A TileDB CF dataspace is a TileDB group with arrays, attributes, and dimensions 
 ### Terminology
 
 * **Dataspace name**: The name of an attribute or dimension stripped of an optional suffix of `.index` or `.data`.
-* **Index dimension**: A TileDB dimension with an integer data type and domain with `0` as its lower bound.
-* **Data dimension**: Any TileDB dimension that is not an index dimension.
 * **Collection of dimensions**: A set of TileDB dimensions with the same name, data type, and domain.
 
 ### CF Dataspace
 
-A CF Dataspace is a TileDB group that follows certain requirements in order to provide additional relational context to dimensions and attributes using naming conventions. In a CF Dataspace, attributes within the entire group are unique; an index dimension that shares that same dataspace name as an attribute is an indexer for that attribute; and a data dimension that shares the same name as an attribute is a reference to the same data.
+A CF Dataspace is a TileDB group that follows certain requirements in order to provide additional relational context to dimensions and attributes using naming conventions. In a CF Dataspace, TileDB attributes within the entire group are unique and TileDB dimensions that share the same name are considered the same object.
 
 #### Requirements for Attributes and Dimensions
 
 1. All attributes and dimension must be named (there must not be any anonymous attributes or dimensions).
-2. All dimensions that share a name must belong to the same collection (they must have the same domain and data type), and for any given dataspace name there may be at most one collection of index dimensions and one collection of data dimensions with that dataspace name.
-4. All attributes must have a unique dataspace name.
-5. If an attribute and data dimension share the same dataspace name, they must share the same full name, data type, and variability. The attribute must have only 1 cell.
+2. All dimensions that share a name must belong to the same collection (they must have the same domain and data type).
+3. All attributes must have a unique dataspace name.
 
 #### Requirements for Metadata
 
@@ -57,11 +54,14 @@ A CF Dataspace is a TileDB group that follows certain requirements in order to p
 2. Attribute metadata is stored in the same array the attribute is stored in. The metadata key must use the prefix `__tiledb_attr.{attr_name}.` where `{attr_name}` is the full name of the attribute.
 3. If the metadata key `_FillValue` exists for an attribute; it must have the same value as the fill value for the attribute.
 
-### Indexable CF Dataspace
+### Simple CF Dataspace
 
-A CF Dataspace is said to be indexable if it satisfies all requirements of a CF Dataspace along with the following condition:
+A simple CF dataspace is a direct implementation of the NetCDF data model in TileDB. It follows the same rules as a CF dataspace along with the following requirement:
 
-* All data dimensions must have an axis label that maps an index dimension with the same dataspace name as the data dimension to an attribute with the same full name and data type as the data dimension.
+#### Additional Requirements for Dimensions
+
+1. All dimensions use integer indices and have a domain with lower bound of 0.
+2. All collections of dimensions must have a unique dataspace name.
 
 ## Compatibility with the NetCDF Data Model
 
@@ -69,30 +69,27 @@ The CF Dataspace model supports the NetCDF data model by mapping:
 
 * NetCDF groups to TileDB groups;
 * NetCDF dimensions to TileDB dimensions;
-* NetCDF variables to TileDB attributes;
+* NetCDF variables to TileDB attributes or TileDB dimensions;
 * NetCDF attributes to TileDB array metadata.
 
-The conversion from NetCDF to TileDB is one-to-many. For example, NetCDF variables that share the same NetCDF dimensions can be split into multiple TileDB arrays or be combined into a single TileDB array. This is to allow flexibility when picking an appropriate TileDB layout that will still be able to interface with tooling that uses the NetCDF data model.
+### Read a Simple TileDB CF Dataspaces into the NetCDF Data Model
 
-### Direct Conversion of a NetCDF File to TileDB
+A simple TileDB CF Dataspace maps directly to the NetCDF Data Model.
 
-This is a suggestion on how to convert a NetCDF file into a collection of TileDB CF Dataspaces in a way that preserves the NetCDF data model. Alternative conversion schemes may be appropriate depending on factors including the sparsity of the data, planned reading/writing access, and plans to combine multiple datasets. In some cases, it may be worth moving away from the NetCDF data model entirely, and refactoring the data storage to something that is more natural for its intended use case. This is especially true of datasets that consist of large amounts of sparse data.
+To read TileDB dimensions as NetCDF dimensions:
 
-1. Recursively map each NetCDF group to a TileDB CF Dataspace preserving group hierarchy.
-2. In each NetCDF group, collect variables in a group defined on the same dimensions into an arbitrarily named array defined using the following.
-    * Each NetCDF dimension is mapped to a TileDB dimension with an integer data type and domain `[0, size-1]` where size is the NetCDF dimension size for standard dimensions and a sufficiently large value for unlimited dimensions.
-    * Each variable is mapped to an attribute in the array. If one of the dimensions is unlimited, make sure at least one of the following is true: each attribute is nullable; each attribute has an appropriate fill value; or the array is sparse. If the variable has the same name as one of the dimensions the variable is defined on, add the suffix `.data` to the TileDB attribute.
-3. Set tile sizes, sparse/dense, filters, and other TileDB properties appropriately based on planned data access.
+* Use the dataspace name for the NetCDF dimension.
+* Treat TileDB dimensions with the same name as the same NetCDF dimension.
 
-### Read an Indexable TileDB CF Dataspaces into the NetCDF Data Model
+To read TileDB attributes as NetCDF variables:
 
-This is a suggestion on how to convert a collection of indexable TileDB CF dataspaces from TileDB into a tool that uses a NetCDF data model for its data storage or backend. It can be modified as appropriate to work best with a particular tool.
+* Use the dataspace name for the NetCDF variable.
 
-1. Recursively map each TileDB CF Dataspace to a NetCDF group preserving group hierachry.
-2. Map each index dimension in TileDB to a NetCDF dimension where:
-    * the name and size of the NetCDF dimension is the dataspace name and size of the TileDB dimension.
-3. Map each attribute to a variable where:
-    * the dimension names of the NetCDF variable is the dimension dataspace names of the array the TileDB attribute is stored in.
+To read TileDB metadata as NetCDF attributes:
+
+* Assign metadata in the group metadata array as group attributes.
+* Assign metadata with the `__tiledb_attr.{attr_name}.` prefix to the TileDB attribute with that name.
+
 
 ### Supported NetCDF Features
 
