@@ -48,6 +48,23 @@ class NetCDFDimConverter(ABC):
                 of a numpy array if sparse is ``True`` and a slice otherwise.
         """
 
+    @abstractmethod
+    def get_values_mf(
+        self, netcdf_mf: netCDF4.MFDataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
+        """Returns the values of the NetCDF dimension that is being copied, or None if
+        the dimension is of size 0.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the dimension values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
+        """
+
 
 @dataclass
 class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
@@ -342,6 +359,7 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
             f"the NetCDF files '{netcdf_mf.path}'."
         )
 
+
 @dataclass
 class NetCDFScalarDimConverter(SharedDim, NetCDFDimConverter):
     """Data for converting from a NetCDF dimension to a TileDB dimension.
@@ -366,6 +384,24 @@ class NetCDFScalarDimConverter(SharedDim, NetCDFDimConverter):
 
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
+        """Get dimension values from a NetCDF group.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the dimension values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
+        """
+        if sparse:
+            return np.array([0])
+        return slice(1)
+
+    def get_values_mf(
+        self, netcdf_mf: netCDF4.MFDataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
         """Get dimension values from a NetCDF group.
 
@@ -630,11 +666,21 @@ class NetCDFArrayConverter(ArrayCreator):
                     f"Variable {attr_converter.input_name} not found in "
                     f"requested NetCDF files."
                 ) from err
-            data[attr_converter.name] = variable_mf[...]
+            data[attr_converter.name] = (
+                variable_mf[...].flatten() if self.sparse else variable_mf[...]
+            )
             attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
             for meta_key in variable.ncattrs():
                 copy_metadata_item(attr_meta, variable, meta_key)
-        tiledb_array[tuple(dim_query)] = data
+        if self.sparse:
+            mesh = tuple(
+                dim_data.flatten()
+                for dim_data in np.meshgrid(*dim_query, indexing="ij")
+            )
+            tiledb_array[mesh] = data
+        else:
+            tiledb_array[tuple(dim_query)] = data
+
 
 class NetCDF4ConverterEngine(DataspaceCreator):
     """Converter for NetCDF to TileDB using netCDF4."""
@@ -1233,7 +1279,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
-            input_file: If not ``None``, the NetCDF file or list of filesto copy data from.
+            input_file: If not ``None``, the NetCDF file or list of files
+                to copy data from.
                 This will not be used if ``netcdf_group`` is not ``None``.
             input_group_path: If not ``None``, the path to the NetCDF group to copy data
                 from.
