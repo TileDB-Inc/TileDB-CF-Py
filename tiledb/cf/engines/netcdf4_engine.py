@@ -148,6 +148,42 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
             return None
         return variable[:]
 
+    def get_values_mf(self, netcdf_mf: netCDF4.MFDataset, sparse: bool):
+        """Returns the values of the NetCDF coordinate that is being copied, or
+        None if the coordinate is of size 0.
+
+        Parameters:
+            netcdf_mf: The NetCDF multi-file dataset to copy data from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The coordinate values needed for querying the TileDB dimension in the
+                form a numpy array.
+        """
+        if not sparse:
+            raise NotImplementedError(
+                "Support for copying NetCDF coordinates to dense arrays has not "
+                "been implemented."
+            )
+        try:
+            variable = netcdf_mf.variables[self.input_name]
+        except KeyError as err:
+            raise KeyError(
+                f"The variable '{self.input_name}' was not found in the provided "
+                f"NetCDF group. Cannot copy date from variable '{self.input_name}' to "
+                f"TileDB dimension '{self.name}'."
+            ) from err
+        if variable.ndim != 1:
+            raise ValueError(
+                f"The variable '{self.input_name}' with {variable.ndim} dimensions is "
+                f"not a valid NetCDF coordinate. Cannot copy data from variable "
+                f"'{self.input_name}' to TileDB dimension '{self.name}'."
+            )
+        if variable.shape[0] < 1:
+            return None
+        return variable[:]
+
     @property
     def is_index_dim(self) -> bool:
         return False
@@ -262,6 +298,49 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
             f"the NetCDF group '{netcdf_group.path}' or its parent groups."
         )
 
+    def get_values_mf(
+        self, netcdf_mf: netCDF4.MFDataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
+
+        """Returns the values of the NetCDF dimension that is being copied, or None if
+        the dimension is of size 0.
+
+        Parameters:
+            netcdf_mf: The NetCDF multi-file dataset to copy data from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
+        """
+        mf = netcdf_mf
+        while mf is not None:
+            if self.input_name in mf.dimensions:
+                dim = mf.dimensions[self.input_name]
+                var = mf.variables[self.input_name]
+                if var.shape[0] == 0:
+                    raise ValueError(
+                        f"Cannot copy dimension data from NetCDF dimension "
+                        f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
+                        f"NetCDF dimension is of size 0; there is no data to copy."
+                    )
+                if self.domain[1] is not None and var.shape[0] - 1 > self.domain[1]:
+                    raise IndexError(
+                        f"Cannot copy dimension data from NetCDF dimension "
+                        f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
+                        f"NetCDF dimension size of {dim.size} does not fit in the "
+                        f"domain {self.domain} of the TileDB dimension."
+                    )
+                if sparse:
+                    return np.arange(var.shape[0])
+                return slice(var.shape[0])
+            mf = mf.parent
+        raise KeyError(
+            f"Unable to copy NetCDF dimension '{self.input_name}' to the TileDB "
+            f"dimension '{self.name}'. No NetCDF dimension with that name exists in "
+            f"the NetCDF files '{netcdf_mf.path}'."
+        )
 
 @dataclass
 class NetCDFScalarDimConverter(SharedDim, NetCDFDimConverter):
@@ -486,7 +565,7 @@ class NetCDFArrayConverter(ArrayCreator):
 
         Parameters:
             netcdf_group: The NetCDF group to copy data from.
-            tiledb_arary: The TileDB array to copy data into. The array must be open
+            tiledb_array: The TileDB array to copy data into. The array must be open
                 in write mode.
         """
         dim_query = []
@@ -520,6 +599,42 @@ class NetCDFArrayConverter(ArrayCreator):
         else:
             tiledb_array[tuple(dim_query)] = data
 
+    def copy_mf(
+        self,
+        netcdf_group: netCDF4.Group,
+        netcdf_mf: netCDF4.MFDataset,
+        tiledb_array: tiledb.Array,
+    ):
+        """Copies data from a list of NetCDF files to a TileDB CF array.
+
+        Parameters:
+            netcdf_group: The NetCDF group to copy data from.
+            netcdf_mf: The NetCDF multi-file dataset to copy data from.
+            tiledb_array: The TileDB array to copy data into. The array must be open
+                in write mode.
+        """
+        dim_query = []
+        for dim_creator in self._dim_creators:
+            assert isinstance(dim_creator.base, NetCDFDimConverter)
+            dim_query.append(
+                dim_creator.base.get_values_mf(netcdf_mf, sparse=self.sparse)
+            )
+        data = {}
+        for attr_converter in self._attr_creators.values():
+            assert isinstance(attr_converter, NetCDFVariableConverter)
+            try:
+                variable = netcdf_group.variables[attr_converter.input_name]
+                variable_mf = netcdf_mf.variables[attr_converter.input_name]
+            except KeyError as err:
+                raise KeyError(
+                    f"Variable {attr_converter.input_name} not found in "
+                    f"requested NetCDF files."
+                ) from err
+            data[attr_converter.name] = variable_mf[...]
+            attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
+            for meta_key in variable.ncattrs():
+                copy_metadata_item(attr_meta, variable, meta_key)
+        tiledb_array[tuple(dim_query)] = data
 
 class NetCDF4ConverterEngine(DataspaceCreator):
     """Converter for NetCDF to TileDB using netCDF4."""
@@ -527,7 +642,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     @classmethod
     def from_file(
         cls,
-        input_file: Union[str, Path],
+        input_file: Union[str, Path, list],
         group_path: str = "/",
         unlimited_dim_size: int = 10000,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
@@ -582,7 +697,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         coords_to_dims: bool = False,
         collect_attrs: bool = True,
-        default_input_file: Optional[Union[str, Path]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
         default_group_path: Optional[str] = None,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
@@ -639,7 +754,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         coords_to_dims: bool = False,
         scalar_array_name: str = "scalars",
-        default_input_file: Optional[Union[str, Path]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
         default_group_path: Optional[str] = None,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
@@ -722,7 +837,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         coords_to_dims: bool = False,
-        default_input_file: Optional[Union[str, Path]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
         default_group_path: Optional[str] = None,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
@@ -799,7 +914,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
 
     def __init__(
         self,
-        default_input_file: Optional[Union[str, Path]] = None,
+        default_input_file: Optional[Union[str, Path, list]] = None,
         default_group_path: Optional[str] = None,
     ):
         self.default_input_file = default_input_file
@@ -1033,7 +1148,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
+        input_file: Optional[Union[str, Path, list]] = None,
         input_group_path: Optional[str] = None,
     ):
         """Creates a TileDB group and its arrays from the defined CF dataspace and
@@ -1066,7 +1181,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
+        input_file: Optional[Union[str, Path, list]] = None,
         input_group_path: Optional[str] = None,
     ):
         """Creates a TileDB group and its arrays from the defined CF dataspace and
@@ -1099,7 +1214,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
+        input_file: Optional[Union[str, Path, list]] = None,
         input_group_path: Optional[str] = None,
     ):
         """Copies data from a NetCDF group to a TileDB CF dataspace.
@@ -1118,8 +1233,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
-            input_file: If not ``None``, the NetCDF file to copy data from. This will
-                not be used if ``netcdf_group`` is not ``None``.
+            input_file: If not ``None``, the NetCDF file or list of filesto copy data from.
+                This will not be used if ``netcdf_group`` is not ``None``.
             input_group_path: If not ``None``, the path to the NetCDF group to copy data
                 from.
             use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
@@ -1151,7 +1266,13 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     with Group(
                         output_uri, mode="w", array=array_name, key=key, ctx=ctx
                     ) as tiledb_group:
-                        array_creator.copy(netcdf_group, tiledb_group.array)
+                        if isinstance(input_file, list):
+                            netcdf_mf = netCDF4.MFDataset(input_file)
+                            array_creator.copy_mf(
+                                netcdf_group, netcdf_mf, tiledb_group.array
+                            )
+                        else:
+                            array_creator.copy(netcdf_group, tiledb_group.array)
 
     def copy_to_virtual_group(
         self,
@@ -1159,7 +1280,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
+        input_file: Optional[Union[str, Path, list]] = None,
         input_group_path: Optional[str] = None,
     ):
         """Copies data from a NetCDF group to a TileDB CF dataspace.
@@ -1246,7 +1367,7 @@ def get_variable_chunks(variable: netCDF4.Variable) -> Optional[Tuple[int, ...]]
 @contextmanager
 def open_netcdf_group(
     group: Optional[Union[netCDF4.Dataset, netCDF4.Group]] = None,
-    input_file: Optional[Union[str, Path]] = None,
+    input_file: Optional[Union[str, Path, list]] = None,
     group_path: Optional[str] = None,
 ):
     """Context manager for opening a NetCDF group.
@@ -1277,7 +1398,10 @@ def open_netcdf_group(
                 "A group path must be provided; no default group path was set. Use "
                 "``'/'`` for the root group."
             )
-        root_group = netCDF4.Dataset(input_file)
+        if isinstance(input_file, list):
+            root_group = netCDF4.Dataset(input_file[0])
+        else:
+            root_group = netCDF4.Dataset(input_file)
         root_group.set_auto_maskandscale(False)
         try:
             netcdf_group = root_group
