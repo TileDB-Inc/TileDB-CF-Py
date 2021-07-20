@@ -412,3 +412,11 @@ def test_set_attr_property_no_attr_err():
     creator = DataspaceCreator()
     with pytest.raises(KeyError):
         creator.set_attr_properties("x1", fill=-1)
+
+
+def test_dataspace_creator_name():
+    from tiledb.cf.creator import dataspace_name
+
+    assert dataspace_name("name.index") == "name"
+    assert dataspace_name("name.data") == "name"
+    assert dataspace_name("name.other") == "name.other"
