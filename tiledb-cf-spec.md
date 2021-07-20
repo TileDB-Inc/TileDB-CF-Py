@@ -56,7 +56,7 @@ A CF Dataspace is a TileDB group that follows certain requirements in order to p
 
 ### Simple CF Dataspace
 
-A simple CF dataspace is a direct implementation of the NetCDF data model in TileDB. It follows the same rules as a CF dataspace along with the following requirement:
+A simple CF dataspace is a direct implementation of the NetCDF data model in TileDB. It follows the same rules as a CF dataspace along with the following requirements:
 
 #### Additional Requirements for Dimensions
 
