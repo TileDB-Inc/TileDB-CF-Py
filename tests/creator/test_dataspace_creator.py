@@ -162,20 +162,6 @@ def test_add_attr_name_exists_error():
         creator.add_attr("attr1", "array2", np.float64)
 
 
-def test_add_attr_dim_coord_name_exists_error():
-    creator = DataspaceCreator()
-    creator.add_dim("coord", (1, 4), np.uint64)
-    creator.add_dim("row", (0, 3), np.int64)
-    creator.add_array(
-        "array1",
-        [
-            "row",
-        ],
-    )
-    with pytest.raises(NotImplementedError):
-        creator.add_attr("coord", "array1", np.float64)
-
-
 def test_add_attr_dim_name_in_array_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (0, 3), np.uint64)
@@ -204,62 +190,11 @@ def test_add_attr_axis_data_coord_exists_error():
         creator.add_attr("attr1.data", "array2", np.float64)
 
 
-def test_add_attr_index_axis_coord_exists_error():
-    creator = DataspaceCreator()
-    creator.add_dim("coord.index", (1, 4), np.uint64)
-    creator.add_dim("row", (0, 3), np.int64)
-    creator.add_array(
-        "array1",
-        [
-            "row",
-        ],
-    )
-    with pytest.raises(NotImplementedError):
-        creator.add_attr("coord.data", "array1", np.float64)
-
-
 def test_add_dim_name_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (1, 4), np.uint64)
     with pytest.raises(ValueError):
         creator.add_dim("row", (0, 3), np.int64)
-
-
-def test_add_dim_index_dataspace_name_exists_error():
-    creator = DataspaceCreator()
-    creator.add_dim("row", (0, 3), np.uint64)
-    with pytest.raises(ValueError):
-        creator.add_dim("row.index", (0, 7), np.uint64)
-
-
-def test_add_dim_attr_coord_name_exists_error():
-    creator = DataspaceCreator()
-    creator.add_dim("row", (0, 3), np.int64)
-    creator.add_array(
-        "array1",
-        [
-            "row",
-        ],
-    )
-    creator.add_attr("coord", "array1", np.float64)
-    with pytest.raises(NotImplementedError):
-        creator.add_dim("coord", (1, 4), np.uint64)
-
-
-def test_add_dim_coord_axis_index_name_exists_error():
-    creator = DataspaceCreator()
-    creator.add_dim("pressure.index", (1, 4), np.uint64)
-    with pytest.raises(ValueError):
-        creator.add_dim("pressure", (0.0, 100.0), np.float64)
-
-
-def test_add_dim_coord_axis_data_name_exists_error():
-    creator = DataspaceCreator()
-    creator.add_dim("row", (0, 3), np.int64)
-    creator.add_array("array1", ["row"])
-    creator.add_attr("coord.index", "array1", np.float64)
-    with pytest.raises(NotImplementedError):
-        creator.add_dim("coord.data", (1, 4), np.uint64)
 
 
 def test_get_property_attr_key_error():
