@@ -79,8 +79,6 @@ class DataspaceCreator:
         self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
         self._attr_to_array: Dict[str, str] = {}
         self._attr_dataspace_names: Dict[str, str] = {}
-        self._data_dim_dataspace_names: Dict[str, str] = {}
-        self._index_dim_dataspace_names: Dict[str, str] = {}
 
     def __repr__(self):
         output = StringIO()
@@ -137,10 +135,6 @@ class DataspaceCreator:
                 f"Cannot add new dimension '{dim.name}'. {str(err)}"
             ) from err
         self._dims[dim.name] = dim
-        if dim.is_data_dim:
-            self._data_dim_dataspace_names[dataspace_name(dim.name)] = dim.name
-        else:
-            self._index_dim_dataspace_names[dataspace_name(dim.name)] = dim.name
 
     def _check_new_array_name(self, array_name: str):
         if array_name in self._array_creators:
@@ -157,44 +151,12 @@ class DataspaceCreator:
                 f"An attribute named '{self._attr_dataspace_names[ds_name]}' with "
                 f"dataspace name '{ds_name}' already exists."
             )
-        if ds_name in self._data_dim_dataspace_names:
-            raise NotImplementedError(
-                f"A data dimension with dataspace name '{ds_name}' already exists. "
-                f"Support for data dimension and attributes with the same name is "
-                f"not yet implemented."
-            )
 
     def _check_new_dim_name(self, dim: SharedDim):
         if dim.name in self._dims and dim != self._dims[dim.name]:
             raise ValueError(
                 f"A different dimension with name '{dim.name}' already exists."
             )
-        ds_name = dataspace_name(dim.name)
-        if dim.is_data_dim:
-            if (
-                ds_name in self._data_dim_dataspace_names
-                and dim.name != self._data_dim_dataspace_names.get(ds_name)
-            ):
-                raise ValueError(
-                    f"A data dimension named '{self._data_dim_dataspace_names[ds_name]}"
-                    f"' with dataspace name '{ds_name}' already exists."
-                )
-            if ds_name in self._attr_dataspace_names:
-                raise NotImplementedError(
-                    f"An attribute with dataspace name '{ds_name}' already exists. "
-                    f"Support for data dimension and attributes with the same name is "
-                    f"not yet implemented."
-                )
-        else:
-            if (
-                ds_name in self._index_dim_dataspace_names
-                and dim.name != self._index_dim_dataspace_names.get(ds_name)
-            ):
-                raise ValueError(
-                    f"An index dimension named "
-                    f"'{self._index_dim_dataspace_names[ds_name]}' with dataspace name "
-                    f"'{ds_name}' already exists."
-                )
 
     def add_array(
         self,
@@ -497,11 +459,7 @@ class DataspaceCreator:
                 f"Cannot remove dimension '{dim_name}'. Dimension is being used in "
                 f"arrays: {array_list}."
             )
-        dim = self._dims.pop(dim_name)
-        if dim.is_data_dim:
-            del self._data_dim_dataspace_names[dataspace_name(dim.name)]
-        else:
-            del self._index_dim_dataspace_names[dataspace_name(dim.name)]
+        del self._dims[dim_name]
 
     def rename_array(self, original_name: str, new_name: str):
         """Renames an array in the CF dataspace.
@@ -579,12 +537,6 @@ class DataspaceCreator:
             )
         self._dims[new_name] = self._dims.pop(original_name)
         self._dims[new_name].name = new_name
-        if dim.is_data_dim:
-            del self._data_dim_dataspace_names[dataspace_name(original_name)]
-            self._data_dim_dataspace_names[dataspace_name(new_name)] = new_name
-        else:
-            del self._index_dim_dataspace_names[dataspace_name(original_name)]
-            self._index_dim_dataspace_names[dataspace_name(new_name)] = new_name
 
     def set_array_properties(self, array_name: str, **properties):
         """Sets properties for an array in the CF dataspace.
@@ -1195,16 +1147,6 @@ class SharedDim:
     def html_output_summary(self) -> str:
         """Returns a string HTML summary of the :class:`SharedDim`."""
         return f"name={self.name}, domain={self.domain}, dtype='{self.dtype!s}'"
-
-    @property
-    def is_data_dim(self) -> bool:
-        """Returns if the :class:`SharedDim` is a 'data dimension'
-
-        A data dimension is a dimension that is not an integer type or starts at a value
-        other than zero. This is compared to an 'index axis' that is a simple integer
-        index with default offset.
-        """
-        return not self.is_index_dim
 
     @property
     def is_index_dim(self) -> bool:
