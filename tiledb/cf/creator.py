@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import warnings
 from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 from io import StringIO
@@ -414,6 +415,17 @@ class DataspaceCreator:
         array_creator = self._array_creators[array_name]
         return array_creator.get_attr_property(attr_name, property_name)
 
+    def get_dim_property(self, dim_name: str, property_name: str) -> Any:
+        """Reutrns a requested property for a dimension in the CF dataspace.
+
+        Valid properties are:
+            * ``name``: The name of the dimension.
+            * ``domain``: The (inclusive) valid range for the dimensions.
+            * ``dtype``: The Numpy data type of the dimension.
+        """
+        dim = self._dims[dim_name]
+        return getattr(dim, property_name)
+
     def remove_array(self, array_name: str):
         """Removes the specified array and all its attributes from the CF dataspace.
 
@@ -604,6 +616,49 @@ class DataspaceCreator:
             attr_name,
             **properties,
         )
+
+    def set_dim_properties(self, dim_name: str, **properties):
+        """Sets properties for a shared dimension in the CF dataspace.
+
+        Valid properties are:
+            * ``name``: The name of the dimension.
+            * ``domain``: The (inclusive) inverval on which the dimension is valid.
+            * ``dtype``: The data type of the dimension.
+
+        Parameters:
+            dim_name: Name of the dimension to set properties for.
+            properties: Keyword arguments for dimension properties.
+        """
+        if "dtype" in properties:
+            dtype = properties.pop("dtype")
+            for array_name in self._dim_to_arrays[dim_name]:
+                array_creator = self._array_creators[array_name]
+                if not array_creator.sparse:
+                    if array_creator.ndim > 1:
+                        raise ValueError(
+                            f"Cannot change dtype for dimension '{dim_name}'. "
+                            f"The dimension is used in the dense array '{array_name}' "
+                            f"with multiple dimensions. All dimensions must have the "
+                            f"same dtype."
+                        )
+                    if dtype.kind not in ("i", "u", "M"):
+                        raise ValueError(
+                            f"Cannot set dtype={dtype} for dimension '{dim_name}'. "
+                            f"The dtype is not valid for dense arrays and dimension "
+                            f"{dim_name} is used in dense array '{array_name}'."
+                        )
+            self._dims[dim_name].dtype = dtype
+        if "domain" in properties:
+            self._dims[dim_name].domain = properties.pop("domain")
+        if "name" in properties:
+            old_name = dim_name
+            dim_name = properties.pop("name")
+            self.rename_dim(old_name, dim_name)
+        for key in properties:
+            warnings.warn(
+                f"Unrecognized keyword '{key}' for setting dimension properties. Valid"
+                f"properties include: 'name', 'domain', and 'dtype'."
+            )
 
     def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> GroupSchema:
         """Returns a group schema for the CF dataspace.
