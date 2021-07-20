@@ -13,6 +13,7 @@
 * Renames method `get_all_attr_arrays` in `GroupSchema` to `arrays_with_attr`.
 * Removes methods `get_attr_array` and `set_default_metadata_schema` from `GroupSchema` class.
 * Change `from_group` and `from_file` in `NetCDF4ConverterEngine` to default to convertering NetCDF coordinates to dimensions.
+* Update TileDB-CF standard to version 0.2.0 and implement changes in `DataspaceCreator` class.
 
 ### New Features
 
