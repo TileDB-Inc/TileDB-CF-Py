@@ -640,3 +640,104 @@ def test_reserved_coord_name_error(collect_attrs):
         dataset.createVariable("__scalars", np.float64, ("__scalars",))
         with pytest.raises(NotImplementedError):
             NetCDF4ConverterEngine.from_group(dataset, collect_attrs=collect_attrs)
+
+
+class TestConvertMultipleNetCDF:
+    """Base class for NetCDF converter tests of NetCDF files with a single group.
+
+    Parameters:
+        name: Short descriptive name for naming NetCDF file.
+        dimension_args: Arguments to use as input for creating NetCDF dimensions.
+        variable_kwargs: Keyword argurments to use as input for creating NetCDF
+            variables.
+        variable_data: Map for NetCDF variable name to variable data.
+        variable_metadata: Map from NetCDF variable name to a dictionary of metadata.
+        group_metadata: A dictionary of metadata for the NetCDF group.
+        attr_to_var_map: Map from TileDB attribute name to NetCDF variable name when
+            converting with ``coords_to_dims=False``.
+    """
+
+    name = "multiple"
+    attr_to_var_map = {"x": "x", "y": "y", "A": "A"}
+
+    @pytest.fixture(scope="class")
+    def netcdf_file1(self, tmpdir_factory):
+        filepath = tmpdir_factory.mktemp("input_file1").join(f"{self.name}.nc")
+        with netCDF4.Dataset(filepath, format='NETCDF4_CLASSIC', mode="w") as dataset:
+            dataset.createDimension("x", 4)
+            dataset.createDimension("y", None)
+            x = dataset.createVariable("x", np.float64, ("x",))
+            x[:] = [1, 2, 3, 4]
+            y = dataset.createVariable("y", np.float64, ("y",))
+            y[:] = [1, 2, 3, 4]
+            xv, yv = np.meshgrid([1, 2, 3, 4], [1, 2, 3, 4], sparse=True)
+            A = dataset.createVariable("A", np.float64, ("x", "y"))
+            A[:, :] = (xv + yv) + 1
+        return filepath
+
+    @pytest.fixture(scope="class")
+    def netcdf_file2(self, tmpdir_factory):
+        filepath = tmpdir_factory.mktemp("input_file2").join(f"{self.name}.nc")
+        with netCDF4.Dataset(filepath, format='NETCDF4_CLASSIC', mode="w") as dataset:
+            dataset.createDimension("x", 4)
+            dataset.createDimension("y", None)
+            x = dataset.createVariable("x", np.float64, ("x",))
+            x[:] = [1, 2, 3, 4]
+            y = dataset.createVariable("y", np.float64, ("y",))
+            y[:] = [1, 2, 3, 4]
+            xv, yv = np.meshgrid([1, 2, 3, 4], [1, 2, 3, 4], sparse=True)
+            A = dataset.createVariable("A", np.float64, ("x", "y"))
+            A[:, :] = xv + yv
+        return filepath
+
+    def check_attrs(self, group_uri):
+        for attr_name, var_name in self.attr_to_var_map.items():
+            with Group(group_uri, attr=attr_name) as group:
+                nonempty_domain = group.array.nonempty_domain()
+                result = group.array.multi_index[nonempty_domain]
+            assert np.array_equal(
+                result[attr_name], self.variable_data[var_name]
+            ), f"unexpected values for attribute '{attr_name}'"
+
+    @pytest.mark.parametrize("collect_attrs", [True, False])
+    def test_converter_from_netcdf(self, netcdf_file1, netcdf_file2, tmpdir, collect_attrs):
+        converter = NetCDF4ConverterEngine.from_file(
+            [netcdf_file1, netcdf_file2], coords_to_dims=False, collect_attrs=collect_attrs, 
+            unlimited_dim_size = 10,
+        )
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        print(converter)
+        assert isinstance(repr(converter), str)
+        converter.convert_to_group(uri)
+        self.check_attrs(uri)
+
+    #@pytest.mark.parametrize("collect_attrs", [True, False])
+    #def test_from_file(self, netcdf_file1, netcdf_file2, tmpdir, collect_attrs):
+    #    uri = str(tmpdir.mkdir("output").join(self.name))
+    #    from_file(
+    #        [netcdf_file1, netcdf_file2],
+    #        uri,
+    #        coords_to_dims=False,
+    #        collect_attrs=collect_attrs,
+    #    )
+    #    self.check_attrs(uri)
+
+    # @pytest.mark.parametrize("collect_attrs", [True, False])
+    # def test_converter_from_netcdf(self, netcdf_file, tmpdir, collect_attrs):
+    #    converter = NetCDF4ConverterEngine.from_file(
+    #        netcdf_file, coords_to_dims=False, collect_attrs=collect_attrs
+    #    )
+    #    uri = str(tmpdir.mkdir("output").join(self.name))
+    #    assert isinstance(repr(converter), str)
+    #    converter.convert_to_group(uri)
+    #    self.check_attrs(uri)
+
+    # def test_converter(self, netcdf_file):
+    #    converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+    #   try:
+    #        tidylib = pytest.importorskip("tidylib")
+    #        html_summary = converter._repr_html_()
+    #        _, errors = tidylib.tidy_fragment(html_summary)
+    #    except OSError:
+    #        pytest.skip("unable to import libtidy backend")
+    #    assert not bool(errors), str(errors)
