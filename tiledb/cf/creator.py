@@ -630,7 +630,7 @@ class DataspaceCreator:
             properties: Keyword arguments for dimension properties.
         """
         if "dtype" in properties:
-            dtype = properties.pop("dtype")
+            dtype = np.dtype(properties.pop("dtype"))
             for array_name in self._dim_to_arrays[dim_name]:
                 array_creator = self._array_creators[array_name]
                 if not array_creator.sparse:
