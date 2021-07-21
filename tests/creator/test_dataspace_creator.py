@@ -412,6 +412,63 @@ def test_set_attr_property():
     assert attr_schema.fill == -1
 
 
+def test_set_dim_dtype():
+    creator = DataspaceCreator()
+    creator.add_dim("row", [0, 7], np.int64)
+    creator.set_dim_properties("row", dtype=np.float64)
+    dtype = creator.get_dim_property("row", "dtype")
+    assert dtype == np.dtype(np.float64)
+
+
+def test_set_dim_domain():
+    creator = DataspaceCreator()
+    creator.add_dim("row", [0, 7], np.int64)
+    creator.set_dim_properties("row", domain=(1, 8))
+    domain = creator.get_dim_property("row", "domain")
+    assert domain == (1, 8)
+
+
+def test_set_dim_name():
+    creator = DataspaceCreator()
+    creator.add_dim("row", [0, 7], np.int64)
+    creator.set_dim_properties("row", name="column")
+    name = tuple(creator.dim_names)[0]
+    assert name == "column"
+
+
+def test_set_dim_dtype_with_array_check():
+    creator = DataspaceCreator()
+    creator.add_dim("row", [0, 7], np.int64)
+    creator.add_array("array1", ("row",))
+    creator.set_dim_properties("row", dtype=np.uint32)
+    dtype = creator.get_dim_property("row", "dtype")
+    assert dtype == np.dtype(np.uint32)
+
+
+def test_set_dim_dtype_with_array_dense_ndim_error():
+    creator = DataspaceCreator()
+    creator.add_dim("row", [0, 7], np.int64)
+    creator.add_dim("column", [0, 3], np.int64)
+    creator.add_array("array1", ("row", "column"))
+    with pytest.raises(ValueError):
+        creator.set_dim_properties("row", dtype=np.uint32)
+
+
+def test_set_dim_dtype_with_array_dense_bad_type_error():
+    creator = DataspaceCreator()
+    creator.add_dim("row", [0, 7], np.int64)
+    creator.add_array("array1", ("row",))
+    with pytest.raises(ValueError):
+        creator.set_dim_properties("row", dtype=np.float64)
+
+
+def test_set_dims_by_property_name_warning():
+    creator = DataspaceCreator()
+    creator.add_dim("row", [0, 7], np.int64)
+    with pytest.warns(UserWarning):
+        creator.set_dim_properties("row", bad_property_name=None)
+
+
 def test_set_attr_property_no_attr_err():
     creator = DataspaceCreator()
     with pytest.raises(KeyError):

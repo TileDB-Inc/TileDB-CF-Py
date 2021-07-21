@@ -644,8 +644,8 @@ class DataspaceCreator:
                     if dtype.kind not in ("i", "u", "M"):
                         raise ValueError(
                             f"Cannot set dtype={dtype} for dimension '{dim_name}'. "
-                            f"The dtype is not valid for dense arrays and dimension "
-                            f"{dim_name} is used in dense array '{array_name}'."
+                            f"The dtype is not valid for dense arrays, and the "
+                            f"dimension is used in dense array '{array_name}'."
                         )
             self._dims[dim_name].dtype = dtype
         if "domain" in properties:
