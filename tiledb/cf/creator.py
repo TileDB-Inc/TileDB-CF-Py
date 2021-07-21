@@ -212,8 +212,10 @@ class DataspaceCreator:
                 f"Cannot add new array with name '{array_name}'. {str(err)}"
             ) from err
         if not dims:
-            dims = ("__scalars",)
-            self.add_dim("__scalars", (0, 0), np.dtype(np.uint32))
+            raise ValueError(
+                f"Cannot add array '{array_name}' with no dimensions. An array must "
+                f"have at lease one dimension."
+            )
         array_dims = tuple(self._dims[dim_name] for dim_name in dims)
         self._array_creators[array_name] = ArrayCreator(
             array_dims,

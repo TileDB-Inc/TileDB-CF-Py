@@ -44,6 +44,20 @@ def test_convert_dim(dim):
     assert repr(shared_dim) is not None
 
 
+@pytest.mark.parametrize(
+    "domain, dtype, result",
+    [
+        ((0, 4), np.int32, True),
+        ((0, 4), np.uint32, True),
+        ((1, 4), np.int32, False),
+        ((0, 4), np.float64, False),
+    ],
+)
+def test_is_index_dim(domain, dtype, result):
+    shared_dim = SharedDim("name", domain, dtype)
+    assert shared_dim.is_index_dim == result
+
+
 @pytest.mark.parametrize("dim1, dim2, is_equal", _compare_convert_data)
 def test_compare_convert_dims(dim1, dim2, is_equal):
     """Tests __eq__ function for comparing 2 SharedDims."""
