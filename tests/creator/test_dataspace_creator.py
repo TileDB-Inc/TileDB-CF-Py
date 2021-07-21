@@ -74,6 +74,10 @@ class TestDataspaceCreatorExample1:
         dtype = dataspace_creator.get_attr_property("b", "dtype")
         assert dtype == np.dtype(np.float64)
 
+    def test_get_dim_property(self, dataspace_creator):
+        dtype = dataspace_creator.get_dim_property("temperature", "dtype")
+        assert dtype == np.dtype(np.uint64)
+
     def test_to_schema(self, dataspace_creator):
         group_schema = dataspace_creator.to_schema()
         assert isinstance(group_schema, GroupSchema)
