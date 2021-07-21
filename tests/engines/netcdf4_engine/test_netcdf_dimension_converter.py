@@ -40,8 +40,6 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             assert converter.input_add_offset is None
             assert converter.input_scale_factor is None
             assert converter.input_unsigned is None
-            assert converter.is_data_dim
-            assert not converter.is_index_dim
 
     def test_get_values(self):
         data = np.random.rand((8))
