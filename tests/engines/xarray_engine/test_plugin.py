@@ -138,12 +138,12 @@ class TestTileDB:
     def simple_data_arrays(self, test_directory, create_simple_example_data, request):
         name = request.param
         array_uri = test_directory + "/" + name
-        dataset = xr.open_dataset(array_uri, engine="tiledb-cf")
+        dataset = xr.open_dataset(array_uri, engine="tiledb")
         return dataset["data"], self.SIMPLE_DATA_ARRAYS[name]
 
     def test_open_multidim_dataset(self, create_tiledb_example):
         uri, expected = create_tiledb_example
-        dataset = xr.open_dataset(uri, engine="tiledb-cf")
+        dataset = xr.open_dataset(uri, engine="tiledb")
         xr.testing.assert_allclose(dataset, expected)
 
     def test_open_multidim_dataset_guess_engine(self, create_tiledb_example):
