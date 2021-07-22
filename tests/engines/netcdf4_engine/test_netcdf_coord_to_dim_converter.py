@@ -15,7 +15,7 @@ def test_coord_converter_simple():
         converter = NetCDFCoordToDimConverter.from_netcdf(x)
         assert converter.name == "x"
         assert converter.dtype == np.dtype("float64")
-        assert converter.domain == (None, None)
+        assert converter.domain is None
 
 
 def test_bad_size_error():
