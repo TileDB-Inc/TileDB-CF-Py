@@ -194,7 +194,7 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
     def from_netcdf(
         cls,
         dim: netCDF4.Dimension,
-        unlimited_dim_size: int,
+        unlimited_dim_size: Optional[int],
         dtype: np.dtype,
         dim_name: Optional[str] = None,
     ):
@@ -204,13 +204,18 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
         Parameters:
             dim: The input netCDF4 dimension.
             unlimited_dim_size: The size of the domain of the output TileDB dimension
-                when the input NetCDF dimension is unlimited.
+                when the input NetCDF dimension is unlimited. If ``None``, the current
+                size of the NetCDF dimension will be used.
             dtype: The numpy dtype of the values and domain of the output TileDB
                 dimension.
             dim_name: The name of the output TileDB dimension. If ``None``, the name
                 will be the same as the name of the input NetCDF dimension.
         """
-        size = dim.size if not dim.isunlimited() else unlimited_dim_size
+        size = (
+            unlimited_dim_size
+            if dim.isunlimited() and unlimited_dim_size is not None
+            else dim.size
+        )
         return cls(
             dim_name if dim_name is not None else dim.name,
             (0, size - 1),
@@ -531,7 +536,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         cls,
         input_file: Union[str, Path],
         group_path: str = "/",
-        unlimited_dim_size: int = 10000,
+        unlimited_dim_size: Optional[int] = None,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
@@ -545,7 +550,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             group_path: The path to the NetCDF group to copy data from. Use ``'/'`` for
                 the root group.
             unlimited_dim_size: The size of the domain for TileDB dimensions created
-                from unlimited NetCDF dimensions.
+                from unlimited NetCDF dimensions. If ``None``, the current size of the
+                NetCDF dimension will be used.
             dim_dtype: The numpy dtype for TileDB dimensions.
             tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
                 dimensions of the variable in the generated TileDB array.
@@ -578,7 +584,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     def from_group(
         cls,
         netcdf_group: netCDF4.Group,
-        unlimited_dim_size: int = 10000,
+        unlimited_dim_size: Optional[int] = None,
         dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
@@ -592,7 +598,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         Parameters:
             group: The NetCDF group to convert.
             unlimited_dim_size: The size of the domain for TileDB dimensions created
-                from unlimited NetCDF dimensions.
+                from unlimited NetCDF dimensions. If ``None``, the current size of the
+                NetCDF variable will be used.
             dim_dtype: The numpy dtype for TileDB dimensions.
             tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
                 dimensions of the variable in the generated TileDB array.
@@ -611,22 +618,23 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         """
         if collect_attrs:
             return cls._from_group_to_collected_attrs(
-                netcdf_group,
-                unlimited_dim_size,
-                dim_dtype,
-                tiles_by_var,
-                tiles_by_dims,
+                netcdf_group=netcdf_group,
+                unlimited_dim_size=unlimited_dim_size,
+                dim_dtype=dim_dtype,
+                tiles_by_var=tiles_by_var,
+                tiles_by_dims=tiles_by_dims,
                 coords_to_dims=coords_to_dims,
                 default_input_file=default_input_file,
                 default_group_path=default_group_path,
             )
         return cls._from_group_to_attr_per_array(
-            netcdf_group,
-            unlimited_dim_size,
-            dim_dtype,
-            tiles_by_var,
-            tiles_by_dims,
+            netcdf_group=netcdf_group,
+            unlimited_dim_size=unlimited_dim_size,
+            dim_dtype=dim_dtype,
+            tiles_by_var=tiles_by_var,
+            tiles_by_dims=tiles_by_dims,
             coords_to_dims=coords_to_dims,
+            scalar_array_name="scalars",
             default_input_file=default_input_file,
             default_group_path=default_group_path,
         )
@@ -635,14 +643,14 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     def _from_group_to_attr_per_array(  # noqa: C901
         cls,
         netcdf_group: netCDF4.Group,
-        unlimited_dim_size: int = 10000,
-        dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-        tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
-        tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
-        coords_to_dims: bool = False,
-        scalar_array_name: str = "scalars",
-        default_input_file: Optional[Union[str, Path]] = None,
-        default_group_path: Optional[str] = None,
+        unlimited_dim_size: Optional[int],
+        dim_dtype: np.dtype,
+        tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]],
+        tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]],
+        coords_to_dims: bool,
+        scalar_array_name: str,
+        default_input_file: Optional[Union[str, Path]],
+        default_group_path: Optional[str],
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
 
@@ -722,20 +730,21 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     def _from_group_to_collected_attrs(
         cls,
         netcdf_group: netCDF4.Group,
-        unlimited_dim_size: int = 10000,
-        dim_dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-        tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]] = None,
-        tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
-        coords_to_dims: bool = False,
-        default_input_file: Optional[Union[str, Path]] = None,
-        default_group_path: Optional[str] = None,
+        unlimited_dim_size: Optional[int],
+        dim_dtype: np.dtype,
+        tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]],
+        tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]],
+        coords_to_dims: bool,
+        default_input_file: Optional[Union[str, Path]],
+        default_group_path: Optional[str],
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a :class:`netCDF4.Group`.
 
         Parameters:
             group: The NetCDF group to convert.
             unlimited_dim_size: The size of the domain for TileDB dimensions created
-                from unlimited NetCDF dimensions.
+                from unlimited NetCDF dimensions. If ``None``, the current size of the
+                NetCDf dimension will be used.
             dim_dtype: The numpy dtype for TileDB dimensions.
             tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
                 dimensions of the variable in the generated TileDB array. This will
@@ -925,7 +934,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     def add_dim_to_dim_converter(
         self,
         ncdim: netCDF4.Dimension,
-        unlimited_dim_size: int = 10000,
+        unlimited_dim_size: Optional[int] = None,
         dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
         dim_name: Optional[str] = None,
     ):
@@ -933,7 +942,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
 
         Parameters:
             ncdim: NetCDF dimension to be converted.
-            unlimited_dim_size: Size for an unlimited dimension type.
+            unlimited_dim_size: The size to use if the dimension is unlimited. If
+                ``None``, the current size of the NetCDF dimension will be used.
             dtype: Numpy type to use for the NetCDF dimension.
             dim_name: If not ``None``, output name of the TileDB dimension.
         """
