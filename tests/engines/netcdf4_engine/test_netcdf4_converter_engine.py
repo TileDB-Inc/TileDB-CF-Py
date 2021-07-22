@@ -667,10 +667,10 @@ class TestConvertMultipleNetCDF:
             dataset.createDimension("x", 4)
             dataset.createDimension("y", None)
             x = dataset.createVariable("x", np.float64, ("x",))
-            x[:] = [1, 2, 3, 4]
+            x[:] = [1., 2., 3., 4.]
             y = dataset.createVariable("y", np.float64, ("y",))
-            y[:] = [1, 2, 3, 4]
-            xv, yv = np.meshgrid([1, 2, 3, 4], [1, 2, 3, 4], sparse=True)
+            y[:] = [1., 2., 3., 4.]
+            xv, yv = np.meshgrid([1., 2., 3., 4.], [1., 2., 3., 4.], sparse=True)
             A = dataset.createVariable("A", np.float64, ("x", "y"))
             A[:, :] = (xv + yv) + 1
         return filepath
@@ -682,13 +682,44 @@ class TestConvertMultipleNetCDF:
             dataset.createDimension("x", 4)
             dataset.createDimension("y", None)
             x = dataset.createVariable("x", np.float64, ("x",))
-            x[:] = [1, 2, 3, 4]
+            x[:] = [1., 2., 3., 4.]
             y = dataset.createVariable("y", np.float64, ("y",))
-            y[:] = [1, 2, 3, 4]
-            xv, yv = np.meshgrid([1, 2, 3, 4], [1, 2, 3, 4], sparse=True)
+            y[:] = [5., 6., 7., 8.]
+            xv, yv = np.meshgrid([1., 2., 3., 4.], [5., 6., 7., 8.], sparse=True)
             A = dataset.createVariable("A", np.float64, ("x", "y"))
             A[:, :] = xv + yv
         return filepath
+
+    @pytest.fixture(scope="class") 
+    def netcdf_file3(self, tmpdir_factory):
+        filepath = tmpdir_factory.mktemp("input_file3").join(f"{self.name}.nc")
+        with netCDF4.Dataset(filepath, format='NETCDF4_CLASSIC', mode="w") as dataset:
+            dataset.createDimension("x", 4)
+            dataset.createDimension("y", None)
+            x = dataset.createVariable("x", np.float64, ("x",))
+            x[:] = [1., 2., 3., 4.]
+            y = dataset.createVariable("y", np.float64, ("y",))
+            y[:] = [1., 2., 3., 4.]
+            xv, yv = np.meshgrid([1., 2., 3., 4.], [1., 2., 3., 4.], sparse=True)
+            A = dataset.createVariable("A", np.float64, ("x", "y"))
+            A[:, :] = (xv + yv) + 1
+        return filepath
+
+    @pytest.fixture(scope="class")
+    def netcdf_file4(self, tmpdir_factory):
+        filepath = tmpdir_factory.mktemp("input_file4").join(f"{self.name}.nc")
+        with netCDF4.Dataset(filepath, format='NETCDF4_CLASSIC', mode="w") as dataset:
+            dataset.createDimension("x", 4)
+            dataset.createDimension("y", None)
+            x = dataset.createVariable("x", np.float64, ("x",))
+            x[:] = [1., 2., 3., 4.]
+            y = dataset.createVariable("y", np.float64, ("y",))
+            y[:] = [5., 6., 7., 8.]
+            xv, yv = np.meshgrid([1., 2., 3., 4.], [5., 6., 7., 8.], sparse=True)
+            A = dataset.createVariable("A", np.float64, ("x", "y"))
+            A[:, :] = xv + yv
+        return filepath
+
 
     def check_attrs(self, group_uri):
         for attr_name, var_name in self.attr_to_var_map.items():
@@ -699,7 +730,7 @@ class TestConvertMultipleNetCDF:
                 result[attr_name], self.variable_data[var_name]
             ), f"unexpected values for attribute '{attr_name}'"
 
-    @pytest.mark.parametrize("collect_attrs", [True, False])
+    @pytest.mark.parametrize("collect_attrs", [False, True])
     def test_converter_from_netcdf(self, netcdf_file1, netcdf_file2, tmpdir, collect_attrs):
         converter = NetCDF4ConverterEngine.from_file(
             [netcdf_file1, netcdf_file2], coords_to_dims=False, collect_attrs=collect_attrs, 

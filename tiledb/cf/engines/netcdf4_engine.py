@@ -864,6 +864,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     ncvar.name,
                     tiles_by_dims.get(ncvar.dimensions, get_variable_chunks(ncvar)),
                 )
+                print(array_tiles)        
+                #array_tiles=max(domain[1]-domain[0], array_tiles)
+                #print(array_tiles)        
                 array_name = ncvar.name
                 is_sparse = any(
                     dim_name in coord_names for dim_name in ncvar.dimensions
@@ -1413,7 +1416,7 @@ def get_variable_chunks(variable: netCDF4.Variable) -> Optional[Tuple[int, ...]]
 
 @contextmanager
 def open_netcdf_group(
-    group: Optional[Union[netCDF4.Dataset, netCDF4.Group]] = None,
+    group: Optional[Union[netCDF4.Dataset, netCDF4.Group, netCDF4.MFDataset]] = None,
     input_file: Optional[Union[str, Path, list]] = None,
     group_path: Optional[str] = None,
 ):
@@ -1429,7 +1432,7 @@ def open_netcdf_group(
             ``'/'`` to specify the root group.
     """
     if group is not None:
-        if not isinstance(group, (netCDF4.Dataset, netCDF4.Group)):
+        if not isinstance(group, (netCDF4.Dataset, netCDF4.Group, netCDF4.MFDataset)):
             raise TypeError(
                 f"Invalid input: group={group} of type {type(group)} is not a netCDF "
                 f"Group or or Dataset."
