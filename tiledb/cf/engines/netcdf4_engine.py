@@ -99,7 +99,7 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
         dtype = np.dtype(var.dtype)
         return cls(
             name=dim_name if dim_name is not None else var.name,
-            domain=domain if domain is not None else (None, None),
+            domain=domain,
             dtype=dtype,
             input_name=var.name,
             input_dtype=dtype,
@@ -245,7 +245,9 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
                         f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
                         f"NetCDF dimension is of size 0; there is no data to copy."
                     )
-                if self.domain[1] is not None and dim.size - 1 > self.domain[1]:
+                if self.domain is not None and (
+                    self.domain[1] is not None and dim.size - 1 > self.domain[1]
+                ):
                     raise IndexError(
                         f"Cannot copy dimension data from NetCDF dimension "
                         f"'{self.input_name}' to TileDB dimension '{self.name}'. The "

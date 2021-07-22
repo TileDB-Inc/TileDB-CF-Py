@@ -332,7 +332,8 @@ class DataspaceCreator:
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        Group.create(uri, self.to_schema(ctx), key, ctx)
+        schema = self.to_schema(ctx)
+        Group.create(uri, schema, key, ctx)
 
     def create_virtual_group(
         self,
@@ -666,6 +667,17 @@ class DataspaceCreator:
         Parameters:
            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
+        used_dims_no_domain = tuple(
+            dim_name
+            for dim_name, dim in self._dims.items()
+            if dim.domain is None and self._dim_to_arrays[dim_name]
+        )
+        if used_dims_no_domain:
+            raise ValueError(
+                f"Cannot create a TileDB group schema for this group. Dimensions "
+                f"{used_dims_no_domain} do not a have domain. You can set the domains "
+                f"for these dimensions using the `set_dim_properties` method."
+            )
         array_schemas = {}
         for array_name, array_creator in self._array_creators.items():
             try:
@@ -1130,7 +1142,7 @@ class DimCreator:
         return self.base.dtype
 
     @property
-    def domain(self) -> Tuple[Optional[DType], Optional[DType]]:
+    def domain(self) -> Optional[Tuple[Optional[DType], Optional[DType]]]:
         """The (inclusive) interval on which the dimension is valid."""
         return self.base.domain
 
@@ -1179,7 +1191,7 @@ class SharedDim:
     """
 
     name: str
-    domain: Tuple[Optional[DType], Optional[DType]]
+    domain: Optional[Tuple[Optional[DType], Optional[DType]]]
     dtype: np.dtype
 
     @classmethod
@@ -1216,4 +1228,6 @@ class SharedDim:
         An index dimension is a dimension that is of an integer type and whose domain
         starts at 0.
         """
-        return np.issubdtype(self.dtype, np.integer) and self.domain[0] == 0
+        if self.domain:
+            return np.issubdtype(self.dtype, np.integer) and self.domain[0] == 0
+        return False
