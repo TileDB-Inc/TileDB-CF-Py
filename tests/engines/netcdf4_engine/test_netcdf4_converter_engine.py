@@ -77,7 +77,7 @@ class ConvertNetCDFBase:
         converter.convert_to_group(uri)
         self.check_attrs(uri)
 
-    def test_converter(self, netcdf_file):
+    def test_converter_html_repr(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         try:
             tidylib = pytest.importorskip("tidylib")
@@ -208,6 +208,11 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
         y = data["y"][index]
         assert np.array_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
         assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
+
+    def test_convert_coordinate_domain_not_set_error(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=True)
+        with pytest.raises(RuntimeError):
+            converter.to_schema()
 
 
 class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):

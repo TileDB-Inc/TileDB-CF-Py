@@ -481,3 +481,12 @@ def test_dataspace_creator_name():
     assert dataspace_name("name.index") == "name"
     assert dataspace_name("name.data") == "name"
     assert dataspace_name("name.other") == "name.other"
+
+
+def test_to_schema_bad_array():
+    creator = DataspaceCreator()
+    creator.add_dim("row", [0, -1], np.int64)
+    creator.add_array("A1", ("row",))
+    creator.add_attr("x1", "A1", dtype=np.float64)
+    with pytest.raises(RuntimeError):
+        creator.to_schema()

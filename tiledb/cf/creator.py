@@ -673,7 +673,7 @@ class DataspaceCreator:
             if dim.domain is None and self._dim_to_arrays[dim_name]
         )
         if used_dims_no_domain:
-            raise ValueError(
+            raise RuntimeError(
                 f"Cannot create a TileDB group schema for this group. Dimensions "
                 f"{used_dims_no_domain} do not a have domain. You can set the domains "
                 f"for these dimensions using the `set_dim_properties` method."

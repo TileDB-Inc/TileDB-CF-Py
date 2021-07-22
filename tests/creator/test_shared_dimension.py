@@ -51,6 +51,7 @@ def test_convert_dim(dim):
         ((0, 4), np.uint32, True),
         ((1, 4), np.int32, False),
         ((0, 4), np.float64, False),
+        (None, np.int32, False),
     ],
 )
 def test_is_index_dim(domain, dtype, result):
