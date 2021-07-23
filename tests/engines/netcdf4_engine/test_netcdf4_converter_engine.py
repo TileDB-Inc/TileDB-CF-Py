@@ -209,6 +209,32 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
         assert np.array_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
         assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
 
+    @pytest.mark.parametrize(
+        "collect_attrs, array_name", [(True, "array0"), (False, "y")]
+    )
+    def test_coordinate_tiles_by_var(self, netcdf_file, collect_attrs, array_name):
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=collect_attrs,
+            tiles_by_var={"y": (100.0,)},
+        )
+        tiles = converter.get_array_property(array_name, "tiles")
+        assert tiles == (100.0,)
+
+    @pytest.mark.parametrize(
+        "collect_attrs, array_name", [(True, "array0"), (False, "y")]
+    )
+    def test_coordinate_tiles_by_dims(self, netcdf_file, collect_attrs, array_name):
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=collect_attrs,
+            tiles_by_dims={("x",): (100.0,)},
+        )
+        tiles = converter.get_array_property(array_name, "tiles")
+        assert tiles == (100.0,)
+
     def test_convert_coordinate_domain_not_set_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=True)
         with pytest.raises(RuntimeError):
