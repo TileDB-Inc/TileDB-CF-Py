@@ -32,7 +32,7 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             var[:] = np.random.rand((8))
             converter = NetCDFCoordToDimConverter.from_netcdf(var)
             assert converter.name == var.name
-            assert converter.domain == (None, None)
+            assert converter.domain is None
             assert converter.dtype == np.dtype(np.float64)
             assert isinstance(repr(converter), str)
             assert converter.input_name == var.name

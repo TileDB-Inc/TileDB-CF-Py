@@ -99,7 +99,7 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
         dtype = np.dtype(var.dtype)
         return cls(
             name=dim_name if dim_name is not None else var.name,
-            domain=domain if domain is not None else (None, None),
+            domain=domain,
             dtype=dtype,
             input_name=var.name,
             input_dtype=dtype,
@@ -245,7 +245,9 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
                         f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
                         f"NetCDF dimension is of size 0; there is no data to copy."
                     )
-                if self.domain[1] is not None and dim.size - 1 > self.domain[1]:
+                if self.domain is not None and (
+                    self.domain[1] is not None and dim.size - 1 > self.domain[1]
+                ):
                     raise IndexError(
                         f"Cannot copy dimension data from NetCDF dimension "
                         f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
@@ -699,16 +701,19 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                             unlimited_dim_size,
                             dim_dtype,
                         )
-                array_tiles = tiles_by_var.get(
-                    ncvar.name,
-                    tiles_by_dims.get(ncvar.dimensions, get_variable_chunks(ncvar)),
-                )
                 array_name = ncvar.name
-                is_sparse = any(
+                has_coord_dim = any(
                     dim_name in coord_names for dim_name in ncvar.dimensions
                 )
+                tiles = tiles_by_var.get(
+                    ncvar.name,
+                    tiles_by_dims.get(
+                        ncvar.dimensions,
+                        None if has_coord_dim else get_variable_chunks(ncvar),
+                    ),
+                )
                 converter.add_array(
-                    array_name, ncvar.dimensions, tiles=array_tiles, sparse=is_sparse
+                    array_name, ncvar.dimensions, tiles=tiles, sparse=has_coord_dim
                 )
                 converter.add_var_to_attr_converter(ncvar, array_name)
         return converter
@@ -765,7 +770,12 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     converter.add_scalar_dim_converter("__scalars", dim_dtype)
                 dim_names = ncvar.dimensions if ncvar.dimensions else ("__scalars",)
                 dims_to_vars[dim_names].append(ncvar.name)
-                chunks = tiles_by_var.get(ncvar.name, get_variable_chunks(ncvar))
+                chunks = tiles_by_var.get(
+                    ncvar.name,
+                    None
+                    if any(dim_name in coord_names for dim_name in ncvar.dimensions)
+                    else get_variable_chunks(ncvar),
+                )
                 if chunks is not None:
                     autotiles[dim_names] = (
                         None
@@ -784,12 +794,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     )
         # Add arrays and attributes to the converter.
         for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
-            is_sparse = any(dim_name in coord_names for dim_name in ncvar.dimensions)
+            has_coord_dim = any(dim_name in coord_names for dim_name in dim_names)
+            chunks = autotiles.get(dim_names)
             converter.add_array(
-                f"array{count}",
-                dim_names,
-                tiles=autotiles.get(dim_names),
-                sparse=is_sparse,
+                f"array{count}", dim_names, tiles=chunks, sparse=has_coord_dim
             )
             for var_name in dims_to_vars[dim_names]:
                 converter.add_var_to_attr_converter(

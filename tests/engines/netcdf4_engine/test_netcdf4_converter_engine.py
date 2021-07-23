@@ -77,7 +77,7 @@ class ConvertNetCDFBase:
         converter.convert_to_group(uri)
         self.check_attrs(uri)
 
-    def test_converter(self, netcdf_file):
+    def test_converter_html_repr(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         try:
             tidylib = pytest.importorskip("tidylib")
@@ -197,6 +197,7 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=collect_attrs,
         )
+        converter.set_dim_properties("x", domain=(None, None))
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri, attr="y") as group:
             schema = group.array.schema
@@ -207,6 +208,37 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
         y = data["y"][index]
         assert np.array_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
         assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
+
+    @pytest.mark.parametrize(
+        "collect_attrs, array_name", [(True, "array0"), (False, "y")]
+    )
+    def test_coordinate_tiles_by_var(self, netcdf_file, collect_attrs, array_name):
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=collect_attrs,
+            tiles_by_var={"y": (100.0,)},
+        )
+        tiles = converter.get_array_property(array_name, "tiles")
+        assert tiles == (100.0,)
+
+    @pytest.mark.parametrize(
+        "collect_attrs, array_name", [(True, "array0"), (False, "y")]
+    )
+    def test_coordinate_tiles_by_dims(self, netcdf_file, collect_attrs, array_name):
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=collect_attrs,
+            tiles_by_dims={("x",): (100.0,)},
+        )
+        tiles = converter.get_array_property(array_name, "tiles")
+        assert tiles == (100.0,)
+
+    def test_convert_coordinate_domain_not_set_error(self, netcdf_file):
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=True)
+        with pytest.raises(RuntimeError):
+            converter.to_schema()
 
 
 class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
@@ -241,6 +273,8 @@ class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=collect_attrs,
         )
+        converter.set_dim_properties("x", domain=(None, None))
+        converter.set_dim_properties("y", domain=(None, None))
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri, attr="z") as group:
             schema = group.array.schema
@@ -256,6 +290,58 @@ class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
         print(f"result: {result}")
         print(f"expected: {expected}")
         assert result == expected
+
+
+class TestConvertNetCDFCoordWithTiles(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a NetCDF file with a coordinate variable.
+
+    Dimensions:
+        index (4)
+    Variables:
+        int index (index)
+        real y (index)
+    """
+
+    name = "coord_with_chunks"
+    dimension_args = (("index", 4),)
+    variable_kwargs = (
+        {
+            "varname": "index",
+            "datatype": np.int32,
+            "dimensions": ("index",),
+        },
+        {
+            "varname": "y",
+            "datatype": np.float64,
+            "dimensions": ("index",),
+            "chunksizes": (4,),
+        },
+    )
+    variable_data = {
+        "index": np.array([1, 2, 3, 4]),
+        "y": np.array([4.0, 25.0, 1.0, 16.0]),
+    }
+    attr_to_var_map = {"index.data": "index", "y": "y"}
+
+    @pytest.mark.parametrize("collect_attrs", [True, False])
+    def test_convert_coordinate(self, netcdf_file, tmpdir, collect_attrs):
+        uri = str(tmpdir.mkdir("output").join("coordinate_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=collect_attrs,
+        )
+        converter.set_dim_properties("index", domain=(1, 4))
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri, attr="y") as group:
+            schema = group.array.schema
+            assert schema.sparse
+            data = group.array[:]
+        index_order = np.argsort(data["index"])
+        index = data["index"][index_order]
+        y = data["y"][index_order]
+        assert np.array_equal(index, self.variable_data["index"])
+        assert np.array_equal(y, self.variable_data["y"])
 
 
 class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
