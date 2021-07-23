@@ -15,6 +15,7 @@
 * Change `from_group` and `from_file` in `NetCDF4ConverterEngine` to default to convertering NetCDF coordinates to dimensions.
 * Update TileDB-CF standard to version 0.2.0 and implement changes in `DataspaceCreator` class.
 * Remove support for arrays with no dimensions in `DataspaceCreator.add_array` method.
+* Increase minimum TileDB-Py version to 0.9.3.
 
 ### New Features
 
