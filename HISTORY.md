@@ -1,6 +1,16 @@
 # History
 
-## In Progress
+## Unreleased
+
+### Improvements
+### Deprecation
+
+### Bug fixes
+### Breaking Behavior
+
+### New Features
+
+## TileDB-CF-Py Release 0.3.0
 
 ### Breaking Behavior
 
@@ -29,10 +39,6 @@
 * Adds methods to convert NetCDF group where all attributes are stored in separate arrays.
 * Adds parameter to set default metadata schema in `GroupSchema` instance in not otherwise specified.
 * Adds ability to convert NetCDF coordinates to TileDB dimensions.
-
-### Improvements
-
-### Deprecation
 
 ### Bug fixes
 

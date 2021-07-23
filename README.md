@@ -19,16 +19,7 @@ The TileDB-CF-Py library is a Python library for supporting the NetCDF data mode
 
 ## Quick Installation
 
-This project is currently in early development, and is only available on [GitHub](https://github.com/).
-
-Upon release it will be available from either [conda-forge](https://anaconda.org/conda-forge/tiledb-py) with
-[conda](https://conda.io/docs/):
-
-```bash
-conda install -c conda-forge tiledb-cf
-```
-
-or from [PyPI](https://pypi.org/project/tiledb/) with ``pip``:
+This project is available from [PyPI](https://pypi.org/project/tiledb/) and may be installed with ``pip``:
 
 ```bash
 pip install tiledb-cf
