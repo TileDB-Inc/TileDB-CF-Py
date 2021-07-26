@@ -24,10 +24,6 @@ NetCDF Auto-convert Functions
 .. autofunction:: tiledb.cf.from_netcdf
    :noindex:
 
-.. autofunction:: tiledb.cf.from_netcdf_group
-   :noindex:
-
-
 
 Creator Classes
 ---------------
