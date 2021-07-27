@@ -316,6 +316,31 @@ class DataspaceCreator:
         """A view of the names of attributes in the CF dataspace."""
         return self._attr_to_array.keys()
 
+    def create_array(
+        self,
+        uri: str,
+        key: Optional[str] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+    ):
+        """Creates a TileDB array for one of the arrays in the CF dataspace.
+
+        Parameters:
+            uri: Uniform resource identifier for the TileDB array to be created.
+            array_name: If not ``None``, name of the array to create. If there is only
+                one array in the dataspace, the ``array_name`` is not required.
+            key: If not ``None``, encryption key to decrypt the array.
+            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        """
+        array_names = self._array_creators.keys()
+        if len(array_names) != 1:
+            raise ValueError(
+                f"Can only use 'create_array` for {self.__class__.__name__} with 1 "
+                f"array creator. This {self.__class__.__name__} contains "
+                f"{len(array_names)} array creators."
+            )
+        array_creator = self._array_creators[tuple(array_names)[0]]
+        array_creator.create(uri, key=key, ctx=ctx)
+
     def create_group(
         self,
         uri: str,
@@ -1023,11 +1048,14 @@ class ArrayCreator:
         for dim_creator, tile in zip(self._dim_creators, tiles):
             dim_creator.tile = tile
 
-    def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.ArraySchema:
+    def to_schema(
+        self, ctx: Optional[tiledb.Ctx] = None, key: Optional[str] = None
+    ) -> tiledb.ArraySchema:
         """Returns an array schema for the array.
 
         Parameters:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            key: If not ``None``, encryption key to decrypt the array.
         """
         assert self.ndim > 0, "Must have at least one dimension."
         if len(self._attr_creators) == 0:
