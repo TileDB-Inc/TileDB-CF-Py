@@ -2,13 +2,18 @@
 
 ## Unreleased
 
-### Improvements
-### Deprecation
-
 ### Bug fixes
+
 ### Breaking Behavior
 
 ### New Features
+
+* Add `create_array` to `DataspaceCreator` for dataspaces with 1 array.
+* Add `convert_to_array` and `copy_to_array` to `NetCDF4ConverterEngine` for converters with 1 array.
+
+### Improvements
+
+### Deprecation
 
 ## TileDB-CF-Py Release 0.3.0
 
