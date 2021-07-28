@@ -51,27 +51,7 @@ def dataspace_name(full_name: str):
 
 
 class DataspaceCreator:
-    """Creator for a group of arrays that satify the CF Dataspace Convention.
-
-    Examples:
-       The :class:`DataspaceCreator` can be used to create a group of TileDB arrays
-       that follow the conventions of a CF dataspace. The dataspace is created by adding
-       dimensions, arrays, and attributes to the dataspace creator, then using the
-       :meth:`DataspaceCreator.create` routine. For example::
-
-           creator = DataspaceCreator()
-           creator.add_dim("row", (0, 4), np.uint32)
-           creator.add_dim("col", (0, 7), np.uint32)
-           creator.add_array("row_vectors", ("row",))
-           creator.add_array("matrices", ("row", "col"))
-           creator.add_array("column_vectors", ("col",))
-           creator.add_attr("x1", "row_vectors", np.dtype("float64"))
-           creator.add_attr("x2", "row_vectors", np.dtype("float64"))
-           creator.add_attr("A1", "matrices", np.dtype("float64"))
-           creator.add_attr("A2", "matrices", np.dtype("float64"))
-           creator.add_attr("y1", "column_vectors", np.dtype("float64"))
-           creator.create("example_group")
-    """
+    """Creator for a group of arrays that satify the CF Dataspace Convention."""
 
     def __init__(self):
         """Constructs a :class:`DataspaceCreator`."""
