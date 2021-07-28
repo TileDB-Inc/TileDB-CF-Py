@@ -322,7 +322,7 @@ class DataspaceCreator:
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        """Creates a TileDB array for one of the arrays in the CF dataspace.
+        """Creates a TileDB array for a CF dataspace with only one array.
 
         Parameters:
             uri: Uniform resource identifier for the TileDB array to be created.
