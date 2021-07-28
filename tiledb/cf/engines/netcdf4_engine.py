@@ -564,10 +564,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             collect_attrs: If True, store all attributes with the same dimensions
                 in the same array. Otherwise, store each attribute in a scalar array.
         """
-        with open_netcdf_group(
-            input_file=input_file,
-            group_path=group_path,
-        ) as group:
+        with open_netcdf_group(input_file=input_file, group_path=group_path) as group:
             return cls.from_group(
                 group,
                 unlimited_dim_size,
@@ -1025,13 +1022,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 f"{array_creator.ndim} dimensions > 1."
             )
         ncvar_converter = NetCDFVariableConverter.from_netcdf(
-            ncvar,
-            attr_name,
-            dtype,
-            fill,
-            var,
-            nullable,
-            filters,
+            ncvar, attr_name, dtype, fill, var, nullable, filters
         )
         try:
             self._check_new_attr_name(ncvar_converter.name)
@@ -1058,7 +1049,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         data into it using the NetCDF converter engine.
 
         Parameters:
-            output_uri: Uniform resource identifier for the TileDB group to be created.
+            output_uri: Uniform resource identifier for the TileDB array to be created.
             key: If not ``None``, encryption key to encrypt and decrypt output arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
@@ -1070,12 +1061,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         """
         self.create_array(output_uri, key, ctx)
         self.copy_to_array(
-            output_uri,
-            key,
-            ctx,
-            input_netcdf_group,
-            input_file,
-            input_group_path,
+            output_uri, key, ctx, input_netcdf_group, input_file, input_group_path
         )
 
     def convert_to_group(
@@ -1103,12 +1089,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         """
         self.create_group(output_uri, key, ctx)
         self.copy_to_group(
-            output_uri,
-            key,
-            ctx,
-            input_netcdf_group,
-            input_file,
-            input_group_path,
+            output_uri, key, ctx, input_netcdf_group, input_file, input_group_path
         )
 
     def convert_to_virtual_group(
@@ -1136,12 +1117,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         """
         self.create_virtual_group(output_uri, key, ctx)
         self.copy_to_virtual_group(
-            output_uri,
-            key,
-            ctx,
-            input_netcdf_group,
-            input_file,
-            input_group_path,
+            output_uri, key, ctx, input_netcdf_group, input_file, input_group_path
         )
 
     def copy_to_array(
@@ -1163,7 +1139,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         by ``netcdf_group``.
 
         Parameters:
-            output_uri: Uniform resource identifier for the TileDB group data is being
+            output_uri: Uniform resource identifier for the TileDB array data is being
                 copied to.
             key: If not ``None``, encryption key to decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
@@ -1244,9 +1220,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 else self.default_group_path
             )
         with open_netcdf_group(
-            input_netcdf_group,
-            input_file,
-            input_group_path,
+            input_netcdf_group, input_file, input_group_path
         ) as netcdf_group:
             # Copy group metadata
             with Group(output_uri, mode="w", key=key, ctx=ctx) as group:
@@ -1300,9 +1274,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 else self.default_group_path
             )
         with open_netcdf_group(
-            input_netcdf_group,
-            input_file,
-            input_group_path,
+            input_netcdf_group, input_file, input_group_path
         ) as netcdf_group:
             # Copy group metadata
             with tiledb.Array(output_uri, mode="w", key=key, ctx=ctx) as array:
