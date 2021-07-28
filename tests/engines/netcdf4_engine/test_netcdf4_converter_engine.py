@@ -178,6 +178,7 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
     """
 
     name = "simple_coord_1"
+    group_metadata = {"name": name}
     dimension_args = (("x", 4),)
     variable_kwargs = (
         {"varname": "x", "datatype": np.float64, "dimensions": ("x",)},
@@ -203,6 +204,27 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             schema = group.array.schema
             assert schema.sparse
             data = group.array[:]
+        index = np.argsort(data["x"])
+        x = data["x"][index]
+        y = data["y"][index]
+        assert np.array_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
+        assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
+
+    def test_convert_to_array(self, netcdf_file, tmpdir):
+        uri = str(tmpdir.mkdir("output").join("array_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=True,
+        )
+        converter.set_dim_properties("x", domain=(None, None))
+        converter.convert_to_array(uri)
+        with tiledb.open(uri, attr="y") as array:
+            schema = array.schema
+            assert schema.sparse
+            data = array[:]
+            metadata_name = array.meta["name"]
+            assert metadata_name == self.name
         index = np.argsort(data["x"])
         x = data["x"][index]
         y = data["y"][index]

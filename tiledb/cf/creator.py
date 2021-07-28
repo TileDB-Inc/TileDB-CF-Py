@@ -334,8 +334,8 @@ class DataspaceCreator:
         array_names = self._array_creators.keys()
         if len(array_names) != 1:
             raise ValueError(
-                f"Can only use 'create_array` for {self.__class__.__name__} with 1 "
-                f"array creator. This {self.__class__.__name__} contains "
+                f"Can only use `create_array` for a {self.__class__.__name__} with "
+                f"exactly 1 array creator. This {self.__class__.__name__} contains "
                 f"{len(array_names)} array creators."
             )
         array_creator = self._array_creators[tuple(array_names)[0]]

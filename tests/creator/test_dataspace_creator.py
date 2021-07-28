@@ -126,6 +126,12 @@ def test_repr_empty_dataspace():
     assert isinstance(repr(DataspaceCreator()), str)
 
 
+def test_create_array_no_array_error():
+    creator = DataspaceCreator()
+    with pytest.raises(ValueError):
+        creator.create_array("tmp")
+
+
 def test_array_name_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (0, 3), np.int64)
