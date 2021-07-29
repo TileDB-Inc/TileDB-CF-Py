@@ -919,6 +919,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         Parameters:
             var: NetCDF coordinate variable to be converted.
             dim_name: If not ``None``, name to use for the TileDB dimension.
+
+        Raises:
+            ValueError: Cannot create a new dimension with the provided ``dim_name``.
+            NotImplementedError: Support for dimensions with reserved name
+                ``__scalars`` is not implemented.
         """
         dim_converter = NetCDFCoordToDimConverter.from_netcdf(var, dim_name=dim_name)
         if dim_converter.name == "__scalars":
@@ -943,6 +948,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 ``None``, the current size of the NetCDF dimension will be used.
             dtype: Numpy type to use for the NetCDF dimension.
             dim_name: If not ``None``, output name of the TileDB dimension.
+
+        Raises:
+            ValueError: Cannot create a new dimension with the provided ``dim_name``.
+            NotImplementedError: Support for dimensions with reserved name
+                ``__scalars`` is not implemented.
         """
         dim_converter = NetCDFDimToDimConverter.from_netcdf(
             ncdim,

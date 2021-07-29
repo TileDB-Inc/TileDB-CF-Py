@@ -259,7 +259,7 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
 
     def test_convert_coordinate_domain_not_set_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=True)
-        with pytest.raises(RuntimeError):
+        with pytest.raises(ValueError):
             converter.to_schema()
 
 
