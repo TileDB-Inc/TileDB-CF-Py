@@ -142,7 +142,9 @@ class Metadata(MutableMapping):
         return sum(1 for _ in self)
 
     def __getitem__(self, key: str) -> Any:
-        """Implementation of [key] -> val (dict item retrieval).
+        """Gets the metadata item from the provided key.
+
+        This is an implementation of [key] -> val (dict item retrieval).
 
         Parameters:
             key: Key to find value from.
@@ -153,7 +155,9 @@ class Metadata(MutableMapping):
         return self._metadata[self._to_tiledb_key(key)]
 
     def __setitem__(self, key: str, value: Any) -> None:
-        """Implementation of [key] <- val (dict item assignment).
+        """Sets the metadata item for the provided key with the provided value.
+
+        This is an implementation of [key] <- val (dict item assignment).
 
         Paremeters:
             key: key to set
@@ -162,7 +166,9 @@ class Metadata(MutableMapping):
         self._metadata[self._to_tiledb_key(key)] = value
 
     def __delitem__(self, key):
-        """Implementation of del [key] (dict item deletion).
+        """Removes the specified item from the metadata.
+
+        This is an implementation of del [key] (dict item deletion).
 
         Parameters:
             key: Key to remove.
@@ -184,10 +190,11 @@ class Metadata(MutableMapping):
 
 
 class ArrayMetadata(Metadata):
-    """Class for accessing array-related metadata from a TileDB metadata object.
+    """Metadata wrapper that excludes attribute-specific metadata.
 
-    This class provides a way for accessing the TileDB array metadata that excludes
-    attribute-specific metadata.
+    This mutable mapping can be used to get, set, and delete metadata in an array that
+    excludes data using the the attribute metadata flag using the standard Python
+    indexing operator ``[]``.
 
     Parameters:
         metadata (tiledb.Metadata): TileDB array metadata object for the desired array.
@@ -207,13 +214,13 @@ class ArrayMetadata(Metadata):
 class AttrMetadata(Metadata):
     """Metadata wrapper for accessing attribute metadata.
 
-    This class allows access to the metadata for an attribute stored in the metadata
-    for a TileDB array.
+    This mutable mapping can be used to get, set, and delete metadata for an attribute
+    using the standard Python indexing operator ``[]``.
 
     Parameters:
         metadata (tiledb.Metadata): TileDB array metadata for the array containing the
             desired attribute.
-        attr (str): Name or index of the arrary attribute being requested.
+        attr (Union[str, int]): Name or index of the arrary attribute being requested.
     """
 
     def __init__(self, metadata: tiledb.Metadata, attr: Union[str, int]):
@@ -518,6 +525,11 @@ class VirtualGroup(Group):
 class GroupSchema(Mapping):
     """Schema for a TileDB group.
 
+    A TileDB group is fully described by the arrays it contains. The groups schema is a
+    mapping that maps the names of TileDB arrays in a TileDB group to their respective
+    schemas. It separately stores the array schema for an optional special TileDB
+    metadata array that is used to store group-level metadata.
+
     Parameters:
         array_schemas: A collection of (name, ArraySchema) tuples for Arrays that belong
             to this group.
@@ -572,7 +584,7 @@ class GroupSchema(Mapping):
         ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, str], str]] = None,
     ):
-        """Load a schema for a TileDB group from a TileDB URI.
+        """Loads a schema for a TileDB group from a TileDB URI.
 
         Parameters:
             array_uris: Mapping from array names to array uniform resource identifiers.
@@ -701,13 +713,14 @@ class GroupSchema(Mapping):
         return self._attr_to_arrays.get(attr_name)
 
     def has_attr(self, attr_name: str) -> bool:
-        """Returns if an attribute with the requested name is in the group.
+        """Returns whether an attribute with the requested name is in the group.
 
         Parameters:
             attr_name: The name of the attribute to check for.
 
         Returns:
-            ``True`` if the ``attr_name`` is the name of an attribute in this group.
+            ``True`` if the ``attr_name`` is the name of an attribute in this group, and
+            ``False`` otherwise.
         """
         return attr_name in self._attr_to_arrays
 
