@@ -142,9 +142,7 @@ class Metadata(MutableMapping):
         return sum(1 for _ in self)
 
     def __getitem__(self, key: str) -> Any:
-        """Gets the metadata item from the provided key.
-
-        This is an implementation of [key] -> val (dict item retrieval).
+        """Implementation of [key] -> val (dict item retrieval).
 
         Parameters:
             key: Key to find value from.
@@ -155,9 +153,7 @@ class Metadata(MutableMapping):
         return self._metadata[self._to_tiledb_key(key)]
 
     def __setitem__(self, key: str, value: Any) -> None:
-        """Sets the metadata item for the provided key with the provided value.
-
-        This is an implementation of [key] <- val (dict item assignment).
+        """Implementation of [key] <- val (dict item assignment).
 
         Paremeters:
             key: key to set
@@ -166,9 +162,7 @@ class Metadata(MutableMapping):
         self._metadata[self._to_tiledb_key(key)] = value
 
     def __delitem__(self, key):
-        """Removes the specified item from the metadata.
-
-        This is an implementation of del [key] (dict item deletion).
+        """Implementation of del [key] (dict item deletion).
 
         Parameters:
             key: Key to remove.
@@ -190,11 +184,10 @@ class Metadata(MutableMapping):
 
 
 class ArrayMetadata(Metadata):
-    """Metadata wrapper that excludes attribute-specific metadata.
+    """Class for accessing array-related metadata from a TileDB metadata object.
 
-    This mutable mapping can be used to get, set, and delete metadata in an array that
-    excludes data using the the attribute metadata flag using the standard Python
-    indexing operator ``[]``.
+    This class provides a way for accessing the TileDB array metadata that excludes
+    attribute-specific metadata.
 
     Parameters:
         metadata (tiledb.Metadata): TileDB array metadata object for the desired array.
@@ -214,13 +207,13 @@ class ArrayMetadata(Metadata):
 class AttrMetadata(Metadata):
     """Metadata wrapper for accessing attribute metadata.
 
-    This mutable mapping can be used to get, set, and delete metadata for an attribute
-    using the standard Python indexing operator ``[]``.
+    This class allows access to the metadata for an attribute stored in the metadata
+    for a TileDB array.
 
     Parameters:
         metadata (tiledb.Metadata): TileDB array metadata for the array containing the
             desired attribute.
-        attr (Union[str, int]): Name or index of the arrary attribute being requested.
+        attr (str): Name or index of the arrary attribute being requested.
     """
 
     def __init__(self, metadata: tiledb.Metadata, attr: Union[str, int]):
@@ -241,14 +234,18 @@ class AttrMetadata(Metadata):
 
 
 class Group:
-    """Class for opening TileDB group metadata, arrays, and attributes.
+    """Class for accessing group metadata and arrays in a TileDB group.
+
+    The group class is a context manager for accessing the arrays, group metadata
+    and attributes in a TileDB group. It can be used to open the group metadata array
+    and at most one other array at a time.
 
     Parameters:
         uri: Uniform resource identifier for TileDB group or array.
         mode: Mode the array and metadata objects are opened in. Either read 'r' or
             write 'w' mode.
-        key: If not ``None``, encryption key, or dictionary of encryption keys, to
-            decrypt arrays.
+        key: If not ``None``, encryption key, or dictionary of encryption keys by
+            array name, to decrypt arrays.
         timestamp: If not ``None``, timestamp to open the group metadata and array at.
         array: If not ``None``, open the array in the group with this name.
         attr: If not ``None``, open one attribute of the group; indexing a dense array
@@ -268,7 +265,7 @@ class Group:
         ctx: Optional[tiledb.Ctx] = None,
         is_virtual: bool = False,
     ):
-        """Create a TileDB group and arrays from a group schema.
+        """Create a TileDB group and the arrays inside the group from a group schema.
 
         This method creates a TileDB group at the provided URI and creates arrays
         inside the group with the names and array schemas from the provided group
@@ -393,14 +390,23 @@ class Group:
 
     @property
     def array(self) -> tiledb.Array:
-        """The opened array, or ``None`` if no array was opened."""
+        """The array in the group accessed at initialization.
+
+        Can only be used if an array or attribute was specified when initializing this
+        group.
+        """
         if self._array is None:
-            raise RuntimeError("Cannot access group array: no array was opened.")
+            raise RuntimeError("Cannot access array: no array was opened.")
         return self._array
 
     @property
     def array_metadata(self) -> ArrayMetadata:
-        """Metadata object for the array."""
+        """Array metadata wrapper for the array accessed at initialization.
+
+        Can only be used if an array or attribute was specified when initializing this
+        group. This object will exclude attribute metadata. To access all metadata in
+        the array use the ``Group.array.meta`` property instead.
+        """
         if self._array is None:
             raise RuntimeError(
                 "Cannot access group array metadata: no array was opened."
@@ -409,7 +415,11 @@ class Group:
 
     @property
     def attr_metadata(self) -> AttrMetadata:
-        """Metadata object for the attribute metadata."""
+        """Attribute metadata wrapper for the attribute accessed at initialization.
+
+        Can only be used if an attribute or an array with exactly one attribute was
+        specified when initializing this group.
+        """
         if self._array is None:
             raise RuntimeError("Cannot access attribute metadata: no array was opened.")
         if self._attr is not None:
@@ -422,8 +432,11 @@ class Group:
         )
 
     def get_attr_metadata(self, attr: Union[str, int]) -> AttrMetadata:
-        """Returns an attribute metadata object corresponding to the requested
+        """Returns an attribute metadata wrapper corresponding to the requested
         attribute.
+
+        Can only be used if an array or attribute was specified when initializing this
+        group.
 
         Parameters:
             attr: Name or index of the requested array attribute.
@@ -439,8 +452,8 @@ class Group:
 
     @property
     def meta(self) -> Optional[tiledb.Metadata]:
-        """Metadata object for the group, or None if there is no array to store group
-        metadata in."""
+        """Metadata object for the group, or ``None`` if no array to store group
+        metadata exists."""
         if self._metadata_array is None:
             return None
         return self._metadata_array.meta
@@ -525,11 +538,6 @@ class VirtualGroup(Group):
 class GroupSchema(Mapping):
     """Schema for a TileDB group.
 
-    A TileDB group is fully described by the arrays it contains. The groups schema is a
-    mapping that maps the names of TileDB arrays in a TileDB group to their respective
-    schemas. It separately stores the array schema for an optional special TileDB
-    metadata array that is used to store group-level metadata.
-
     Parameters:
         array_schemas: A collection of (name, ArraySchema) tuples for Arrays that belong
             to this group.
@@ -546,7 +554,7 @@ class GroupSchema(Mapping):
         ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, str], str]] = None,
     ):
-        """Loads a schema for a TileDB group from a TileDB URI.
+        """Load a schema for a TileDB group from a TileDB URI.
 
         Parameters:
             uri: uniform resource identifier for the TileDB group
@@ -584,7 +592,7 @@ class GroupSchema(Mapping):
         ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, str], str]] = None,
     ):
-        """Loads a schema for a TileDB group from a TileDB URI.
+        """Load a schema for a TileDB group from a TileDB URI.
 
         Parameters:
             array_uris: Mapping from array names to array uniform resource identifiers.
@@ -713,15 +721,6 @@ class GroupSchema(Mapping):
         return self._attr_to_arrays.get(attr_name)
 
     def has_attr(self, attr_name: str) -> bool:
-        """Returns whether an attribute with the requested name is in the group.
-
-        Parameters:
-            attr_name: The name of the attribute to check for.
-
-        Returns:
-            ``True`` if the ``attr_name`` is the name of an attribute in this group, and
-            ``False`` otherwise.
-        """
         return attr_name in self._attr_to_arrays
 
     @property
