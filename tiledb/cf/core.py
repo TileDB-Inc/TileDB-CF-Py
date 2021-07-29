@@ -170,11 +170,7 @@ class Metadata(MutableMapping):
         del self._metadata[self._to_tiledb_key(key)]
 
     def _to_tiledb_key(self, key: str) -> str:
-        """Map an external user metadata key to an internal tiledb key.
-
-        Raises
-            KeyError: If `key` cannot be mapped.
-        """
+        """Map an external user metadata key to an internal tiledb key."""
         return key  # pragma: no cover
 
     def _from_tiledb_key(self, tiledb_key: str) -> Optional[str]:
@@ -265,7 +261,16 @@ class Group:
         ctx: Optional[tiledb.Ctx] = None,
         is_virtual: bool = False,
     ):
-        """Create the TileDB group and arrays from a :class:`GroupSchema`.
+        """Create a TileDB group and arrays from a group schema.
+
+        This method creates a TileDB group at the provided URI and creates arrays
+        inside the group with the names and array schemas from the provided group
+        schema.
+
+        If ``is_virtual=True``, a virtual group will be created instead with the
+        group metadata array at the provided URI and all other arrays are created at
+        ``{uri}_{array_name}`` where ``{uri}`` is the provided URI and ``{array_name}``
+        is the name of the array as stored in the group schema.
 
         Parameters:
             uri: Uniform resource identifier for TileDB group or array.
@@ -273,10 +278,8 @@ class Group:
             key: If not ``None``, encryption key, or dictionary of encryption keys to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            is_virtual: If ``True``, create a virtual group using ``uri`` as the name
-                for the group metadata array. All other arrays will be named using the
-                convention ``{uri}_{array_name}`` where ``array_name`` is the name of
-                the array.
+            is_virtual: If ``True``, create arrays in a flat directory without creating
+            a TileDB group.
         """
         if not is_virtual:
             tiledb.group_create(uri, ctx)
@@ -303,10 +306,15 @@ class Group:
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        """Create the arrays from a :class:`GroupSchema`.
+        """Create the arrays in a group schema.
+
+        This will create a virtual group where the group metadata array is created at
+        the provided URI and all other arrays are created at ``{uri}_{array_name}``
+        where ``{uri}`` is the provided URI and ``{array_name}`` is the
+        name of the array as stored in the group schema.
 
         Parameters:
-            uri: Uniform resource identifier for TileDB group or array.
+            uri: Uniform resource identifier for group metadata and prefix for arrays.
             group_schema: Schema that defines the group to be created.
             key: If not ``None``, encryption key, or dictionary of encryption keys to
                 decrypt arrays.
@@ -378,22 +386,14 @@ class Group:
 
     @property
     def array(self) -> tiledb.Array:
-        """The opened array, or ``None`` if no array was opened.
-
-        Raises:
-            RuntimeError: No array was opened.
-        """
+        """The opened array, or ``None`` if no array was opened."""
         if self._array is None:
             raise RuntimeError("Cannot access group array: no array was opened.")
         return self._array
 
     @property
     def array_metadata(self) -> ArrayMetadata:
-        """Metadata object for the array.
-
-        Raises:
-            RuntimeError: No array was opened.
-        """
+        """Metadata object for the array."""
         if self._array is None:
             raise RuntimeError(
                 "Cannot access group array metadata: no array was opened."
@@ -402,12 +402,7 @@ class Group:
 
     @property
     def attr_metadata(self) -> AttrMetadata:
-        """Metadata object for the attribute metadata.
-
-        Raises:
-            RuntimeError: No array was opened.
-            RuntimeError: Array has multiple open attributes.
-        """
+        """Metadata object for the attribute metadata."""
         if self._array is None:
             raise RuntimeError("Cannot access attribute metadata: no array was opened.")
         if self._attr is not None:
@@ -420,13 +415,11 @@ class Group:
         )
 
     def get_attr_metadata(self, attr: Union[str, int]) -> AttrMetadata:
-        """Returns attribute metadata object corresponding to requested attribute.
+        """Returns an attribute metadata object corresponding to the requested
+        attribute.
 
         Parameters:
             attr: Name or index of the requested array attribute.
-
-        Raises:
-            RuntimeError: No array was opened.
         """
         if self._array is None:
             raise RuntimeError("Cannot access attribute metadata: no array was opened.")
@@ -439,7 +432,7 @@ class Group:
 
     @property
     def meta(self) -> Optional[tiledb.Metadata]:
-        """Metadata object for the group, or None if no array to store group
+        """Metadata object for the group, or None if there is no array to store group
         metadata in."""
         if self._metadata_array is None:
             return None
@@ -531,7 +524,7 @@ class GroupSchema(Mapping):
         metadata_schema: If not ``None``, a schema for the group metadata array.
         use_default_metadata_schema: If ``True`` and ``metadata_schema=None`` a default
             schema will be created for the metadata array.
-        ctx: TileDB Context used for generatign default metadata schema.
+        ctx: TileDB Context used for generating default metadata schema.
     """
 
     @classmethod
@@ -541,7 +534,7 @@ class GroupSchema(Mapping):
         ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, str], str]] = None,
     ):
-        """Load a schema for a TileDB group from a TileDB URI.
+        """Loads a schema for a TileDB group from a TileDB URI.
 
         Parameters:
             uri: uniform resource identifier for the TileDB group
@@ -609,11 +602,6 @@ class GroupSchema(Mapping):
         use_default_metadata_schema: bool = True,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        """Constructs a :class:`GroupSchema`.
-
-        Raises:
-            ValueError: ArraySchema has duplicate names.
-        """
         if metadata_schema is None and use_default_metadata_schema:
             self._metadata_schema = tiledb.ArraySchema(
                 domain=tiledb.Domain(
@@ -647,7 +635,7 @@ class GroupSchema(Mapping):
         return True
 
     def __getitem__(self, schema_name: str) -> tiledb.ArraySchema:
-        """Returns the :class:`Arrayschema` with the name given by `schema_name`.
+        """Returns the requested array schema.
 
         Parameters:
             schema_name: Name of the ArraySchema to be returned.
@@ -694,13 +682,7 @@ class GroupSchema(Mapping):
         return output.getvalue()
 
     def check(self):
-        """Checks the correctness of each array in the GroupSchema.
-
-        Raises:
-            tiledb.TileDBError: An ArraySchema in the GroupSchema is invalid.
-            RuntimeError: A shared :class:`tiledb.Dim` fails to match the definition
-                from the GroupSchema.
-        """
+        """Checks the correctness of each array in the GroupSchema."""
         for schema in self._array_schema_table.values():
             schema.check()
         if self._metadata_schema is not None:
@@ -719,6 +701,14 @@ class GroupSchema(Mapping):
         return self._attr_to_arrays.get(attr_name)
 
     def has_attr(self, attr_name: str) -> bool:
+        """Returns if an attribute with the requested name is in the group.
+
+        Parameters:
+            attr_name: The name of the attribute to check for.
+
+        Returns:
+            ``True`` if the ``attr_name`` is the name of an attribute in this group.
+        """
         return attr_name in self._attr_to_arrays
 
     @property

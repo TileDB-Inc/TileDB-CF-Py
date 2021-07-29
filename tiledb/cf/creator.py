@@ -54,7 +54,6 @@ class DataspaceCreator:
     """Creator for a group of arrays that satify the CF Dataspace Convention."""
 
     def __init__(self):
-        """Constructs a :class:`DataspaceCreator`."""
         self._dims: MutableMapping[str, SharedDim] = {}
         self._array_creators: Dict[str, ArrayCreator] = {}
         self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
@@ -155,8 +154,8 @@ class DataspaceCreator:
     ):
         """Adds a new array to the CF dataspace.
 
-        The name of each array must be unique. All properties must match the normal
-        requirements for a ``TileDB.ArraySchema``.
+        The name of each array must be unique. All other properties should satisfy
+        the same requirements as a ``tiledb.ArraySchema``.
 
         Parameters:
             array_name: Name of the new array to be created.
@@ -182,9 +181,6 @@ class DataspaceCreator:
                  coordinate. Only allowed for sparse arrays.
             sparse: Specifies if the array is a sparse TileDB array (true) or dense
                 TileDB array (false).
-
-        Raises:
-            ValueError: Cannot add new array with given name.
         """
         try:
             self._check_new_array_name(array_name)
@@ -225,10 +221,8 @@ class DataspaceCreator:
     ):
         """Adds a new attribute to an array in the CF dataspace.
 
-        Each attribute name must be unique. It also cannot conflict with the name of a
-        dimension in the array it is being added to, and the attribute's
-        'dataspace name' (name after dropping the suffix ``.data`` or ``.index``) cannot
-        conflict with the dataspace name of an existing attribute.
+        The 'dataspace name' (name after dropping the suffix ``.data`` or ``.index``)
+        must be unique.
 
         Parameters:
             attr_name: Name of the new attribute that will be added.
@@ -239,11 +233,6 @@ class DataspaceCreator:
                 byte/strings).
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
-
-        Raises:
-            KeyError: The provided ``array_name`` does not correspond to an array in the
-                dataspace.
-            ValueError: Cannot create a new attribute with the provided ``attr_name``.
         """
         try:
             array_creator = self._array_creators[array_name]
@@ -280,9 +269,6 @@ class DataspaceCreator:
             dim_name: Name of the new dimension to be created.
             domain: The (inclusive) interval on which the dimension is valid.
             dtype: The numpy dtype of the values and domain of the dimension.
-
-        Raises:
-            ValueError: Cannot create a new dimension with the provided ``dim_name``.
         """
         self._add_shared_dimension(SharedDim(dim_name, domain, np.dtype(dtype)))
 
@@ -306,8 +292,6 @@ class DataspaceCreator:
 
         Parameters:
             uri: Uniform resource identifier for the TileDB array to be created.
-            array_name: If not ``None``, name of the array to create. If there is only
-                one array in the dataspace, the ``array_name`` is not required.
             key: If not ``None``, encryption key to decrypt the array.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
@@ -330,9 +314,7 @@ class DataspaceCreator:
         """Creates a TileDB group and arrays for the CF dataspace.
 
         Parameters:
-            uri: Uniform resource identifier for the TileDB group to be created, or
-                prefix URIs for the TileDB arrays that will be created if
-                ``use_virtual_groups=True``.
+            uri: Uniform resource identifier for the TileDB group to be created.
             key: If not ``None``, encryption key, or dictionary of encryption keys, to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
@@ -349,9 +331,8 @@ class DataspaceCreator:
         """Creates TileDB arrays for the CF dataspace.
 
         Parameters:
-            uri: Uniform resource identifier for the TileDB group to be created, or
-                prefix URIs for the TileDB arrays that will be created if
-                ``use_virtual_groups=True``.
+            uri: Prefix for the uniform resource identifier for the TileDB arrays that
+                will be created.
             key: If not ``None``, encryption key, or dictionary of encryption keys, to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
@@ -364,7 +345,7 @@ class DataspaceCreator:
         return self._dims.keys()
 
     def get_array_property(self, array_name: str, property_name: str) -> Any:
-        """Returns a requested property from an array in the CF dataspaces.
+        """Returns a requested property from an array in the CF dataspace.
 
         Valid properties are:
 
@@ -469,9 +450,6 @@ class DataspaceCreator:
 
         Parameters:
             dim_name: Name of the dimension to be removed.
-
-        Raises:
-            ValueError: Dimension is being using in array(s).
         """
         array_list = self._dim_to_arrays.get(dim_name)
         if array_list:
@@ -487,9 +465,6 @@ class DataspaceCreator:
         Parameters:
             original_name: Current name of the array to be renamed.
             new_name: New name the array will be renamed to.
-
-        Raises:
-            ValueError: Cannot rename an array to the provided name ``new_name``.
         """
         try:
             self._check_new_array_name(new_name)
@@ -510,9 +485,6 @@ class DataspaceCreator:
         Parameters:
             original_name: Current name of the attribute to be renamed.
             new_name: New name the attribute will be renamed to.
-
-        Raises:
-            ValueError: Cannot rename the attribute to provided name ``attr_name``.
         """
         try:
             self._check_new_attr_name(new_name)
@@ -532,9 +504,6 @@ class DataspaceCreator:
         Parameters:
             original_name: Current name of the dimension to be renamed.
             new_name: New name the dimension will be renamed to.
-
-        Raises:
-            ValueError: Cannot rename the dimension to the provided name ``new_name``.
         """
         try:
             dim = self._dims[original_name]
@@ -678,7 +647,7 @@ class DataspaceCreator:
             if dim.domain is None and self._dim_to_arrays[dim_name]
         )
         if used_dims_no_domain:
-            raise RuntimeError(
+            raise ValueError(
                 f"Cannot create a TileDB group schema for this group. Dimensions "
                 f"{used_dims_no_domain} do not a have domain. You can set the domains "
                 f"for these dimensions using the `set_dim_properties` method."
