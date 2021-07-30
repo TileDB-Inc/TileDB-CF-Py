@@ -117,24 +117,6 @@ def test_dim_name_exists_error():
         creator.add_attr(AttrCreator("pressure", np.float64))
 
 
-def test_dense_array_dim_type_error():
-    dims = [
-        SharedDim("pressure", (0.0, 1000.0), np.float64),
-        SharedDim("temperature", (-200.0, 200.0), np.float64),
-    ]
-    with pytest.raises(ValueError):
-        ArrayCreator(dims, sparse=False)
-
-
-def test_dense_array_dim_mixed_type_error():
-    dims = [
-        SharedDim("row", (0, 4), np.int32),
-        SharedDim("col", (0, 4), np.uint32),
-    ]
-    with pytest.raises(ValueError):
-        ArrayCreator(dims, sparse=False)
-
-
 def test_bad_tiles_error():
     dims = [
         SharedDim("row", (0, 63), np.uint32),
