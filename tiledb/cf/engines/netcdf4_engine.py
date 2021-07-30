@@ -529,7 +529,16 @@ class NetCDFArrayConverter(ArrayCreator):
 
 
 class NetCDF4ConverterEngine(DataspaceCreator):
-    """Converter for NetCDF to TileDB using netCDF4."""
+    """Converter for NetCDF to TileDB using netCDF4.
+
+    This class is used to generate and copy data to a TileDB group or array from a
+    NetCDF file. The converter can be auto-generated from a NetCDF group, or it can
+    be manually defined.
+
+    This is a subclass of :class:`tiledb.cf.DataspaceCreator`. See
+    :class:`tiledb.cf.DataspaceCreator` for documentation of additional properties and
+    methods.
+    """
 
     @classmethod
     def from_file(
@@ -919,6 +928,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         Parameters:
             var: NetCDF coordinate variable to be converted.
             dim_name: If not ``None``, name to use for the TileDB dimension.
+
+        Raises:
+            ValueError: Cannot create a new dimension with the provided ``dim_name``.
+            NotImplementedError: Support for dimensions with reserved name
+                ``__scalars`` is not implemented.
         """
         dim_converter = NetCDFCoordToDimConverter.from_netcdf(var, dim_name=dim_name)
         if dim_converter.name == "__scalars":
@@ -943,6 +957,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 ``None``, the current size of the NetCDF dimension will be used.
             dtype: Numpy type to use for the NetCDF dimension.
             dim_name: If not ``None``, output name of the TileDB dimension.
+
+        Raises:
+            ValueError: Cannot create a new dimension with the provided ``dim_name``.
+            NotImplementedError: Support for dimensions with reserved name
+                ``__scalars`` is not implemented.
         """
         dim_converter = NetCDFDimToDimConverter.from_netcdf(
             ncdim,
