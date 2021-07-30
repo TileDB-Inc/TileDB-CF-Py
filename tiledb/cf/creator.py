@@ -56,7 +56,7 @@ class DataspaceCreator:
 
     This class can be used directly to create a TileDB group that follows the
     TileDB CF Dataspace convention. It is also useful as a super class for
-    converters/injestors of data from sources that follow a NetCDF or NetCDF-like
+    converters/ingesters of data from sources that follow a NetCDF or NetCDF-like
     data model to TileDB.
     """
 
