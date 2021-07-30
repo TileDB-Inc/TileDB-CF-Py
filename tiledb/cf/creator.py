@@ -51,7 +51,14 @@ def dataspace_name(full_name: str):
 
 
 class DataspaceCreator:
-    """Creator for a group of arrays that satify the CF Dataspace Convention."""
+    """Creator for a group of arrays that satify the CF Dataspace Convention.
+
+
+    This class can be used directly to create a TileDB group that follows the
+    TileDB CF Dataspace convention. It is also useful as a super class for
+    converters/injestors of data from sources that follow a NetCDF or NetCDF-like
+    data model to TileDB.
+    """
 
     def __init__(self):
         self._dims: MutableMapping[str, SharedDim] = {}
@@ -173,8 +180,9 @@ class DataspaceCreator:
                 array. The length must match the number of dimensions in the array.
             coords_filters: Filters for all dimensions that are not otherwise set by
                 ``dim_filters.``
-            dim_filters: A dict from dimension name to a ``FilterList`` for dimensions
-                in the array. Overrides the values set in ``coords_filters``.
+            dim_filters: A dict from dimension name to a :class:`tiledb.FilterList`
+                for dimensions in the array. Overrides the values set in
+                ``coords_filters``.
             offsets_filters: Filters for the offsets for variable length attributes or
                 dimensions.
             allows_duplicates: Specifies if multiple values can be stored at the same
@@ -403,7 +411,7 @@ class DataspaceCreator:
         return array_creator.get_attr_property(attr_name, property_name)
 
     def get_dim_property(self, dim_name: str, property_name: str) -> Any:
-        """Reutrns a requested property for a dimension in the CF dataspace.
+        """Returns a requested property for a dimension in the CF dataspace.
 
         Valid properties are:
             * ``name``: The name of the dimension.
@@ -447,6 +455,9 @@ class DataspaceCreator:
 
     def remove_dim(self, dim_name: str):
         """Removes the specified dimension from the CF dataspace.
+
+        This can only be used to remove dimensions that are not currently being used in
+        an array.
 
         Parameters:
             dim_name: Name of the dimension to be removed.
