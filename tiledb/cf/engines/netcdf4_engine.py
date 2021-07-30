@@ -529,7 +529,16 @@ class NetCDFArrayConverter(ArrayCreator):
 
 
 class NetCDF4ConverterEngine(DataspaceCreator):
-    """Converter for NetCDF to TileDB using netCDF4."""
+    """Converter for NetCDF to TileDB using netCDF4.
+
+    This class is used to generate and copy data to a TileDB group or array from a
+    NetCDF file. The converter can be auto-generated from a NetCDF group, or it can
+    be manually defined.
+
+    This is a subclass of :class:`tiledb.cf.DataspaceCreator`. See
+    :class:`tiledb.cf.DataspaceCreator` for documentation of additional properties and
+    methods.
+    """
 
     @classmethod
     def from_file(
