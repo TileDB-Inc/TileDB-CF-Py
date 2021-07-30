@@ -1,5 +1,16 @@
 # Copyright 2021 TileDB Inc.
 # Licensed under the MIT License.
+"""``tiledb.cf`` is the core module for the TileDB-CF-Py library.
+
+This module contains core classes and functions for supporting the NetCDF data model in
+the `TileDB storage engine <https://github.com/TileDB-Inc/TileDB>`_. To use this module
+simply import using:
+
+.. code-block:: python
+
+    import tiledb.cf
+"""
+
 from typing import Dict, Optional, Tuple, Union
 
 import click
