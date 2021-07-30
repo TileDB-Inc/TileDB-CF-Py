@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import warnings
 from collections import OrderedDict, defaultdict
 from dataclasses import dataclass
 from io import StringIO
@@ -615,36 +614,13 @@ class DataspaceCreator:
             dim_name: Name of the dimension to set properties for.
             properties: Keyword arguments for dimension properties.
         """
-        if "dtype" in properties:
-            dtype = np.dtype(properties.pop("dtype"))
-            for array_name in self._dim_to_arrays[dim_name]:
-                array_creator = self._array_creators[array_name]
-                if not array_creator.sparse:
-                    if array_creator.ndim > 1:
-                        raise ValueError(
-                            f"Cannot change dtype for dimension '{dim_name}'. "
-                            f"The dimension is used in the dense array '{array_name}' "
-                            f"with multiple dimensions. All dimensions must have the "
-                            f"same dtype."
-                        )
-                    if dtype.kind not in ("i", "u", "M"):
-                        raise ValueError(
-                            f"Cannot set dtype={dtype} for dimension '{dim_name}'. "
-                            f"The dtype is not valid for dense arrays, and the "
-                            f"dimension is used in dense array '{array_name}'."
-                        )
-            self._dims[dim_name].dtype = dtype
-        if "domain" in properties:
-            self._dims[dim_name].domain = properties.pop("domain")
         if "name" in properties:
             old_name = dim_name
             dim_name = properties.pop("name")
             self.rename_dim(old_name, dim_name)
-        for key in properties:
-            warnings.warn(
-                f"Unrecognized keyword '{key}' for setting dimension properties. Valid"
-                f"properties include: 'name', 'domain', and 'dtype'."
-            )
+        dim = self._dims[dim_name]
+        for property_name, value in properties.items():
+            setattr(dim, property_name, value)
 
     def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> GroupSchema:
         """Returns a group schema for the CF dataspace.
@@ -827,7 +803,6 @@ class ArrayCreator:
             key: If not ``None``, encryption key to decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-
         tiledb.Array.create(uri, self.to_schema(ctx), key, ctx)
 
     @property
@@ -957,6 +932,9 @@ class ArrayCreator:
               bytes/strings).
             * ``nullable``: Specifies if the attribute is nullable using validity tiles.
             * ``filters``: Specifies compression filters for the attributes.
+        sparst: Specifies if the array is a sparse TileDB array (true) or dense
+            TileDB array (false).
+
 
         Parameters:
             attr_name: Name of the attribute to set properties for.
@@ -969,28 +947,6 @@ class ArrayCreator:
         attr_creator = self._attr_creators[attr_name]
         for property_name, value in properties.items():
             setattr(attr_creator, property_name, value)
-
-    @property
-    def sparse(self) -> bool:
-        """Specifies if the array is a sparse TileDB array or dense TileDB array."""
-        return self._sparse
-
-    @sparse.setter
-    def sparse(self, sparse):
-        if not sparse:
-            dim_dtype = np.dtype(self._dim_creators[0].dtype)
-            if dim_dtype.kind not in ("i", "u", "M"):
-                raise ValueError(
-                    f"Cannot set sparse=False. Array contains dimension with type "
-                    f"{dim_dtype} not supported in dense arrays."
-                )
-            for dim in self._dim_creators:
-                if dim_dtype != dim.dtype:
-                    raise ValueError(
-                        "Cannot set sparse=False. Array contains dimensions with "
-                        "different dimension types."
-                    )
-        self._sparse = sparse
 
     @property
     def tiles(self) -> Collection[Union[int, float, None]]:
