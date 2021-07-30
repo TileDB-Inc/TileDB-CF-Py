@@ -460,7 +460,14 @@ class Group:
 
 
 class VirtualGroup(Group):
-    """Class for opening TileDB metadata, arrays, and attributes of a virtual group.
+    """Class for accessing group metadata and arrays in a virtual TileDB group.
+
+    This is a subclass of :class:`tiledb.cf.Group` that treats a dictionary of arrays
+    like a TileDB group. If there is an array named ``__tiledb_group``, it will be
+    treated as the group metadata array.
+
+    See :class:`tiledb.cf.Group` for documentation on the methods and properties
+    available in this class.
 
     Parameters:
         array_uris: Mapping from array names to array uniform resource identifiers.
@@ -538,9 +545,12 @@ class VirtualGroup(Group):
 class GroupSchema(Mapping):
     """Schema for a TileDB group.
 
+    A TileDB group is completely defined by the arrays in the group. This class is
+    a mapping from array names to array schemas. It also contains an optional array
+    schema for an array to store group-level metadata.
+
     Parameters:
-        array_schemas: A collection of (name, ArraySchema) tuples for Arrays that belong
-            to this group.
+        array_schemas: A dict of array names to array schemas.
         metadata_schema: If not ``None``, a schema for the group metadata array.
         use_default_metadata_schema: If ``True`` and ``metadata_schema=None`` a default
             schema will be created for the metadata array.
