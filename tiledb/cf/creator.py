@@ -61,10 +61,35 @@ class DataspaceCreator:
 
     def __init__(self):
         self._dims: MutableMapping[str, SharedDim] = {}
-        self._array_creators: Dict[str, ArrayCreator] = {}
+        self._array_creators: List[Optional[ArrayCreator]] = []
+        self._array_name_to_id: Dict[str, int] = {}
         self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
         self._attr_to_array: Dict[str, str] = {}
         self._attr_dataspace_names: Dict[str, str] = {}
+
+    def __iter__(self):
+        """Iterators over all array creators."""
+        for array_creator in self._array_creators:
+            if array_creator is not None:
+                yield array_creator
+
+    def __getitem__(self, array_name: str) -> ArrayCreator:
+        """Returns the requested array creator.
+
+        Implementation of [key] -> val (dict item retrieval).
+
+        Parameters:
+            array_name: Name of the array creator to return.
+
+        Returns:
+            Array creator with the provided name.
+        """
+        array_creator = self._array_creators[self._array_name_to_id[array_name]]
+        if array_creator is None:
+            raise KeyError(
+                f"Failed to retreive array creator. No array named {array_name}."
+            )
+        return array_creator
 
     def __repr__(self):
         output = StringIO()
@@ -75,8 +100,10 @@ class DataspaceCreator:
                 output.write(f"  '{dim_name}':  {repr(dim)},\n")
             output.write("\n")
             output.write(" Array Creators:\n")
-            for array_name, array_creator in self._array_creators.items():
-                output.write(f"  '{array_name}':{repr(array_creator)}\n")
+            for array_name, array_id in self._array_name_to_id.items():
+                output.write(
+                    f"  '{array_name}':{repr(self._array_creators[array_id])}\n"
+                )
             output.write(")")
         else:
             output.write("DataspaceCreator()")
@@ -99,7 +126,8 @@ class DataspaceCreator:
         output.write("</li>\n")
         output.write("<li>\n")
         output.write("Array Creators\n")
-        for array_name, array_creator in self._array_creators.items():
+        for array_name, array_id in self._array_name_to_id.items():
+            array_creator = self._array_creators[array_id]
             output.write("<details>\n")
             output.write("<summary>\n")
             output.write(
@@ -113,6 +141,37 @@ class DataspaceCreator:
         output.write("</ul>\n")
         return output.getvalue()
 
+    def _add_array_creator(self, array_name: str, array_creator: ArrayCreator):
+        try:
+            self._check_new_array_name(array_name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new array with name '{array_name}'. {str(err)}"
+            ) from err
+        self._array_creators.append(array_creator)
+        self._array_name_to_id[array_name] = len(self._array_creators) - 1
+        for dim_name in array_creator.dim_names:
+            self._dim_to_arrays[dim_name].append(array_name)
+
+    def _add_attr_creator(self, array_name: str, attr_creator: AttrCreator):
+        try:
+            array_creator = self[array_name]
+        except KeyError as err:
+            raise KeyError(
+                f"Cannot add attribute to array '{array_name}'. No array named "
+                f"'{array_name}' exists."
+            ) from err
+        attr_name = attr_creator.name
+        try:
+            self._check_new_attr_name(attr_name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new attribute '{attr_creator.name}'. {str(err)}"
+            ) from err
+        array_creator.add_attr(attr_creator)
+        self._attr_to_array[attr_name] = array_name
+        self._attr_dataspace_names[dataspace_name(attr_name)] = attr_name
+
     def _add_shared_dimension(self, dim: SharedDim):
         try:
             self._check_new_dim_name(dim)
@@ -123,7 +182,7 @@ class DataspaceCreator:
         self._dims[dim.name] = dim
 
     def _check_new_array_name(self, array_name: str):
-        if array_name in self._array_creators:
+        if array_name in self._array_name_to_id:
             raise ValueError(f"An array with name '{array_name}' already exists.")
         if array_name == METADATA_ARRAY_NAME:
             raise ValueError(f"The array name '{METADATA_ARRAY_NAME}' is reserved.")
@@ -143,6 +202,16 @@ class DataspaceCreator:
             raise ValueError(
                 f"A different dimension with name '{dim.name}' already exists."
             )
+
+    def _get_array_dims(self, array_name, dim_names: Sequence[str]):
+        if isinstance(dim_names, str):
+            dim_names = (dim_names,)
+        if not dim_names:
+            raise ValueError(
+                f"Cannot add array '{array_name}' with no dimensions. An array must "
+                f"have at lease one dimension."
+            )
+        return tuple(self._dims[dim_name] for dim_name in dim_names)
 
     def add_array(
         self,
@@ -189,32 +258,22 @@ class DataspaceCreator:
             sparse: Specifies if the array is a sparse TileDB array (true) or dense
                 TileDB array (false).
         """
-        try:
-            self._check_new_array_name(array_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new array with name '{array_name}'. {str(err)}"
-            ) from err
-        if not dims:
-            raise ValueError(
-                f"Cannot add array '{array_name}' with no dimensions. An array must "
-                f"have at lease one dimension."
-            )
-        array_dims = tuple(self._dims[dim_name] for dim_name in dims)
-        self._array_creators[array_name] = ArrayCreator(
-            array_dims,
-            cell_order,
-            tile_order,
-            capacity,
-            tiles,
-            coords_filters,
-            dim_filters,
-            offsets_filters,
-            allows_duplicates,
-            sparse,
+        array_dims = self._get_array_dims(array_name, dims)
+        self._add_array_creator(
+            array_name,
+            ArrayCreator(
+                array_dims,
+                cell_order,
+                tile_order,
+                capacity,
+                tiles,
+                coords_filters,
+                dim_filters,
+                offsets_filters,
+                allows_duplicates,
+                sparse,
+            ),
         )
-        for dim_name in dims:
-            self._dim_to_arrays[dim_name].append(array_name)
 
     def add_attr(
         self,
@@ -241,30 +300,10 @@ class DataspaceCreator:
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
         """
-        try:
-            array_creator = self._array_creators[array_name]
-        except KeyError as err:
-            raise KeyError(
-                f"Cannot add attribute to array '{array_name}'. No array named "
-                f"'{array_name}' exists."
-            ) from err
-        try:
-            self._check_new_attr_name(attr_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new attribute '{attr_name}'. {str(err)}"
-            ) from err
-        attr_creator = AttrCreator(
-            attr_name,
-            np.dtype(dtype),
-            fill,
-            var,
-            nullable,
-            filters,
+        self._add_attr_creator(
+            array_name,
+            AttrCreator(attr_name, np.dtype(dtype), fill, var, nullable, filters),
         )
-        array_creator.add_attr(attr_creator)
-        self._attr_to_array[attr_name] = array_name
-        self._attr_dataspace_names[dataspace_name(attr_name)] = attr_name
 
     def add_dim(self, dim_name: str, domain: Tuple[Any, Any], dtype: np.dtype):
         """Adds a new dimension to the CF dataspace.
@@ -282,7 +321,7 @@ class DataspaceCreator:
     @property
     def array_names(self):
         """A view of the names of arrays in the CF dataspace."""
-        return self._array_creators.keys()
+        return self._array_name_to_id.keys()
 
     @property
     def attr_names(self):
@@ -302,14 +341,14 @@ class DataspaceCreator:
             key: If not ``None``, encryption key to decrypt the array.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        array_names = self._array_creators.keys()
-        if len(array_names) != 1:
+        array_creators = tuple(creator for creator in self)
+        if len(array_creators) != 1:
             raise ValueError(
                 f"Can only use `create_array` for a {self.__class__.__name__} with "
                 f"exactly 1 array creator. This {self.__class__.__name__} contains "
-                f"{len(array_names)} array creators."
+                f"{len(array_creators)} array creators."
             )
-        array_creator = self._array_creators[tuple(array_names)[0]]
+        array_creator = array_creators[0]
         array_creator.create(uri, key=key, ctx=ctx)
 
     def create_group(
@@ -381,7 +420,7 @@ class DataspaceCreator:
             array_name: Name of the array to get the property from.
             property_name: Name of the requested property.
         """
-        array_creator = self._array_creators[array_name]
+        array_creator = self._array_creators[self._array_name_to_id[array_name]]
         return getattr(array_creator, property_name)
 
     def get_attr_property(self, attr_name: str, property_name: str) -> Any:
@@ -406,7 +445,7 @@ class DataspaceCreator:
             raise KeyError(
                 f"Attribute with name '{attr_name}' does not exist."
             ) from err
-        array_creator = self._array_creators[array_name]
+        array_creator = self[array_name]
         return array_creator.get_attr_property(attr_name, property_name)
 
     def get_dim_property(self, dim_name: str, property_name: str) -> Any:
@@ -426,13 +465,15 @@ class DataspaceCreator:
         Parameters:
             array_name: Name of the array that will be removed.
         """
-        array = self._array_creators[array_name]
+        array = self[array_name]
         for attr_name in array.attr_names:
             del self._attr_dataspace_names[dataspace_name(attr_name)]
             del self._attr_to_array[attr_name]
         for dim_name in array.dim_names:
             self._dim_to_arrays[dim_name].remove(array_name)
-        del self._array_creators[array_name]
+        array_id = self._array_name_to_id[array_name]
+        self._array_creators[array_id] = None
+        del self._array_name_to_id[array_name]
 
     def remove_attr(self, attr_name: str):
         """Removes the specified attribute from the CF dataspace.
@@ -447,7 +488,7 @@ class DataspaceCreator:
                 f"Cannot remove attribute '{attr_name}'. No attribute with name "
                 f"'{attr_name}' exists."
             ) from err
-        array_creator = self._array_creators[array_name]
+        array_creator = self[array_name]
         array_creator.remove_attr(attr_name)
         del self._attr_dataspace_names[dataspace_name(attr_name)]
         del self._attr_to_array[attr_name]
@@ -482,10 +523,11 @@ class DataspaceCreator:
             raise ValueError(
                 f"Cannot rename array '{original_name}' to '{new_name}'. {str(err)}"
             ) from err
-        self._array_creators[new_name] = self._array_creators.pop(original_name)
-        for attr_name in self._array_creators[new_name].attr_names:
+        self._array_name_to_id[new_name] = self._array_name_to_id.pop(original_name)
+        array_creator = self[new_name]
+        for attr_name in array_creator.attr_names:
             self._attr_to_array[attr_name] = new_name
-        for dim_name in self._array_creators[new_name].dim_names:
+        for dim_name in array_creator.dim_names:
             self._dim_to_arrays[dim_name].remove(original_name)
             self._dim_to_arrays[dim_name].append(new_name)
 
@@ -502,8 +544,8 @@ class DataspaceCreator:
             raise ValueError(
                 f"Cannot rename attribute '{original_name}' to '{new_name}'. {str(err)}"
             ) from err
-        array = self._array_creators[self._attr_to_array[original_name]]
-        array.rename_attr(original_name, new_name)
+        array_creator = self[self._attr_to_array[original_name]]
+        array_creator.rename_attr(original_name, new_name)
         self._attr_to_array[new_name] = self._attr_to_array.pop(original_name)
         del self._attr_dataspace_names[dataspace_name(original_name)]
         self._attr_dataspace_names[dataspace_name(new_name)] = new_name
@@ -567,7 +609,7 @@ class DataspaceCreator:
             array_name: Name of the array to set properties for.
             properties: Keyword arguments for array properties.
         """
-        array_creator = self._array_creators[array_name]
+        array_creator = self[array_name]
         for property_name, value in properties.items():
             setattr(array_creator, property_name, value)
 
@@ -597,10 +639,7 @@ class DataspaceCreator:
             raise KeyError(
                 f"Attribute with name '{attr_name}' does not exist."
             ) from err
-        self._array_creators[array_name].set_attr_properties(
-            attr_name,
-            **properties,
-        )
+        self[array_name].set_attr_properties(attr_name, **properties)
 
     def set_dim_properties(self, dim_name: str, **properties):
         """Sets properties for a shared dimension in the CF dataspace.
@@ -640,7 +679,9 @@ class DataspaceCreator:
                 f"for these dimensions using the `set_dim_properties` method."
             )
         array_schemas = {}
-        for array_name, array_creator in self._array_creators.items():
+        for array_name, array_id in self._array_name_to_id.items():
+            array_creator = self._array_creators[array_id]
+            assert array_creator is not None
             try:
                 array_schemas[array_name] = array_creator.to_schema(ctx)
             except tiledb.libtiledb.TileDBError as err:

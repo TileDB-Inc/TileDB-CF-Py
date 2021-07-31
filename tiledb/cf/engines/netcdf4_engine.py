@@ -17,14 +17,7 @@ import numpy as np
 import tiledb
 
 from ..core import AttrMetadata, Group
-from ..creator import (
-    ArrayCreator,
-    AttrCreator,
-    DataspaceCreator,
-    DType,
-    SharedDim,
-    dataspace_name,
-)
+from ..creator import ArrayCreator, AttrCreator, DataspaceCreator, DType, SharedDim
 
 _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
@@ -896,27 +889,22 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         Raises:
             ValueError: Cannot add new array with given name.
         """
-        try:
-            self._check_new_array_name(array_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new array with name '{array_name}'. {str(err)}"
-            ) from err
-        array_dims = tuple(self._dims[dim_name] for dim_name in dims)
-        self._array_creators[array_name] = NetCDFArrayConverter(
-            array_dims,
-            cell_order,
-            tile_order,
-            capacity,
-            tiles,
-            coords_filters,
-            dim_filters,
-            offsets_filters,
-            allows_duplicates,
-            sparse,
+        array_dims = self._get_array_dims(array_name, dims)
+        self._add_array_creator(
+            array_name,
+            NetCDFArrayConverter(
+                array_dims,
+                cell_order,
+                tile_order,
+                capacity,
+                tiles,
+                coords_filters,
+                dim_filters,
+                offsets_filters,
+                allows_duplicates,
+                sparse,
+            ),
         )
-        for dim_name in dims:
-            self._dim_to_arrays[dim_name].append(array_name)
 
     def add_coord_to_dim_converter(
         self,
@@ -1023,37 +1011,23 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 dataspace.
             ValueError: Cannot create a new attribute with the provided ``attr_name``.
         """
-        try:
-            array_creator = self._array_creators[array_name]
-        except KeyError as err:  # pragma: no cover
-            raise KeyError(
-                f"Cannot add attribute to array '{array_name}'. No array named "
-                f"'{array_name}' exists."
-            ) from err
-        if ncvar.ndim != 0 and ncvar.ndim != array_creator.ndim:  # pragma: no cover
+        ndim = self[array_name].ndim
+        if ncvar.ndim != 0 and ncvar.ndim != ndim:  # pragma: no cover
             raise ValueError(
                 f"Cannot convert a NetCDF variable with {ncvar.ndim} dimensions to an "
-                f"array with {array_creator.ndim} dimensions."
+                f"array with {ndim} dimensions."
             )
-        if ncvar.ndim == 0 and array_creator.ndim != 1:  # pragma: no cover
+        if ncvar.ndim == 0 and ndim != 1:  # pragma: no cover
             raise ValueError(
-                f"Cannot add a scalar NetCDF variable to an array with "
-                f"{array_creator.ndim} dimensions > 1."
+                f"Cannot add a scalar NetCDF variable to an array with {ndim} "
+                f"dimensions > 1."
             )
-        ncvar_converter = NetCDFVariableConverter.from_netcdf(
-            ncvar, attr_name, dtype, fill, var, nullable, filters
+        self._add_attr_creator(
+            array_name,
+            NetCDFVariableConverter.from_netcdf(
+                ncvar, attr_name, dtype, fill, var, nullable, filters
+            ),
         )
-        try:
-            self._check_new_attr_name(ncvar_converter.name)
-        except ValueError as err:  # pragma: no cover
-            raise ValueError(
-                f"Cannot add new attribute '{ncvar_converter.name}'. {str(err)}"
-            ) from err
-        array_creator.add_attr(ncvar_converter)
-        self._attr_to_array[ncvar_converter.name] = array_name
-        self._attr_dataspace_names[
-            dataspace_name(ncvar_converter.name)
-        ] = ncvar_converter.name
 
     def convert_to_array(
         self,
@@ -1169,14 +1143,14 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             input_group_path: If not ``None``, the path to the NetCDF group to copy data
                 from.
         """
-        array_names = self._array_creators.keys()
-        if len(array_names) != 1:  # pragma: no cover
+        array_creators = tuple(creators for creators in self)
+        if len(array_creators) != 1:  # pragma: no cover
             raise ValueError(
                 f"Can only use 'create_array` for {self.__class__.__name__} with 1 "
                 f"array creator. This {self.__class__.__name__} contains "
-                f"{len(array_names)} array creators."
+                f"{len(array_creators)} array creators."
             )
-        array_creator = self._array_creators[tuple(array_names)[0]]
+        array_creator = array_creators[0]
         if input_netcdf_group is None:
             input_file = (
                 input_file if input_file is not None else self.default_input_file
@@ -1246,7 +1220,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 for group_key in netcdf_group.ncattrs():
                     copy_metadata_item(group.meta, netcdf_group, group_key)
             # Copy variables and variable metadata to arrays
-            for array_name, array_creator in self._array_creators.items():
+            for array_name, array_id in self._array_name_to_id.items():
+                array_creator = self._array_creators[array_id]
                 if isinstance(array_creator, NetCDFArrayConverter):
                     with Group(
                         output_uri, mode="w", array=array_name, key=key, ctx=ctx
@@ -1300,7 +1275,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 for group_key in netcdf_group.ncattrs():
                     copy_metadata_item(array.meta, netcdf_group, group_key)
             # Copy variables and variable metadata to arrays
-            for array_name, array_creator in self._array_creators.items():
+            for array_name, array_id in self._array_name_to_id.items():
+                array_creator = self._array_creators[array_id]
                 array_uri = output_uri + "_" + array_name
                 if isinstance(array_creator, NetCDFArrayConverter):
                     with tiledb.open(array_uri, mode="w", key=key, ctx=ctx) as array:
