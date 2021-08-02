@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import VirtualGroup
+from tiledb.cf import GroupSchema, VirtualGroup
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
@@ -89,3 +89,29 @@ class TestVirtualGroupWithArrays:
         with pytest.raises(ValueError):
             with VirtualGroup(array_uris, attr="c"):
                 pass
+
+
+class TestCreateVirtualGroup:
+
+    _metadata_schema = _array_schema_1
+    _array_schemas = [
+        ("A1", _array_schema_1),
+        ("A2", _array_schema_2),
+    ]
+    _group_schema = GroupSchema(_array_schemas, _metadata_schema)
+    _key = None
+
+    @pytest.fixture(scope="class")
+    def group_uri(self, tmpdir_factory):
+        """Creates a TileDB Group from GroupSchema and returns scenario dict."""
+        uri = str(tmpdir_factory.mktemp("group1"))
+        ctx = None
+        VirtualGroup.create(uri, self._group_schema, self._key, ctx)
+        return uri
+
+    def test_array_schemas(self, group_uri):
+        uri = group_uri
+        assert tiledb.ArraySchema.load(uri, key=self._key) == self._metadata_schema
+        for name, schema in self._array_schemas:
+            array_uri = group_uri + "_" + name
+            assert tiledb.ArraySchema.load(array_uri, key=self._key) == schema
