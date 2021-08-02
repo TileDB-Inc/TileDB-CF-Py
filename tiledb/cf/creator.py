@@ -52,7 +52,6 @@ def dataspace_name(full_name: str):
 class DataspaceCreator:
     """Creator for a group of arrays that satify the CF Dataspace Convention.
 
-
     This class can be used directly to create a TileDB group that follows the
     TileDB CF Dataspace convention. It is also useful as a super class for
     converters/ingesters of data from sources that follow a NetCDF or NetCDF-like
@@ -64,7 +63,6 @@ class DataspaceCreator:
         self._array_creators: Dict[str, ArrayCreator] = {}
         self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
         self._attr_to_array: Dict[str, str] = {}
-        self._attr_dataspace_names: Dict[str, str] = {}
 
     def __iter__(self):
         """Iterators over all array creators."""
@@ -160,7 +158,6 @@ class DataspaceCreator:
             ) from err
         array_creator.add_attr(attr_creator)
         self._attr_to_array[attr_name] = array_name
-        self._attr_dataspace_names[dataspace_name(attr_name)] = attr_name
 
     def _add_shared_dimension(self, dim: SharedDim):
         try:
@@ -181,10 +178,11 @@ class DataspaceCreator:
         if attr_name in self._attr_to_array:
             raise ValueError(f"An attribute with name '{attr_name}' already exists.")
         ds_name = dataspace_name(attr_name)
-        if ds_name in self._attr_dataspace_names:
+        ds_names = {ds_name, ds_name + DATA_SUFFIX, ds_name + INDEX_SUFFIX}
+        if not ds_names.isdisjoint(self._attr_to_array.keys()):
             raise ValueError(
-                f"An attribute named '{self._attr_dataspace_names[ds_name]}' with "
-                f"dataspace name '{ds_name}' already exists."
+                f"An attribute with the same dataspace name as '{attr_name}' already "
+                f"exists."
             )
 
     def _check_new_dim_name(self, dim: SharedDim):
@@ -457,7 +455,6 @@ class DataspaceCreator:
         """
         array_creator = self[array_name]
         for attr_name in array_creator.attr_names:
-            del self._attr_dataspace_names[dataspace_name(attr_name)]
             del self._attr_to_array[attr_name]
         for dim_name in array_creator.dim_names:
             self._dim_to_arrays[dim_name].remove(array_name)
@@ -479,7 +476,6 @@ class DataspaceCreator:
             ) from err
         array_creator = self[array_name]
         array_creator.remove_attr(attr_name)
-        del self._attr_dataspace_names[dataspace_name(attr_name)]
         del self._attr_to_array[attr_name]
 
     def remove_dim(self, dim_name: str):
@@ -537,8 +533,6 @@ class DataspaceCreator:
         array_creator = self[self._attr_to_array[original_name]]
         array_creator.rename_attr(original_name, new_name)
         self._attr_to_array[new_name] = self._attr_to_array.pop(original_name)
-        del self._attr_dataspace_names[dataspace_name(original_name)]
-        self._attr_dataspace_names[dataspace_name(new_name)] = new_name
 
     def rename_dim(self, original_name: str, new_name: str):
         """Renames a dimension in the CF dataspace.
