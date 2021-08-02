@@ -890,21 +890,18 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             ValueError: Cannot add new array with given name.
         """
         array_dims = self._get_array_dims(array_name, dims)
-        self._add_array_creator(
-            array_name,
-            NetCDFArrayConverter(
-                array_dims,
-                cell_order,
-                tile_order,
-                capacity,
-                tiles,
-                coords_filters,
-                dim_filters,
-                offsets_filters,
-                allows_duplicates,
-                sparse,
-            ),
-        )
+        NetCDFArrayConverter(
+            array_dims,
+            cell_order,
+            tile_order,
+            capacity,
+            tiles,
+            coords_filters,
+            dim_filters,
+            offsets_filters,
+            allows_duplicates,
+            sparse,
+        ).register(self, array_name)
 
     def add_coord_to_dim_converter(
         self,
