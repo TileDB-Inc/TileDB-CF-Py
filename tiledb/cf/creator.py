@@ -61,17 +61,15 @@ class DataspaceCreator:
 
     def __init__(self):
         self._dims: MutableMapping[str, SharedDim] = {}
-        self._array_creators: List[Optional[ArrayCreator]] = []
-        self._array_name_to_id: Dict[str, int] = {}
+        self._array_creators: Dict[str, ArrayCreator] = {}
         self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
         self._attr_to_array: Dict[str, str] = {}
         self._attr_dataspace_names: Dict[str, str] = {}
 
     def __iter__(self):
         """Iterators over all array creators."""
-        for array_creator in self._array_creators:
-            if array_creator is not None:
-                yield array_creator
+        for array_creator in self._array_creators.values():
+            yield array_creator
 
     def __getitem__(self, array_name: str) -> ArrayCreator:
         """Returns the requested array creator.
@@ -84,12 +82,7 @@ class DataspaceCreator:
         Returns:
             Array creator with the provided name.
         """
-        array_creator = self._array_creators[self._array_name_to_id[array_name]]
-        if array_creator is None:
-            raise KeyError(
-                f"Failed to retreive array creator. No array named {array_name}."
-            )
-        return array_creator
+        return self._array_creators[array_name]
 
     def __repr__(self):
         output = StringIO()
@@ -100,10 +93,8 @@ class DataspaceCreator:
                 output.write(f"  '{dim_name}':  {repr(dim)},\n")
             output.write("\n")
             output.write(" Array Creators:\n")
-            for array_name, array_id in self._array_name_to_id.items():
-                output.write(
-                    f"  '{array_name}':{repr(self._array_creators[array_id])}\n"
-                )
+            for array_creator in self:
+                output.write(f"  '{array_creator.name}':{repr(array_creator)}\n")
             output.write(")")
         else:
             output.write("DataspaceCreator()")
@@ -145,12 +136,12 @@ class DataspaceCreator:
             self._check_new_array_name(array_name)
         except ValueError as err:
             raise ValueError(
-                f"Cannot add new array with name '{array_name}'. {str(err)}"
+                f"Cannot add new array with name '{array_creator.name}'. {str(err)}"
             ) from err
-        self._array_creators.append(array_creator)
-        self._array_name_to_id[array_name] = len(self._array_creators) - 1
+        array_creator._register(self, array_name)
+        self._array_creators[array_creator.name] = array_creator
         for dim_name in array_creator.dim_names:
-            self._dim_to_arrays[dim_name].append(array_name)
+            self._dim_to_arrays[dim_name].append(array_creator.name)
 
     def _add_attr_creator(self, array_name: str, attr_creator: AttrCreator):
         try:
@@ -181,7 +172,7 @@ class DataspaceCreator:
         self._dims[dim.name] = dim
 
     def _check_new_array_name(self, array_name: str):
-        if array_name in self._array_name_to_id:
+        if array_name in self._array_creators.keys():
             raise ValueError(f"An array with name '{array_name}' already exists.")
         if array_name == METADATA_ARRAY_NAME:
             raise ValueError(f"The array name '{METADATA_ARRAY_NAME}' is reserved.")
@@ -202,52 +193,15 @@ class DataspaceCreator:
                 f"A different dimension with name '{dim.name}' already exists."
             )
 
-    def _get_array_dims(self, array_name, dim_names: Sequence[str]):
+    def _get_array_dims(self, dim_names: Sequence[str]):
         if isinstance(dim_names, str):
             dim_names = (dim_names,)
         if not dim_names:
             raise ValueError(
-                f"Cannot add array '{array_name}' with no dimensions. An array must "
-                f"have at lease one dimension."
+                "Cannot add array with no dimensions. An array must have at lease one "
+                "dimension."
             )
         return tuple(self._dims[dim_name] for dim_name in dim_names)
-
-    def _rename_array(self, original_name: str, new_name: str):
-        """Renames an array in the CF dataspace.
-
-        Parameters:
-            original_name: Current name of the array to be renamed.
-            new_name: New name the array will be renamed to.
-        """
-        try:
-            self._check_new_array_name(new_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot rename array '{original_name}' to '{new_name}'. {str(err)}"
-            ) from err
-        self._array_name_to_id[new_name] = self._array_name_to_id.pop(original_name)
-        array_creator = self[new_name]
-        for attr_name in array_creator.attr_names:
-            self._attr_to_array[attr_name] = new_name
-        for dim_name in array_creator.dim_names:
-            self._dim_to_arrays[dim_name].remove(original_name)
-            self._dim_to_arrays[dim_name].append(new_name)
-
-    def _remove_array(self, array_name: str):
-        """Removes the specified array and all its attributes from the CF dataspace.
-
-        Parameters:
-            array_name: Name of the array that will be removed.
-        """
-        array_creator = self[array_name]
-        for attr_name in array_creator.attr_names:
-            del self._attr_dataspace_names[dataspace_name(attr_name)]
-            del self._attr_to_array[attr_name]
-        for dim_name in array_creator.dim_names:
-            self._dim_to_arrays[dim_name].remove(array_name)
-        array_id = self._array_name_to_id[array_name]
-        self._array_creators[array_id] = None
-        del self._array_name_to_id[array_name]
 
     def add_array(
         self,
@@ -294,19 +248,22 @@ class DataspaceCreator:
             sparse: Specifies if the array is a sparse TileDB array (true) or dense
                 TileDB array (false).
         """
-        array_dims = self._get_array_dims(array_name, dims)
-        ArrayCreator(
-            array_dims,
-            cell_order,
-            tile_order,
-            capacity,
-            tiles,
-            coords_filters,
-            dim_filters,
-            offsets_filters,
-            allows_duplicates,
-            sparse,
-        ).register(self, array_name)
+        array_dims = self._get_array_dims(dims)
+        self._add_array_creator(
+            array_name,
+            ArrayCreator(
+                array_dims,
+                cell_order,
+                tile_order,
+                capacity,
+                tiles,
+                coords_filters,
+                dim_filters,
+                offsets_filters,
+                allows_duplicates,
+                sparse,
+            ),
+        )
 
     def add_attr(
         self,
@@ -354,7 +311,7 @@ class DataspaceCreator:
     @property
     def array_names(self):
         """A view of the names of arrays in the CF dataspace."""
-        return self._array_name_to_id.keys()
+        return self._array_creators.keys()
 
     @property
     def attr_names(self):
@@ -374,7 +331,7 @@ class DataspaceCreator:
             key: If not ``None``, encryption key to decrypt the array.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        array_creators = tuple(creator for creator in self)
+        array_creators = tuple(self)
         if len(array_creators) != 1:
             raise ValueError(
                 f"Can only use `create_array` for a {self.__class__.__name__} with "
@@ -453,7 +410,7 @@ class DataspaceCreator:
             array_name: Name of the array to get the property from.
             property_name: Name of the requested property.
         """
-        array_creator = self._array_creators[self._array_name_to_id[array_name]]
+        array_creator = self[array_name]
         return getattr(array_creator, property_name)
 
     def get_attr_property(self, attr_name: str, property_name: str) -> Any:
@@ -498,8 +455,14 @@ class DataspaceCreator:
         Parameters:
             array_name: Name of the array that will be removed.
         """
-        # TODO: deprecate this function
-        self[array_name].deregister()
+        array_creator = self[array_name]
+        for attr_name in array_creator.attr_names:
+            del self._attr_dataspace_names[dataspace_name(attr_name)]
+            del self._attr_to_array[attr_name]
+        for dim_name in array_creator.dim_names:
+            self._dim_to_arrays[dim_name].remove(array_name)
+        array_creator._deregister()
+        del self._array_creators[array_name]
 
     def remove_attr(self, attr_name: str):
         """Removes the specified attribute from the CF dataspace.
@@ -543,8 +506,20 @@ class DataspaceCreator:
             original_name: Current name of the array to be renamed.
             new_name: New name the array will be renamed to.
         """
-        # TODO: deprecate this function
-        self[original_name].name = new_name
+        try:
+            self._check_new_array_name(new_name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot rename array '{original_name}' to '{new_name}'. {str(err)}"
+            ) from err
+        self._array_creators[new_name] = self._array_creators.pop(original_name)
+        array_creator = self[new_name]
+        array_creator._reregister(new_name)
+        for attr_name in array_creator.attr_names:
+            self._attr_to_array[attr_name] = new_name
+        for dim_name in array_creator.dim_names:
+            self._dim_to_arrays[dim_name].remove(original_name)
+            self._dim_to_arrays[dim_name].append(new_name)
 
     def rename_attr(self, original_name: str, new_name: str):
         """Renames an attribute in the CF dataspace.
@@ -695,14 +670,12 @@ class DataspaceCreator:
                 f"for these dimensions using the `set_dim_properties` method."
             )
         array_schemas = {}
-        for array_name, array_id in self._array_name_to_id.items():
-            array_creator = self._array_creators[array_id]
-            assert array_creator is not None
+        for array_creator in self:
             try:
-                array_schemas[array_name] = array_creator.to_schema(ctx)
+                array_schemas[array_creator.name] = array_creator.to_schema(ctx)
             except tiledb.libtiledb.TileDBError as err:
                 raise RuntimeError(
-                    f"Failed to create an ArraySchema for array '{array_name}'."
+                    f"Failed to create an ArraySchema for array '{array_creator.name}'."
                 ) from err
         group_schema = GroupSchema(array_schemas)
         return group_schema
@@ -766,7 +739,7 @@ class ArrayCreator:
         self._dim_creators = tuple(DimCreator(dim) for dim in dims)
         if not self._dim_creators:
             raise ValueError(
-                "Cannot create array. Array must have at lease one dimension."
+                "Cannot create array. Array must have at least one dimension."
             )
         self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
         self.cell_order = cell_order
@@ -816,6 +789,23 @@ class ArrayCreator:
         output.write("  )")
         return output.getvalue()
 
+    def _deregister(self):
+        self._name = ""
+        self._dataspace = None
+
+    def _register(self, dataspace_creator: DataspaceCreator, name: str):
+        """Registers this ArrayCreator to a DataspaceCreator.
+
+        Parameters:
+            dataspace_creator: CF dataspace to regsiter array with.
+            name: Name to register this array as.
+        """
+        self._dataspace_creator = dataspace_creator
+        self._name = name
+
+    def _reregister(self, name: str):
+        self._name = name
+
     def add_attr(self, attr_creator: AttrCreator):
         """Adds a new attribute to an array in the CF dataspace.
 
@@ -864,12 +854,6 @@ class ArrayCreator:
         """
         tiledb.Array.create(uri, self.to_schema(ctx), key, ctx)
 
-    def deregister(self):
-        """Remove this array from the dataspace creator it belongs to."""
-        if self._dataspace_creator is not None:
-            self._dataspace_creator._remove_array(self._name)
-            self._dataspace_creator = None
-
     @property
     def dim_filters(self) -> Mapping[str, Optional[tiledb.FilterList]]:
         """A dict from dimension name to a ``FilterList`` for dimensions in the array.
@@ -917,27 +901,10 @@ class ArrayCreator:
         """Name of the array."""
         return self._name
 
-    @name.setter
-    def name(self, name: str):
-        if self._dataspace_creator is not None:
-            self._dataspace_creator._rename_array(self._name, name)
-        self._name = name
-
     @property
     def ndim(self) -> int:
         """Number of dimensions in the array."""
         return len(self._dim_creators)
-
-    def register(self, dataspace_creator: DataspaceCreator, name: str):
-        """Registers this ArrayCreator to a DataspaceCreator.
-
-        Parameters:
-            dataspace_creator: CF dataspace to regsiter array with.
-            name: Name to register this array as.
-        """
-        dataspace_creator._add_array_creator(name, self)
-        self._name = name
-        self._dataspace_creator = dataspace_creator
 
     def rename_attr(self, original_name: str, new_name: str):
         """Renames an attribute in the array.

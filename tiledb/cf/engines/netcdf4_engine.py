@@ -889,19 +889,22 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         Raises:
             ValueError: Cannot add new array with given name.
         """
-        array_dims = self._get_array_dims(array_name, dims)
-        NetCDFArrayConverter(
-            array_dims,
-            cell_order,
-            tile_order,
-            capacity,
-            tiles,
-            coords_filters,
-            dim_filters,
-            offsets_filters,
-            allows_duplicates,
-            sparse,
-        ).register(self, array_name)
+        array_dims = self._get_array_dims(dims)
+        self._add_array_creator(
+            array_name,
+            NetCDFArrayConverter(
+                array_dims,
+                cell_order,
+                tile_order,
+                capacity,
+                tiles,
+                coords_filters,
+                dim_filters,
+                offsets_filters,
+                allows_duplicates,
+                sparse,
+            ),
+        )
 
     def add_coord_to_dim_converter(
         self,
@@ -1217,11 +1220,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 for group_key in netcdf_group.ncattrs():
                     copy_metadata_item(group.meta, netcdf_group, group_key)
             # Copy variables and variable metadata to arrays
-            for array_name, array_id in self._array_name_to_id.items():
-                array_creator = self._array_creators[array_id]
+            for array_creator in self:
                 if isinstance(array_creator, NetCDFArrayConverter):
                     with Group(
-                        output_uri, mode="w", array=array_name, key=key, ctx=ctx
+                        output_uri, mode="w", array=array_creator.name, key=key, ctx=ctx
                     ) as tiledb_group:
                         array_creator.copy(netcdf_group, tiledb_group.array)
 
@@ -1272,10 +1274,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 for group_key in netcdf_group.ncattrs():
                     copy_metadata_item(array.meta, netcdf_group, group_key)
             # Copy variables and variable metadata to arrays
-            for array_name, array_id in self._array_name_to_id.items():
-                array_creator = self._array_creators[array_id]
-                array_uri = output_uri + "_" + array_name
+            for array_creator in self:
                 if isinstance(array_creator, NetCDFArrayConverter):
+                    array_uri = f"{output_uri}_{array_creator.name}"
                     with tiledb.open(array_uri, mode="w", key=key, ctx=ctx) as array:
                         array_creator.copy(netcdf_group, array)
 
