@@ -12,10 +12,10 @@ from typing import (
     Any,
     Collection,
     Dict,
-    List,
     MutableMapping,
     Optional,
     Sequence,
+    Set,
     Tuple,
     Union,
 )
@@ -65,7 +65,7 @@ class DataspaceCreator(Mapping):
     def __init__(self):
         self._dims: MutableMapping[str, SharedDim] = {}
         self._array_creators: Dict[str, _ArrayInterface] = {}
-        self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
+        self._dim_to_arrays: Dict[str, Set[str]] = defaultdict(set)
         self._attr_to_array: Dict[str, str] = {}
 
     def __iter__(self):
@@ -147,7 +147,7 @@ class DataspaceCreator(Mapping):
             name=array_name, array=array_creator
         )
         for dim_name in array_creator.dim_names:
-            self._dim_to_arrays[dim_name].append(array_name)
+            self._dim_to_arrays[dim_name].add(array_name)
 
     def _add_attr_creator(self, array_name: str, attr_creator: AttrCreator):
         try:
@@ -522,7 +522,7 @@ class DataspaceCreator(Mapping):
             self._attr_to_array[attr_name] = new_name
         for dim_name in array_creator.dim_names:
             self._dim_to_arrays[dim_name].remove(original_name)
-            self._dim_to_arrays[dim_name].append(new_name)
+            self._dim_to_arrays[dim_name].add(new_name)
 
     def rename_attr(self, original_name: str, new_name: str):
         """Renames an attribute in the CF dataspace.
