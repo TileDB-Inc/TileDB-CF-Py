@@ -1012,7 +1012,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             ValueError: Cannot create a new attribute with the provided ``attr_name``.
         """
         ndim = self[array_name].ndim
-        if ncvar.ndim != 0 and ncvar.ndim != ndim:  # pragma: no cover
+        if ncvar.ndim not in (0, ndim):  # pragma: no cover
             raise ValueError(
                 f"Cannot convert a NetCDF variable with {ncvar.ndim} dimensions to an "
                 f"array with {ndim} dimensions."
