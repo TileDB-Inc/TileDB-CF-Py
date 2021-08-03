@@ -1143,14 +1143,13 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             input_group_path: If not ``None``, the path to the NetCDF group to copy data
                 from.
         """
-        array_creators = tuple(creators for creators in self)
-        if len(array_creators) != 1:  # pragma: no cover
+        if len(self) != 1:  # pragma: no cover
             raise ValueError(
                 f"Can only use 'create_array` for {self.__class__.__name__} with 1 "
-                f"array creator. This {self.__class__.__name__} contains "
-                f"{len(array_creators)} array creators."
+                f"array creator. This {self.__class__.__name__} contains {self} array "
+                f"creators."
             )
-        array_creator = array_creators[0]
+        array_creator = tuple(self.values())[0]
         if input_netcdf_group is None:
             input_file = (
                 input_file if input_file is not None else self.default_input_file
@@ -1220,10 +1219,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 for group_key in netcdf_group.ncattrs():
                     copy_metadata_item(group.meta, netcdf_group, group_key)
             # Copy variables and variable metadata to arrays
-            for array_creator in self:
+            for array_name, array_creator in self.items():
                 if isinstance(array_creator, NetCDFArrayConverter):
                     with Group(
-                        output_uri, mode="w", array=array_creator.name, key=key, ctx=ctx
+                        output_uri, mode="w", array=array_name, key=key, ctx=ctx
                     ) as tiledb_group:
                         array_creator.copy(netcdf_group, tiledb_group.array)
 
@@ -1274,9 +1273,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 for group_key in netcdf_group.ncattrs():
                     copy_metadata_item(array.meta, netcdf_group, group_key)
             # Copy variables and variable metadata to arrays
-            for array_creator in self:
+            for array_name, array_creator in self.items():
                 if isinstance(array_creator, NetCDFArrayConverter):
-                    array_uri = f"{output_uri}_{array_creator.name}"
+                    array_uri = f"{output_uri}_{array_name}"
                     with tiledb.open(array_uri, mode="w", key=key, ctx=ctx) as array:
                         array_creator.copy(netcdf_group, array)
 

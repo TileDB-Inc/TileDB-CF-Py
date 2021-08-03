@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections import OrderedDict, defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from io import StringIO
 from typing import (
@@ -12,7 +13,6 @@ from typing import (
     Collection,
     Dict,
     List,
-    Mapping,
     MutableMapping,
     Optional,
     Sequence,
@@ -49,25 +49,29 @@ def dataspace_name(full_name: str):
     return full_name
 
 
-class DataspaceCreator:
+@dataclass
+class _ArrayInterface:
+    name: str
+    array: ArrayCreator
+
+
+class DataspaceCreator(Mapping):
     """Creator for a group of arrays that satify the CF Dataspace Convention.
 
-    This class can be used directly to create a TileDB group that follows the
-    TileDB CF Dataspace convention. It is also useful as a super class for
-    converters/ingesters of data from sources that follow a NetCDF or NetCDF-like
-    data model to TileDB.
+    This class is a mapping over ArrayCreators that is used to create a TileDB
+    group that follows the CF Dataspace convention.
     """
 
     def __init__(self):
         self._dims: MutableMapping[str, SharedDim] = {}
-        self._array_creators: Dict[str, ArrayCreator] = {}
+        self._array_creators: Dict[str, _ArrayInterface] = {}
         self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
         self._attr_to_array: Dict[str, str] = {}
 
     def __iter__(self):
         """Iterators over all array creators."""
-        for array_creator in self._array_creators.values():
-            yield array_creator
+        for array_name in self._array_creators:
+            yield array_name
 
     def __getitem__(self, array_name: str) -> ArrayCreator:
         """Returns the requested array creator.
@@ -80,19 +84,22 @@ class DataspaceCreator:
         Returns:
             Array creator with the provided name.
         """
-        return self._array_creators[array_name]
+        return self._array_creators[array_name].array
+
+    def __len__(self):
+        return len(self._array_creators)
 
     def __repr__(self):
         output = StringIO()
-        if self._dims or self._array_creators:
+        if self._dims or len(self):
             output.write("DataspaceCreator(\n")
             output.write(" Shared Dimensions:\n")
             for dim_name, dim in self._dims.items():
                 output.write(f"  '{dim_name}':  {repr(dim)},\n")
             output.write("\n")
             output.write(" Array Creators:\n")
-            for array_creator in self:
-                output.write(f"  '{array_creator.name}':{repr(array_creator)}\n")
+            for array_name, array_creator in self.items():
+                output.write(f"  '{array_name}':{repr(array_creator)}\n")
             output.write(")")
         else:
             output.write("DataspaceCreator()")
@@ -115,11 +122,11 @@ class DataspaceCreator:
         output.write("</li>\n")
         output.write("<li>\n")
         output.write("Array Creators\n")
-        for array_creator in self:
+        for array_name, array_creator in self.items():
             output.write("<details>\n")
             output.write("<summary>\n")
             output.write(
-                f"{array_creator.__class__.__name__} <em>{array_creator.name}</em>"
+                f"{array_creator.__class__.__name__} <em>{array_name}</em>"
                 f"({', '.join(map(str, array_creator.dim_names))})\n"
             )
             output.write("</summary>\n")
@@ -134,12 +141,13 @@ class DataspaceCreator:
             self._check_new_array_name(array_name)
         except ValueError as err:
             raise ValueError(
-                f"Cannot add new array with name '{array_creator.name}'. {str(err)}"
+                f"Cannot add new array with name '{array_name}'. {str(err)}"
             ) from err
-        array_creator._register(self, array_name)
-        self._array_creators[array_creator.name] = array_creator
+        self._array_creators[array_name] = _ArrayInterface(
+            name=array_name, array=array_creator
+        )
         for dim_name in array_creator.dim_names:
-            self._dim_to_arrays[dim_name].append(array_creator.name)
+            self._dim_to_arrays[dim_name].append(array_name)
 
     def _add_attr_creator(self, array_name: str, attr_creator: AttrCreator):
         try:
@@ -329,14 +337,13 @@ class DataspaceCreator:
             key: If not ``None``, encryption key to decrypt the array.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        array_creators = tuple(self)
-        if len(array_creators) != 1:
+        if len(self) != 1:
             raise ValueError(
                 f"Can only use `create_array` for a {self.__class__.__name__} with "
                 f"exactly 1 array creator. This {self.__class__.__name__} contains "
-                f"{len(array_creators)} array creators."
+                f"{len(self)} array creators."
             )
-        array_creator = array_creators[0]
+        array_creator = tuple(self.values())[0]
         array_creator.create(uri, key=key, ctx=ctx)
 
     def create_group(
@@ -458,7 +465,6 @@ class DataspaceCreator:
             del self._attr_to_array[attr_name]
         for dim_name in array_creator.dim_names:
             self._dim_to_arrays[dim_name].remove(array_name)
-        array_creator._deregister()
         del self._array_creators[array_name]
 
     def remove_attr(self, attr_name: str):
@@ -509,8 +515,9 @@ class DataspaceCreator:
                 f"Cannot rename array '{original_name}' to '{new_name}'. {str(err)}"
             ) from err
         self._array_creators[new_name] = self._array_creators.pop(original_name)
-        array_creator = self[new_name]
-        array_creator._reregister(new_name)
+        array_interface = self._array_creators[new_name]
+        array_interface.name = new_name
+        array_creator = array_interface.array
         for attr_name in array_creator.attr_names:
             self._attr_to_array[attr_name] = new_name
         for dim_name in array_creator.dim_names:
@@ -664,12 +671,12 @@ class DataspaceCreator:
                 f"for these dimensions using the `set_dim_properties` method."
             )
         array_schemas = {}
-        for array_creator in self:
+        for array_name, array_creator in self.items():
             try:
-                array_schemas[array_creator.name] = array_creator.to_schema(ctx)
+                array_schemas[array_name] = array_creator.to_schema(ctx)
             except tiledb.libtiledb.TileDBError as err:
                 raise RuntimeError(
-                    f"Failed to create an ArraySchema for array '{array_creator.name}'."
+                    f"Failed to create an ArraySchema for array '{array_name}'."
                 ) from err
         group_schema = GroupSchema(array_schemas)
         return group_schema
@@ -747,8 +754,6 @@ class ArrayCreator:
         self.offsets_filters = offsets_filters
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
-        self._dataspace_creator: Optional[DataspaceCreator] = None
-        self._name: str = ""
         self.__post_init__()
 
     def __post_init__(self):
@@ -782,23 +787,6 @@ class ArrayCreator:
             output.write("])\n")
         output.write("  )")
         return output.getvalue()
-
-    def _deregister(self):
-        self._name = ""
-        self._dataspace = None
-
-    def _register(self, dataspace_creator: DataspaceCreator, name: str):
-        """Registers this ArrayCreator to a DataspaceCreator.
-
-        Parameters:
-            dataspace_creator: CF dataspace to regsiter array with.
-            name: Name to register this array as.
-        """
-        self._dataspace_creator = dataspace_creator
-        self._name = name
-
-    def _reregister(self, name: str):
-        self._name = name
 
     def add_attr(self, attr_creator: AttrCreator):
         """Adds a new attribute to an array in the CF dataspace.
@@ -889,11 +877,6 @@ class ArrayCreator:
         """
         attr_creator = self._attr_creators[attr_name]
         return getattr(attr_creator, property_name)
-
-    @property
-    def name(self) -> str:
-        """Name of the array."""
-        return self._name
 
     @property
     def ndim(self) -> int:
