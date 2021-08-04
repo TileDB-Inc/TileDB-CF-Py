@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 from collections import OrderedDict
-from dataclasses import dataclass
 from io import StringIO
 from typing import Any, Collection, Dict, Mapping, Optional, Sequence, Tuple, Union
 
@@ -141,22 +140,19 @@ class DataspaceCreator:
             sparse: Specifies if the array is a sparse TileDB array (true) or dense
                 TileDB array (false).
         """
-        array_dims = tuple(self._registry.get_shared_dim(dim_name) for dim_name in dims)
-        self._registry.add_array_creator(
-            ArrayCreator(
-                dims=array_dims,
-                cell_order=cell_order,
-                tile_order=tile_order,
-                capacity=capacity,
-                tiles=tiles,
-                coords_filters=coords_filters,
-                dim_filters=dim_filters,
-                offsets_filters=offsets_filters,
-                allows_duplicates=allows_duplicates,
-                sparse=sparse,
-                name=array_name,
-                registry=self._registry,
-            )
+        ArrayCreator(
+            dataspace_registry=self._registry,
+            name=array_name,
+            dims=dims,
+            cell_order=cell_order,
+            tile_order=tile_order,
+            capacity=capacity,
+            tiles=tiles,
+            coords_filters=coords_filters,
+            dim_filters=dim_filters,
+            offsets_filters=offsets_filters,
+            allows_duplicates=allows_duplicates,
+            sparse=sparse,
         )
 
     def add_attr(
@@ -205,7 +201,7 @@ class DataspaceCreator:
             domain: The (inclusive) interval on which the dimension is valid.
             dtype: The numpy dtype of the values and domain of the dimension.
         """
-        self._registry.add_shared_dimension(
+        self._registry.add_shared_dim(
             SharedDim(dim_name, domain, np.dtype(dtype), self._registry)
         )
 
@@ -334,13 +330,8 @@ class DataspaceCreator:
             property_name: Name of the requested property.
         """
         # TODO: deprecate this function
-        try:
-            array_creator = self._registry.lookup_array_creator(attr_name)
-        except KeyError as err:
-            raise KeyError(
-                f"Attribute with name '{attr_name}' does not exist."
-            ) from err
-        return array_creator.get_attr_property(attr_name, property_name)
+        attr_creator = self._registry.get_attr_creator(attr_name)
+        return getattr(attr_creator, property_name)
 
     def get_dim_property(self, dim_name: str, property_name: str) -> Any:
         """Returns a requested property for a dimension in the CF dataspace.
@@ -400,8 +391,8 @@ class DataspaceCreator:
             new_name: New name the attribute will be renamed to.
         """
         # TODO: deprecate and replace with direct call to attribute name
-        array_creator = self._registry.lookup_array_creator(attr_name=original_name)
-        array_creator.rename_attr(original_name, new_name)
+        attr_creator = self._registry.get_attr_creator(original_name)
+        attr_creator.name = new_name
 
     def rename_dim(self, original_name: str, new_name: str):
         """Renames a dimension in the CF dataspace.
@@ -465,8 +456,9 @@ class DataspaceCreator:
             properties: Keyword arguments for attribute properties.
         """
         # TODO: deprecate this function
-        array_creator = self._registry.lookup_array_creator(attr_name=attr_name)
-        array_creator.set_attr_properties(attr_name, **properties)
+        attr_creator = self._registry.get_attr_creator(attr_name)
+        for property_name, value in properties.items():
+            setattr(attr_creator, property_name, value)
 
     def set_dim_properties(self, dim_name: str, **properties):
         """Sets properties for a shared dimension in the CF dataspace.
@@ -519,11 +511,11 @@ class DataspaceRegistry:
             ) from err
         for shared_dim in array_creator.shared_dims():
             self.check_new_dim(shared_dim)
-        for attr_name in array_creator.attr_names:
-            self.check_new_attr_name(attr_name)
+        for attr_creator in array_creator:
+            self.check_new_attr_name(attr_creator.name)
         self._array_creators[array_creator.name] = array_creator
-        for attr_name in array_creator.attr_names:
-            self._attr_to_array[attr_name] = array_creator.name
+        for attr_creator in array_creator:
+            self._attr_to_array[attr_creator.name] = array_creator.name
 
     def add_attr_to_array(self, array_name: str, attr_name: str):
         """Registers a new attribute name to an array creator."""
@@ -540,7 +532,7 @@ class DataspaceRegistry:
             ) from err
         self._attr_to_array[attr_name] = array_name
 
-    def add_shared_dimension(self, shared_dim: SharedDim):
+    def add_shared_dim(self, shared_dim: SharedDim):
         """Registers a new shared dimension to the CF dataspace.
 
         Parameters:
@@ -553,7 +545,6 @@ class DataspaceRegistry:
                 f"Cannot add new dimension '{shared_dim.name}'. {str(err)}"
             ) from err
         self._shared_dims[shared_dim.name] = shared_dim
-        print(f"DIMS: {self._shared_dims.keys()}")
 
     def array_creators(self):
         """Iterator over array creators in the CF dataspace."""
@@ -590,6 +581,16 @@ class DataspaceRegistry:
         """Returns the array creator with the requested name."""
         return self._array_creators[array_name]
 
+    def get_attr_creator(self, attr_name: str) -> AttrCreator:
+        """Returns the attribute creator with the requested name."""
+        try:
+            array_creator = self.lookup_array_creator(attr_name=attr_name)
+        except KeyError as err:
+            raise KeyError(
+                f"No attribute creator with the name '{attr_name}'."
+            ) from err
+        return array_creator.attr_creator(attr_name)
+
     def get_shared_dim(self, dim_name: str) -> SharedDim:
         """Returns the dim creator with the requested name."""
         return self._shared_dims[dim_name]
@@ -620,10 +621,10 @@ class DataspaceRegistry:
         Parameters:
             array_name: Name of the array that will be removed.
         """
-        array = self._array_creators[array_name]
-        for attr_name in array.attr_names:
-            del self._attr_to_array[attr_name]
-        del self._array_creators[array_name]
+        array_creator = self._array_creators.pop(array_name)
+        for attr_creator in array_creator:
+            del self._attr_to_array[attr_creator.name]
+        del array_creator
 
     def remove_attr_creator(self, attr_name: str):
         """Removes the specified attribute from the CF dataspace.
@@ -631,15 +632,6 @@ class DataspaceRegistry:
         Parameters:
             attr_name: Name of the attribute that will be removed.
         """
-        try:
-            array_name = self._attr_to_array[attr_name]
-        except KeyError as err:
-            raise KeyError(
-                f"Cannot remove attribute '{attr_name}'. No attribute with name "
-                f"'{attr_name}' exists."
-            ) from err
-        array_creator = self._array_creators[array_name]
-        array_creator.remove_attr(attr_name)
         del self._attr_to_array[attr_name]
 
     def remove_shared_dim(self, dim_name: str):
@@ -659,7 +651,8 @@ class DataspaceRegistry:
                 f"Cannot remove dimension '{dim_name}'. Dimension is being used in "
                 f"arrays: {array_list}."
             )
-        del self._shared_dims[dim_name]
+        shared_dim = self._shared_dims.pop(dim_name)
+        del shared_dim
 
     def rename_array_creator(self, original_name: str, new_name: str):
         """Renames an array in the CF dataspace.
@@ -675,8 +668,8 @@ class DataspaceRegistry:
                 f"Cannot rename array '{original_name}' to '{new_name}'. {str(err)}"
             ) from err
         self._array_creators[new_name] = self._array_creators.pop(original_name)
-        for attr_name in self._array_creators[new_name].attr_names:
-            self._attr_to_array[attr_name] = new_name
+        for attr_creator in self._array_creators[new_name]:
+            self._attr_to_array[attr_creator.name] = new_name
 
     def rename_attr_creator(self, original_name: str, new_name: str):
         """Renames an attribute in the CF dataspace.
@@ -774,7 +767,9 @@ class ArrayCreator:
 
     def __init__(
         self,
-        dims: Sequence[SharedDim],
+        dataspace_registry: DataspaceRegistry,
+        name: str,
+        dims: Sequence[str],
         cell_order: str = "row-major",
         tile_order: str = "row-major",
         capacity: int = 0,
@@ -784,16 +779,8 @@ class ArrayCreator:
         offsets_filters: Optional[tiledb.FilterList] = None,
         allows_duplicates: bool = False,
         sparse: bool = False,
-        name: str = "",
-        registry: Optional[DataspaceRegistry] = None,
     ):
-        """Constructor for a ArrayCreator object."""
-        self._dim_creators = tuple(DimCreator(dim) for dim in dims)
-        if not self._dim_creators:
-            raise ValueError(
-                "Cannot create array. Array must have at lease one dimension."
-            )
-        self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
+        self._registry = ArrayRegistry(dataspace_registry, name, dims)
         self.cell_order = cell_order
         self.tile_order = tile_order
         self.capacity = capacity
@@ -806,8 +793,12 @@ class ArrayCreator:
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
         self._name = name
-        self._registry = registry
         self.__post_init__()
+        dataspace_registry.add_array_creator(self)
+
+    def __iter__(self):
+        """Returns iterator over attribute creators."""
+        return self._registry.attr_creators()
 
     def __post_init__(self):
         pass
@@ -816,11 +807,11 @@ class ArrayCreator:
         output = StringIO()
         output.write("  ArrayCreator(\n")
         output.write("     domain=Domain(*[\n")
-        for dim_creator in self._dim_creators:
+        for dim_creator in self._registry.dim_creators():
             output.write(f"       {repr(dim_creator)},\n")
         output.write("     ]),\n")
         output.write("     attrs=[\n")
-        for attr_creator in self._attr_creators.values():
+        for attr_creator in self:
             output.write(f"       {repr(attr_creator)},\n")
         output.write("     ],\n")
         output.write(
@@ -841,36 +832,8 @@ class ArrayCreator:
         output.write("  )")
         return output.getvalue()
 
-    def add_attr(self, attr_creator: AttrCreator):
-        """Adds a new attribute to an array in the CF dataspace.
-
-        Each attribute name must be unique. It also cannot conflict with the name of a
-        dimension in the array.
-
-        Parameters:
-            attr_name: Name of the new attribute that will be added.
-            dtype: Numpy dtype of the new attribute.
-            fill: Fill value for unset cells.
-            var: Specifies if the attribute is variable length (automatic for
-                byte/strings).
-            nullable: Specifies if the attribute is nullable using validity tiles.
-            filters: Specifies compression filters for the attribute.
-        """
-        attr_name = attr_creator.name
-        if attr_name in self._attr_creators:
-            raise ValueError(
-                f"Cannot create new attribute with name '{attr_name}'. An attribute "
-                f"with that name already exists in this array."
-            )
-        if attr_name in self.dim_names:
-            raise ValueError(
-                f"Cannot create new attribute with name '{attr_name}'. A dimension with"
-                f" that name already exists in this array."
-            )
-        if self._registry is not None:
-            print(f"ADDING ATTR {attr_name}")
-            self._registry.add_attr_to_array(self._name, attr_name)
-        self._attr_creators[attr_name] = attr_creator
+    def attr_creator(self, key: Union[int, str]):
+        return self._registry.get_attr_creator(key)
 
     def add_attr_creator(
         self,
@@ -896,18 +859,12 @@ class ArrayCreator:
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
         """
-        self.add_attr(AttrCreator(name, np.dtype(dtype), fill, var, nullable, filters))
-
-    @property
-    def attr_names(self):
-        """A view of the names of attributes in the array."""
-        return self._attr_creators.keys()
+        self._registry.add_attr_creator(
+            AttrCreator(self._registry, name, dtype, fill, var, nullable, filters)
+        )
 
     def create(
-        self,
-        uri: str,
-        key: Optional[str] = None,
-        ctx: Optional[tiledb.Ctx] = None,
+        self, uri: str, key: Optional[str] = None, ctx: Optional[tiledb.Ctx] = None
     ):
         """Creates a TileDB array at the provided URI.
 
@@ -924,88 +881,50 @@ class ArrayCreator:
         Overrides the values set in ``coords_filters``.
         """
         return {
-            dim_creator.name: dim_creator.filters for dim_creator in self._dim_creators
+            dim_creator.name: dim_creator.filters
+            for dim_creator in self._registry.dim_creators()
         }
 
     @dim_filters.setter
-    def dim_filters(
-        self,
-        dim_filters: Mapping[str, Optional[tiledb.FilterList]],
-    ):
-        dim_map = {dim_creator.name: dim_creator for dim_creator in self._dim_creators}
+    def dim_filters(self, dim_filters: Mapping[str, Optional[tiledb.FilterList]]):
+        dim_map = {
+            dim_creator.name: dim_creator
+            for dim_creator in self._registry.dim_creators()
+        }
         for dim_name, filters in dim_filters.items():
             dim_map[dim_name].filters = filters
 
     def shared_dims(self):
         """Iterators over shared dimensions in this array."""
-        for dim_creator in self._dim_creators:
+        for dim_creator in self._registry.dim_creators():
             yield dim_creator.base
 
     @property
     def dim_names(self) -> Tuple[str, ...]:
         """A static snapshot of the names of dimensions of the array."""
-        return tuple(dim_creator.name for dim_creator in self._dim_creators)
-
-    def get_attr_property(self, attr_name: str, property_name: str) -> Any:
-        """Returns a requested property for an attribute in the array.
-
-        Valid properties are:
-            * ``name``: The name of the attribute.
-            * ``dtype``: Numpy dtype of the attribute.
-            * ``fill``: Fill value for unset cells.
-            * ``var``: Specifies if the attribute is variable length (automatic for
-              bytes/strings).
-            * ``nullable``: Specifies if the attribute is nullable using validity tiles.
-            * ``filters``: Specifies compression filters for the attributes.
-
-        Parameters:
-            attr_name: Name of the attribute to get the property from.
-            property_name: Name of requested property.
-        """
-        attr_creator = self._attr_creators[attr_name]
-        return getattr(attr_creator, property_name)
+        return tuple(dim_creator.name for dim_creator in self._registry.dim_creators())
 
     @property
     def name(self) -> str:
         """Name of the array."""
-        return self._name
+        return self._registry.name
 
     @name.setter
     def name(self, name: str):
-        if self._registry is not None:
-            self._registry.rename_array_creator(self._name, name)
-        self._name = name
+        self._registry.name = name
 
     @property
     def ndim(self) -> int:
         """Number of dimensions in the array."""
-        return len(self._dim_creators)
+        return self._registry.ndim
 
-    def rename_attr(self, original_name: str, new_name: str):
-        """Renames an attribute in the array.
-
-        Parameters:
-            original_name: Current name of the attribute to be renamed.
-            new_name: New name the attribute will be renamed to.
-        """
-        if new_name in self.dim_names:
-            raise ValueError(
-                f"Cannot rename attr '{original_name}' to '{new_name}'. A dimension "
-                f"with that name already exists in this array."
-            )
-        if self._registry is not None:
-            self._registry.rename_attr_creator(original_name, new_name)
-        attr = self._attr_creators.pop(original_name)
-        attr.name = new_name
-        self._attr_creators[new_name] = attr
-
-    def remove_attr(self, attr_name: str):
+    def remove_attr_creator(self, attr_name: str):
         """Removes the specified attribute from the array.
 
         Parameters:
             attr_name: Name of the attribute that will be removed.
         """
-        del self._attr_creators[attr_name]
+        self._registry.remove_attr_creator(attr_name)
 
     def html_summary(self) -> str:
         """Returns a string HTML summary of the :class:`ArrayCreator`."""
@@ -1015,7 +934,7 @@ class ArrayCreator:
         output.write("<li>\n")
         output.write("Domain\n")
         output.write("<table>\n")
-        for dim_creator in self._dim_creators:
+        for dim_creator in self._registry.dim_creators():
             output.write(
                 f"<tr><td {cell_style}>{dim_creator.html_summary()}</td></tr>\n"
             )
@@ -1024,7 +943,7 @@ class ArrayCreator:
         output.write("<li>\n")
         output.write("Attributes\n")
         output.write("<table>\n")
-        for attr_creator in self._attr_creators.values():
+        for attr_creator in self:
             output.write(
                 f"<tr><td {cell_style}>{attr_creator.html_summary()}</td></tr>\n"
             )
@@ -1052,38 +971,11 @@ class ArrayCreator:
         output.write("</ul>\n")
         return output.getvalue()
 
-    def set_attr_properties(self, attr_name: str, **properties):
-        """Sets properties for an attribute in the array.
-
-        Valid properties are:
-            * ``name``: The name of the attribute.
-            * ``dtype``: Numpy dtype of the attribute.
-            * ``fill``: Fill value for unset cells.
-            * ``var``: Specifies if the attribute is variable length (automatic for
-              bytes/strings).
-            * ``nullable``: Specifies if the attribute is nullable using validity tiles.
-            * ``filters``: Specifies compression filters for the attributes.
-        sparst: Specifies if the array is a sparse TileDB array (true) or dense
-            TileDB array (false).
-
-
-        Parameters:
-            attr_name: Name of the attribute to set properties for.
-            properties: Keyword arguments for attribute properties.
-        """
-        if "name" in properties:
-            old_name = attr_name
-            attr_name = properties.pop("name")
-            self.rename_attr(old_name, attr_name)
-        attr_creator = self._attr_creators[attr_name]
-        for property_name, value in properties.items():
-            setattr(attr_creator, property_name, value)
-
     @property
     def tiles(self) -> Collection[Union[int, float, None]]:
         """An optional ordered list of tile sizes for the dimensions of the
         array. The length must match the number of dimensions in the array."""
-        return tuple(dim_creator.tile for dim_creator in self._dim_creators)
+        return tuple(dim_creator.tile for dim_creator in self._registry.dim_creators())
 
     @tiles.setter
     def tiles(self, tiles: Collection[Union[int, float, None]]):
@@ -1092,7 +984,7 @@ class ArrayCreator:
                 f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
                 f"{self.ndim} dimension(s)."
             )
-        for dim_creator, tile in zip(self._dim_creators, tiles):
+        for dim_creator, tile in zip(self._registry.dim_creators(), tiles):
             dim_creator.tile = tile
 
     def to_schema(
@@ -1105,13 +997,13 @@ class ArrayCreator:
             key: If not ``None``, encryption key to decrypt the array.
         """
         assert self.ndim > 0, "Must have at least one dimension."
-        if len(self._attr_creators) == 0:
+        if self._registry.nattr == 0:
             raise ValueError("Cannot create schema for array with no attributes.")
-        tiledb_dims = [dim_creator.to_tiledb() for dim_creator in self._dim_creators]
+        tiledb_dims = [
+            dim_creator.to_tiledb() for dim_creator in self._registry.dim_creators()
+        ]
         domain = tiledb.Domain(tiledb_dims, ctx=ctx)
-        attrs = tuple(
-            attr_creator.to_tiledb(ctx) for attr_creator in self._attr_creators.values()
-        )
+        attrs = tuple(attr_creator.to_tiledb(ctx) for attr_creator in self)
         return tiledb.ArraySchema(
             domain=domain,
             attrs=attrs,
@@ -1126,7 +1018,135 @@ class ArrayCreator:
         )
 
 
-@dataclass
+class ArrayRegistry:
+    def __init__(
+        self,
+        dataspace_registry: DataspaceRegistry,
+        name: str,
+        dim_names: Sequence[str],
+    ):
+        self._dataspace_registry = dataspace_registry
+        self._name = name
+        if not dim_names:
+            raise ValueError(
+                "Cannot create array. Array must have at least one dimension."
+            )
+        if isinstance(dim_names, str):
+            dim_names = (dim_names,)
+        if len(set(dim_name for dim_name in dim_names)) != len(dim_names):
+            raise ValueError(
+                "Cannot create array with repeating dimensions. All dimensions must "
+                "have a unique name."
+            )
+        self._dim_creators = tuple(
+            DimCreator(dataspace_registry.get_shared_dim(dim_name))
+            for dim_name in dim_names
+        )
+        self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
+
+    def add_attr_creator(self, attr_creator):
+        try:
+            self.check_new_attr_name(attr_creator.name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot create a new attribute with name '{attr_creator.name}'. "
+                f"{str(err)}"
+            ) from err
+        attr_name = attr_creator.name
+        if self._dataspace_registry is not None:
+            self._dataspace_registry.add_attr_to_array(self._name, attr_name)
+        self._attr_creators[attr_name] = attr_creator
+
+    def attr_creators(self):
+        """Iterates over attribute creators in the array creator."""
+        return (attr_creator for attr_creator in self._attr_creators.values())
+
+    def check_new_attr_name(self, attr_name):
+        if attr_name in self._attr_creators:
+            raise ValueError(
+                f"An attribute with the name '{attr_name}' already exists in this "
+                f"array."
+            )
+        for dim_creator in self.dim_creators():
+            if attr_name == dim_creator.name:
+                raise ValueError(
+                    f"A dimension with the name '{attr_name}' already exists in this "
+                    f"array."
+                )
+
+    def dim_creators(self):
+        """Iterates over dimension creators in the array creator."""
+        return (dim_creator for dim_creator in self._dim_creators)
+
+    def get_attr_creator(self, key: Union[str, int]) -> AttrCreator:
+        """Returns the requested attribute creator.
+
+        Parameters:
+            attr_name: Name of the attribute to return.
+        """
+        if isinstance(key, int):
+            return tuple(self._attr_creators.values())[key]
+        return self._attr_creators[key]
+
+    def get_dim_creator(self, key: Union[int, str]) -> DimCreator:
+        """Returns the requested dimension creator.
+
+        Parameters:
+            key: Name (string) or index (integer) of the dimension to return.
+
+        Returns:
+            The requested dimension creator.
+        """
+        if isinstance(key, int):
+            return self._dim_creators[key]
+        for dim_creator in self._dim_creators:
+            if key == dim_creator.name:
+                return dim_creator
+        raise KeyError(f"Dimension creator with name '{key}' not found.")
+
+    def has_attr_creator(self, attr_name: str) -> bool:
+        return attr_name in self._attr_creators
+
+    def has_dim(self, dim_name: str) -> bool:
+        return any(dim_creator.name == dim_name for dim_creator in self._dim_creators)
+
+    @property
+    def name(self) -> str:
+        """Name of the array."""
+        return self._name
+
+    @name.setter
+    def name(self, name: str):
+        self._dataspace_registry.rename_array_creator(self._name, name)
+        self._name = name
+
+    @property
+    def nattr(self) -> int:
+        return len(self._attr_creators)
+
+    @property
+    def ndim(self) -> int:
+        return len(self._dim_creators)
+
+    def remove_attr_creator(self, attr_name: str):
+        """Removes an attribute from the group."""
+        self._dataspace_registry.remove_attr_creator(attr_name)
+        attr_creator = self._attr_creators.pop(attr_name)
+        del attr_creator
+
+    def rename_attr_creator(self, original_name: str, new_name: str):
+        """Renames an attribute in the array.
+
+        Parameters:
+            original_name: Current name of the attribute to be renamed.
+            new_name: New name the attribute will be renamed to.
+        """
+        self.check_new_attr_name(new_name)
+        self._dataspace_registry.rename_attr_creator(original_name, new_name)
+        attr = self._attr_creators.pop(original_name)
+        self._attr_creators[new_name] = attr
+
+
 class AttrCreator:
     """Creator for a TileDB attribute.
 
@@ -1149,12 +1169,23 @@ class AttrCreator:
         filters: Specifies compression filters for the attribute.
     """
 
-    name: str
-    dtype: np.dtype
-    fill: Optional[DType] = None
-    var: bool = False
-    nullable: bool = False
-    filters: Optional[tiledb.FilterList] = None
+    def __init__(
+        self,
+        registry: ArrayRegistry,
+        name: str,
+        dtype: np.dtype,
+        fill: Optional[DType] = None,
+        var: bool = False,
+        nullable: bool = False,
+        filters: Optional[tiledb.FilterList] = None,
+    ):
+        self._registry = registry
+        self._name = name
+        self.dtype = np.dtype(dtype)
+        self.fill = fill
+        self.var = var
+        self.nullable = nullable
+        self.filters = filters
 
     def __repr__(self):
         filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
@@ -1170,6 +1201,15 @@ class AttrCreator:
             f" &rarr; tiledb.Attr(name={self.name}, dtype='{self.dtype!s}', "
             f"var={self.var}, nullable={self.nullable}{filters_str})"
         )
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @name.setter
+    def name(self, name: str):
+        self._registry.rename_attr_creator(self._name, name)
+        self._name = name
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
         """Returns a :class:`tiledb.Attr` using the current properties.
@@ -1290,6 +1330,8 @@ class SharedDim:
         self.domain = domain
         self.dtype = dtype
         self._registry = registry
+        if self._registry is not None:
+            self._registry.add_shared_dim(self)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
