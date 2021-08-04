@@ -38,232 +38,6 @@ def dataspace_name(full_name: str):
     return full_name
 
 
-class DataspaceRegistry:
-    def __init__(self):
-        self._shared_dims: Dict[str, SharedDim] = {}
-        self._array_creators: Dict[str, ArrayCreator] = {}
-        self._attr_to_array: Dict[str, str] = {}
-
-    def add_array_creator(self, array_creator: ArrayCreator):
-        """Registers a new array creator with the CF dataspace."""
-        try:
-            self.check_new_array_name(array_creator.name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new array with name '{array_creator.name}'. {str(err)}"
-            ) from err
-        for shared_dim in array_creator.shared_dims():
-            self.check_new_dim(shared_dim)
-        for attr_name in array_creator.attr_names:
-            self.check_new_attr_name(attr_name)
-        self._array_creators[array_creator.name] = array_creator
-        for attr_name in array_creator.attr_names:
-            self._attr_to_array[attr_name] = array_creator.name
-
-    def add_attr_to_array(self, array_name: str, attr_name: str):
-        """Registers a new attribute name to an array creator."""
-        if array_name not in self._array_creators:
-            raise KeyError(
-                f"Cannot add attribute to array '{array_name}'. No array named "
-                f"'{array_name}' exists."
-            )
-        try:
-            self.check_new_attr_name(attr_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new attribute '{attr_name}'. {str(err)}"
-            ) from err
-        self._attr_to_array[attr_name] = array_name
-
-    def add_shared_dimension(self, shared_dim: SharedDim):
-        """Registers a new shared dimension to the CF dataspace.
-
-        Parameters:
-            shared_dim: The new shared dimension to register.
-        """
-        try:
-            self.check_new_dim(shared_dim)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new dimension '{shared_dim.name}'. {str(err)}"
-            ) from err
-        self._shared_dims[shared_dim.name] = shared_dim
-        print(f"DIMS: {self._shared_dims.keys()}")
-
-    def array_creators(self):
-        """Iterator over array creators in the CF dataspace."""
-        for array_creator in self._array_creators.values():
-            yield array_creator
-
-    def check_new_array_name(self, array_name: str):
-        if array_name in self._array_creators:
-            raise ValueError(f"An array with name '{array_name}' already exists.")
-        if array_name == METADATA_ARRAY_NAME:
-            raise ValueError(f"The array name '{METADATA_ARRAY_NAME}' is reserved.")
-
-    def check_new_attr_name(self, attr_name: str):
-        if attr_name in self._attr_to_array:
-            raise ValueError(f"An attribute with name '{attr_name}' already exists.")
-        ds_name = dataspace_name(attr_name)
-        ds_names = {ds_name, ds_name + DATA_SUFFIX, ds_name + INDEX_SUFFIX}
-        if not ds_names.isdisjoint(self._attr_to_array.keys()):
-            raise ValueError(
-                f"An attribute named with the dataspace name '{ds_name}' already "
-                f"exists."
-            )
-
-    def check_new_dim(self, shared_dim: SharedDim):
-        if (
-            shared_dim.name in self._shared_dims
-            and shared_dim != self._shared_dims[shared_dim.name]
-        ):
-            raise ValueError(
-                f"A different dimension with name '{shared_dim.name}' already exists."
-            )
-
-    def get_array_creator(self, array_name: str) -> ArrayCreator:
-        """Returns the array creator with the requested name."""
-        return self._array_creators[array_name]
-
-    def get_shared_dim(self, dim_name: str) -> SharedDim:
-        """Returns the dim creator with the requested name."""
-        return self._shared_dims[dim_name]
-
-    def lookup_array_creator(self, attr_name: str) -> ArrayCreator:
-        """Returns an array creator that contains the requested attribute."""
-        try:
-            array_name = self._attr_to_array[attr_name]
-        except KeyError as err:
-            raise KeyError(f"No attribute with the name '{attr_name}'.") from err
-        return self._array_creators[array_name]
-
-    @property
-    def narray(self) -> int:
-        return len(self._array_creators)
-
-    @property
-    def nattr(self) -> int:
-        return len(self._attr_to_array)
-
-    @property
-    def ndim(self) -> int:
-        return len(self._shared_dims)
-
-    def remove_array_creator(self, array_name: str):
-        """Removes the specified array and all its attributes from the CF dataspace.
-
-        Parameters:
-            array_name: Name of the array that will be removed.
-        """
-        array = self._array_creators[array_name]
-        for attr_name in array.attr_names:
-            del self._attr_to_array[attr_name]
-        del self._array_creators[array_name]
-
-    def remove_attr_creator(self, attr_name: str):
-        """Removes the specified attribute from the CF dataspace.
-
-        Parameters:
-            attr_name: Name of the attribute that will be removed.
-        """
-        try:
-            array_name = self._attr_to_array[attr_name]
-        except KeyError as err:
-            raise KeyError(
-                f"Cannot remove attribute '{attr_name}'. No attribute with name "
-                f"'{attr_name}' exists."
-            ) from err
-        array_creator = self._array_creators[array_name]
-        array_creator.remove_attr(attr_name)
-        del self._attr_to_array[attr_name]
-
-    def remove_shared_dim(self, dim_name: str):
-        """Removes the specified dimension from the CF dataspace.
-        an array.
-
-        Parameters:
-            dim_name: Name of the dimension to be removed.
-        """
-        array_list = [
-            array_creator.name
-            for array_creator in self.array_creators()
-            if dim_name in array_creator.dim_names
-        ]
-        if array_list:
-            raise ValueError(
-                f"Cannot remove dimension '{dim_name}'. Dimension is being used in "
-                f"arrays: {array_list}."
-            )
-        del self._shared_dims[dim_name]
-
-    def rename_array_creator(self, original_name: str, new_name: str):
-        """Renames an array in the CF dataspace.
-
-        Parameters:
-            original_name: Current name of the array to be renamed.
-            new_name: New name the array will be renamed to.
-        """
-        try:
-            self.check_new_array_name(new_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot rename array '{original_name}' to '{new_name}'. {str(err)}"
-            ) from err
-        self._array_creators[new_name] = self._array_creators.pop(original_name)
-        for attr_name in self._array_creators[new_name].attr_names:
-            self._attr_to_array[attr_name] = new_name
-
-    def rename_attr_creator(self, original_name: str, new_name: str):
-        """Renames an attribute in the CF dataspace.
-
-        Parameters:
-            original_name: Current name of the attribute to be renamed.
-            new_name: New name the attribute will be renamed to.
-        """
-        try:
-            self.check_new_attr_name(new_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot rename attribute '{original_name}' to '{new_name}'. {str(err)}"
-            ) from err
-        self._attr_to_array[new_name] = self._attr_to_array.pop(original_name)
-
-    def rename_shared_dim(self, original_name: str, new_name: str):
-        """Renames a dimension in the CF dataspace.
-
-        Parameters:
-            original_name: Current name of the dimension to be renamed.
-            new_name: New name the dimension will be renamed to.
-        """
-        try:
-            dim = self._shared_dims[original_name]
-            self.check_new_dim(SharedDim(new_name, dim.domain, dim.dtype))
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot rename dimension '{original_name}' to '{new_name}'. {str(err)}"
-            ) from err
-        if new_name in self._shared_dims:
-            raise NotImplementedError(
-                f"Cannot rename dimension '{original_name}' to '{new_name}'. A "
-                f"dimension with the same name already exists, and merging dimensions "
-                f"has not yet been implemented."
-            )
-        if new_name in self._attr_to_array:
-            array_name = self._attr_to_array[new_name]
-            if original_name in self._array_creators[array_name].dim_names:
-                raise ValueError(
-                    f"Cannot rename dimension '{original_name}' to '{new_name}'. An "
-                    f"attribute with the same name already exists in the array "
-                    f"'{array_name}' that uses this dimension."
-                )
-        self._shared_dims[new_name] = self._shared_dims.pop(original_name)
-
-    def shared_dims(self):
-        """Iterates over shared dimensions in the CF dataspace."""
-        for shared_dim in self._shared_dims.values():
-            yield shared_dim
-
-
 class DataspaceCreator:
     """Creator for a group of arrays that satify the CF Dataspace Convention.
 
@@ -727,6 +501,232 @@ class DataspaceCreator:
                 ) from err
         group_schema = GroupSchema(array_schemas)
         return group_schema
+
+
+class DataspaceRegistry:
+    def __init__(self):
+        self._shared_dims: Dict[str, SharedDim] = {}
+        self._array_creators: Dict[str, ArrayCreator] = {}
+        self._attr_to_array: Dict[str, str] = {}
+
+    def add_array_creator(self, array_creator: ArrayCreator):
+        """Registers a new array creator with the CF dataspace."""
+        try:
+            self.check_new_array_name(array_creator.name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new array with name '{array_creator.name}'. {str(err)}"
+            ) from err
+        for shared_dim in array_creator.shared_dims():
+            self.check_new_dim(shared_dim)
+        for attr_name in array_creator.attr_names:
+            self.check_new_attr_name(attr_name)
+        self._array_creators[array_creator.name] = array_creator
+        for attr_name in array_creator.attr_names:
+            self._attr_to_array[attr_name] = array_creator.name
+
+    def add_attr_to_array(self, array_name: str, attr_name: str):
+        """Registers a new attribute name to an array creator."""
+        if array_name not in self._array_creators:
+            raise KeyError(
+                f"Cannot add attribute to array '{array_name}'. No array named "
+                f"'{array_name}' exists."
+            )
+        try:
+            self.check_new_attr_name(attr_name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new attribute '{attr_name}'. {str(err)}"
+            ) from err
+        self._attr_to_array[attr_name] = array_name
+
+    def add_shared_dimension(self, shared_dim: SharedDim):
+        """Registers a new shared dimension to the CF dataspace.
+
+        Parameters:
+            shared_dim: The new shared dimension to register.
+        """
+        try:
+            self.check_new_dim(shared_dim)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new dimension '{shared_dim.name}'. {str(err)}"
+            ) from err
+        self._shared_dims[shared_dim.name] = shared_dim
+        print(f"DIMS: {self._shared_dims.keys()}")
+
+    def array_creators(self):
+        """Iterator over array creators in the CF dataspace."""
+        for array_creator in self._array_creators.values():
+            yield array_creator
+
+    def check_new_array_name(self, array_name: str):
+        if array_name in self._array_creators:
+            raise ValueError(f"An array with name '{array_name}' already exists.")
+        if array_name == METADATA_ARRAY_NAME:
+            raise ValueError(f"The array name '{METADATA_ARRAY_NAME}' is reserved.")
+
+    def check_new_attr_name(self, attr_name: str):
+        if attr_name in self._attr_to_array:
+            raise ValueError(f"An attribute with name '{attr_name}' already exists.")
+        ds_name = dataspace_name(attr_name)
+        ds_names = {ds_name, ds_name + DATA_SUFFIX, ds_name + INDEX_SUFFIX}
+        if not ds_names.isdisjoint(self._attr_to_array.keys()):
+            raise ValueError(
+                f"An attribute named with the dataspace name '{ds_name}' already "
+                f"exists."
+            )
+
+    def check_new_dim(self, shared_dim: SharedDim):
+        if (
+            shared_dim.name in self._shared_dims
+            and shared_dim != self._shared_dims[shared_dim.name]
+        ):
+            raise ValueError(
+                f"A different dimension with name '{shared_dim.name}' already exists."
+            )
+
+    def get_array_creator(self, array_name: str) -> ArrayCreator:
+        """Returns the array creator with the requested name."""
+        return self._array_creators[array_name]
+
+    def get_shared_dim(self, dim_name: str) -> SharedDim:
+        """Returns the dim creator with the requested name."""
+        return self._shared_dims[dim_name]
+
+    def lookup_array_creator(self, attr_name: str) -> ArrayCreator:
+        """Returns an array creator that contains the requested attribute."""
+        try:
+            array_name = self._attr_to_array[attr_name]
+        except KeyError as err:
+            raise KeyError(f"No attribute with the name '{attr_name}'.") from err
+        return self._array_creators[array_name]
+
+    @property
+    def narray(self) -> int:
+        return len(self._array_creators)
+
+    @property
+    def nattr(self) -> int:
+        return len(self._attr_to_array)
+
+    @property
+    def ndim(self) -> int:
+        return len(self._shared_dims)
+
+    def remove_array_creator(self, array_name: str):
+        """Removes the specified array and all its attributes from the CF dataspace.
+
+        Parameters:
+            array_name: Name of the array that will be removed.
+        """
+        array = self._array_creators[array_name]
+        for attr_name in array.attr_names:
+            del self._attr_to_array[attr_name]
+        del self._array_creators[array_name]
+
+    def remove_attr_creator(self, attr_name: str):
+        """Removes the specified attribute from the CF dataspace.
+
+        Parameters:
+            attr_name: Name of the attribute that will be removed.
+        """
+        try:
+            array_name = self._attr_to_array[attr_name]
+        except KeyError as err:
+            raise KeyError(
+                f"Cannot remove attribute '{attr_name}'. No attribute with name "
+                f"'{attr_name}' exists."
+            ) from err
+        array_creator = self._array_creators[array_name]
+        array_creator.remove_attr(attr_name)
+        del self._attr_to_array[attr_name]
+
+    def remove_shared_dim(self, dim_name: str):
+        """Removes the specified dimension from the CF dataspace.
+        an array.
+
+        Parameters:
+            dim_name: Name of the dimension to be removed.
+        """
+        array_list = [
+            array_creator.name
+            for array_creator in self.array_creators()
+            if dim_name in array_creator.dim_names
+        ]
+        if array_list:
+            raise ValueError(
+                f"Cannot remove dimension '{dim_name}'. Dimension is being used in "
+                f"arrays: {array_list}."
+            )
+        del self._shared_dims[dim_name]
+
+    def rename_array_creator(self, original_name: str, new_name: str):
+        """Renames an array in the CF dataspace.
+
+        Parameters:
+            original_name: Current name of the array to be renamed.
+            new_name: New name the array will be renamed to.
+        """
+        try:
+            self.check_new_array_name(new_name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot rename array '{original_name}' to '{new_name}'. {str(err)}"
+            ) from err
+        self._array_creators[new_name] = self._array_creators.pop(original_name)
+        for attr_name in self._array_creators[new_name].attr_names:
+            self._attr_to_array[attr_name] = new_name
+
+    def rename_attr_creator(self, original_name: str, new_name: str):
+        """Renames an attribute in the CF dataspace.
+
+        Parameters:
+            original_name: Current name of the attribute to be renamed.
+            new_name: New name the attribute will be renamed to.
+        """
+        try:
+            self.check_new_attr_name(new_name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot rename attribute '{original_name}' to '{new_name}'. {str(err)}"
+            ) from err
+        self._attr_to_array[new_name] = self._attr_to_array.pop(original_name)
+
+    def rename_shared_dim(self, original_name: str, new_name: str):
+        """Renames a dimension in the CF dataspace.
+
+        Parameters:
+            original_name: Current name of the dimension to be renamed.
+            new_name: New name the dimension will be renamed to.
+        """
+        try:
+            dim = self._shared_dims[original_name]
+            self.check_new_dim(SharedDim(new_name, dim.domain, dim.dtype))
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot rename dimension '{original_name}' to '{new_name}'. {str(err)}"
+            ) from err
+        if new_name in self._shared_dims:
+            raise NotImplementedError(
+                f"Cannot rename dimension '{original_name}' to '{new_name}'. A "
+                f"dimension with the same name already exists, and merging dimensions "
+                f"has not yet been implemented."
+            )
+        if new_name in self._attr_to_array:
+            array_name = self._attr_to_array[new_name]
+            if original_name in self._array_creators[array_name].dim_names:
+                raise ValueError(
+                    f"Cannot rename dimension '{original_name}' to '{new_name}'. An "
+                    f"attribute with the same name already exists in the array "
+                    f"'{array_name}' that uses this dimension."
+                )
+        self._shared_dims[new_name] = self._shared_dims.pop(original_name)
+
+    def shared_dims(self):
+        """Iterates over shared dimensions in the CF dataspace."""
+        for shared_dim in self._shared_dims.values():
+            yield shared_dim
 
 
 class ArrayCreator:
