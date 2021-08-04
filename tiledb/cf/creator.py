@@ -4,20 +4,10 @@
 
 from __future__ import annotations
 
-from collections import OrderedDict, defaultdict
+from collections import OrderedDict
 from dataclasses import dataclass
 from io import StringIO
-from typing import (
-    Any,
-    Collection,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Tuple,
-    Union,
-)
+from typing import Any, Collection, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -52,7 +42,6 @@ class DataspaceRegistry:
     def __init__(self):
         self._shared_dims: Dict[str, SharedDim] = {}
         self._array_creators: Dict[str, ArrayCreator] = {}
-        self._dim_to_arrays: Dict[str, List[str]] = defaultdict(list)
         self._attr_to_array: Dict[str, str] = {}
 
     def add_array_creator(self, array_creator: ArrayCreator):
@@ -68,8 +57,6 @@ class DataspaceRegistry:
         for attr_name in array_creator.attr_names:
             self.check_new_attr_name(attr_name)
         self._array_creators[array_creator.name] = array_creator
-        for shared_dim in array_creator.shared_dims():
-            self._dim_to_arrays[shared_dim.name].append(array_creator.name)
         for attr_name in array_creator.attr_names:
             self._attr_to_array[attr_name] = array_creator.name
 
@@ -171,8 +158,6 @@ class DataspaceRegistry:
         array = self._array_creators[array_name]
         for attr_name in array.attr_names:
             del self._attr_to_array[attr_name]
-        for dim_name in array.dim_names:
-            self._dim_to_arrays[dim_name].remove(array_name)
         del self._array_creators[array_name]
 
     def remove_attr_creator(self, attr_name: str):
@@ -199,7 +184,11 @@ class DataspaceRegistry:
         Parameters:
             dim_name: Name of the dimension to be removed.
         """
-        array_list = self._dim_to_arrays.get(dim_name)
+        array_list = [
+            array_creator.name
+            for array_creator in self.array_creators()
+            if dim_name in array_creator.dim_names
+        ]
         if array_list:
             raise ValueError(
                 f"Cannot remove dimension '{dim_name}'. Dimension is being used in "
@@ -223,9 +212,6 @@ class DataspaceRegistry:
         self._array_creators[new_name] = self._array_creators.pop(original_name)
         for attr_name in self._array_creators[new_name].attr_names:
             self._attr_to_array[attr_name] = new_name
-        for dim_name in self._array_creators[new_name].dim_names:
-            self._dim_to_arrays[dim_name].remove(original_name)
-            self._dim_to_arrays[dim_name].append(new_name)
 
     def rename_attr_creator(self, original_name: str, new_name: str):
         """Renames an attribute in the CF dataspace.
@@ -262,12 +248,14 @@ class DataspaceRegistry:
                 f"dimension with the same name already exists, and merging dimensions "
                 f"has not yet been implemented."
             )
-        if self._attr_to_array.get(new_name) in self._dim_to_arrays[original_name]:
-            raise ValueError(
-                f"Cannot rename dimension '{original_name}' to '{new_name}'. An "
-                f"attribute with the same name already exists in the array "
-                f"'{self._attr_to_array[new_name]}' that uses this dimension."
-            )
+        if new_name in self._attr_to_array:
+            array_name = self._attr_to_array[new_name]
+            if original_name in self._array_creators[array_name].dim_names:
+                raise ValueError(
+                    f"Cannot rename dimension '{original_name}' to '{new_name}'. An "
+                    f"attribute with the same name already exists in the array "
+                    f"'{array_name}' that uses this dimension."
+                )
         self._shared_dims[new_name] = self._shared_dims.pop(original_name)
 
     def shared_dims(self):
