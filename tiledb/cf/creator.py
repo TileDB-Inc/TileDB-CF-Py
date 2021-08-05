@@ -201,9 +201,7 @@ class DataspaceCreator:
             domain: The (inclusive) interval on which the dimension is valid.
             dtype: The numpy dtype of the values and domain of the dimension.
         """
-        self._registry.add_shared_dim(
-            SharedDim(dim_name, domain, np.dtype(dtype), self._registry)
-        )
+        SharedDim(self._registry, dim_name, domain, dtype)
 
     @property
     def array_names(self):
@@ -509,13 +507,11 @@ class DataspaceRegistry:
             raise ValueError(
                 f"Cannot add new array with name '{array_creator.name}'. {str(err)}"
             ) from err
-        for shared_dim in array_creator.shared_dims():
-            self.check_new_dim(shared_dim)
-        for attr_creator in array_creator:
-            self.check_new_attr_name(attr_creator.name)
+        if array_creator.nattr != 0:
+            raise ValueError(
+                "Cannot register an array creator that already has attribute."
+            )
         self._array_creators[array_creator.name] = array_creator
-        for attr_creator in array_creator:
-            self._attr_to_array[attr_creator.name] = array_creator.name
 
     def add_attr_to_array(self, array_name: str, attr_name: str):
         """Registers a new attribute name to an array creator."""
@@ -576,6 +572,28 @@ class DataspaceRegistry:
             raise ValueError(
                 f"A different dimension with name '{shared_dim.name}' already exists."
             )
+
+    def check_rename_shared_dim(self, original_name: str, new_name: str):
+        if new_name in self._shared_dims:
+            raise NotImplementedError(
+                f"Cannot rename dimension '{original_name}' to '{new_name}'. A "
+                f"dimension with the same name already exists, and merging dimensions "
+                f"has not yet been implemented."
+            )
+        for array_creator in self.array_creators():
+            if original_name in array_creator.dim_names:
+                if new_name in {attr_creator.name for attr_creator in array_creator}:
+                    raise ValueError(
+                        f"Cannot rename dimension '{original_name}' to '{new_name}'. An"
+                        f" attribute with the same name already exists in the array "
+                        f"'{array_creator.name}' that uses this dimension."
+                    )
+                if new_name in array_creator.dim_names:
+                    raise ValueError(
+                        f"Cannot rename dimension '{original_name}' to '{new_name}'. A "
+                        f"dimension with the same name already exists in the array "
+                        f"'{array_creator.name}' that uses this dimension."
+                    )
 
     def get_array_creator(self, array_name: str) -> ArrayCreator:
         """Returns the array creator with the requested name."""
@@ -686,35 +704,8 @@ class DataspaceRegistry:
             ) from err
         self._attr_to_array[new_name] = self._attr_to_array.pop(original_name)
 
-    def rename_shared_dim(self, original_name: str, new_name: str):
-        """Renames a dimension in the CF dataspace.
-
-        Parameters:
-            original_name: Current name of the dimension to be renamed.
-            new_name: New name the dimension will be renamed to.
-        """
-        try:
-            dim = self._shared_dims[original_name]
-            self.check_new_dim(SharedDim(new_name, dim.domain, dim.dtype))
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot rename dimension '{original_name}' to '{new_name}'. {str(err)}"
-            ) from err
-        if new_name in self._shared_dims:
-            raise NotImplementedError(
-                f"Cannot rename dimension '{original_name}' to '{new_name}'. A "
-                f"dimension with the same name already exists, and merging dimensions "
-                f"has not yet been implemented."
-            )
-        if new_name in self._attr_to_array:
-            array_name = self._attr_to_array[new_name]
-            if original_name in self._array_creators[array_name].dim_names:
-                raise ValueError(
-                    f"Cannot rename dimension '{original_name}' to '{new_name}'. An "
-                    f"attribute with the same name already exists in the array "
-                    f"'{array_name}' that uses this dimension."
-                )
-        self._shared_dims[new_name] = self._shared_dims.pop(original_name)
+    def update_shared_dim_name(self, shared_dim: SharedDim, original_name: str):
+        self._shared_dims[shared_dim.name] = self._shared_dims.pop(original_name)
 
     def shared_dims(self):
         """Iterates over shared dimensions in the CF dataspace."""
@@ -912,6 +903,11 @@ class ArrayCreator:
     @name.setter
     def name(self, name: str):
         self._registry.name = name
+
+    @property
+    def nattr(self) -> int:
+        """Number of attributes in the array."""
+        return self._registry.nattr
 
     @property
     def ndim(self) -> int:
@@ -1321,17 +1317,16 @@ class SharedDim:
 
     def __init__(
         self,
+        dataspace_registry: DataspaceRegistry,
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
-        registry: Optional[DataspaceRegistry] = None,
     ):
         self._name = name
         self.domain = domain
-        self.dtype = dtype
-        self._registry = registry
-        if self._registry is not None:
-            self._registry.add_shared_dim(self)
+        self.dtype = np.dtype(dtype)
+        self._dataspace_registry = dataspace_registry
+        self._dataspace_registry.add_shared_dim(self)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -1341,20 +1336,6 @@ class SharedDim:
             and self.domain == other.domain
             and self.dtype == other.dtype
         )
-
-    @classmethod
-    def from_tiledb_dim(cls, dim: tiledb.Dim):
-        """Converts a tiledb.Dim to a :class:`SharedDim`
-
-        Parameters:
-            dim: TileDB dimension that will be used to create the shared
-                dimension.
-
-        Returns:
-            A :class:`SharedDim` that has the name, domain, and dtype of the
-                tiledb.Dim.
-        """
-        return cls(dim.name, dim.domain, dim.dtype)
 
     def __repr__(self) -> str:
         return (
@@ -1387,6 +1368,7 @@ class SharedDim:
 
     @name.setter
     def name(self, name: str):
-        if self._registry is not None:
-            self._registry.rename_shared_dim(self._name, name)
+        self._dataspace_registry.check_rename_shared_dim(self._name, name)
+        original_name = self._name
         self._name = name
+        self._dataspace_registry.update_shared_dim_name(self, original_name)

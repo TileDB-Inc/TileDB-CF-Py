@@ -11,12 +11,8 @@ class TestArrayCreatorSparseExample1:
     @pytest.fixture
     def array_creator(self):
         registry = DataspaceRegistry()
-        dims = [
-            SharedDim("row", (0, 63), np.uint32),
-            SharedDim("col", (0, 31), np.uint32),
-        ]
-        for dim in dims:
-            registry.add_shared_dim(dim)
+        SharedDim(registry, "row", (0, 63), np.uint32)
+        SharedDim(registry, "col", (0, 31), np.uint32)
         creator = ArrayCreator(
             registry,
             "array",
@@ -55,8 +51,8 @@ class TestArrayCreatorSparseExample1:
 
 def test_rename_attr():
     registry = DataspaceRegistry()
-    SharedDim("pressure", (0.0, 1000.0), np.float64, registry)
-    SharedDim("temperature", (-200.0, 200.0), np.float64, registry)
+    SharedDim(registry, "pressure", (0.0, 1000.0), np.float64)
+    SharedDim(registry, "temperature", (-200.0, 200.0), np.float64)
     array_creator = ArrayCreator(
         registry, "array", ("pressure", "temperature"), sparse=True
     )
@@ -75,8 +71,8 @@ def test_array_no_dim_error():
 
 def test_name_exists_error():
     registry = DataspaceRegistry()
-    SharedDim("pressure", (0.0, 1000.0), np.float64, registry)
-    SharedDim("temperature", (-200.0, 200.0), np.float64, registry)
+    SharedDim(registry, "pressure", (0.0, 1000.0), np.float64)
+    SharedDim(registry, "temperature", (-200.0, 200.0), np.float64)
     creator = ArrayCreator(registry, "array", ("pressure", "temperature"), sparse=True)
     creator.add_attr_creator("enthalpy", np.float64)
     with pytest.raises(ValueError):
@@ -85,8 +81,8 @@ def test_name_exists_error():
 
 def test_dim_name_exists_error():
     registry = DataspaceRegistry()
-    SharedDim("pressure", (0.0, 1000.0), np.float64, registry)
-    SharedDim("temperature", (-200.0, 200.0), np.float64, registry)
+    SharedDim(registry, "pressure", (0.0, 1000.0), np.float64)
+    SharedDim(registry, "temperature", (-200.0, 200.0), np.float64)
     creator = ArrayCreator(registry, "array", ("pressure", "temperature"), sparse=True)
     creator.add_attr_creator("enthalpy", np.float64)
     with pytest.raises(ValueError):
@@ -95,8 +91,8 @@ def test_dim_name_exists_error():
 
 def test_bad_tiles_error():
     registry = DataspaceRegistry()
-    SharedDim("row", (0, 63), np.uint32, registry)
-    SharedDim("col", (0, 31), np.uint32, registry)
+    SharedDim(registry, "row", (0, 63), np.uint32)
+    SharedDim(registry, "col", (0, 31), np.uint32)
     creator = ArrayCreator(registry, "array", ("row", "col"))
     with pytest.raises(ValueError):
         creator.tiles = (4,)
@@ -104,8 +100,8 @@ def test_bad_tiles_error():
 
 def test_to_schema_no_attrs_error():
     registry = DataspaceRegistry()
-    SharedDim("row", (0, 63), np.uint32, registry)
-    SharedDim("col", (0, 31), np.uint32, registry)
+    SharedDim(registry, "row", (0, 63), np.uint32)
+    SharedDim(registry, "col", (0, 31), np.uint32)
     creator = ArrayCreator(registry, "array", ("row", "col"))
     with pytest.raises(ValueError):
         creator.to_schema()
