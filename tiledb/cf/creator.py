@@ -850,9 +850,7 @@ class ArrayCreator:
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
         """
-        self._registry.add_attr_creator(
-            AttrCreator(self._registry, name, dtype, fill, var, nullable, filters)
-        )
+        AttrCreator(self._registry, name, dtype, fill, var, nullable, filters)
 
     def create(
         self, uri: str, key: Optional[str] = None, ctx: Optional[tiledb.Ctx] = None
@@ -1182,6 +1180,7 @@ class AttrCreator:
         self.var = var
         self.nullable = nullable
         self.filters = filters
+        self._array_registry.add_attr_creator(self)
 
     def __repr__(self):
         filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
