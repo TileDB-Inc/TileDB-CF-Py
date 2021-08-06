@@ -228,11 +228,11 @@ class DataspaceCreator:
             key: If not ``None``, encryption key to decrypt the array.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        if self._registry.ndim != 1:
+        if self._registry.narray != 1:
             raise ValueError(
                 f"Can only use `create_array` for a {self.__class__.__name__} with "
                 f"exactly 1 array creator. This {self.__class__.__name__} contains "
-                f"{self._registry.ndim} array creators."
+                f"{self._registry.narray} array creators."
             )
         array_creator = tuple(self._registry.array_creators())[0]
         array_creator.create(uri, key=key, ctx=ctx)
@@ -1167,7 +1167,7 @@ class AttrCreator:
 
     def __init__(
         self,
-        registry: ArrayRegistry,
+        array_registry: ArrayRegistry,
         name: str,
         dtype: np.dtype,
         fill: Optional[DType] = None,
@@ -1175,7 +1175,7 @@ class AttrCreator:
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
     ):
-        self._registry = registry
+        self._array_registry = array_registry
         self._name = name
         self.dtype = np.dtype(dtype)
         self.fill = fill
@@ -1204,7 +1204,7 @@ class AttrCreator:
 
     @name.setter
     def name(self, name: str):
-        self._registry.rename_attr_creator(self._name, name)
+        self._array_registry.rename_attr_creator(self._name, name)
         self._name = name
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
