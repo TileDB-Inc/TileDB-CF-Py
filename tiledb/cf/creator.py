@@ -358,7 +358,8 @@ class DataspaceCreator:
             attr_name: Name of the attribute that will be removed.
         """
         # TODO: deprecate and replace with function directly in array_creator.
-        self._registry.remove_attr_creator(attr_name)
+        array_creator = self._registry.lookup_array_creator(attr_name=attr_name)
+        array_creator.remove_attr_creator(attr_name)
 
     def remove_dim(self, dim_name: str):
         """Removes the specified dimension from the CF dataspace.
@@ -511,7 +512,7 @@ class DataspaceRegistry:
 
     def register_attr_to_array(self, array_name: str, attr_name: str):
         """Registers a new attribute name to an array creator."""
-        if array_name not in self._array_creators:
+        if array_name not in self._array_creators:  # pragma: no cover
             raise KeyError(
                 f"Cannot add attribute to array '{array_name}'. No array named "
                 f"'{array_name}' exists."
@@ -584,7 +585,8 @@ class DataspaceRegistry:
                         f" attribute with the same name already exists in the array "
                         f"'{array_creator.name}' that uses this dimension."
                     )
-                if new_name in array_creator.dim_names:
+                if new_name in array_creator.dim_names:  # pragma: no cover
+                    # Remove pragma no cover once merging dimensions is enable.
                     raise ValueError(
                         f"Cannot rename dimension '{original_name}' to '{new_name}'. A "
                         f"dimension with the same name already exists in the array "
@@ -620,10 +622,6 @@ class DataspaceRegistry:
     @property
     def narray(self) -> int:
         return len(self._array_creators)
-
-    @property
-    def nattr(self) -> int:
-        return len(self._attr_to_array)
 
     @property
     def ndim(self) -> int:
@@ -667,12 +665,6 @@ class DataspaceRegistry:
             self._attr_to_array[attr_creator.name] = new_name
 
     def update_attr_creator_name(self, original_name: str, new_name: str):
-        try:
-            self.check_new_attr_name(new_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot rename attribute '{original_name}' to '{new_name}'. {str(err)}"
-            ) from err
         self._attr_to_array[new_name] = self._attr_to_array.pop(original_name)
 
     def update_shared_dim_name(self, new_name: str, original_name: str):
@@ -845,11 +837,6 @@ class ArrayCreator:
         for dim_name, filters in dim_filters.items():
             dim_map[dim_name].filters = filters
 
-    def shared_dims(self):
-        """Iterators over shared dimensions in this array."""
-        for dim_creator in self._registry.dim_creators():
-            yield dim_creator.base
-
     @property
     def dim_names(self) -> Tuple[str, ...]:
         """A static snapshot of the names of dimensions of the array."""
@@ -873,14 +860,6 @@ class ArrayCreator:
     def ndim(self) -> int:
         """Number of dimensions in the array."""
         return self._registry.ndim
-
-    def remove_attr_creator(self, attr_name: str):
-        """Removes the specified attribute from the array.
-
-        Parameters:
-            attr_name: Name of the attribute that will be removed.
-        """
-        self._registry.remove_attr_creator(attr_name)
 
     def html_summary(self) -> str:
         """Returns a string HTML summary of the :class:`ArrayCreator`."""
@@ -926,6 +905,9 @@ class ArrayCreator:
         output.write("</li>\n")
         output.write("</ul>\n")
         return output.getvalue()
+
+    def remove_attr_creator(self, attr_name):
+        return self._registry.remove_attr_creator(attr_name)
 
     @property
     def tiles(self) -> Collection[Union[int, float, None]]:
@@ -991,8 +973,8 @@ class ArrayRegistry:
             dim_names = (dim_names,)
         if len(set(dim_name for dim_name in dim_names)) != len(dim_names):
             raise ValueError(
-                "Cannot create array with repeating dimensions. All dimensions must "
-                "have a unique name."
+                "Cannot create array; the array has repeating dimensions. All "
+                "dimensions must have a unique name."
             )
         self._dim_creators = tuple(
             DimCreator(dataspace_registry.get_shared_dim(dim_name))
@@ -1295,6 +1277,8 @@ class SharedDim:
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
+            return False
+        if not isinstance(self, other.__class__):
             return False
         return (
             self.name == other.name

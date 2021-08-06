@@ -17,6 +17,7 @@ class TestArrayCreatorSparseExample1:
             registry,
             "array",
             ("row", "col"),
+            sparse=True,
             coords_filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)]),
             offsets_filters=tiledb.FilterList([tiledb.Bzip2Filter()]),
             tiles=(32, 16),
@@ -48,6 +49,41 @@ class TestArrayCreatorSparseExample1:
         tiles = array_creator.tiles
         assert tiles == (32, 16)
 
+    def test_nattr(self, array_creator):
+        nattr = array_creator.nattr
+        assert nattr == 1
+
+
+class TestArrayCreatorDense1:
+    @pytest.fixture
+    def array_creator(self):
+        registry = DataspaceRegistry()
+        SharedDim(registry, "row", (0, 63), np.uint32)
+        creator = ArrayCreator(registry, "array", "row")
+        attr_filters = tiledb.FilterList([tiledb.ZstdFilter(level=7)])
+        creator.add_attr_creator("enthalpy", np.dtype("float64"), filters=attr_filters)
+        return creator
+
+    def test_repr(self, array_creator):
+        assert isinstance(repr(array_creator), str)
+
+    def test_create(self, tmpdir, array_creator):
+        uri = str(tmpdir.mkdir("output").join("dense_example_1"))
+        array_creator.create(uri)
+        assert tiledb.object_type(uri) == "array"
+
+    def test_dim_filters(self, array_creator):
+        filters = array_creator.dim_filters
+        assert filters == {"row": None}
+
+    def test_tiles(self, array_creator):
+        tiles = array_creator.tiles
+        assert tiles == (None,)
+
+    def test_nattr(self, array_creator):
+        nattr = array_creator.nattr
+        assert nattr == 1
+
 
 def test_rename_attr():
     registry = DataspaceRegistry()
@@ -67,6 +103,13 @@ def test_rename_attr():
 def test_array_no_dim_error():
     with pytest.raises(ValueError):
         ArrayCreator(DataspaceRegistry(), "array", [])
+
+
+def test_repeating_name_error():
+    with pytest.raises(ValueError):
+        registry = DataspaceRegistry()
+        SharedDim(registry, "x", (1, 4), np.int32)
+        ArrayCreator(registry, "array", ["x", "x"])
 
 
 def test_name_exists_error():

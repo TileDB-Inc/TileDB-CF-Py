@@ -382,7 +382,7 @@ def test_array_no_dims_error():
         creator.add_array("A1", [])
 
 
-def test_rename_dim_name_exists_error():
+def test_rename_dim_name_exists_in_dataspace_error():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 3], np.int32)
     creator.add_dim("col", [0, 7], np.int32)
