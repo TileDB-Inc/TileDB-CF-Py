@@ -180,7 +180,7 @@ class DataspaceCreator:
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
         """
-        # deprecate in favor of get_array_creator[name].add_attr_creator
+        # TODO deprecate in favor of get_array_creator[name].add_attr_creator
         try:
             array_creator = self._registry.get_array_creator(array_name)
         except KeyError as err:
@@ -499,7 +499,7 @@ class DataspaceRegistry:
         self._array_creators: Dict[str, ArrayCreator] = {}
         self._attr_to_array: Dict[str, str] = {}
 
-    def add_array_creator(self, array_creator: ArrayCreator):
+    def register_array_creator(self, array_creator: ArrayCreator):
         """Registers a new array creator with the CF dataspace."""
         try:
             self.check_new_array_name(array_creator.name)
@@ -513,7 +513,7 @@ class DataspaceRegistry:
             )
         self._array_creators[array_creator.name] = array_creator
 
-    def add_attr_to_array(self, array_name: str, attr_name: str):
+    def register_attr_to_array(self, array_name: str, attr_name: str):
         """Registers a new attribute name to an array creator."""
         if array_name not in self._array_creators:
             raise KeyError(
@@ -528,7 +528,7 @@ class DataspaceRegistry:
             ) from err
         self._attr_to_array[attr_name] = array_name
 
-    def add_shared_dim(self, shared_dim: SharedDim):
+    def register_shared_dim(self, shared_dim: SharedDim):
         """Registers a new shared dimension to the CF dataspace.
 
         Parameters:
@@ -784,7 +784,7 @@ class ArrayCreator:
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
         self._name = name
-        dataspace_registry.add_array_creator(self)
+        dataspace_registry.register_array_creator(self)
 
     def __iter__(self):
         """Returns iterator over attribute creators."""
@@ -1034,7 +1034,7 @@ class ArrayRegistry:
         )
         self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
 
-    def add_attr_creator(self, attr_creator):
+    def register_attr_creator(self, attr_creator):
         try:
             self.check_new_attr_name(attr_creator.name)
         except ValueError as err:
@@ -1044,7 +1044,7 @@ class ArrayRegistry:
             ) from err
         attr_name = attr_creator.name
         if self._dataspace_registry is not None:
-            self._dataspace_registry.add_attr_to_array(self._name, attr_name)
+            self._dataspace_registry.register_attr_to_array(self._name, attr_name)
         self._attr_creators[attr_name] = attr_creator
 
     def attr_creators(self):
@@ -1097,7 +1097,7 @@ class ArrayRegistry:
     def has_attr_creator(self, attr_name: str) -> bool:
         return attr_name in self._attr_creators
 
-    def has_dim(self, dim_name: str) -> bool:
+    def has_shared_dim(self, dim_name: str) -> bool:
         return any(dim_creator.name == dim_name for dim_creator in self._dim_creators)
 
     @property
@@ -1176,7 +1176,7 @@ class AttrCreator:
         self.var = var
         self.nullable = nullable
         self.filters = filters
-        self._array_registry.add_attr_creator(self)
+        self._array_registry.register_attr_creator(self)
 
     def __repr__(self):
         filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
@@ -1321,7 +1321,7 @@ class SharedDim:
         self.domain = domain
         self.dtype = np.dtype(dtype)
         self._dataspace_registry = dataspace_registry
-        self._dataspace_registry.add_shared_dim(self)
+        self._dataspace_registry.register_shared_dim(self)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
