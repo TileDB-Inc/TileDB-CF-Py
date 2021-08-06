@@ -784,15 +784,11 @@ class ArrayCreator:
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
         self._name = name
-        self.__post_init__()
         dataspace_registry.add_array_creator(self)
 
     def __iter__(self):
         """Returns iterator over attribute creators."""
         return self._registry.attr_creators()
-
-    def __post_init__(self):
-        pass
 
     def __repr__(self) -> str:
         output = StringIO()
