@@ -698,8 +698,7 @@ def test_variable_fill(tmpdir):
         dataset.createDimension("row", 4)
         dataset.createVariable("x1", np.dtype("int64"), ("row",), fill_value=-1)
         converter = NetCDF4ConverterEngine.from_group(dataset, coords_to_dims=False)
-        array_converter = converter._array_creators[converter._attr_to_array["x1"]]
-        attr_creator = array_converter._attr_creators["x1"]
+        attr_creator = converter._registry.get_attr_creator("x1")
         assert attr_creator.fill == -1
 
 
@@ -719,6 +718,7 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
         simple2_netcdf_file.filepath,
         coords_to_dims=False,
     )
+    print(converter)
     uri = str(tmpdir.mkdir("output").join("test_copy_error"))
     converter.create_group(uri)
     with pytest.raises(KeyError):
@@ -728,7 +728,7 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
 def test_bad_dims_error():
     converter = NetCDF4ConverterEngine()
     converter.add_dim("row", (0, 10), np.uint32)
-    with pytest.raises(TypeError):
+    with pytest.raises(NotImplementedError):
         converter.add_array("array0", ("row",))
 
 

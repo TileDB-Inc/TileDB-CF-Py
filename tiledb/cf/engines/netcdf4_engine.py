@@ -546,7 +546,7 @@ class NetCDFArrayConverter(ArrayCreator):
             "a NetCDFVariableConverter is not yet implemented."
         )
 
-    def add_var_to_attr_converter(
+    def add_ncvar_to_attr_converter(
         self,
         ncvar: netCDF4.Variable,
         name: Optional[str] = None,
@@ -1204,8 +1204,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             ) from err
         array_creator.add_ncvar_to_attr_converter(
             ncvar=ncvar,
-            array_name=array_name,
-            attr_name=attr_name,
+            name=attr_name,
             dtype=dtype,
             fill=fill,
             var=var,

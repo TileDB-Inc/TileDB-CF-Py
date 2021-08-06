@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 
+from tiledb.cf.creator import DataspaceRegistry
 from tiledb.cf.engines.netcdf4_engine import NetCDFCoordToDimConverter
 
 netCDF4 = pytest.importorskip("netCDF4")
@@ -12,7 +13,8 @@ def test_coord_converter_simple():
     with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
         dataset.createDimension("x", 4)
         x = dataset.createVariable("x", datatype=np.float64, dimensions=("x",))
-        converter = NetCDFCoordToDimConverter.from_netcdf(x)
+        registry = DataspaceRegistry()
+        converter = NetCDFCoordToDimConverter.from_netcdf(registry, x)
         assert converter.name == "x"
         assert converter.dtype == np.dtype("float64")
         assert converter.domain is None
@@ -24,4 +26,5 @@ def test_bad_size_error():
         group.createDimension("y", 16)
         x = group.createVariable("x", np.dtype("float64"), ("x", "y"))
         with pytest.raises(ValueError):
-            NetCDFCoordToDimConverter.from_netcdf(x)
+            registry = DataspaceRegistry()
+            NetCDFCoordToDimConverter.from_netcdf(registry, x)
