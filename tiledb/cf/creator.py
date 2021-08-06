@@ -507,10 +507,6 @@ class DataspaceRegistry:
             raise ValueError(
                 f"Cannot add new array with name '{array_creator.name}'. {str(err)}"
             ) from err
-        if array_creator.nattr != 0:
-            raise ValueError(
-                "Cannot register an array creator that already has attribute."
-            )
         self._array_creators[array_creator.name] = array_creator
 
     def register_attr_to_array(self, array_name: str, attr_name: str):
@@ -645,20 +641,14 @@ class DataspaceRegistry:
         del array_creator
 
     def remove_attr_creator(self, attr_name: str):
-        """Removes the specified attribute from the CF dataspace.
-
-        Parameters:
-            attr_name: Name of the attribute that will be removed.
-        """
         del self._attr_to_array[attr_name]
 
-    def remove_shared_dim(self, dim_name: str):
-        """Removes the specified dimension from the CF dataspace.
-        an array.
+    def shared_dims(self):
+        """Iterates over shared dimensions in the CF dataspace."""
+        for shared_dim in self._shared_dims.values():
+            yield shared_dim
 
-        Parameters:
-            dim_name: Name of the dimension to be removed.
-        """
+    def remove_shared_dim(self, dim_name: str):
         array_list = [
             array_creator.name
             for array_creator in self.array_creators()
@@ -669,33 +659,14 @@ class DataspaceRegistry:
                 f"Cannot remove dimension '{dim_name}'. Dimension is being used in "
                 f"arrays: {array_list}."
             )
-        shared_dim = self._shared_dims.pop(dim_name)
-        del shared_dim
+        del self._shared_dims[dim_name]
 
-    def rename_array_creator(self, original_name: str, new_name: str):
-        """Renames an array in the CF dataspace.
-
-        Parameters:
-            original_name: Current name of the array to be renamed.
-            new_name: New name the array will be renamed to.
-        """
-        try:
-            self.check_new_array_name(new_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot rename array '{original_name}' to '{new_name}'. {str(err)}"
-            ) from err
+    def update_array_creator_name(self, original_name: str, new_name: str):
         self._array_creators[new_name] = self._array_creators.pop(original_name)
         for attr_creator in self._array_creators[new_name]:
             self._attr_to_array[attr_creator.name] = new_name
 
-    def rename_attr_creator(self, original_name: str, new_name: str):
-        """Renames an attribute in the CF dataspace.
-
-        Parameters:
-            original_name: Current name of the attribute to be renamed.
-            new_name: New name the attribute will be renamed to.
-        """
+    def update_attr_creator_name(self, original_name: str, new_name: str):
         try:
             self.check_new_attr_name(new_name)
         except ValueError as err:
@@ -704,13 +675,8 @@ class DataspaceRegistry:
             ) from err
         self._attr_to_array[new_name] = self._attr_to_array.pop(original_name)
 
-    def update_shared_dim_name(self, shared_dim: SharedDim, original_name: str):
-        self._shared_dims[shared_dim.name] = self._shared_dims.pop(original_name)
-
-    def shared_dims(self):
-        """Iterates over shared dimensions in the CF dataspace."""
-        for shared_dim in self._shared_dims.values():
-            yield shared_dim
+    def update_shared_dim_name(self, new_name: str, original_name: str):
+        self._shared_dims[new_name] = self._shared_dims.pop(original_name)
 
 
 class ArrayCreator:
@@ -1094,12 +1060,6 @@ class ArrayRegistry:
                 return dim_creator
         raise KeyError(f"Dimension creator with name '{key}' not found.")
 
-    def has_attr_creator(self, attr_name: str) -> bool:
-        return attr_name in self._attr_creators
-
-    def has_shared_dim(self, dim_name: str) -> bool:
-        return any(dim_creator.name == dim_name for dim_creator in self._dim_creators)
-
     @property
     def name(self) -> str:
         """Name of the array."""
@@ -1107,7 +1067,13 @@ class ArrayRegistry:
 
     @name.setter
     def name(self, name: str):
-        self._dataspace_registry.rename_array_creator(self._name, name)
+        try:
+            self._dataspace_registry.check_new_array_name(name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot rename array '{self._name}' to '{name}'. {str(err)}"
+            ) from err
+        self._dataspace_registry.update_array_creator_name(self._name, name)
         self._name = name
 
     @property
@@ -1124,17 +1090,15 @@ class ArrayRegistry:
         attr_creator = self._attr_creators.pop(attr_name)
         del attr_creator
 
-    def rename_attr_creator(self, original_name: str, new_name: str):
+    def update_attr_creator_name(self, original_name: str, new_name: str):
         """Renames an attribute in the array.
 
         Parameters:
             original_name: Current name of the attribute to be renamed.
             new_name: New name the attribute will be renamed to.
         """
-        self.check_new_attr_name(new_name)
-        self._dataspace_registry.rename_attr_creator(original_name, new_name)
-        attr = self._attr_creators.pop(original_name)
-        self._attr_creators[new_name] = attr
+        self._dataspace_registry.update_attr_creator_name(original_name, new_name)
+        self._attr_creators[new_name] = self._attr_creators.pop(original_name)
 
 
 class AttrCreator:
@@ -1199,7 +1163,13 @@ class AttrCreator:
 
     @name.setter
     def name(self, name: str):
-        self._array_registry.rename_attr_creator(self._name, name)
+        try:
+            self._array_registry.check_new_attr_name(name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot rename '{self._name}' to {name}. {str(err)}"
+            ) from err
+        self._array_registry.update_attr_creator_name(self._name, name)
         self._name = name
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
@@ -1364,6 +1334,5 @@ class SharedDim:
     @name.setter
     def name(self, name: str):
         self._dataspace_registry.check_rename_shared_dim(self._name, name)
-        original_name = self._name
+        self._dataspace_registry.update_shared_dim_name(name, self._name)
         self._name = name
-        self._dataspace_registry.update_shared_dim_name(self, original_name)
