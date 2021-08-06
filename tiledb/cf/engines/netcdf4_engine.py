@@ -63,6 +63,13 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
         self.input_name = input_name
         self.input_dtype = input_dtype
 
+    def __eq__(self, other):
+        return (
+            super.__eq__(self, other)
+            and self.input_name == other.input_name
+            and self.input_dtype == other.input_dtype
+        )
+
     def __repr__(self):
         return (
             f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype}) -> "
@@ -192,6 +199,14 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
         self.input_size = input_size
         self.is_unlimited = is_unlimited
 
+    def __eq__(self, other):
+        return (
+            super.__eq__(self, other)
+            and self.input_name == other.input_name
+            and self.input_size == other.input_size
+            and self.is_unlimited == other.is_unlimited
+        )
+
     def __repr__(self):
         size_str = "unlimited" if self.is_unlimited else str(self.input_size)
         return (
@@ -286,7 +301,6 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
         )
 
 
-# TODO rename to NetCDFScalarDimCreator
 class NetCDFScalarDimConverter(SharedDim, NetCDFDimConverter):
     """Data for converting from a NetCDF dimension to a TileDB dimension.
 
@@ -1010,9 +1024,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         Raises:
             ValueError: Cannot add new array with given name.
         """
-        NetCDFArrayConverter(
-            dataspace_registry=self._registry,
-            name=array_name,
+        # TODO: deprecate this method
+        self.add_netcdf_to_array_converter(
+            array_name=array_name,
             dims=dims,
             cell_order=cell_order,
             tile_order=tile_order,
