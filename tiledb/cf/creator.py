@@ -495,8 +495,7 @@ class DataspaceRegistry:
 
     def array_creators(self):
         """Iterator over array creators in the CF dataspace."""
-        for array_creator in self._array_creators.values():
-            yield array_creator
+        return iter(self._array_creators.values())
 
     def check_new_array_name(self, array_name: str):
         if array_name in self._array_creators:
