@@ -358,7 +358,7 @@ class DataspaceCreator:
             attr_name: Name of the attribute that will be removed.
         """
         # TODO: deprecate and replace with function directly in array_creator.
-        array_creator = self._registry.lookup_array_creator(attr_name=attr_name)
+        array_creator = self._registry.get_array_creator_by_attr(attr_name=attr_name)
         array_creator.remove_attr_creator(attr_name)
 
     def remove_dim(self, dim_name: str):
@@ -599,14 +599,14 @@ class DataspaceRegistry:
 
     def get_attr_creator(self, attr_name: str) -> AttrCreator:
         """Returns the attribute creator with the requested name."""
-        array_creator = self.lookup_array_creator(attr_name=attr_name)
+        array_creator = self.get_array_creator_by_attr(attr_name=attr_name)
         return array_creator.attr_creator(attr_name)
 
     def get_shared_dim(self, dim_name: str) -> SharedDim:
         """Returns the dim creator with the requested name."""
         return self._shared_dims[dim_name]
 
-    def lookup_array_creator(self, attr_name: str) -> ArrayCreator:
+    def get_array_creator_by_attr(self, attr_name: str) -> ArrayCreator:
         """Returns an array creator that contains the requested attribute."""
         try:
             array_name = self._attr_to_array[attr_name]
