@@ -555,7 +555,6 @@ class DataspaceRegistry:
         array_creator = self._array_creators.pop(array_name)
         for attr_creator in array_creator:
             del self._attr_to_array[attr_creator.name]
-        del array_creator
 
     def deregister_attr_creator(self, attr_name: str):
         del self._attr_to_array[attr_name]
