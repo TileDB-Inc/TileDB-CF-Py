@@ -349,7 +349,7 @@ class DataspaceCreator:
         Parameters:
             array_name: Name of the array that will be removed.
         """
-        self._registry.remove_array_creator(array_name)
+        self._registry.deregister_array_creator(array_name)
 
     def remove_attr(self, attr_name: str):
         """Removes the specified attribute from the CF dataspace.
@@ -370,7 +370,7 @@ class DataspaceCreator:
         Parameters:
             dim_name: Name of the dimension to be removed.
         """
-        self._registry.remove_shared_dim(dim_name)
+        self._registry.deregister_shared_dim(dim_name)
 
     def rename_array(self, original_name: str, new_name: str):
         """Renames an array in the CF dataspace.
@@ -593,6 +593,33 @@ class DataspaceRegistry:
                         f"'{array_creator.name}' that uses this dimension."
                     )
 
+    def deregister_array_creator(self, array_name: str):
+        """Removes the specified array and all its attributes from the CF dataspace.
+
+        Parameters:
+            array_name: Name of the array that will be removed.
+        """
+        array_creator = self._array_creators.pop(array_name)
+        for attr_creator in array_creator:
+            del self._attr_to_array[attr_creator.name]
+        del array_creator
+
+    def deregister_attr_creator(self, attr_name: str):
+        del self._attr_to_array[attr_name]
+
+    def deregister_shared_dim(self, dim_name: str):
+        array_list = [
+            array_creator.name
+            for array_creator in self.array_creators()
+            if dim_name in array_creator.dim_names
+        ]
+        if array_list:
+            raise ValueError(
+                f"Cannot remove dimension '{dim_name}'. Dimension is being used in "
+                f"arrays: {array_list}."
+            )
+        del self._shared_dims[dim_name]
+
     def get_array_creator(self, array_name: str) -> ArrayCreator:
         """Returns the array creator with the requested name."""
         return self._array_creators[array_name]
@@ -622,37 +649,10 @@ class DataspaceRegistry:
     def ndim(self) -> int:
         return len(self._shared_dims)
 
-    def remove_array_creator(self, array_name: str):
-        """Removes the specified array and all its attributes from the CF dataspace.
-
-        Parameters:
-            array_name: Name of the array that will be removed.
-        """
-        array_creator = self._array_creators.pop(array_name)
-        for attr_creator in array_creator:
-            del self._attr_to_array[attr_creator.name]
-        del array_creator
-
-    def remove_attr_creator(self, attr_name: str):
-        del self._attr_to_array[attr_name]
-
     def shared_dims(self):
         """Iterates over shared dimensions in the CF dataspace."""
         for shared_dim in self._shared_dims.values():
             yield shared_dim
-
-    def remove_shared_dim(self, dim_name: str):
-        array_list = [
-            array_creator.name
-            for array_creator in self.array_creators()
-            if dim_name in array_creator.dim_names
-        ]
-        if array_list:
-            raise ValueError(
-                f"Cannot remove dimension '{dim_name}'. Dimension is being used in "
-                f"arrays: {array_list}."
-            )
-        del self._shared_dims[dim_name]
 
     def update_array_creator_name(self, original_name: str, new_name: str):
         self._array_creators[new_name] = self._array_creators.pop(original_name)
@@ -902,7 +902,7 @@ class ArrayCreator:
         return output.getvalue()
 
     def remove_attr_creator(self, attr_name):
-        return self._registry.remove_attr_creator(attr_name)
+        return self._registry.deregister_attr_creator(attr_name)
 
     @property
     def tiles(self) -> Collection[Union[int, float, None]]:
@@ -1007,6 +1007,11 @@ class ArrayRegistry:
                     f"array."
                 )
 
+    def deregister_attr_creator(self, attr_name: str):
+        """Removes an attribute from the group."""
+        self._dataspace_registry.deregister_attr_creator(attr_name)
+        del self._attr_creators[attr_name]
+
     def dim_creators(self):
         """Iterates over dimension creators in the array creator."""
         return (dim_creator for dim_creator in self._dim_creators)
@@ -1060,12 +1065,6 @@ class ArrayRegistry:
     @property
     def ndim(self) -> int:
         return len(self._dim_creators)
-
-    def remove_attr_creator(self, attr_name: str):
-        """Removes an attribute from the group."""
-        self._dataspace_registry.remove_attr_creator(attr_name)
-        attr_creator = self._attr_creators.pop(attr_name)
-        del attr_creator
 
     def update_attr_creator_name(self, original_name: str, new_name: str):
         """Renames an attribute in the array.
