@@ -599,12 +599,7 @@ class DataspaceRegistry:
 
     def get_attr_creator(self, attr_name: str) -> AttrCreator:
         """Returns the attribute creator with the requested name."""
-        try:
-            array_creator = self.lookup_array_creator(attr_name=attr_name)
-        except KeyError as err:
-            raise KeyError(
-                f"No attribute creator with the name '{attr_name}'."
-            ) from err
+        array_creator = self.lookup_array_creator(attr_name=attr_name)
         return array_creator.attr_creator(attr_name)
 
     def get_shared_dim(self, dim_name: str) -> SharedDim:
