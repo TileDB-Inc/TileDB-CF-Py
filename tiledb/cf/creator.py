@@ -635,7 +635,7 @@ class DataspaceRegistry:
     def update_attr_creator_name(self, original_name: str, new_name: str):
         self._attr_to_array[new_name] = self._attr_to_array.pop(original_name)
 
-    def update_shared_dim_name(self, new_name: str, original_name: str):
+    def update_shared_dim_name(self, original_name: str, new_name: str):
         self._shared_dims[new_name] = self._shared_dims.pop(original_name)
 
 
@@ -1269,5 +1269,5 @@ class SharedDim:
     @name.setter
     def name(self, name: str):
         self._dataspace_registry.check_rename_shared_dim(self._name, name)
-        self._dataspace_registry.update_shared_dim_name(name, self._name)
+        self._dataspace_registry.update_shared_dim_name(self._name, name)
         self._name = name
