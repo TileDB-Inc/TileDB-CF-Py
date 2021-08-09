@@ -577,6 +577,14 @@ class DataspaceRegistry:
         """Returns the array creator with the requested name."""
         return self._array_creators[array_name]
 
+    def get_array_creator_by_attr(self, attr_name: str) -> ArrayCreator:
+        """Returns an array creator that contains the requested attribute."""
+        try:
+            array_name = self._attr_to_array[attr_name]
+        except KeyError as err:
+            raise KeyError(f"No attribute with the name '{attr_name}'.") from err
+        return self._array_creators[array_name]
+
     def get_attr_creator(self, attr_name: str) -> AttrCreator:
         """Returns the attribute creator with the requested name."""
         array_creator = self.get_array_creator_by_attr(attr_name=attr_name)
@@ -585,14 +593,6 @@ class DataspaceRegistry:
     def get_shared_dim(self, dim_name: str) -> SharedDim:
         """Returns the dim creator with the requested name."""
         return self._shared_dims[dim_name]
-
-    def get_array_creator_by_attr(self, attr_name: str) -> ArrayCreator:
-        """Returns an array creator that contains the requested attribute."""
-        try:
-            array_name = self._attr_to_array[attr_name]
-        except KeyError as err:
-            raise KeyError(f"No attribute with the name '{attr_name}'.") from err
-        return self._array_creators[array_name]
 
     @property
     def narray(self) -> int:
