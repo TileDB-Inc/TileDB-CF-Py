@@ -181,13 +181,7 @@ class DataspaceCreator:
             filters: Specifies compression filters for the attribute.
         """
         # TODO deprecate in favor of get_array_creator[name].add_attr_creator
-        try:
-            array_creator = self._registry.get_array_creator(array_name)
-        except KeyError as err:
-            raise KeyError(
-                f"Cannot add attribute to array '{array_name}'. No array named "
-                f"'{array_name}' exists."
-            ) from err
+        array_creator = self._registry.get_array_creator(array_name)
         array_creator.add_attr_creator(attr_name, dtype, fill, var, nullable, filters)
 
     def add_dim(self, dim_name: str, domain: Tuple[Any, Any], dtype: np.dtype):
@@ -231,8 +225,7 @@ class DataspaceCreator:
         if self._registry.narray != 1:
             raise ValueError(
                 f"Can only use `create_array` for a {self.__class__.__name__} with "
-                f"exactly 1 array creator. This {self.__class__.__name__} contains "
-                f"{self._registry.narray} array creators."
+                f"exactly 1 array creator."
             )
         array_creator = tuple(self._registry.array_creators())[0]
         array_creator.create(uri, key=key, ctx=ctx)
@@ -612,27 +605,14 @@ class DataspaceRegistry:
 
     def register_array_creator(self, array_creator: ArrayCreator):
         """Registers a new array creator with the CF dataspace."""
-        try:
-            self.check_new_array_name(array_creator.name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new array with name '{array_creator.name}'. {str(err)}"
-            ) from err
+        self.check_new_array_name(array_creator.name)
         self._array_creators[array_creator.name] = array_creator
 
     def register_attr_to_array(self, array_name: str, attr_name: str):
         """Registers a new attribute name to an array creator."""
         if array_name not in self._array_creators:  # pragma: no cover
-            raise KeyError(
-                f"Cannot add attribute to array '{array_name}'. No array named "
-                f"'{array_name}' exists."
-            )
-        try:
-            self.check_new_attr_name(attr_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new attribute '{attr_name}'. {str(err)}"
-            ) from err
+            raise KeyError(f"No array named '{array_name}' exists.")
+        self.check_new_attr_name(attr_name)
         self._attr_to_array[attr_name] = array_name
 
     def register_shared_dim(self, shared_dim: SharedDim):
@@ -641,12 +621,7 @@ class DataspaceRegistry:
         Parameters:
             shared_dim: The new shared dimension to register.
         """
-        try:
-            self.check_new_dim(shared_dim)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new dimension '{shared_dim.name}'. {str(err)}"
-            ) from err
+        self.check_new_dim(shared_dim)
         self._shared_dims[shared_dim.name] = shared_dim
 
     def shared_dims(self):
@@ -977,19 +952,6 @@ class ArrayRegistry:
         )
         self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
 
-    def register_attr_creator(self, attr_creator):
-        try:
-            self.check_new_attr_name(attr_creator.name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot create a new attribute with name '{attr_creator.name}'. "
-                f"{str(err)}"
-            ) from err
-        attr_name = attr_creator.name
-        if self._dataspace_registry is not None:
-            self._dataspace_registry.register_attr_to_array(self._name, attr_name)
-        self._attr_creators[attr_name] = attr_creator
-
     def attr_creators(self):
         """Iterates over attribute creators in the array creator."""
         return (attr_creator for attr_creator in self._attr_creators.values())
@@ -1049,12 +1011,7 @@ class ArrayRegistry:
 
     @name.setter
     def name(self, name: str):
-        try:
-            self._dataspace_registry.check_new_array_name(name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot rename array '{self._name}' to '{name}'. {str(err)}"
-            ) from err
+        self._dataspace_registry.check_new_array_name(name)
         self._dataspace_registry.update_array_creator_name(self._name, name)
         self._name = name
 
@@ -1065,6 +1022,13 @@ class ArrayRegistry:
     @property
     def ndim(self) -> int:
         return len(self._dim_creators)
+
+    def register_attr_creator(self, attr_creator):
+        self.check_new_attr_name(attr_creator.name)
+        attr_name = attr_creator.name
+        if self._dataspace_registry is not None:
+            self._dataspace_registry.register_attr_to_array(self._name, attr_name)
+        self._attr_creators[attr_name] = attr_creator
 
     def update_attr_creator_name(self, original_name: str, new_name: str):
         """Renames an attribute in the array.
@@ -1139,12 +1103,7 @@ class AttrCreator:
 
     @name.setter
     def name(self, name: str):
-        try:
-            self._array_registry.check_new_attr_name(name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot rename '{self._name}' to {name}. {str(err)}"
-            ) from err
+        self._array_registry.check_new_attr_name(name)
         self._array_registry.update_attr_creator_name(self._name, name)
         self._name = name
 
