@@ -500,45 +500,6 @@ class DataspaceRegistry:
         self._array_creators: Dict[str, ArrayCreator] = {}
         self._attr_to_array: Dict[str, str] = {}
 
-    def register_array_creator(self, array_creator: ArrayCreator):
-        """Registers a new array creator with the CF dataspace."""
-        try:
-            self.check_new_array_name(array_creator.name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new array with name '{array_creator.name}'. {str(err)}"
-            ) from err
-        self._array_creators[array_creator.name] = array_creator
-
-    def register_attr_to_array(self, array_name: str, attr_name: str):
-        """Registers a new attribute name to an array creator."""
-        if array_name not in self._array_creators:  # pragma: no cover
-            raise KeyError(
-                f"Cannot add attribute to array '{array_name}'. No array named "
-                f"'{array_name}' exists."
-            )
-        try:
-            self.check_new_attr_name(attr_name)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new attribute '{attr_name}'. {str(err)}"
-            ) from err
-        self._attr_to_array[attr_name] = array_name
-
-    def register_shared_dim(self, shared_dim: SharedDim):
-        """Registers a new shared dimension to the CF dataspace.
-
-        Parameters:
-            shared_dim: The new shared dimension to register.
-        """
-        try:
-            self.check_new_dim(shared_dim)
-        except ValueError as err:
-            raise ValueError(
-                f"Cannot add new dimension '{shared_dim.name}'. {str(err)}"
-            ) from err
-        self._shared_dims[shared_dim.name] = shared_dim
-
     def array_creators(self):
         """Iterator over array creators in the CF dataspace."""
         for array_creator in self._array_creators.values():
@@ -648,6 +609,45 @@ class DataspaceRegistry:
     @property
     def ndim(self) -> int:
         return len(self._shared_dims)
+
+    def register_array_creator(self, array_creator: ArrayCreator):
+        """Registers a new array creator with the CF dataspace."""
+        try:
+            self.check_new_array_name(array_creator.name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new array with name '{array_creator.name}'. {str(err)}"
+            ) from err
+        self._array_creators[array_creator.name] = array_creator
+
+    def register_attr_to_array(self, array_name: str, attr_name: str):
+        """Registers a new attribute name to an array creator."""
+        if array_name not in self._array_creators:  # pragma: no cover
+            raise KeyError(
+                f"Cannot add attribute to array '{array_name}'. No array named "
+                f"'{array_name}' exists."
+            )
+        try:
+            self.check_new_attr_name(attr_name)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new attribute '{attr_name}'. {str(err)}"
+            ) from err
+        self._attr_to_array[attr_name] = array_name
+
+    def register_shared_dim(self, shared_dim: SharedDim):
+        """Registers a new shared dimension to the CF dataspace.
+
+        Parameters:
+            shared_dim: The new shared dimension to register.
+        """
+        try:
+            self.check_new_dim(shared_dim)
+        except ValueError as err:
+            raise ValueError(
+                f"Cannot add new dimension '{shared_dim.name}'. {str(err)}"
+            ) from err
+        self._shared_dims[shared_dim.name] = shared_dim
 
     def shared_dims(self):
         """Iterates over shared dimensions in the CF dataspace."""
