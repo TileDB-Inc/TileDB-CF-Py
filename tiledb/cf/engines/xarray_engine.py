@@ -397,6 +397,9 @@ class TileDBDataStore(AbstractDataStore):
 
 
 class TileDBBackendEntrypoint(BackendEntrypoint):
+    # temp fix for api change, need to add logic test for available
+    available = True
+
     def open_dataset(
         self,
         filename_or_obj,
