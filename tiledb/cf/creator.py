@@ -227,7 +227,7 @@ class DataspaceCreator:
                 f"Can only use `create_array` for a {self.__class__.__name__} with "
                 f"exactly 1 array creator."
             )
-        array_creator = tuple(self._registry.array_creators())[0]
+        array_creator = next(self._registry.array_creators())
         array_creator.create(uri, key=key, ctx=ctx)
 
     def create_group(

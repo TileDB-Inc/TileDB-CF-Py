@@ -1346,7 +1346,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 f"exactly 1 array creator. This {self.__class__.__name__} contains "
                 f"{self._registry.narray} array creators."
             )
-        array_creator = tuple(self._registry.array_creators())[0]
+        array_creator = next(self._registry.array_creators())
         if input_netcdf_group is None:
             input_file = (
                 input_file if input_file is not None else self.default_input_file
