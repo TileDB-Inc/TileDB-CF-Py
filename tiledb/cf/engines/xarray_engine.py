@@ -30,7 +30,12 @@ from xarray.core.pycompat import integer_types
 from xarray.core.utils import FrozenDict, close_on_error
 from xarray.core.variable import Variable
 
-import tiledb
+try:
+    import tiledb
+
+    has_tiledb = True
+except ModuleNotFoundError:
+    has_tiledb = False
 
 from ..creator import DATA_SUFFIX, INDEX_SUFFIX
 
@@ -397,6 +402,8 @@ class TileDBDataStore(AbstractDataStore):
 
 
 class TileDBBackendEntrypoint(BackendEntrypoint):
+    available = has_tiledb
+
     def open_dataset(
         self,
         filename_or_obj,
