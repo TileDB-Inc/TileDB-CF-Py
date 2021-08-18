@@ -952,7 +952,7 @@ class ArrayRegistry:
 
     def attr_creators(self):
         """Iterates over attribute creators in the array creator."""
-        return (attr_creator for attr_creator in self._attr_creators.values())
+        return iter(self._attr_creators.values())
 
     def check_new_attr_name(self, attr_name):
         if attr_name in self._attr_creators:
@@ -974,7 +974,7 @@ class ArrayRegistry:
 
     def dim_creators(self):
         """Iterates over dimension creators in the array creator."""
-        return (dim_creator for dim_creator in self._dim_creators)
+        return iter(self._dim_creators)
 
     def get_attr_creator(self, key: Union[str, int]) -> AttrCreator:
         """Returns the requested attribute creator.
