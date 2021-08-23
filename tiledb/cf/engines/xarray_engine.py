@@ -18,19 +18,30 @@ from collections import defaultdict
 from typing import Tuple
 
 import numpy as np
+import pandas as pd
+from affine import Affine
+
+from xarray.core import indexing
+from xarray.core.pycompat import integer_types
+from xarray.core.utils import FrozenDict, HiddenKeyDict, close_on_error
+from xarray.core.variable import Variable
+from xarray.backends.file_manager import DummyFileManager, CachingFileManager
+
 from xarray.backends.common import (
     BACKEND_ENTRYPOINTS,
     AbstractDataStore,
     BackendArray,
     BackendEntrypoint,
+    _normalize_path,
 )
-from xarray.backends.store import StoreBackendEntrypoint
-from xarray.core.indexing import ExplicitIndexer, LazilyIndexedArray
-from xarray.core.pycompat import integer_types
-from xarray.core.utils import FrozenDict, close_on_error
-from xarray.core.variable import Variable
 
-import tiledb
+from xarray.backends.store import StoreBackendEntrypoint
+
+try:
+    import tiledb
+    has_tiledb = True
+except:
+    has_tiledb = False
 
 from ..creator import DATA_SUFFIX, INDEX_SUFFIX
 
@@ -39,383 +50,228 @@ _DIM_PREFIX = "__tiledb_dim."
 _COORD_SUFFIX = ".data"
 
 
-class TileDBIndexConverter:
-    """Converter from xarray-style indices to TileDB-style coordinates.
-
-    This class converts the values contained in an xarray ExplicitIndexer tuple to
-    values usable for indexing a TileDB Dimension. The xarray ExplicitIndexer uses
-    standard 0-based integer indices to look-up values in DataArrays and variables;
-    whereas, Tiledb accesses values directly from the dimension coordinates (analogous
-    to looking-up values by "location" in xarray).
-
-    The following is assumed about xarray indices:
-       * An index may be an integer, a slice, or a Numpy array of integer indices.
-       * An integer index or component of an array is such that -size <= value < size.
-         * Non-negative values are a standard zero-based index.
-         * Negative values count backwards from the end of the array with the last value
-           of the array starting at -1.
-    """
-
-    def __init__(self, dim):
-        dtype_kind = dim.dtype.kind
-        if dtype_kind not in ("i", "u", "M"):
-            raise NotImplementedError(
-                f"support for reading TileDB arrays with a dimension of type "
-                f"{dim.dtype} is not implemented"
-            )
-        self.name = dim.name
-        self.dtype = dim.dtype
-        self.min_value = dim.domain[0]
-        self.max_value = dim.domain[1]
-        self.size = dim.size
-        self.shape = dim.shape
-        if dtype_kind == "M":
-            unit, count = np.datetime_data(self.dtype)
-            self.delta_dtype = np.dtype(f"timedelta64[{count}{unit}]")
-        else:
-            self.delta_dtype = self.dtype
-
-    def __getitem__(self, index):
-        """Converts an xarray integer, array, or slice to an index object usable by the
-            TileDB multi_index function.
-
-        Parameters
-        ----------
-        index : Union[int, np.array, slice]
-            An integer index, array of integer indices, or a slice for indexing an
-            xarray dimension.
-
-        Returns
-        -------
-        new_index : Union[self.dtype, List[self.dtype], slice]
-            A value of type `self.dtype`, a list of values, or a slice for indexing a
-            TileDB dimension using mulit_index.
-        """
-        if isinstance(index, integer_types):
-            # Convert xarray index to TileDB dimension coordinate
-            if not -self.size <= index < self.size:
-                raise IndexError(f"index {index} out of bounds for {type(self)}")
-            return self.to_coordinate(index)
-
-        if isinstance(index, slice) and index.step in (1, None):
-            # Convert from index slice to coordinate slice (note that xarray
-            # includes the starting point and excludes the ending point vs. TileDB
-            # multi_index which includes both the staring point and ending point).
-            start, stop = index.start, index.stop
-            return slice(
-                self.to_coordinate(start) if start is not None else None,
-                self.to_coordinate(stop - 1) if stop is not None else None,
-            )
-
-        # Convert slice or array of xarray indices to list of TileDB dimension
-        # coordinates
-        return list(self.to_coordinates(index))
-
-    def to_coordinate(self, index):
-        """Converts an xarray index to a coordinate for the TileDB dimension.
-
-        Parameters
-        ----------
-        index : int
-            An integer index for indexing an xarray dimension.
-
-        Returns
-        -------
-        new_index : self.dtype
-            A `self.dtype` coordinate for indexing a TileDB dimension.
-        """
-        return self._to_delta(index) + (
-            self.min_value if index >= 0 else self.max_value
-        )
-
-    def to_coordinates(self, index):
-        """
-        Converts an xarray-style slice or Numpy array of indices to an array of
-        coordinates for the TileDB dimension.
-
-        Parameters
-        ----------
-        index : Union[slice, np.ndarray]
-            A slice or an array of integer indices for indexing an xarray dimension.
-
-        Returns
-        -------
-        new_index : Union[np.ndarray]
-            An array of `self.dtype` coordinates for indexing a TileDB dimension.
-        """
-        if isinstance(index, slice):
-            # Using range handles negative start/stop, out-of-bounds, and None values.
-            index = range(self.size)[index]
-            start = self.to_coordinate(index.start)
-            stop = self.to_coordinate(index.stop)
-            step = self._to_delta(index.step)
-            return np.arange(start, stop, step, dtype=self.dtype)
-
-        if isinstance(index, np.ndarray):
-            if index.ndim != 1:
-                raise TypeError(
-                    f"invalid indexer array for {type(self)}; input array index must "
-                    f"have exactly 1 dimension"
-                )
-            # vectorized version of self.to_coordinate
-            if not ((-self.size <= index).all() and (index < self.size).all()):
-                raise IndexError(f"index {index} out of bounds for {type(self)}")
-            return self._to_delta(index) + np.where(
-                index >= 0, self.min_value, self.max_value
-            )
-
-        raise TypeError(f"unexpected indexer type for {type(self)}")
-
-    def _to_delta(self, i):
-        delta = np.asarray(i, self.delta_dtype)
-        return delta[()] if np.isscalar(i) else delta
-
-
-class TileDBCoordinateWrapper(BackendArray):
-    """A backend array wrapper for TileDB dimensions.
-
-    This class is not intended to accessed directly. Instead it should be used
-    through a :class:`LazilyIndexedArray` object.
-    """
-
-    def __init__(self, index_converter: TileDBIndexConverter):
-        """
-        Parameters
-        ----------
-        index_converter : TileDBIndexConverter
-            Converter from xarray index to the dimension this CoordinateWrapper
-            wraps.
-        """
-        self._converter = index_converter
-
-    def __getitem__(self, indexer: ExplicitIndexer):
-        key = indexer.tuple
-        if len(key) != 1:
-            raise ValueError(
-                f"indexer with {len(key)} cannot be used for variable with 1 dimension"
-            )
-        index = key[0]
-        if isinstance(index, integer_types):
-            return self._converter.to_coordinate(index)
-        return self._converter.to_coordinates(index)
-
-    @property
-    def dtype(self) -> np.dtype:
-        """Data type of the backend array."""
-        return self._converter.dtype
-
-    @property
-    def shape(self) -> Tuple[int, ...]:
-        """Shape of the backend array."""
-        return self._converter.shape
-
-
 class TileDBDenseArrayWrapper(BackendArray):
     """A backend array wrapper for a TileDB attribute.
 
     This class is not intended to accessed directly. Instead it should be used
     through a :class:`LazilyIndexedArray` object.
     """
+    def __init__(self, variable_name, datastore):
 
-    def __init__(self, attr, uri, key, timestamp, index_converters):
-        """
-        Parameters
-        ----------
-        attr : tiledb.Attr
-            The TileDB attribute being wrapped by this routine. Must be one of the
-            attributes in the array at the provided URI.
-        uri : str
-            Uniform Resoure Identifier (URI) for TileDB array. May be a path to a
-            local TileDB array or a URI for a remote resource.
-        key : Optional[str]
-            If not None, the key for accessing the TileDB array at the provided URI.
-        timestamp : Optional[int]
-            If not None, time in milliseconds to open the array at.
-        ctx : Optional[tiledb.Ctx]
-            If not None, a TileDB context manager object.
-        index_converters : Tuple[TileDBIndexConverter, ...]
-            The TileDBIndexConverters needed to convert each xarray index to its
-            corresponding TileDB coordinates.
-        """
-        if attr.isanon:
+        self.datastore = datastore
+        self.variable_name = variable_name
+        tdbarr = self.datastore.ds
+        tdb_attr = tdbarr.attr(self.variable_name)
+        if tdb_attr.isanon:
             raise NotImplementedError(
-                "Support for anonymnous TileDB attributes has not been implemented."
+                "Support for anonymous TileDB attributes has not been implemented yet"
             )
-        self.dtype = attr.dtype
-        self._array_kwargs = {
-            "uri": uri,
-            "mode": "r",
-            "key": key,
-            "timestamp": timestamp,
-            "attr": attr.name,
-        }
-        self._index_converters = index_converters
-        self.shape = tuple(converter.size for converter in index_converters)
 
-    def __getitem__(self, indexer: ExplicitIndexer):
-        xarray_indices = indexer.tuple
-        if len(xarray_indices) != len(self._index_converters):
-            raise ValueError(
-                f"key of length {len(xarray_indices)} cannot be used for a TileDB array"
-                f" of length {len(self._index_converters)}"
+        array = self.get_array()
+
+        dtype_kind = array.dtype.kind
+        if dtype_kind not in "iuM":
+            raise NotImplementedError(
+                f"support for reading TileDB arrays with a dimension "
+                f"of type {array.dtype}"
             )
-        # Compute the shape, collapsing any dimensions with integer input.
-        shape = tuple(
-            len(range(converter.size)[index] if isinstance(index, slice) else index)
-            for index, converter in zip(xarray_indices, self._index_converters)
-            if not isinstance(index, integer_types)
-        )
-        # TileDB multi_index does not except empty arrays/slices. If a dimension is
-        # length zero, return an empty numpy array of the correct length.
-        if 0 in shape:
-            return np.zeros(shape)
-        tiledb_indices = tuple(
-            converter[index]
-            for index, converter in zip(xarray_indices, self._index_converters)
-        )
-        with tiledb.open(**self._array_kwargs) as array:
-            result = array.multi_index[tiledb_indices][self._array_kwargs["attr"]]
-        # Note: TileDB multi_index returns the same number of dimensions as the initial
-        # array. To match the expected xarray output, we need to reshape the result to
-        # remove any dimensions corresponding to scalar-valued input.
-        return result.reshape(shape)
+
+        self.dtype = array.dtype
+        self.shape = array.shape
+        # might need to add test for datetime dtype and adjust
+
+    def get_array(self):
+        return self.datastore.ds[:][self.variable_name]
+
+    def __getitem__(self, key):
+        array = self.get_array()
+        if isinstance(key, indexing.BasicIndexer):
+            return array[key.tuple]
+        # elif isinstance(key, indexing.VectorizedIndexer):
+        #     return array.vindex[
+        #         indexing._arrayize_vectorized_indexer(key, self.shape).tuple
+        #     ]
+        # else:
+        #     assert isinstance(key, indexing.OuterIndexer)
+        #     return array.oindex[key.tuple]
+        else:
+            raise NotImplementedError("fancy indexing not implemented yet")
+
+
+def parse_var(name):
+    if name.endswith(DATA_SUFFIX):
+        name = name[: -len(DATA_SUFFIX)]
+    elif name.endswith(INDEX_SUFFIX):
+        name = name[: -len(INDEX_SUFFIX)]
+    return name
 
 
 class TileDBDataStore(AbstractDataStore):
-    """Data store for reading TileDB arrays."""
+    #     __slots__()
 
-    def __init__(
-        self,
-        uri,
-        key=None,
+    def __init__(self, manager):
+        self._manager = manager
+
+    @classmethod
+    def open(
+        cls,
+        filename,
+        mode="r",
+        tdb_key=None,
         timestamp=None,
+        ctx=None,
     ):
-        """
-        Parameters
-        ----------
-        uri : str
-            Uniform Resoure Identifier (URI) for TileDB array. May be a path to a
-            local TileDB array or a URI for a remote resource.
-        key : Optional[str]
-            If not None, the key for accessing the TileDB array at the provided URI.
-        timestamp : Optional[int]
-            If not None, time in milliseconds to open the array at.
-        """
-        self._uri = uri
-        self._key = key
-        self._timestamp = timestamp
+        manager = CachingFileManager(tiledb.open,
+                                     filename,
+                                     # using same mode for manager and tdb
+                                     # could raise error if allowed modes are not same
+                                     # might need to split to manager_mode and tdb_mode
+                                     mode=mode,
+                                     kwargs={
+                                         "mode": mode,
+                                         "key": tdb_key,
+                                         "timestamp": timestamp,
+                                         "ctx": ctx,
+                                     })
+        return cls(manager)
 
-    def get_dimensions(self):
-        """Returns a dictionary of dimension names to sizes."""
-        schema = tiledb.ArraySchema.load(self._uri, key=self._key)
-        return FrozenDict({dim.name: dim.size for dim in schema.domain})
+    def _acquire(self, needs_lock=False):
+        with self._manager.acquire_context(needs_lock) as tdbarr:
+            ds = tdbarr
+        return ds
 
-    def get_attrs(self):
-        """Returns a dictionary of metadata stored in the array.
+    @property
+    def ds(self):
+        return self._acquire()
 
-        Note that xarray attributes are roughly equivalent to TileDB metadata. The
-        metadata returned here metadata for the dataset, but excludes encoding data for
-        TileDB and attribute metadata.
-        """
-        with tiledb.open(self._uri, key=self._key, mode="r") as array:
-            attrs = {
-                key: array.meta[key]
-                for key in array.meta.keys()
-                if not key.startswith((_ATTR_PREFIX, _DIM_PREFIX))
-            }
-        return FrozenDict(attrs)
+    def get_data_var(self, variable_name, metadata):
+        variable_name = parse_var(variable_name)
+        dims = self.get_dimensions()
+        data = indexing.LazilyIndexedArray(
+            TileDBDenseArrayWrapper(variable_name, self)
+        )
+        var_metadata = metadata.get(variable_name)
+        variable = Variable(dims, data, var_metadata)
+        return variable
+
+    def get_coord_var(self, dim, metadata):
+        coord_name = parse_var(dim.name)
+        coord_size = dim.size
+        dims = {coord_name: coord_size}
+
+        x_names = ('x', 'w', 'width')
+        y_names = ('y', 'h', 'height')
+        band_names = ('band', 'bands', 'count')
+
+        coord_data = None
+        if coord_name.lower() in (*x_names, *y_names, *band_names):
+            try:
+                GeoTransform = self.ds.meta.get('GeoTransform')
+            except:
+                GeoTransform = None
+            if GeoTransform is not None:
+                # assumes GeoTransform is stored as List[float,...]
+                transform = Affine.from_gdal(*GeoTransform)
+
+                if coord_name.lower() in x_names:
+                    coord_data, _ = transform * \
+                                    np.meshgrid(np.arange(coord_size) + 0.5, np.zeros(coord_size) + 0.5)
+                    coord_data = coord_data[0, :]
+
+                elif coord_name.lower() in y_names:
+                    _, coord_data = transform * \
+                                    np.meshgrid(np.zeros(coord_size) + 0.5, np.arange(coord_size) + 0.5)
+                    coord_data = coord_data[:, 0]
+
+                elif coord_name.lower() in band_names:
+                    coord_data = np.arange(1, coord_size + 1, dtype=np.int64)
+
+        # coord name is not in x, y, or band names or wasn't parsed correctly, then a standard dim coord
+        # is set up with range(length_dim) and dtype np.int64
+
+        if coord_data is None:
+            min_value = dim.domain[0]
+            max_value = dim.domain[1]
+            if metadata and "time reference" in metadata:
+                start_date = np.datetime64(metadata["time reference"])
+                freq = metadata["freq"]
+                coord_data = pd.date_range(start_date, periods=dim.size, freq=freq)
+            else:
+                coord_data = np.arange(min_value, max_value + 1, dtype=dim.dtype)
+
+        variable = Variable(dims, coord_data, metadata)
+        return variable
 
     def get_variables(self):
-        """Returns a dictionary of variables.
-
-        Return a dictionary of variables (by name) stored in the TileDB array. Each
-        variable is generated from a TileDB attributes, TileDB encoding metadata,
-        metadata belonging to the attribute, and the name and size of the dimensions of
-        the array.
-        """
         variable_metadata = self.get_variable_metadata()
-        schema = tiledb.ArraySchema.load(self._uri, key=self._key)
-        index_converters = tuple(map(TileDBIndexConverter, schema.domain))
-        variables = {}
-        # Add TileDB dimensions as xarray variables (these are the coordinates for the
-        # DataArray) for all dimensions that are not "simple" 0-based integer indexes.
-        for converter in index_converters:
-            if converter.dtype.kind == "M" or converter.min_value:
-                variables[converter.name] = Variable(
-                    {converter.name: converter.size},
-                    LazilyIndexedArray(TileDBCoordinateWrapper(converter)),
-                    variable_metadata.get(converter.name),
-                )
-        # Add TileDB attributes as variables.
-        dims = {indexer.name: indexer.size for indexer in index_converters}
-        for attr in schema:
-            variable_name = attr.name
-            if variable_name.endswith(DATA_SUFFIX):
-                variable_name = variable_name[: -len(DATA_SUFFIX)]
-            elif variable_name.endswith(INDEX_SUFFIX):
-                variable_name = variable_name[: -len(INDEX_SUFFIX)]
-            data = LazilyIndexedArray(
-                TileDBDenseArrayWrapper(
-                    attr,
-                    self._uri,
-                    self._key,
-                    self._timestamp,
-                    index_converters,
-                )
-            )
-            metadata = variable_metadata.get(attr.name)
-            if attr.fill is not None:
-                if metadata is None:
-                    metadata = {"_FillValue": attr.fill}
-                elif metadata.get("_FillValue") is not None:
-                    metadata["_FillValue"] = attr.fill
-            variables[variable_name] = Variable(dims, data, metadata)
-        return FrozenDict(variables)
+        data_vars = {attr.name: self.get_data_var(attr.name,
+                                                  variable_metadata.get(attr.name))
+                     for attr in self.ds.schema}
+        coords_vars = {dim.name: self.get_coord_var(dim,
+                                                    variable_metadata.get(dim.name))
+                       for dim in self.ds.schema.domain}
+        return FrozenDict({**data_vars, **coords_vars})
+
+    def get_attrs(self):
+        meta = self.ds.meta
+        attrs = {
+            key: meta[key]
+            for key in meta.keys()
+            if not key.startswith((_ATTR_PREFIX, _DIM_PREFIX))
+        }
+        return attrs
+
+    def get_dimensions(self):
+        dims = {dim.name: dim.size for dim in self.ds.schema.domain}
+        return FrozenDict(dims)
 
     def get_variable_metadata(self):
-        """Returns a dict of dicts for attribute metadata.
-
-        This uses the convention that attribute and dimension metadata are stored
-        using the convention ``__tiledb_attr.{attribute_name}.{key} = {value}``
-        for attributes and ``__tiledb_dim.{dimension_name}.{key} = {value}`` for
-        dimensions.
-        """
         variable_metadata = defaultdict(dict)
-        with tiledb.open(self._uri, key=self._key, mode="r") as array:
-            for key in array.meta.keys():
-                if key.startswith((_ATTR_PREFIX, _DIM_PREFIX)):
-                    last_dot_ix = key.rindex(".")
-                    attr_name = key[key.index(".") + 1 : last_dot_ix]
-                    if not attr_name:
-                        raise RuntimeError(
-                            f"cannot parse attribute metadata '{key}' with missing name"
-                            " or key value."
-                        )
-                    attr_key = key[last_dot_ix + 1 :]
-                    variable_metadata[attr_name][attr_key] = array.meta[key]
+        meta = self.ds.meta
+        for key in meta.keys():
+            if key.startswith((_ATTR_PREFIX, _DIM_PREFIX)):
+                last_dot_ix = key.rindex(".")
+                attr_name = key[key.index(".") + 1: last_dot_ix]
+                if not attr_name:
+                    raise RuntimeError(
+                        f"cant parse attribute metadata '{key}' with "
+                        "missing name or key value"
+                    )
+                attr_key = key[last_dot_ix + 1:]
+                variable_metadata[attr_name][attr_key] = meta[key]
         return variable_metadata
 
 
 class TileDBBackendEntrypoint(BackendEntrypoint):
+    available = has_tiledb
+
+    def guess_can_open(self, filename_or_obj):
+        try:
+            return tiledb.object_type(filename_or_obj) == "array"
+        except tiledb.TileDBError:
+            return False
+
     def open_dataset(
         self,
         filename_or_obj,
-        *,
         mask_and_scale=True,
         decode_times=True,
-        concat_characters=None,
+        concat_characters=True,
         decode_coords=None,
         drop_variables=None,
         use_cftime=None,
         decode_timedelta=None,
-        key=None,
+        mode="r",
+        tdb_key=None,
         timestamp=None,
+        ctx=None,
     ):
-        datastore = TileDBDataStore(filename_or_obj, key, timestamp)
+        filename_or_obj = _normalize_path(filename_or_obj)
+        store = TileDBDataStore.open(filename_or_obj, mode=mode, tdb_key=tdb_key, timestamp=timestamp, ctx=ctx)
         store_entrypoint = StoreBackendEntrypoint()
-        with close_on_error(datastore):
-            dataset = store_entrypoint.open_dataset(
-                datastore,
+        with close_on_error(store):
+            ds = store_entrypoint.open_dataset(
+                store,
                 mask_and_scale=mask_and_scale,
                 decode_times=decode_times,
                 concat_characters=concat_characters,
@@ -424,13 +280,4 @@ class TileDBBackendEntrypoint(BackendEntrypoint):
                 use_cftime=use_cftime,
                 decode_timedelta=decode_timedelta,
             )
-        return dataset
-
-    def guess_can_open(self, filename_or_obj):
-        try:
-            return tiledb.object_type(filename_or_obj) == "array"
-        except tiledb.TileDBError:
-            return False
-
-
-BACKEND_ENTRYPOINTS["tiledb"] = TileDBBackendEntrypoint
+        return ds
