@@ -177,9 +177,11 @@ class TestTDBBackend:
 
         self.write_tdb_array(path, data, metadata)
 
+    @contextlib.contextmanager
     def roundtrip(self, dataset, path):
         self.to_tiledb(dataset, path)
-        return self.open(path)
+        with self.open(path) as ds:
+            yield ds
 
     @pytest.mark.parametrize("ds_name, expected", SAMPLE_DATASETS.items())
     def test_totiledb(self, ds_name, expected, tmpdir):
