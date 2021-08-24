@@ -1,18 +1,23 @@
 # Copyright 2021 TileDB Inc.
 # Licensed under the MIT License.
+import contextlib
 
 import numpy as np
 import pytest
 import xarray as xr
 from pytest import importorskip
 from xarray import Variable, open_dataset
-from xarray.testing import assert_equal
 from xarray.backends.common import BACKEND_ENTRYPOINTS
+from xarray.testing import assert_equal
 
 tiledb = importorskip("tiledb")
 
-from tiledb_cf.engines.xarray_engine import TileDBBackendEntrypoint
+from tiledb.cf.engines.xarray_engine import TileDBBackendEntrypoint
+
 BACKEND_ENTRYPOINTS["tiledb"] = TileDBBackendEntrypoint
+
+_ATTR_PREFIX = "__tiledb_attr."
+_DIM_PREFIX = "__tiledb_dim."
 
 INT_1D_DATA = np.arange(0, 16, dtype=np.int32)
 INT_1D_ATTRS = {"description": "int 1D data var"}
@@ -35,7 +40,7 @@ INT_2D_SHIFTED_ATTRS = {"description": "int 2d shifted data var"}
 INT_2D_SHIFTED_VAR = Variable(["rows", "cols"], INT_2D_DATA, INT_2D_SHIFTED_ATTRS)
 INT_2D_SHIFTED_COORDS = {
     "rows": np.arange(4, 12, dtype=np.int32),
-    "cols": np.arange(1, 5, dtype=np.int32),
+    "cols": np.arange(2, 6, dtype=np.int32),
 }
 
 DATETIME_1D_VAR_ATTRS = {"description": "datetime 1d data var"}
@@ -80,10 +85,10 @@ SAMPLE_DATASETS = {
 class TestTDBBackend:
     engine = "tiledb"
 
+    @contextlib.contextmanager
     def open(self, path):
         with open_dataset(path, engine=self.engine) as ds:
-            ds_obj = ds
-        return ds_obj
+            yield ds
 
     def write_tdb_array(self, path, data, metadata):
         with tiledb.open(path, "w") as array:
@@ -138,34 +143,39 @@ class TestTDBBackend:
 
         metadata = dict()
 
+        data_var_attrs = dict()
+        dim_attrs = dict()
         for key, value in dataset.attrs.items():
-            if key not in dataset.dims and key not in dataset.data_vars:
+            if key not in dataset.data_vars and key not in dataset.dims:
                 metadata[key] = value
-            elif key in dataset.dims:
-                if isinstance(value, dict):
-                    for k, v in value.items():
-                        array_key = f"__tiledb_dim.{key}.{k}"
-                        if isinstance(v, np.datetime64):
-                            v = str(v)
-                        metadata[array_key] = v
-                else:
-                    array_key = f"__tiledv_dim.{key}"
-                    metadata[array_key] = value
             elif key in dataset.data_vars:
-                if isinstance(value, dict):
-                    for k, v in value.items():
-                        array_key = f"__tiledb_attr.{key}.{k}"
-                        metadata[array_key] = v
-                else:
-                    array_key = f"__tiledv_attr.{key}"
-                    metadata[array_key] = value
+                data_var_attrs[key] = value
+            elif key in dataset.dims:
+                dim_attrs[key] = value
+
+        for var_name, attrs in data_var_attrs.items():
+            key_prefix = f"{_ATTR_PREFIX}{var_name}"
+            if isinstance(attrs, dict):
+                for attr_name, value in attrs.items():
+                    key = f"{key_prefix}.{attr_name}"
+                    if isinstance(value, np.datetime64):
+                        value = str(value)
+                    metadata[key] = value
+            else:
+                metadata[key_prefix] = attrs
+
+        for dim_name, attrs in dim_attrs.items():
+            key_prefix = f"{_DIM_PREFIX}{dim_name}"
+            if isinstance(attrs, dict):
+                for attr_name, value in attrs.items():
+                    key = f"{key_prefix}.{attr_name}"
+                    if isinstance(value, np.datetime64):
+                        value = str(value)
+                    metadata[key] = value
+            else:
+                metadata[key_prefix] = attrs
 
         self.write_tdb_array(path, data, metadata)
-
-        with tiledb.DenseArray(path) as array:
-            schema = array.schema
-            meta = array.meta
-        return schema, meta
 
     def roundtrip(self, dataset, path):
         self.to_tiledb(dataset, path)
@@ -174,13 +184,29 @@ class TestTDBBackend:
     @pytest.mark.parametrize("ds_name, expected", SAMPLE_DATASETS.items())
     def test_totiledb(self, ds_name, expected, tmpdir):
         path = f"{tmpdir}/{ds_name}"
-        print(self.to_tiledb(expected, path))
+        self.to_tiledb(expected, path)
+        with tiledb.DenseArray(path) as array:
+            for data_attr in array.schema:
+                assert data_attr.name in expected.data_vars
+            for dim in array.domain:
+                assert dim.name in expected.dims
+                assert dim.size == expected[dim.name].size
+                dt_kind = expected[dim.name].dtype.kind
+                if dt_kind == "M":
+                    expect_min = 1
+                    expect_max = expected[dim.name].size
+                else:
+                    expect_min = expected[dim.name][0]
+                    expect_min = expect_min if expect_min > 0 else 1
+                    expect_max = expect_min + expected[dim.name].size - 1
+                assert dim.domain[0] == expect_min
+                assert dim.domain[1] == expect_max
 
     @pytest.mark.parametrize("ds_name, expected", SAMPLE_DATASETS.items())
     def test_datasets(self, ds_name, expected, tmpdir):
         path = f"{tmpdir}/{ds_name}"
-        result = self.roundtrip(expected, path)
-        assert_equal(result, expected)
+        with self.roundtrip(expected, path) as result:
+            assert_equal(result, expected)
 
     @pytest.mark.parametrize("ds_name, expected", SAMPLE_DATASETS.items())
     def test_tdb_xarray_indexing_match(self, ds_name, expected, tmpdir):
