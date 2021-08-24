@@ -150,8 +150,7 @@ class TileDBDataStore(AbstractDataStore):
         data = indexing.LazilyIndexedArray(
             TileDBDenseArrayWrapper(variable_name, self)
         )
-        var_metadata = metadata.get(variable_name)
-        variable = Variable(dims, data, var_metadata)
+        variable = Variable(dims, data, metadata)
         return variable
 
     def get_coord_var(self, dim, metadata):
@@ -192,12 +191,17 @@ class TileDBDataStore(AbstractDataStore):
         if coord_data is None:
             min_value = dim.domain[0]
             max_value = dim.domain[1]
+            dtype = dim.dtype
             if metadata and "time reference" in metadata:
                 start_date = np.datetime64(metadata["time reference"])
                 freq = metadata["freq"]
                 coord_data = pd.date_range(start_date, periods=dim.size, freq=freq)
+                dtype = f"datetime64[{freq}]"
             else:
-                coord_data = np.arange(min_value, max_value + 1, dtype=dim.dtype)
+                if min_value == 1:
+                    min_value = 0
+                    max_value = max_value - 1
+                coord_data = np.arange(min_value, max_value + 1, dtype=dtype)
 
         variable = Variable(dims, coord_data, metadata)
         return variable
