@@ -105,6 +105,8 @@ def parse_var(name):
         name = name[: -len(INDEX_SUFFIX)]
     return name
 
+def verify_and_open_group(path):
+    pass
 
 class TileDBDataStore(AbstractDataStore):
     #     __slots__()
