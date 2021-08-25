@@ -326,7 +326,7 @@ class Group:
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        cls.create(uri, group_schema, key, ctx, is_virtual=True)
+        cls.create(uri, group_schema, key, ctx, is_virtual=True)  # pragma: no cover
 
     def __init__(
         self,
