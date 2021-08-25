@@ -272,23 +272,18 @@ class Group:
         inside the group with the names and array schemas from the provided group
         schema.
 
-        If ``is_virtual=True``, a virtual group will be created instead with the
-        group metadata array at the provided URI and all other arrays are created at
-        ``{uri}_{array_name}`` where ``{uri}`` is the provided URI and ``{array_name}``
-        is the name of the array as stored in the group schema.
-
         Parameters:
             uri: Uniform resource identifier for TileDB group or array.
             group_schema: Schema that defines the group to be created.
             key: If not ``None``, encryption key, or dictionary of encryption keys to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            is_virtual: (deprecated) If ``True``, create arrays in a flat directory
+            is_virtual: (DEPRECATED) If ``True``, create arrays in a flat directory
                 without creating a TileDB group.
         """
         if not is_virtual:
             tiledb.group_create(uri, ctx)
-        else:
+        else:  # pragma: no cover
             warnings.warn(
                 "`Group.create_virtual` and the parameter `is_virtual in `Group.create`"
                 " are deprecated. Use `VirtualGroup.create` instead.",
@@ -317,7 +312,7 @@ class Group:
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        """Create the arrays in a group schema.
+        """(DEPRECATED) Create the arrays in a group schema.
 
         This will create a virtual group where the group metadata array is created at
         the provided URI and all other arrays are created at ``{uri}_{array_name}``
@@ -499,14 +494,14 @@ class VirtualGroup(Group):
         group_schema: GroupSchema,
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
-        is_virtual: bool = False,
+        is_virtual: bool = True,
     ):
         """Create the arrays in a group schema.
 
-        This will create a virtual group where the group metadata array is created at
-        the provided URI and all other arrays are created at ``{uri}_{array_name}``
-        where ``{uri}`` is the provided URI and ``{array_name}`` is the
-        name of the array as stored in the group schema.
+        This will create arrays for a group in a flat directory structure. The group
+        metadata array is created at the provided URI, and all other arrays are created
+        at ``{uri}_{array_name}`` where ``{uri}`` is the provided URI and
+        ``{array_name}`` is the name of the array as stored in the group schema.
 
         Parameters:
             uri: Uniform resource identifier for group metadata and prefix for arrays.
@@ -514,7 +509,17 @@ class VirtualGroup(Group):
             key: If not ``None``, encryption key, or dictionary of encryption keys to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            is_virtual: (DEPRECATED) If ``True``, create arrays in a flat directory
+                without creating a TileDB group.
         """
+        if not is_virtual:  # pragma: no cover
+            warnings.warn(
+                "The parameter `is_virtual in `VirtualGroup.create` is deprecated."
+                "Use `Group.create` instead.",
+                DeprecationWarning,
+            )
+            Group.create(uri, group_schema, key, ctx, is_virtual)
+            return
         if group_schema.metadata_schema is not None:
             tiledb.Array.create(
                 _get_metadata_array_uri(uri, is_virtual=True),
