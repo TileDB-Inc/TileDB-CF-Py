@@ -15,6 +15,8 @@
 
 ### Deprecation
 
+* Deprecate `Group.create_virtual` in favor of `VirtualGroup.create`.
+
 ## TileDB-CF-Py Release 0.3.0
 
 ### Breaking Behavior

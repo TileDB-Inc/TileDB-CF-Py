@@ -12,7 +12,7 @@ import numpy as np
 
 import tiledb
 
-from .core import METADATA_ARRAY_NAME, Group, GroupSchema
+from .core import METADATA_ARRAY_NAME, Group, GroupSchema, VirtualGroup
 
 DType = Union[int, float, str, None]
 DATA_SUFFIX = ".data"
@@ -262,7 +262,7 @@ class DataspaceCreator:
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        Group.create_virtual(uri, self.to_schema(ctx), key, ctx)
+        VirtualGroup.create(uri, self.to_schema(ctx), key, ctx)
 
     @property
     def dim_names(self):

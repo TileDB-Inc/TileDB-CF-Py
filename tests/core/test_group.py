@@ -69,7 +69,8 @@ class TestCreateVirtualGroup:
         """Creates a TileDB Group from GroupSchema and returns scenario dict."""
         uri = str(tmpdir_factory.mktemp("group1"))
         ctx = None
-        Group.create_virtual(uri, self._group_schema, self._key, ctx)
+        with pytest.deprecated_call():
+            Group.create_virtual(uri, self._group_schema, self._key, ctx)
         return uri
 
     def test_array_schemas(self, group_uri):

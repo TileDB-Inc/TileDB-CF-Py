@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import VirtualGroup
+from tiledb.cf import ArrayMetadata, AttrMetadata, GroupSchema, VirtualGroup
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
@@ -28,6 +28,60 @@ _array_schema_3 = tiledb.ArraySchema(
 )
 
 
+class TestCreateVirtualGroup:
+
+    _metadata_schema = _array_schema_1
+    _array_schemas = [
+        ("A1", _array_schema_1),
+        ("A2", _array_schema_2),
+    ]
+    _group_schema = GroupSchema(_array_schemas, _metadata_schema)
+
+    @pytest.fixture(scope="class")
+    def group_uri(self, tmpdir_factory):
+        """Creates a TileDB Group from GroupSchema and returns scenario dict."""
+        uri = str(tmpdir_factory.mktemp("group1").join("virtual"))
+        ctx = None
+        VirtualGroup.create(uri, self._group_schema, ctx=ctx)
+        return {"__tiledb_group": uri, "A1": f"{uri}_A1", "A2": f"{uri}_A2"}
+
+    def test_array_schemas(self, group_uri):
+        assert (
+            tiledb.ArraySchema.load(group_uri["__tiledb_group"])
+            == self._metadata_schema
+        )
+        assert tiledb.ArraySchema.load(group_uri["A1"]) == _array_schema_1
+        assert tiledb.ArraySchema.load(group_uri["A2"]) == _array_schema_2
+
+
+class TestMetadataOnlyGroup:
+
+    _metadata_schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.uint64)
+        ),
+        attrs=[tiledb.Attr(name="a", dtype=np.uint64)],
+        sparse=True,
+    )
+
+    @pytest.fixture(scope="class")
+    def group_uris(self, tmpdir_factory):
+        uri = str(tmpdir_factory.mktemp("group1"))
+        tiledb.Array.create(uri, self._metadata_schema)
+        return {"__tiledb_group": uri}
+
+    def test_has_metadata(self, group_uris):
+        with VirtualGroup(group_uris) as group:
+            assert isinstance(group, VirtualGroup)
+            assert group.has_metadata_array
+            assert group.meta is not None
+
+    def test_no_such_attr_error(self, group_uris):
+        with pytest.raises(KeyError):
+            with VirtualGroup(group_uris, attr="a"):
+                pass
+
+
 class TestVirtualGroupWithArrays:
 
     _metadata_schema = tiledb.ArraySchema(
@@ -43,49 +97,52 @@ class TestVirtualGroupWithArrays:
     )
 
     @pytest.fixture(scope="class")
-    def array_uris(self, tmpdir_factory):
+    def group_uris(self, tmpdir_factory):
         uri = str(tmpdir_factory.mktemp("simple_group"))
-        array_uris = {
-            "A1": uri + "/example1",
-            "A2": uri + "/example2",
-            "A3": uri + "/example3",
-            "__tiledb_group": uri + "/metadta",
-        }
-        tiledb.group_create(uri)
-        tiledb.Array.create(array_uris["__tiledb_group"], self._metadata_schema)
-        tiledb.Array.create(array_uris["A1"], _array_schema_1)
-        with tiledb.DenseArray(array_uris["A1"], mode="w") as array:
+        tiledb.Array.create(uri + "/metadata", self._metadata_schema)
+        tiledb.Array.create(uri + "/array1", _array_schema_1)
+        with tiledb.DenseArray(uri + "/array1", mode="w") as array:
             array[:] = self._A1_data
-        tiledb.Array.create(array_uris["A2"], _array_schema_2)
-        tiledb.Array.create(array_uris["A3"], _array_schema_3)
-        return array_uris
+        tiledb.Array.create(uri + "/array2", _array_schema_2)
+        tiledb.Array.create(uri + "/array3", _array_schema_3)
+        return {
+            "__tiledb_group": f"{uri}/metadata",
+            "A1": f"{uri}/array1",
+            "A2": f"{uri}/array2",
+            "A3": f"{uri}/array3",
+        }
 
-    def test_open_array_from_group(self, array_uris):
-        with VirtualGroup(array_uris, array="A1") as group:
+    def test_open_array_from_group(self, group_uris):
+        with VirtualGroup(group_uris, array="A1") as group:
             array = group.array
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"
             assert np.array_equal(array[:, :]["a"], self._A1_data)
 
-    def test_open_attr(self, array_uris):
-        with VirtualGroup(array_uris, attr="a") as group:
+    def test_array_metadata(self, group_uris):
+        with VirtualGroup(group_uris, array="A1") as group:
+            assert isinstance(group.array_metadata, ArrayMetadata)
+
+    def test_attr_metadata_with_attr(self, group_uris):
+        with VirtualGroup(group_uris, attr="a") as group:
+            assert isinstance(group.attr_metadata, AttrMetadata)
+
+    def test_attr_metadata_with_single_attr_array(self, group_uris):
+        with VirtualGroup(group_uris, array="A3") as group:
+            assert isinstance(group.attr_metadata, AttrMetadata)
+
+    def test_get_attr_metadata(self, group_uris):
+        with VirtualGroup(group_uris, array="A2") as group:
+            assert isinstance(group.get_attr_metadata("b"), AttrMetadata)
+
+    def test_open_attr(self, group_uris):
+        with VirtualGroup(group_uris, attr="a") as group:
             array = group.array
             assert isinstance(array, tiledb.Array)
             assert array.mode == "r"
             assert np.array_equal(array[:, :], self._A1_data)
 
-    def test_array_metadata(self, array_uris):
-        with VirtualGroup(array_uris, mode="w") as group:
-            group.meta["test_key"] = "test_value"
-        with VirtualGroup(array_uris, mode="r") as group:
-            assert group.meta["test_key"] == "test_value"
-
-    def test_no_array_with_attr_exception(self, array_uris):
-        with pytest.raises(KeyError):
-            with VirtualGroup(array_uris, attr="bad_name"):
-                pass
-
-    def test_ambiguous_array_exception(self, array_uris):
+    def test_attr_ambiguous_error(self, group_uris):
         with pytest.raises(ValueError):
-            with VirtualGroup(array_uris, attr="c"):
+            with VirtualGroup(group_uris, attr="c"):
                 pass
