@@ -28,7 +28,7 @@ _array_schema_3 = tiledb.ArraySchema(
 )
 
 
-class TestCreateiVirtualGroup:
+class TestCreateVirtualGroup:
 
     _metadata_schema = _array_schema_1
     _array_schemas = [
@@ -121,19 +121,19 @@ class TestVirtualGroupWithArrays:
 
     def test_array_metadata(self, group_uris):
         with VirtualGroup(group_uris, array="A1") as group:
-            isinstance(group.array_metadata, ArrayMetadata)
+            assert isinstance(group.array_metadata, ArrayMetadata)
 
     def test_attr_metadata_with_attr(self, group_uris):
         with VirtualGroup(group_uris, attr="a") as group:
-            isinstance(group.attr_metadata, AttrMetadata)
+            assert isinstance(group.attr_metadata, AttrMetadata)
 
     def test_attr_metadata_with_single_attr_array(self, group_uris):
         with VirtualGroup(group_uris, array="A3") as group:
-            isinstance(group.attr_metadata, AttrMetadata)
+            assert isinstance(group.attr_metadata, AttrMetadata)
 
     def test_get_attr_metadata(self, group_uris):
         with VirtualGroup(group_uris, array="A2") as group:
-            isinstance(group.get_attr_metadata("b"), AttrMetadata)
+            assert isinstance(group.get_attr_metadata("b"), AttrMetadata)
 
     def test_open_attr(self, group_uris):
         with VirtualGroup(group_uris, attr="a") as group:
