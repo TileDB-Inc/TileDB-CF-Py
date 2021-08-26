@@ -284,11 +284,13 @@ class Group:
         if not is_virtual:
             tiledb.group_create(uri, ctx)
         else:  # pragma: no cover
-            warnings.warn(
-                "`Group.create_virtual` and the parameter `is_virtual in `Group.create`"
-                " are deprecated. Use `VirtualGroup.create` instead.",
-                DeprecationWarning,
-            )
+            with warnings.catch_warnings():
+                warnings.warn(
+                    "`Group.create_virtual` and the parameter `is_virtual in "
+                    "`Group.create` are deprecated. Use `VirtualGroup.create` "
+                    "instead.",
+                    DeprecationWarning,
+                )
         if group_schema.metadata_schema is not None:
             tiledb.Array.create(
                 _get_metadata_array_uri(uri, is_virtual),
@@ -513,11 +515,12 @@ class VirtualGroup(Group):
                 without creating a TileDB group.
         """
         if not is_virtual:  # pragma: no cover
-            warnings.warn(
-                "The parameter `is_virtual in `VirtualGroup.create` is deprecated."
-                "Use `Group.create` instead.",
-                DeprecationWarning,
-            )
+            with warnings.catch_warnings():
+                warnings.warn(
+                    "The parameter `is_virtual in `VirtualGroup.create` is deprecated."
+                    "Use `Group.create` instead.",
+                    DeprecationWarning,
+                )
             Group.create(uri, group_schema, key, ctx, is_virtual)
             return
         if group_schema.metadata_schema is not None:

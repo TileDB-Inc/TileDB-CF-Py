@@ -1497,7 +1497,8 @@ def copy_metadata_item(meta, netcdf_item, key):
     try:
         meta[key] = value
     except ValueError as err:  # pragma: no cover
-        warnings.warn(f"Failed to set group metadata {value} with error: {err}")
+        with warnings.catch_warnings():
+            warnings.warn(f"Failed to set group metadata {value} with error: {err}")
 
 
 def get_ncattr(netcdf_item, key: str) -> Any:
