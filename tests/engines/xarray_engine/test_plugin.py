@@ -1,6 +1,8 @@
 # Copyright 2021 TileDB Inc.
 # Licensed under the MIT License.
 import contextlib
+import types
+from typing import Any, Dict, Hashable
 
 import numpy as np
 import pytest
@@ -19,45 +21,47 @@ BACKEND_ENTRYPOINTS["tiledb"] = TileDBBackendEntrypoint
 _ATTR_PREFIX = "__tiledb_attr."
 _DIM_PREFIX = "__tiledb_dim."
 
-INT_1D_DATA = np.arange(0, 16, dtype=np.int32)
-INT_1D_ATTRS = {"description": "int 1D data var"}
-INT_1D_VAR = Variable(["rows"], INT_1D_DATA, INT_1D_ATTRS)
-INT_1D_COORDS = {"rows": np.arange(0, 16, dtype=np.int32)}
+INT_1D_DATA: Any = np.arange(0, 16, dtype=np.int32)
+INT_1D_ATTRS: Dict[Hashable, Any] = {"description": "int 1D data var"}
+INT_1D_VAR: Variable = Variable(["rows"], INT_1D_DATA, INT_1D_ATTRS)
+INT_1D_COORDS: Dict[Hashable, Any] = {"rows": np.arange(0, 16, dtype=np.int32)}
 
-INT_2D_DATA = np.arange(0, 32, dtype=np.int32).reshape(8, 4)
-INT_2D_ATTRS = {"description": "int 2D data var"}
-INT_2D_VAR = Variable(["rows", "cols"], INT_2D_DATA, INT_2D_ATTRS)
-INT_2D_COORDS = {
+INT_2D_DATA: Any = np.arange(0, 32, dtype=np.int32).reshape(8, 4)
+INT_2D_ATTRS: Dict[Hashable, Any] = {"description": "int 2D data var"}
+INT_2D_VAR: Variable = Variable(["rows", "cols"], INT_2D_DATA, INT_2D_ATTRS)
+INT_2D_COORDS: Dict[Hashable, Any] = {
     "rows": np.arange(0, 8, dtype=np.int32),
     "cols": np.arange(0, 4, dtype=np.int32),
 }
 
-INT_1D_SHIFTED_ATTRS = {"description": "int 1d shifted data var"}
-INT_1D_SHIFTED_VAR = Variable(["rows"], INT_1D_DATA, INT_1D_SHIFTED_ATTRS)
-INT_1D_SHIFTED_COORDS = {"rows": np.arange(5, 21, dtype=np.int32)}
+INT_1D_SHIFTED_ATTRS: Dict[Hashable, Any] = {"description": "int 1d shifted data var"}
+INT_1D_SHIFTED_VAR: Variable = Variable(["rows"], INT_1D_DATA, INT_1D_SHIFTED_ATTRS)
+INT_1D_SHIFTED_COORDS: Dict[Hashable, Any] = {"rows": np.arange(5, 21, dtype=np.int32)}
 
-INT_2D_SHIFTED_ATTRS = {"description": "int 2d shifted data var"}
-INT_2D_SHIFTED_VAR = Variable(["rows", "cols"], INT_2D_DATA, INT_2D_SHIFTED_ATTRS)
-INT_2D_SHIFTED_COORDS = {
+INT_2D_SHIFTED_ATTRS: Dict[Hashable, Any] = {"description": "int 2d shifted data var"}
+INT_2D_SHIFTED_VAR: Variable = Variable(
+    ["rows", "cols"], INT_2D_DATA, INT_2D_SHIFTED_ATTRS
+)
+INT_2D_SHIFTED_COORDS: Dict[Hashable, Any] = {
     "rows": np.arange(4, 12, dtype=np.int32),
     "cols": np.arange(2, 6, dtype=np.int32),
 }
 
-DATETIME_1D_VAR_ATTRS = {"description": "datetime 1d data var"}
-DATETIME_1D_VAR = Variable(["rows"], INT_1D_DATA, DATETIME_1D_VAR_ATTRS)
-DATETIME_1D_COORDS = {
+DATETIME_1D_VAR_ATTRS: Dict[Hashable, Any] = {"description": "datetime 1d data var"}
+DATETIME_1D_VAR: Variable = Variable(["rows"], INT_1D_DATA, DATETIME_1D_VAR_ATTRS)
+DATETIME_1D_COORDS: Dict[Hashable, Any] = {
     "rows": np.arange(
         np.datetime64("2000-01-01"), np.datetime64("2000-01-17"), np.timedelta64(1, "D")
     )
 }
 
-DS_ATTRS = {"description": "test dataset"}
-DATETIME_1D_DS_ATTRS = {
+DS_ATTRS: Dict[Hashable, Any] = {"description": "test dataset"}
+DATETIME_1D_DS_ATTRS: Dict[Hashable, Any] = {
     **DS_ATTRS,
     "rows": {"time reference": np.datetime64("2000-01-01"), "freq": "D"},
 }
 
-SAMPLE_DATASETS = {
+SAMPLE_DATASETS: Dict[Hashable, Any] = {
     "simple_1d": xr.Dataset(
         data_vars={"data": INT_1D_VAR}, coords=INT_1D_COORDS, attrs=DS_ATTRS
     ),
@@ -86,17 +90,20 @@ class TestTDBBackend:
     engine = "tiledb"
 
     @contextlib.contextmanager
-    def open(self, path):
+    def open(self, path: str):
         with open_dataset(path, engine=self.engine) as ds:
             yield ds
 
-    def write_tdb_array(self, path, data, metadata):
+    def write_tdb_array(
+        self, path: str, data: np.ndarray, metadata: Dict[Hashable, Any] = None
+    ):
         with tiledb.open(path, "w") as array:
             array[:] = data
-            for key, value in metadata.items():
-                array.meta[key] = value
+            if metadata is not None:
+                for key, value in metadata.items():
+                    array.meta[key] = value
 
-    def to_tiledb(self, dataset, path):
+    def to_tiledb(self, dataset: xr.Dataset, path: str):  # noqa: C901
         coords = dataset.coords
 
         tdb_dims = []
@@ -178,13 +185,13 @@ class TestTDBBackend:
         self.write_tdb_array(path, data, metadata)
 
     @contextlib.contextmanager
-    def roundtrip(self, dataset, path):
+    def roundtrip(self, dataset: xr.Dataset, path: str):
         self.to_tiledb(dataset, path)
         with self.open(path) as ds:
             yield ds
 
     @pytest.mark.parametrize("ds_name, expected", SAMPLE_DATASETS.items())
-    def test_totiledb(self, ds_name, expected, tmpdir):
+    def test_totiledb(self, ds_name: str, expected: xr.Dataset, tmpdir):
         path = f"{tmpdir}/{ds_name}"
         self.to_tiledb(expected, path)
         with tiledb.DenseArray(path) as array:
@@ -205,13 +212,15 @@ class TestTDBBackend:
                 assert dim.domain[1] == expect_max
 
     @pytest.mark.parametrize("ds_name, expected", SAMPLE_DATASETS.items())
-    def test_datasets(self, ds_name, expected, tmpdir):
+    def test_datasets(self, ds_name: str, expected: xr.Dataset, tmpdir):
         path = f"{tmpdir}/{ds_name}"
         with self.roundtrip(expected, path) as result:
             assert_equal(result, expected)
 
     @pytest.mark.parametrize("ds_name, expected", SAMPLE_DATASETS.items())
-    def test_tdb_xarray_indexing_match(self, ds_name, expected, tmpdir):
+    def test_tdb_xarray_indexing_match(
+        self, ds_name: str, expected: xr.Dataset, tmpdir
+    ):
         path = f"{tmpdir}/{ds_name}"
         self.to_tiledb(expected, path)
         with tiledb.DenseArray(path) as array:
