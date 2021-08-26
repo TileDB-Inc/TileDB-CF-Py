@@ -16,6 +16,7 @@
 ### Deprecation
 
 * Deprecate `Group.create_virtual` in favor of `VirtualGroup.create`.
+* Deprecate `NetCDF4ConverterEngine.add_scalar_dim_converter` in favor of `NetCDF4ConverterEngine.add_scalar_to_dim_converter`.
 
 ## TileDB-CF-Py Release 0.3.0
 
