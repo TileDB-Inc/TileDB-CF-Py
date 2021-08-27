@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from io import StringIO
-from typing import Any, Collection, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -302,6 +302,10 @@ class DataspaceCreator:
         """
         # TODO: deprecate this function
         array_creator = self._registry.get_array_creator(array_name)
+        if property_name == "tiles":
+            return tuple(
+                dim_creator.tile for dim_creator in array_creator.domain_creator
+            )
         return getattr(array_creator, property_name)
 
     def get_attr_property(self, attr_name: str, property_name: str) -> Any:
@@ -428,6 +432,15 @@ class DataspaceCreator:
         """
         # TODO: deprecate this function
         array_creator = self._registry.get_array_creator(array_name)
+        if "tiles" in properties:
+            tiles = properties.pop("tiles")
+            if len(tiles) != array_creator.ndim:
+                raise ValueError(
+                    f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
+                    f"{array_creator.ndim} dimension(s)."
+                )
+            for dim_creator, tile in zip(array_creator.domain_creator, tiles):
+                dim_creator.tile = tile
         for property_name, value in properties.items():
             setattr(array_creator, property_name, value)
 
@@ -703,7 +716,13 @@ class ArrayCreator:
         self.tile_order = tile_order
         self.capacity = capacity
         if tiles is not None:
-            self.tiles = tiles
+            if len(tiles) != self.ndim:
+                raise ValueError(
+                    f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
+                    f"{self.ndim} dimension(s)."
+                )
+            for dim_creator, tile in zip(self._domain_creator, tiles):
+                dim_creator.tile = tile
         self.coords_filters = coords_filters
         if dim_filters is not None:
             self.dim_filters = dim_filters
@@ -883,28 +902,11 @@ class ArrayCreator:
     def remove_attr_creator(self, attr_name):
         return self._registry.deregister_attr_creator(attr_name)
 
-    @property
-    def tiles(self) -> Collection[Union[int, float, None]]:
-        """An optional ordered list of tile sizes for the dimensions of the
-        array. The length must match the number of dimensions in the array."""
-        return tuple(dim_creator.tile for dim_creator in self._registry.dim_creators())
-
-    @tiles.setter
-    def tiles(self, tiles: Collection[Union[int, float, None]]):
-        if len(tiles) != self.ndim:
-            raise ValueError(
-                f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
-                f"{self.ndim} dimension(s)."
-            )
-        for dim_creator, tile in zip(self._registry.dim_creators(), tiles):
-            dim_creator.tile = tile
-
     def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.ArraySchema:
         """Returns an array schema for the array.
 
         Parameters:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            key: (DEPRECATED) If not ``None``, encryption key to decrypt the array.
         """
         if self._registry.nattr == 0:
             raise ValueError("Cannot create schema for array with no attributes.")
