@@ -50,6 +50,23 @@ class NetCDFDimConverter(ABC):
 
 
 class NetCDF4CoordToDimConverter(SharedDim, NetCDFDimConverter):
+    """Converter for a NetCDF variable/dimension pair to a TileDB dimension.
+
+    Parameters:
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+        input_name: The name of input NetCDF variable.
+        input_dtype: The numpy dtype of the input NetCDF variable.
+
+    Attributes:
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+        input_name: The name of input NetCDF variable.
+        input_dtype: The numpy dtype of the input NetCDF variable.
+    """
+
     def __init__(
         self,
         dataspace_registry: DataspaceRegistry,
@@ -165,7 +182,7 @@ class NetCDF4CoordToDimConverter(SharedDim, NetCDFDimConverter):
 
 
 class NetCDF4DimToDimConverter(SharedDim, NetCDFDimConverter):
-    """Data for converting from a NetCDF dimension to a TileDB dimension.
+    """Converter for a NetCDF dimension to a TileDB dimension.
 
     Parameters:
         name: Name of the TileDB dimension.
@@ -302,7 +319,7 @@ class NetCDF4DimToDimConverter(SharedDim, NetCDFDimConverter):
 
 
 class NetCDF4ScalarToDimConverter(SharedDim, NetCDFDimConverter):
-    """Data for converting from a NetCDF dimension to a TileDB dimension.
+    """Converter for NetCDF scalar (empty) dimensions to a TileDB Dimension.
 
     Parameters:
         name: Name of the TileDB dimension.
@@ -356,7 +373,7 @@ class NetCDF4ScalarToDimConverter(SharedDim, NetCDFDimConverter):
 
 
 class NetCDF4VarToAttrConverter(AttrCreator):
-    """Data for converting from a NetCDF variable to a TileDB attribute.
+    """Converter for a NetCDF variable to a TileDB attribute.
 
     Parameters:
         name: Name of the new attribute.
