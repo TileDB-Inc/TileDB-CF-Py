@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 """Classes for converting NetCDF4 files to TileDB."""
 
+import time
 import warnings
 from abc import ABC, abstractmethod
 from collections import defaultdict
@@ -452,8 +453,8 @@ class NetCDF4VarToAttrConverter(AttrCreator, NetCDF4DataConverter):
                 f"NetCDF group."
             ) from err
         attr_meta = AttrMetadata(tiledb_array.meta, self.name)
-        for meta_key in variable.ncattrs():
-            copy_metadata_item(attr_meta, variable, meta_key)
+        for key in variable.ncattrs():
+            safe_set_metadata(attr_meta, key, variable.getncattr(key))
 
     def html_summary(self):
         return (
@@ -1442,8 +1443,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         ) as netcdf_group:
             with tiledb.open(output_uri, mode="w", key=key, ctx=ctx) as array:
                 # Copy group metadata
-                for group_key in netcdf_group.ncattrs():
-                    copy_metadata_item(array.meta, netcdf_group, group_key)
+                copy_group_metadata(netcdf_group, array.meta)
                 # Copy variables and variable metadata to arrays
                 if isinstance(array_creator, NetCDF4ArrayConverter):
                     array_creator.copy(netcdf_group, array)
@@ -1492,8 +1492,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         ) as netcdf_group:
             # Copy group metadata
             with Group(output_uri, mode="w", key=key, ctx=ctx) as group:
-                for group_key in netcdf_group.ncattrs():
-                    copy_metadata_item(group.meta, netcdf_group, group_key)
+                copy_group_metadata(netcdf_group, group.meta)
             # Copy variables and variable metadata to arrays
             for array_creator in self._registry.array_creators():
                 if isinstance(array_creator, NetCDF4ArrayConverter):
@@ -1546,8 +1545,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         ) as netcdf_group:
             # Copy group metadata
             with tiledb.Array(output_uri, mode="w", key=key, ctx=ctx) as array:
-                for group_key in netcdf_group.ncattrs():
-                    copy_metadata_item(array.meta, netcdf_group, group_key)
+                copy_group_metadata(netcdf_group, array.meta)
             # Copy variables and variable metadata to arrays
             for array_creator in self._registry.array_creators():
                 array_uri = output_uri + "_" + array_creator.name
@@ -1556,20 +1554,18 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         array_creator.copy(netcdf_group, array)
 
 
-def copy_metadata_item(meta, netcdf_item, key):
-    """Copies a NetCDF attribute from a NetCDF group or variable to TileDB metadata.
+def copy_group_metadata(netcdf_group: netCDF4.Group, meta: tiledb.libtiledb.Metadata):
+    """Copy all NetCDF group attributs to a the metadata in a TileDB array."""
+    for key in netcdf_group.ncattrs():
+        value = netcdf_group.getncattr(key)
+        if key == "history":
+            value = f"{value} - TileDB array created on {time.ctime(time.time())}"
+        safe_set_metadata(meta, key, value)
 
-    Parameters:
-        meta: TileDB metadata object to copy to.
-        netcdf_item: NetCDF variable or group to copy from.
-        key: Name of the NetCDF attribute that is being copied.
-    """
-    import time
 
-    value = netcdf_item.getncattr(key)
-    if key == "history":
-        value = value + " - TileDB array created on " + time.ctime(time.time())
-    elif isinstance(value, np.ndarray):
+def safe_set_metadata(meta, key, value):
+    """Copy a metadata item to a TileDB array catching any errors as warnings."""
+    if isinstance(value, np.ndarray):
         value = tuple(value.tolist())
     elif isinstance(value, np.generic):
         value = (value.tolist(),)
@@ -1577,7 +1573,7 @@ def copy_metadata_item(meta, netcdf_item, key):
         meta[key] = value
     except ValueError as err:  # pragma: no cover
         with warnings.catch_warnings():
-            warnings.warn(f"Failed to set group metadata {value} with error: {err}")
+            warnings.warn(f"Failed to set metadata `{key}={value}` with error: {err}")
 
 
 def get_ncattr(netcdf_item, key: str) -> Any:
