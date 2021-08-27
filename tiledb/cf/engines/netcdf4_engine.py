@@ -30,7 +30,7 @@ _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
 
 
-class NetCDFDimConverter(ABC):
+class NetCDF4DataConverter(ABC):
     @abstractmethod
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
@@ -49,7 +49,7 @@ class NetCDFDimConverter(ABC):
         """
 
 
-class NetCDF4CoordToDimConverter(SharedDim, NetCDFDimConverter):
+class NetCDF4CoordToDimConverter(SharedDim, NetCDF4DataConverter):
     """Converter for a NetCDF variable/dimension pair to a TileDB dimension.
 
     Parameters:
@@ -181,7 +181,7 @@ class NetCDF4CoordToDimConverter(SharedDim, NetCDFDimConverter):
         return False
 
 
-class NetCDF4DimToDimConverter(SharedDim, NetCDFDimConverter):
+class NetCDF4DimToDimConverter(SharedDim, NetCDF4DataConverter):
     """Converter for a NetCDF dimension to a TileDB dimension.
 
     Parameters:
@@ -318,7 +318,7 @@ class NetCDF4DimToDimConverter(SharedDim, NetCDFDimConverter):
         )
 
 
-class NetCDF4ScalarToDimConverter(SharedDim, NetCDFDimConverter):
+class NetCDF4ScalarToDimConverter(SharedDim, NetCDF4DataConverter):
     """Converter for NetCDF scalar (empty) dimensions to a TileDB Dimension.
 
     Parameters:
@@ -540,12 +540,14 @@ class NetCDF4ArrayConverter(ArrayCreator):
         sparse: bool = False,
     ):
         if not all(
-            isinstance(dataspace_registry.get_shared_dim(dim_name), NetCDFDimConverter)
+            isinstance(
+                dataspace_registry.get_shared_dim(dim_name), NetCDF4DataConverter
+            )
             for dim_name in dims
         ):
             raise NotImplementedError(
                 "Support for using a dimension in {self.__class__.name} is not a "
-                "NetCDFDimConverter is not yet implemented."
+                "NetCDF4DataConverter is not yet implemented."
             )
         super().__init__(
             dataspace_registry=dataspace_registry,
