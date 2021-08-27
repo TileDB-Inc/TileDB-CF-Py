@@ -698,6 +698,7 @@ class ArrayCreator:
         sparse: bool = False,
     ):
         self._registry = ArrayRegistry(dataspace_registry, name, dims)
+        self._domain_creator = DomainCreator(self._registry)
         self.cell_order = cell_order
         self.tile_order = tile_order
         self.capacity = capacity
@@ -811,6 +812,11 @@ class ArrayCreator:
         return tuple(dim_creator.name for dim_creator in self._registry.dim_creators())
 
     @property
+    def domain_creator(self) -> DomainCreator:
+        """Domain creator that generates the domain for the arrray."""
+        return self._domain_creator
+
+    @property
     def name(self) -> str:
         """Name of the array."""
         return self._registry.name
@@ -893,22 +899,16 @@ class ArrayCreator:
         for dim_creator, tile in zip(self._registry.dim_creators(), tiles):
             dim_creator.tile = tile
 
-    def to_schema(
-        self, ctx: Optional[tiledb.Ctx] = None, key: Optional[str] = None
-    ) -> tiledb.ArraySchema:
+    def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.ArraySchema:
         """Returns an array schema for the array.
 
         Parameters:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            key: If not ``None``, encryption key to decrypt the array.
+            key: (DEPRECATED) If not ``None``, encryption key to decrypt the array.
         """
-        assert self.ndim > 0, "Must have at least one dimension."
         if self._registry.nattr == 0:
             raise ValueError("Cannot create schema for array with no attributes.")
-        tiledb_dims = [
-            dim_creator.to_tiledb() for dim_creator in self._registry.dim_creators()
-        ]
-        domain = tiledb.Domain(tiledb_dims, ctx=ctx)
+        domain = self.domain_creator.to_tiledb(ctx)
         attrs = tuple(attr_creator.to_tiledb(ctx) for attr_creator in self)
         return tiledb.ArraySchema(
             domain=domain,
@@ -1120,6 +1120,39 @@ class AttrCreator:
             filters=self.filters,
             ctx=ctx,
         )
+
+
+class DomainCreator:
+    """Creator for a TileDB domain."""
+
+    def __init__(self, array_registry):
+        self._array_registry = array_registry
+
+    def __iter__(self):
+        return self._array_registry.dim_creators()
+
+    def __len__(self):
+        return self.ndim
+
+    @property
+    def ndim(self):
+        """Number of dimensions in the domain."""
+        return self._array_registry.ndim
+
+    def dim_creator(self, dim_id):
+        """Returns a dimension creator from the domain creator given the dimension's
+        index or name.
+
+        Parameter:
+            dim_id: dimension index (int) or name (str)
+        """
+        return self._array_registry.get_dim_creator(dim_id)
+
+    def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
+        """Returns a TileDB domain from the contained dimension creators."""
+        assert self.ndim > 0, "Must have at least one dimension."
+        tiledb_dims = [dim_creator.to_tiledb() for dim_creator in self]
+        return tiledb.Domain(tiledb_dims, ctx=ctx)
 
 
 class DimCreator:
