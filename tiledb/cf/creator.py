@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from io import StringIO
-from typing import Any, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -306,6 +306,11 @@ class DataspaceCreator:
             return tuple(
                 dim_creator.tile for dim_creator in array_creator.domain_creator
             )
+        if property_name == "dim_filters":
+            return {
+                dim_creator.name: dim_creator.filters
+                for dim_creator in array_creator.domain_creator
+            }
         return getattr(array_creator, property_name)
 
     def get_attr_property(self, attr_name: str, property_name: str) -> Any:
@@ -441,6 +446,10 @@ class DataspaceCreator:
                 )
             for dim_creator, tile in zip(array_creator.domain_creator, tiles):
                 dim_creator.tile = tile
+        if "dim_filters" in properties:
+            dim_filters = properties.pop("dim_filters")
+            for dim_name, filters in dim_filters.items():
+                array_creator.domain_creator.dim_creator(dim_name).filters = filters
         for property_name, value in properties.items():
             setattr(array_creator, property_name, value)
 
@@ -725,7 +734,8 @@ class ArrayCreator:
                 dim_creator.tile = tile
         self.coords_filters = coords_filters
         if dim_filters is not None:
-            self.dim_filters = dim_filters
+            for dim_name, filters in dim_filters.items():
+                self.domain_creator.dim_creator(dim_name).filters = filters
         self.offsets_filters = offsets_filters
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
@@ -805,25 +815,6 @@ class ArrayCreator:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
         tiledb.Array.create(uri, self.to_schema(ctx), key, ctx)
-
-    @property
-    def dim_filters(self) -> Mapping[str, Optional[tiledb.FilterList]]:
-        """A dict from dimension name to a ``FilterList`` for dimensions in the array.
-        Overrides the values set in ``coords_filters``.
-        """
-        return {
-            dim_creator.name: dim_creator.filters
-            for dim_creator in self._registry.dim_creators()
-        }
-
-    @dim_filters.setter
-    def dim_filters(self, dim_filters: Mapping[str, Optional[tiledb.FilterList]]):
-        dim_map = {
-            dim_creator.name: dim_creator
-            for dim_creator in self._registry.dim_creators()
-        }
-        for dim_name, filters in dim_filters.items():
-            dim_map[dim_name].filters = filters
 
     @property
     def dim_names(self) -> Tuple[str, ...]:
