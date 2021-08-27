@@ -31,15 +31,26 @@ COORDINATE_SUFFIX = ".data"
 
 
 class NetCDF4DataConverter(ABC):
+    """Abstract base class for classes that copy data and metadata from NetCDF
+    groups to TileDB arrays.
+    """
+
+    def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
+        """Copy the metadata data from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the metadata items from.
+            tiledb_array: TileDB array to copy the metadata items to.
+        """
+
     @abstractmethod
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
-        """Returns the values of the NetCDF dimension that is being copied, or None if
-        the dimension is of size 0.
+        """Returns values from a NetCDF group that will be copied to TileDB.
 
         Parameters:
-            netcdf_group: NetCDF group to get the dimension values from.
+            netcdf_group: NetCDF group to get the values from.
             sparse: ``True`` if copying into a sparse array and ``False`` if copying
                 into a dense array.
 
@@ -163,8 +174,7 @@ class NetCDF4CoordToDimConverter(SharedDim, NetCDF4DataConverter):
         except KeyError as err:
             raise KeyError(
                 f"The variable '{self.input_name}' was not found in the provided "
-                f"NetCDF group. Cannot copy date from variable '{self.input_name}' to "
-                f"TileDB dimension '{self.name}'."
+                f"NetCDF group."
             ) from err
         if variable.ndim != 1:
             raise ValueError(
@@ -276,8 +286,7 @@ class NetCDF4DimToDimConverter(SharedDim, NetCDF4DataConverter):
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
-        """Returns the values of the NetCDF dimension that is being copied, or None if
-        the dimension is of size 0.
+        """Returns the values of the NetCDF dimension that is being copied.
 
         Parameters:
             netcdf_group: NetCDF group to get the dimension values from.
@@ -285,7 +294,7 @@ class NetCDF4DimToDimConverter(SharedDim, NetCDF4DataConverter):
                 into a dense array.
 
         Returns:
-            The coordinates needed for querying the create TileDB dimension in the form
+            The coordinates needed for querying the created TileDB dimension in the form
                 of a numpy array if sparse is ``True`` and a slice otherwise.
         """
         group = netcdf_group
@@ -372,7 +381,7 @@ class NetCDF4ScalarToDimConverter(SharedDim, NetCDF4DataConverter):
         return cls(dataspace_registry, dim_name, (0, 0), dtype)
 
 
-class NetCDF4VarToAttrConverter(AttrCreator):
+class NetCDF4VarToAttrConverter(AttrCreator, NetCDF4DataConverter):
     """Converter for a NetCDF variable to a TileDB attribute.
 
     Parameters:
@@ -428,6 +437,24 @@ class NetCDF4VarToAttrConverter(AttrCreator):
             f"{super().__repr__()}"
         )
 
+    def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
+        """Copy the metadata data from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the metadata items from.
+            tiledb_array: TileDB array to copy the metadata items to.
+        """
+        try:
+            variable = netcdf_group.variables[self.input_name]
+        except KeyError as err:
+            raise KeyError(
+                f"The variable '{self.input_name}' was not found in the provided "
+                f"NetCDF group."
+            ) from err
+        attr_meta = AttrMetadata(tiledb_array.meta, self.name)
+        for meta_key in variable.ncattrs():
+            copy_metadata_item(attr_meta, variable, meta_key)
+
     def html_summary(self):
         return (
             f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype})"
@@ -481,6 +508,30 @@ class NetCDF4VarToAttrConverter(AttrCreator):
             input_name=ncvar.name,
             input_dtype=ncvar.dtype,
         )
+
+    def get_values(
+        self, netcdf_group: netCDF4.Dataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
+        """Returns TileDB attribute values from a NetCDF group.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the dimension values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The values needed to set an attribute in a TileDB array. If the array
+        is sparse the values will be returned as an 1D array; otherwise, they will
+        be returned as an ND array.
+        """
+        try:
+            variable = netcdf_group.variables[self.input_name]
+        except KeyError as err:
+            raise KeyError(
+                f"The variable '{self.input_name}' was not found in the provided "
+                f"NetCDF group."
+            ) from err
+        return variable[...].flatten() if sparse else variable[...]
 
 
 class NetCDF4ArrayConverter(ArrayCreator):
@@ -642,36 +693,28 @@ class NetCDF4ArrayConverter(ArrayCreator):
             tiledb_arary: The TileDB array to copy data into. The array must be open
                 in write mode.
         """
-        dim_query = []
-        for dim_creator in self._domain_creator:
-            assert isinstance(dim_creator.base, NetCDFDimConverter)
-            dim_query.append(
-                dim_creator.base.get_values(netcdf_group, sparse=self.sparse)
-            )
         data = {}
         for attr_converter in self:
             assert isinstance(attr_converter, NetCDF4VarToAttrConverter)
-            try:
-                variable = netcdf_group.variables[attr_converter.input_name]
-            except KeyError as err:
-                raise KeyError(
-                    f"Variable {attr_converter.input_name} not found in "
-                    f"requested NetCDF group."
-                ) from err
-            data[attr_converter.name] = (
-                variable[...].flatten() if self.sparse else variable[...]
+            data[attr_converter.name] = attr_converter.get_values(
+                netcdf_group, sparse=self.sparse
             )
-            attr_meta = AttrMetadata(tiledb_array.meta, attr_converter.name)
-            for meta_key in variable.ncattrs():
-                copy_metadata_item(attr_meta, variable, meta_key)
+            attr_converter.copy_metadata(netcdf_group, tiledb_array)
+        dim_query = []
+        for dim_creator in self._domain_creator:
+            assert isinstance(dim_creator.base, NetCDF4DataConverter)
+            dim_query.append(
+                dim_creator.base.get_values(netcdf_group, sparse=self.sparse)
+            )
+            dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
         if self.sparse:
-            mesh = tuple(
+            coord_values = tuple(
                 dim_data.flatten()
                 for dim_data in np.meshgrid(*dim_query, indexing="ij")
             )
-            tiledb_array[mesh] = data
         else:
-            tiledb_array[tuple(dim_query)] = data
+            coord_values = tuple(dim_query)
+        tiledb_array[coord_values] = data
 
 
 class NetCDF4ConverterEngine(DataspaceCreator):
