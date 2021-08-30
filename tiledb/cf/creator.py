@@ -85,8 +85,9 @@ class DataspaceCreator:
             output.write("<details>\n")
             output.write("<summary>\n")
             output.write(
-                f"{array_creator.__class__.__name__} <em>{array_creator.name}</em>"
-                f"({', '.join(map(str, array_creator.dim_names))})\n"
+                f"{array_creator.__class__.__name__} <em>{array_creator.name}</em>("
+                f"{', '.join(map(lambda x: str(x.name), array_creator.domain_creator))}"
+                f")\n"
             )
             output.write("</summary>\n")
             output.write(f"{array_creator.html_summary()}\n")
@@ -552,21 +553,16 @@ class DataspaceRegistry:
                 f"dimension with the same name already exists, and merging dimensions "
                 f"has not yet been implemented."
             )
-        for array_creator in self.array_creators():
-            if original_name in array_creator.dim_names:
-                if new_name in {attr_creator.name for attr_creator in array_creator}:
-                    raise ValueError(
-                        f"Cannot rename dimension '{original_name}' to '{new_name}'. An"
-                        f" attribute with the same name already exists in the array "
-                        f"'{array_creator.name}' that uses this dimension."
-                    )
-                if new_name in array_creator.dim_names:  # pragma: no cover
-                    # Remove pragma no cover once merging dimensions is enable.
-                    raise ValueError(
-                        f"Cannot rename dimension '{original_name}' to '{new_name}'. A "
-                        f"dimension with the same name already exists in the array "
-                        f"'{array_creator.name}' that uses this dimension."
-                    )
+        if new_name in self._attr_to_array:
+            array_creator = self.get_array_creator_by_attr(new_name)
+            if original_name in (
+                dim_creator.name for dim_creator in array_creator.domain_creator
+            ):
+                raise ValueError(
+                    f"Cannot rename dimension '{original_name}' to '{new_name}'. An"
+                    f" attribute with the same name already exists in the array "
+                    f"'{array_creator.name}' that uses this dimension."
+                )
 
     def deregister_array_creator(self, array_name: str):
         """Removes the specified array and all its attributes from the CF dataspace.
@@ -585,7 +581,8 @@ class DataspaceRegistry:
         array_list = [
             array_creator.name
             for array_creator in self.array_creators()
-            if dim_name in array_creator.dim_names
+            if dim_name
+            in (dim_creator.name for dim_creator in array_creator.domain_creator)
         ]
         if array_list:
             raise ValueError(
@@ -815,11 +812,6 @@ class ArrayCreator:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
         tiledb.Array.create(uri, self.to_schema(ctx), key, ctx)
-
-    @property
-    def dim_names(self) -> Tuple[str, ...]:
-        """A static snapshot of the names of dimensions of the array."""
-        return tuple(dim_creator.name for dim_creator in self._registry.dim_creators())
 
     @property
     def domain_creator(self) -> DomainCreator:
