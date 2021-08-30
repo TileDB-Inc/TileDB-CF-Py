@@ -772,7 +772,15 @@ class ArrayCreator:
         output.write("  )")
         return output.getvalue()
 
-    def attr_creator(self, key: Union[int, str]):
+    def attr_creator(self, key: Union[int, str]) -> AttrCreator:
+        """Returns the requested attribute creator
+
+        Parameters:
+            key: The attribute creator index (int) or name (str).
+
+        Returns:
+            The attribute creator at the given index of name.
+        """
         return self._registry.get_attr_creator(key)
 
     def add_attr_creator(
@@ -815,7 +823,7 @@ class ArrayCreator:
 
     @property
     def domain_creator(self) -> DomainCreator:
-        """Domain creator that generates the domain for the arrray."""
+        """Domain creator that creates the domain for the TileDB array."""
         return self._domain_creator
 
     @property
@@ -883,6 +891,11 @@ class ArrayCreator:
         return output.getvalue()
 
     def remove_attr_creator(self, attr_name):
+        """Removes the requested attribute from the array.
+
+        Parameters:
+            attr_name: Name of the attribute to remove.
+        """
         return self._registry.deregister_attr_creator(attr_name)
 
     def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.ArraySchema:
@@ -1028,7 +1041,7 @@ class AttrCreator:
     """Creator for a TileDB attribute.
 
     Parameters:
-        name: Name of the new attribute.
+        name: Name of the attribute.
         dtype: Numpy dtype of the attribute.
         fill: Fill value for unset cells.
         var: Specifies if the attribute is variable length (automatic for
@@ -1082,6 +1095,7 @@ class AttrCreator:
 
     @property
     def name(self) -> str:
+        """Name of the attribute."""
         return self._name
 
     @name.setter
