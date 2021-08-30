@@ -750,7 +750,7 @@ class ArrayCreator:
         output = StringIO()
         output.write("  ArrayCreator(\n")
         output.write("     domain=Domain(*[\n")
-        for dim_creator in self._registry.dim_creators():
+        for dim_creator in self._domain_creator:
             output.write(f"       {repr(dim_creator)},\n")
         output.write("     ]),\n")
         output.write("     attrs=[\n")
@@ -853,7 +853,7 @@ class ArrayCreator:
         output.write("<li>\n")
         output.write("Domain\n")
         output.write("<table>\n")
-        for dim_creator in self._registry.dim_creators():
+        for dim_creator in self._domain_creator:
             output.write(
                 f"<tr><td {cell_style}>{dim_creator.html_summary()}</td></tr>\n"
             )
