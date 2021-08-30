@@ -105,7 +105,8 @@ class TestTDBBackend:
 
     def to_tiledb(self, dataset: xr.Dataset, path: str):  # noqa: C901
         coords = dataset.coords
-
+        if "spatial_ref" in coords:
+            print("spatial")
         tdb_dims = []
         for name in coords:
             if name in dataset.dims:
