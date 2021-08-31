@@ -732,7 +732,7 @@ class ArrayCreator:
         self.coords_filters = coords_filters
         if dim_filters is not None:
             for dim_name, filters in dim_filters.items():
-                self.domain_creator.dim_creator(dim_name).filters = filters
+                self._domain_creator.dim_creator(dim_name).filters = filters
         self.offsets_filters = offsets_filters
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
@@ -906,7 +906,7 @@ class ArrayCreator:
         """
         if self._registry.nattr == 0:
             raise ValueError("Cannot create schema for array with no attributes.")
-        domain = self.domain_creator.to_tiledb(ctx)
+        domain = self._domain_creator.to_tiledb(ctx)
         attrs = tuple(attr_creator.to_tiledb(ctx) for attr_creator in self)
         return tiledb.ArraySchema(
             domain=domain,
