@@ -31,9 +31,38 @@ _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
 
 
-class NetCDF4DataConverter(ABC):
-    """Abstract base class for classes that copy data and metadata from NetCDF
-    groups to TileDB arrays.
+class NetCDF4ToAttrConverter(ABC):
+    """Abstract base class for classes that copy data from objects in a NetCDF group to
+    a TileDB attribute.
+    """
+
+    def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
+        """Copy the metadata data from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the metadata items from.
+            tiledb_array: TileDB array to copy the metadata items to.
+        """
+
+    @abstractmethod
+    def get_values(
+        self, netcdf_group: netCDF4.Dataset, sparse: bool
+    ) -> Union[np.ndarray, slice]:
+        """Returns values from a NetCDF group that will be copied to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the values from.
+            sparse: ``True`` if copying into a sparse array and ``False`` if copying
+                into a dense array.
+
+        Returns:
+            The coordinates needed for querying the create TileDB dimension in the form
+                of a numpy array if sparse is ``True`` and a slice otherwise.
+        """
+
+class NetCDF4ToDimConverter(ABC):
+    """Abstract base class for classes that copy data from objects in a NetCDF group to
+    a TileDB dimension.
     """
 
     def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
@@ -61,7 +90,7 @@ class NetCDF4DataConverter(ABC):
         """
 
 
-class NetCDF4CoordToDimConverter(SharedDim, NetCDF4DataConverter):
+class NetCDF4CoordToDimConverter(SharedDim, NetCDF4ToDimConverter):
     """Converter for a NetCDF variable/dimension pair to a TileDB dimension.
 
     Parameters:
@@ -192,7 +221,7 @@ class NetCDF4CoordToDimConverter(SharedDim, NetCDF4DataConverter):
         return False
 
 
-class NetCDF4DimToDimConverter(SharedDim, NetCDF4DataConverter):
+class NetCDF4DimToDimConverter(SharedDim, NetCDF4ToDimConverter):
     """Converter for a NetCDF dimension to a TileDB dimension.
 
     Parameters:
@@ -328,7 +357,7 @@ class NetCDF4DimToDimConverter(SharedDim, NetCDF4DataConverter):
         )
 
 
-class NetCDF4ScalarToDimConverter(SharedDim, NetCDF4DataConverter):
+class NetCDF4ScalarToDimConverter(SharedDim, NetCDF4ToDimConverter):
     """Converter for NetCDF scalar (empty) dimensions to a TileDB Dimension.
 
     Parameters:
@@ -382,7 +411,7 @@ class NetCDF4ScalarToDimConverter(SharedDim, NetCDF4DataConverter):
         return cls(dataspace_registry, dim_name, (0, 0), dtype)
 
 
-class NetCDF4VarToAttrConverter(AttrCreator, NetCDF4DataConverter):
+class NetCDF4VarToAttrConverter(AttrCreator, NetCDF4ToAttrConverter):
     """Converter for a NetCDF variable to a TileDB attribute.
 
     Parameters:
@@ -593,13 +622,13 @@ class NetCDF4ArrayConverter(ArrayCreator):
     ):
         if not all(
             isinstance(
-                dataspace_registry.get_shared_dim(dim_name), NetCDF4DataConverter
+                dataspace_registry.get_shared_dim(dim_name), NetCDF4ToDimConverter
             )
             for dim_name in dims
         ):
             raise NotImplementedError(
                 "Support for using a dimension in {self.__class__.name} is not a "
-                "NetCDF4DataConverter is not yet implemented."
+                "NetCDF4ToDimConverter is not yet implemented."
             )
         super().__init__(
             dataspace_registry=dataspace_registry,
@@ -696,18 +725,17 @@ class NetCDF4ArrayConverter(ArrayCreator):
         """
         data = {}
         for attr_converter in self:
-            assert isinstance(attr_converter, NetCDF4VarToAttrConverter)
-            data[attr_converter.name] = attr_converter.get_values(
+            assert isinstance(attr_converter, NetCDF4ToAttrConverter)
+            data[attr_converter.name] = attr_converter.get_values(  # type: ignore
                 netcdf_group, sparse=self.sparse
             )
             attr_converter.copy_metadata(netcdf_group, tiledb_array)
         dim_query = []
         for dim_creator in self._domain_creator:
-            assert isinstance(dim_creator.base, NetCDF4DataConverter)
+            assert isinstance(dim_creator.base, NetCDF4ToDimConverter)
             dim_query.append(
                 dim_creator.base.get_values(netcdf_group, sparse=self.sparse)
             )
-            dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
         if self.sparse:
             coord_values = tuple(
                 dim_data.flatten()
