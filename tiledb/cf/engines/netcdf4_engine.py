@@ -625,7 +625,7 @@ class NetCDFArrayConverter(ArrayCreator):
                 in write mode.
         """
         dim_query = []
-        for dim_creator in self._registry.dim_creators():
+        for dim_creator in self._domain_creator:
             assert isinstance(dim_creator.base, NetCDFDimConverter)
             dim_query.append(
                 dim_creator.base.get_values(netcdf_group, sparse=self.sparse)

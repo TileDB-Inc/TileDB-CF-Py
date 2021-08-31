@@ -21,11 +21,11 @@ class TestArrayCreatorSparseExample1:
             coords_filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)]),
             offsets_filters=tiledb.FilterList([tiledb.Bzip2Filter()]),
             tiles=(32, 16),
+            dim_filters={
+                "row": tiledb.FilterList([tiledb.ZstdFilter(level=1)]),
+                "col": tiledb.FilterList([tiledb.GzipFilter(level=5)]),
+            },
         )
-        creator.dim_filters = {
-            "row": tiledb.FilterList([tiledb.ZstdFilter(level=1)]),
-            "col": tiledb.FilterList([tiledb.GzipFilter(level=5)]),
-        }
         attr_filters = tiledb.FilterList([tiledb.ZstdFilter(level=7)])
         creator.add_attr_creator("enthalpy", np.dtype("float64"), filters=attr_filters)
         return creator
@@ -39,14 +39,17 @@ class TestArrayCreatorSparseExample1:
         assert tiledb.object_type(uri) == "array"
 
     def test_dim_filters(self, array_creator):
-        filters = array_creator.dim_filters
+        filters = {
+            dim_creator.name: dim_creator.filters
+            for dim_creator in array_creator.domain_creator
+        }
         assert filters == {
             "row": tiledb.FilterList([tiledb.ZstdFilter(level=1)]),
             "col": tiledb.FilterList([tiledb.GzipFilter(level=5)]),
         }
 
     def test_tiles(self, array_creator):
-        tiles = array_creator.tiles
+        tiles = tuple(dim_creator.tile for dim_creator in array_creator.domain_creator)
         assert tiles == (32, 16)
 
     def test_nattr(self, array_creator):
@@ -73,11 +76,14 @@ class TestArrayCreatorDense1:
         assert tiledb.object_type(uri) == "array"
 
     def test_dim_filters(self, array_creator):
-        filters = array_creator.dim_filters
+        filters = {
+            dim_creator.name: dim_creator.filters
+            for dim_creator in array_creator.domain_creator
+        }
         assert filters == {"row": None}
 
     def test_tiles(self, array_creator):
-        tiles = array_creator.tiles
+        tiles = tuple(dim_creator.tile for dim_creator in array_creator.domain_creator)
         assert tiles == (None,)
 
     def test_nattr(self, array_creator):
@@ -136,9 +142,8 @@ def test_bad_tiles_error():
     registry = DataspaceRegistry()
     SharedDim(registry, "row", (0, 63), np.uint32)
     SharedDim(registry, "col", (0, 31), np.uint32)
-    creator = ArrayCreator(registry, "array", ("row", "col"))
     with pytest.raises(ValueError):
-        creator.tiles = (4,)
+        ArrayCreator(registry, "array", ("row", "col"), tiles=(4,))
 
 
 def test_to_schema_no_attrs_error():

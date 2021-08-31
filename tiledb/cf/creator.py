@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections import OrderedDict
 from io import StringIO
-from typing import Any, Collection, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -85,8 +85,9 @@ class DataspaceCreator:
             output.write("<details>\n")
             output.write("<summary>\n")
             output.write(
-                f"{array_creator.__class__.__name__} <em>{array_creator.name}</em>"
-                f"({', '.join(map(str, array_creator.dim_names))})\n"
+                f"{array_creator.__class__.__name__} <em>{array_creator.name}</em>("
+                f"{', '.join(map(lambda x: str(x.name), array_creator.domain_creator))}"
+                f")\n"
             )
             output.write("</summary>\n")
             output.write(f"{array_creator.html_summary()}\n")
@@ -302,6 +303,15 @@ class DataspaceCreator:
         """
         # TODO: deprecate this function
         array_creator = self._registry.get_array_creator(array_name)
+        if property_name == "tiles":
+            return tuple(
+                dim_creator.tile for dim_creator in array_creator.domain_creator
+            )
+        if property_name == "dim_filters":
+            return {
+                dim_creator.name: dim_creator.filters
+                for dim_creator in array_creator.domain_creator
+            }
         return getattr(array_creator, property_name)
 
     def get_attr_property(self, attr_name: str, property_name: str) -> Any:
@@ -428,6 +438,19 @@ class DataspaceCreator:
         """
         # TODO: deprecate this function
         array_creator = self._registry.get_array_creator(array_name)
+        if "tiles" in properties:
+            tiles = properties.pop("tiles")
+            if len(tiles) != array_creator.ndim:
+                raise ValueError(
+                    f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
+                    f"{array_creator.ndim} dimension(s)."
+                )
+            for dim_creator, tile in zip(array_creator.domain_creator, tiles):
+                dim_creator.tile = tile
+        if "dim_filters" in properties:
+            dim_filters = properties.pop("dim_filters")
+            for dim_name, filters in dim_filters.items():
+                array_creator.domain_creator.dim_creator(dim_name).filters = filters
         for property_name, value in properties.items():
             setattr(array_creator, property_name, value)
 
@@ -530,21 +553,16 @@ class DataspaceRegistry:
                 f"dimension with the same name already exists, and merging dimensions "
                 f"has not yet been implemented."
             )
-        for array_creator in self.array_creators():
-            if original_name in array_creator.dim_names:
-                if new_name in {attr_creator.name for attr_creator in array_creator}:
-                    raise ValueError(
-                        f"Cannot rename dimension '{original_name}' to '{new_name}'. An"
-                        f" attribute with the same name already exists in the array "
-                        f"'{array_creator.name}' that uses this dimension."
-                    )
-                if new_name in array_creator.dim_names:  # pragma: no cover
-                    # Remove pragma no cover once merging dimensions is enable.
-                    raise ValueError(
-                        f"Cannot rename dimension '{original_name}' to '{new_name}'. A "
-                        f"dimension with the same name already exists in the array "
-                        f"'{array_creator.name}' that uses this dimension."
-                    )
+        if new_name in self._attr_to_array:
+            array_creator = self.get_array_creator_by_attr(new_name)
+            if original_name in (
+                dim_creator.name for dim_creator in array_creator.domain_creator
+            ):
+                raise ValueError(
+                    f"Cannot rename dimension '{original_name}' to '{new_name}'. An"
+                    f" attribute with the same name already exists in the array "
+                    f"'{array_creator.name}' that uses this dimension."
+                )
 
     def deregister_array_creator(self, array_name: str):
         """Removes the specified array and all its attributes from the CF dataspace.
@@ -563,7 +581,8 @@ class DataspaceRegistry:
         array_list = [
             array_creator.name
             for array_creator in self.array_creators()
-            if dim_name in array_creator.dim_names
+            if dim_name
+            in (dim_creator.name for dim_creator in array_creator.domain_creator)
         ]
         if array_list:
             raise ValueError(
@@ -698,14 +717,22 @@ class ArrayCreator:
         sparse: bool = False,
     ):
         self._registry = ArrayRegistry(dataspace_registry, name, dims)
+        self._domain_creator = DomainCreator(self._registry)
         self.cell_order = cell_order
         self.tile_order = tile_order
         self.capacity = capacity
         if tiles is not None:
-            self.tiles = tiles
+            if len(tiles) != self.ndim:
+                raise ValueError(
+                    f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
+                    f"{self.ndim} dimension(s)."
+                )
+            for dim_creator, tile in zip(self._domain_creator, tiles):
+                dim_creator.tile = tile
         self.coords_filters = coords_filters
         if dim_filters is not None:
-            self.dim_filters = dim_filters
+            for dim_name, filters in dim_filters.items():
+                self._domain_creator.dim_creator(dim_name).filters = filters
         self.offsets_filters = offsets_filters
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
@@ -720,7 +747,7 @@ class ArrayCreator:
         output = StringIO()
         output.write("  ArrayCreator(\n")
         output.write("     domain=Domain(*[\n")
-        for dim_creator in self._registry.dim_creators():
+        for dim_creator in self._domain_creator:
             output.write(f"       {repr(dim_creator)},\n")
         output.write("     ]),\n")
         output.write("     attrs=[\n")
@@ -745,7 +772,15 @@ class ArrayCreator:
         output.write("  )")
         return output.getvalue()
 
-    def attr_creator(self, key: Union[int, str]):
+    def attr_creator(self, key: Union[int, str]) -> AttrCreator:
+        """Returns the requested attribute creator
+
+        Parameters:
+            key: The attribute creator index (int) or name (str).
+
+        Returns:
+            The attribute creator at the given index of name.
+        """
         return self._registry.get_attr_creator(key)
 
     def add_attr_creator(
@@ -787,28 +822,9 @@ class ArrayCreator:
         tiledb.Array.create(uri, self.to_schema(ctx), key, ctx)
 
     @property
-    def dim_filters(self) -> Mapping[str, Optional[tiledb.FilterList]]:
-        """A dict from dimension name to a ``FilterList`` for dimensions in the array.
-        Overrides the values set in ``coords_filters``.
-        """
-        return {
-            dim_creator.name: dim_creator.filters
-            for dim_creator in self._registry.dim_creators()
-        }
-
-    @dim_filters.setter
-    def dim_filters(self, dim_filters: Mapping[str, Optional[tiledb.FilterList]]):
-        dim_map = {
-            dim_creator.name: dim_creator
-            for dim_creator in self._registry.dim_creators()
-        }
-        for dim_name, filters in dim_filters.items():
-            dim_map[dim_name].filters = filters
-
-    @property
-    def dim_names(self) -> Tuple[str, ...]:
-        """A static snapshot of the names of dimensions of the array."""
-        return tuple(dim_creator.name for dim_creator in self._registry.dim_creators())
+    def domain_creator(self) -> DomainCreator:
+        """Domain creator that creates the domain for the TileDB array."""
+        return self._domain_creator
 
     @property
     def name(self) -> str:
@@ -837,7 +853,7 @@ class ArrayCreator:
         output.write("<li>\n")
         output.write("Domain\n")
         output.write("<table>\n")
-        for dim_creator in self._registry.dim_creators():
+        for dim_creator in self._domain_creator:
             output.write(
                 f"<tr><td {cell_style}>{dim_creator.html_summary()}</td></tr>\n"
             )
@@ -875,40 +891,22 @@ class ArrayCreator:
         return output.getvalue()
 
     def remove_attr_creator(self, attr_name):
+        """Removes the requested attribute from the array.
+
+        Parameters:
+            attr_name: Name of the attribute to remove.
+        """
         return self._registry.deregister_attr_creator(attr_name)
 
-    @property
-    def tiles(self) -> Collection[Union[int, float, None]]:
-        """An optional ordered list of tile sizes for the dimensions of the
-        array. The length must match the number of dimensions in the array."""
-        return tuple(dim_creator.tile for dim_creator in self._registry.dim_creators())
-
-    @tiles.setter
-    def tiles(self, tiles: Collection[Union[int, float, None]]):
-        if len(tiles) != self.ndim:
-            raise ValueError(
-                f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
-                f"{self.ndim} dimension(s)."
-            )
-        for dim_creator, tile in zip(self._registry.dim_creators(), tiles):
-            dim_creator.tile = tile
-
-    def to_schema(
-        self, ctx: Optional[tiledb.Ctx] = None, key: Optional[str] = None
-    ) -> tiledb.ArraySchema:
+    def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.ArraySchema:
         """Returns an array schema for the array.
 
         Parameters:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            key: If not ``None``, encryption key to decrypt the array.
         """
-        assert self.ndim > 0, "Must have at least one dimension."
         if self._registry.nattr == 0:
             raise ValueError("Cannot create schema for array with no attributes.")
-        tiledb_dims = [
-            dim_creator.to_tiledb() for dim_creator in self._registry.dim_creators()
-        ]
-        domain = tiledb.Domain(tiledb_dims, ctx=ctx)
+        domain = self._domain_creator.to_tiledb(ctx)
         attrs = tuple(attr_creator.to_tiledb(ctx) for attr_creator in self)
         return tiledb.ArraySchema(
             domain=domain,
@@ -1043,7 +1041,7 @@ class AttrCreator:
     """Creator for a TileDB attribute.
 
     Parameters:
-        name: Name of the new attribute.
+        name: Name of the attribute.
         dtype: Numpy dtype of the attribute.
         fill: Fill value for unset cells.
         var: Specifies if the attribute is variable length (automatic for
@@ -1097,6 +1095,7 @@ class AttrCreator:
 
     @property
     def name(self) -> str:
+        """Name of the attribute."""
         return self._name
 
     @name.setter
@@ -1120,6 +1119,39 @@ class AttrCreator:
             filters=self.filters,
             ctx=ctx,
         )
+
+
+class DomainCreator:
+    """Creator for a TileDB domain."""
+
+    def __init__(self, array_registry):
+        self._array_registry = array_registry
+
+    def __iter__(self):
+        return self._array_registry.dim_creators()
+
+    def __len__(self):
+        return self.ndim
+
+    @property
+    def ndim(self):
+        """Number of dimensions in the domain."""
+        return self._array_registry.ndim
+
+    def dim_creator(self, dim_id):
+        """Returns a dimension creator from the domain creator given the dimension's
+        index or name.
+
+        Parameter:
+            dim_id: dimension index (int) or name (str)
+        """
+        return self._array_registry.get_dim_creator(dim_id)
+
+    def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
+        """Returns a TileDB domain from the contained dimension creators."""
+        assert self.ndim > 0, "Must have at least one dimension."
+        tiledb_dims = [dim_creator.to_tiledb() for dim_creator in self]
+        return tiledb.Domain(tiledb_dims, ctx=ctx)
 
 
 class DimCreator:
