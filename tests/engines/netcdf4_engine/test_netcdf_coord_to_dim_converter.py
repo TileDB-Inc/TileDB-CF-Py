@@ -24,7 +24,9 @@ def test_bad_size_error():
     with netCDF4.Dataset("example.nc", mode="w", diskless=True) as group:
         group.createDimension("x", 16)
         group.createDimension("y", 16)
-        x = group.createVariable("x", np.dtype("float64"), ("x", "y"))
+        x = group.createVariable(
+            "x", datatype=np.dtype("float64"), dimensions=("x", "y")
+        )
         with pytest.raises(ValueError):
             registry = DataspaceRegistry()
             NetCDF4CoordToDimConverter.from_netcdf(registry, x)
