@@ -15,17 +15,15 @@ Example:
 """
 
 from collections import defaultdict
-from typing import Tuple
 
 import numpy as np
 import pandas as pd
 from affine import Affine
 
 from xarray.core import indexing
-from xarray.core.pycompat import integer_types
-from xarray.core.utils import FrozenDict, HiddenKeyDict, close_on_error
+from xarray.core.utils import FrozenDict, close_on_error
 from xarray.core.variable import Variable
-from xarray.backends.file_manager import DummyFileManager, CachingFileManager
+from xarray.backends.file_manager import CachingFileManager
 
 from xarray.backends.common import (
     BACKEND_ENTRYPOINTS,
@@ -87,13 +85,6 @@ class TileDBDenseArrayWrapper(BackendArray):
         array = self.get_array()
         if isinstance(key, indexing.BasicIndexer):
             return array[key.tuple]
-        # elif isinstance(key, indexing.VectorizedIndexer):
-        #     return array.vindex[
-        #         indexing._arrayize_vectorized_indexer(key, self.shape).tuple
-        #     ]
-        # else:
-        #     assert isinstance(key, indexing.OuterIndexer)
-        #     return array.oindex[key.tuple]
         else:
             raise NotImplementedError("fancy indexing not implemented yet")
 
@@ -105,11 +96,8 @@ def parse_var(name):
         name = name[: -len(INDEX_SUFFIX)]
     return name
 
-def verify_and_open_group(path):
-    pass
 
 class TileDBDataStore(AbstractDataStore):
-    #     __slots__()
 
     def __init__(self, manager):
         self._manager = manager
@@ -126,8 +114,6 @@ class TileDBDataStore(AbstractDataStore):
         manager = CachingFileManager(tiledb.open,
                                      filename,
                                      # using same mode for manager and tdb
-                                     # could raise error if allowed modes are not same
-                                     # might need to split to manager_mode and tdb_mode
                                      mode=mode,
                                      kwargs={
                                          "mode": mode,
@@ -160,46 +146,44 @@ class TileDBDataStore(AbstractDataStore):
         coord_size = dim.size
         dims = {coord_name: coord_size}
 
-        x_names = ('x', 'w', 'width')
-        y_names = ('y', 'h', 'height')
-        band_names = ('band', 'bands', 'count')
+        w_dims = ("x", "w", "width", "lon", "lng", "long", "longitude")
+        h_dims = ("y", "h", "height", "lat", "latitude")
+        band_dims = ("band", "bands", "count")
 
         coord_data = None
-        if coord_name.lower() in (*x_names, *y_names, *band_names):
+        if coord_name.lower() in (*w_dims, *h_dims, *band_dims):
             try:
-                GeoTransform = self.ds.meta.get('GeoTransform')
+                transform = self.ds.meta.get('transform')
             except:
-                GeoTransform = None
-            if GeoTransform is not None:
-                # assumes GeoTransform is stored as List[float,...]
-                transform = Affine.from_gdal(*GeoTransform)
+                transform = None
+            if transform is not None:
+                # assumes transform is stored as List[float,...]
+                transform = Affine(*transform)
 
-                if coord_name.lower() in x_names:
+                if coord_name.lower() in w_dims:
                     coord_data, _ = transform * \
                                     np.meshgrid(np.arange(coord_size) + 0.5, np.zeros(coord_size) + 0.5)
                     coord_data = coord_data[0, :]
 
-                elif coord_name.lower() in y_names:
+                elif coord_name.lower() in h_dims:
                     _, coord_data = transform * \
                                     np.meshgrid(np.zeros(coord_size) + 0.5, np.arange(coord_size) + 0.5)
                     coord_data = coord_data[:, 0]
 
-                elif coord_name.lower() in band_names:
+                elif coord_name.lower() in band_dims:
                     coord_data = np.arange(1, coord_size + 1, dtype=np.int64)
-
-        # coord name is not in x, y, or band names or wasn't parsed correctly, then a standard dim coord
-        # is set up with range(length_dim) and dtype np.int64
 
         if coord_data is None:
             min_value = dim.domain[0]
             max_value = dim.domain[1]
             dtype = dim.dtype
-            if metadata and "time reference" in metadata:
-                start_date = np.datetime64(metadata["time reference"])
-                freq = metadata["freq"]
+            if metadata and "time" in metadata:
+                start_date = np.datetime64(metadata["time"]["reference"])
+                freq = metadata["time"]["freq"]
                 coord_data = pd.date_range(start_date, periods=dim.size, freq=freq)
                 dtype = f"datetime64[{freq}]"
             else:
+                # parsing NetCDF dim type that is set up domain(1, len(dim))
                 if min_value == 1:
                     min_value = 0
                     max_value = max_value - 1
@@ -234,22 +218,33 @@ class TileDBDataStore(AbstractDataStore):
     def get_variable_metadata(self):
         variable_metadata = defaultdict(dict)
         meta = self.ds.meta
-        for key in meta.keys():
+        for key, value in meta.items():
             if key.startswith((_ATTR_PREFIX, _DIM_PREFIX)):
                 last_dot_ix = key.rindex(".")
                 attr_name = key[key.index(".") + 1: last_dot_ix]
+                attr_key = key[last_dot_ix + 1:]
                 if not attr_name:
                     raise RuntimeError(
                         f"cant parse attribute metadata '{key}' with "
                         "missing name or key value"
                     )
-                attr_key = key[last_dot_ix + 1:]
-                variable_metadata[attr_name][attr_key] = meta[key]
+                # splitting attr_name for x.time metadata for datetime coord
+                key_split = attr_name.split(".")
+                if len(key_split) > 1:
+                    if key_split[0] not in variable_metadata:
+                        variable_metadata[key_split[0]] = dict()
+                    if key_split[1] not in variable_metadata[key_split[0]]:
+                        variable_metadata[key_split[0]][key_split[1]] = dict()
+                    variable_metadata[key_split[0]][key_split[1]][attr_key] = value
+                else:
+                    variable_metadata[attr_name][attr_key] = value
+            else:
+                variable_metadata[key] = value
         return variable_metadata
 
 
 class TileDBBackendEntrypoint(BackendEntrypoint):
-    available = has_tiledb
+    available = True
 
     def guess_can_open(self, filename_or_obj):
         try:
@@ -287,3 +282,6 @@ class TileDBBackendEntrypoint(BackendEntrypoint):
                 decode_timedelta=decode_timedelta,
             )
         return ds
+
+
+BACKEND_ENTRYPOINTS["tiledb"] = TileDBBackendEntrypoint
