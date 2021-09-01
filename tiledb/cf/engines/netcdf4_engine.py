@@ -4,7 +4,7 @@
 
 import time
 import warnings
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections import defaultdict
 from contextlib import contextmanager
 from io import StringIO
@@ -31,7 +31,7 @@ _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
 
 
-class NetCDF4ToAttrConverter(ABC):
+class NetCDF4ToAttrConverter(AttrCreator):
     """Abstract base class for classes that copy data from objects in a NetCDF group to
     a TileDB attribute.
     """
@@ -60,7 +60,8 @@ class NetCDF4ToAttrConverter(ABC):
                 of a numpy array if sparse is ``True`` and a slice otherwise.
         """
 
-class NetCDF4ToDimConverter(ABC):
+
+class NetCDF4ToDimConverter(SharedDim):
     """Abstract base class for classes that copy data from objects in a NetCDF group to
     a TileDB dimension.
     """
@@ -90,7 +91,7 @@ class NetCDF4ToDimConverter(ABC):
         """
 
 
-class NetCDF4CoordToDimConverter(SharedDim, NetCDF4ToDimConverter):
+class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
     """Converter for a NetCDF variable/dimension pair to a TileDB dimension.
 
     Parameters:
@@ -221,7 +222,7 @@ class NetCDF4CoordToDimConverter(SharedDim, NetCDF4ToDimConverter):
         return False
 
 
-class NetCDF4DimToDimConverter(SharedDim, NetCDF4ToDimConverter):
+class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
     """Converter for a NetCDF dimension to a TileDB dimension.
 
     Parameters:
@@ -357,7 +358,7 @@ class NetCDF4DimToDimConverter(SharedDim, NetCDF4ToDimConverter):
         )
 
 
-class NetCDF4ScalarToDimConverter(SharedDim, NetCDF4ToDimConverter):
+class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
     """Converter for NetCDF scalar (empty) dimensions to a TileDB Dimension.
 
     Parameters:
@@ -411,7 +412,7 @@ class NetCDF4ScalarToDimConverter(SharedDim, NetCDF4ToDimConverter):
         return cls(dataspace_registry, dim_name, (0, 0), dtype)
 
 
-class NetCDF4VarToAttrConverter(AttrCreator, NetCDF4ToAttrConverter):
+class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
     """Converter for a NetCDF variable to a TileDB attribute.
 
     Parameters:
@@ -726,7 +727,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
         data = {}
         for attr_converter in self:
             assert isinstance(attr_converter, NetCDF4ToAttrConverter)
-            data[attr_converter.name] = attr_converter.get_values(  # type: ignore
+            data[attr_converter.name] = attr_converter.get_values(
                 netcdf_group, sparse=self.sparse
             )
             attr_converter.copy_metadata(netcdf_group, tiledb_array)

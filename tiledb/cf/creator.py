@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+from abc import ABCMeta
 from collections import OrderedDict
 from io import StringIO
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
@@ -1037,7 +1038,7 @@ class ArrayRegistry:
         self._attr_creators[new_name] = self._attr_creators.pop(original_name)
 
 
-class AttrCreator:
+class AttrCreator(metaclass=ABCMeta):
     """Creator for a TileDB attribute.
 
     Parameters:
@@ -1236,7 +1237,7 @@ class DimCreator:
         )
 
 
-class SharedDim:
+class SharedDim(metaclass=ABCMeta):
     """A class for a shared one-dimensional dimension.
 
     Parameters:
