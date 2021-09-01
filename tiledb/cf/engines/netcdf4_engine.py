@@ -627,8 +627,8 @@ class NetCDF4ArrayConverter(ArrayCreator):
             for dim_name in dims
         ):
             raise NotImplementedError(
-                "Support for using a dimension in {self.__class__.name} is not a "
-                "NetCDF4ToDimConverter is not yet implemented."
+                f"Support for using a dimension in {self.__class__.name} is not a "
+                f"NetCDF4ToDimConverter is not yet implemented."
             )
         super().__init__(
             dataspace_registry=dataspace_registry,
