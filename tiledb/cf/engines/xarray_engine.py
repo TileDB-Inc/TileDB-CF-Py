@@ -158,6 +158,7 @@ class TileDBDataStore(AbstractDataStore):
                 transform = None
             if transform is not None:
                 # assumes transform is stored as List[float,...]
+                transform = [float(num) for num in transform.split(" ")]
                 transform = Affine(*transform)
 
                 if coord_name.lower() in w_dims:
