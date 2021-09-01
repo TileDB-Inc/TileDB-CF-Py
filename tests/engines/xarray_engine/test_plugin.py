@@ -1,10 +1,10 @@
 # Copyright 2021 TileDB Inc.
 # Licensed under the MIT License.
 import contextlib
-from typing import Any, Dict, Hashable, Optional
+import types
+from typing import Any, Dict, Hashable
 
 import numpy as np
-import pandas as pd
 import pytest
 import xarray as xr
 from pytest import importorskip
@@ -56,7 +56,10 @@ DATETIME_1D_COORDS: Dict[Hashable, Any] = {
 }
 
 DS_ATTRS: Dict[Hashable, Any] = {"description": "test dataset"}
-DATETIME_1D_DS_ATTRS: Dict[Hashable, Any] = {**DS_ATTRS}
+DATETIME_1D_DS_ATTRS: Dict[Hashable, Any] = {
+    **DS_ATTRS,
+    "rows": {"time reference": np.datetime64("2000-01-01"), "freq": "D"},
+}
 
 SAMPLE_DATASETS: Dict[Hashable, Any] = {
     "simple_1d": xr.Dataset(
@@ -83,30 +86,8 @@ SAMPLE_DATASETS: Dict[Hashable, Any] = {
 }
 
 
-def td_to_str(td):
-    return str(td.astype("timedelta64[ns]").astype(float))
-
-
-TIMEDELTAS = {
-    td_to_str(np.timedelta64(1, "D")): "D",
-    td_to_str(np.timedelta64(1, "W")): "W",
-    td_to_str(np.timedelta64(1, "M")): "M",
-    td_to_str(np.timedelta64(1, "Y")): "Y",
-    td_to_str(np.timedelta64(1, "h")): "h",
-    td_to_str(np.timedelta64(1, "m")): "m",
-    td_to_str(np.timedelta64(1, "s")): "s",
-    td_to_str(np.timedelta64(1, "ms")): "ms",
-    td_to_str(np.timedelta64(1, "us")): "us",
-    td_to_str(np.timedelta64(1, "ns")): "ns",
-    td_to_str(np.timedelta64(1, "ps")): "ps",
-    td_to_str(np.timedelta64(1, "fs")): "fs",
-    td_to_str(np.timedelta64(1, "as")): "as",
-}
-
-
 class TestTDBBackend:
     engine = "tiledb"
-    default_dtype: Any = np.int64
 
     @contextlib.contextmanager
     def open(self, path: str):
@@ -114,7 +95,7 @@ class TestTDBBackend:
             yield ds
 
     def write_tdb_array(
-        self, path: str, data: Dict[Optional[Hashable], Any], metadata: Dict[Hashable, Any] = None
+        self, path: str, data: np.ndarray, metadata: Dict[Hashable, Any] = None
     ):
         with tiledb.open(path, "w") as array:
             array[:] = data
@@ -123,69 +104,28 @@ class TestTDBBackend:
                     array.meta[key] = value
 
     def to_tiledb(self, dataset: xr.Dataset, path: str):  # noqa: C901
-        #  set default int/uint dtype if in dims,
-        #  overwrites itself with last 'iu' dim dtype
-        dtypes = []
-        for dim in dataset.dims.keys():
-            dt = dataset[dim].dtype
-            dtypes.append(dt)
-        for dt in dtypes:
-            if dt.kind in "iu":
-                self.default_dtype = dt
-
         coords = dataset.coords
-        w_dims = ("x", "w", "width", "lon", "lng", "long", "longitude")
-        h_dims = ("y", "h", "height", "lat", "latitude")
-        band_dims = ("band", "bands", "count")
-
+        if "spatial_ref" in coords:
+            print("spatial")
         tdb_dims = []
         for name in coords:
             if name in dataset.dims:
                 coord = coords[name]
-
-                min_value = coord.data[0]
-                max_value = coord.data[-1]
                 dtype = coord.dtype
-
-                is_spatial_ds = False
-                if dataset.attrs and "transform" in dataset.attrs:
-                    is_spatial_ds = True
-                if is_spatial_ds and str(name).lower() in (*w_dims, *h_dims, *band_dims):
-                    min_value = 1
-                    max_value = len(coord.data)
-                    dtype = self.default_dtype
-
                 if dtype.kind not in "iuM":
                     raise NotImplementedError(
                         f"TDB Arrays don't work yet with this dtype coord {dtype}"
                     )
-
+                min_value = coord.data[0]
+                max_value = coord.data[-1]
                 if dtype.kind == "M":
-                    second_value = coord.data[1]
-                    step = second_value - min_value
-                    freq_key = str(step.astype("timedelta64[ns]").astype(float))
-                    assert freq_key in TIMEDELTAS
-                    freq = TIMEDELTAS[freq_key]
-                    date_range = pd.date_range(min_value, max_value, freq=freq)
-                    assert (coord.data == date_range).all()
-
-                    if not dataset.attrs:
-                        dataset.attrs = dict()
-                    if name not in dataset.attrs:
-                        dataset.attrs[name] = dict()
-                    dataset.attrs[name]["time"] = dict(
-                        reference=str(min_value), freq=freq
-                    )
-
-                    min_value = 1
-                    max_value = len(coord.data)
-                    dtype = self.default_dtype
-
-                # test for NetCDF dimension type coord starting at 0
-                if min_value == 0:
-                    min_value, max_value = min_value + 1, max_value + 1
-
-                domain = (min_value, max_value)
+                    domain = (1, len(coord.data))
+                    dtype = np.int32
+                else:
+                    # test for NetCDF dimension type coord starting at 0
+                    if min_value == 0:
+                        min_value, max_value = min_value + 1, max_value + 1
+                    domain = (min_value, max_value)
                 tdb_dim = tiledb.Dim(name=name, domain=domain, dtype=dtype)
                 tdb_dims.append(tdb_dim)
 
@@ -193,13 +133,17 @@ class TestTDBBackend:
 
         data_vars = []
         data = dict()
+        vars_attrs = dict()
         for var in dataset.data_vars:
             var = dataset[var]
             data_var = tiledb.Attr(name=var.name, dtype=var.dtype)
             data_vars.append(data_var)
             data[var.name] = var.data
+            vars_attrs[var.name] = var.attrs
 
         schema = tiledb.ArraySchema(domain=dom, attrs=data_vars, sparse=False)
+
+        data = list(data.values())[0]
 
         if tiledb.array_exists(path):
             tiledb.remove(path)
@@ -233,14 +177,9 @@ class TestTDBBackend:
             if isinstance(attrs, dict):
                 for attr_name, value in attrs.items():
                     key = f"{key_prefix}.{attr_name}"
-                    if isinstance(value, dict):
-                        for sub_attr, sub_value in value.items():
-                            sub_key = f"{key}.{sub_attr}"
-                            metadata[sub_key] = sub_value
-                    else:
-                        if isinstance(value, np.datetime64):
-                            value = str(value)
-                        metadata[key] = value
+                    if isinstance(value, np.datetime64):
+                        value = str(value)
+                    metadata[key] = value
             else:
                 metadata[key_prefix] = attrs
 
@@ -287,14 +226,10 @@ class TestTDBBackend:
         self.to_tiledb(expected, path)
         with tiledb.DenseArray(path) as array:
             dims = array.domain
-            dtypes = set(expected[dim.name].dtype.kind for dim in dims)
-            if dtypes.isdisjoint(("M",)):
-                min_vals = [dim.domain[0] for dim in dims]
-                for ii in np.ndindex(array.shape):
-                    jj = list(ii)
-                    for idx in range(len(jj)):
-                        jj[idx] += min_vals[idx]
-                    tdb_ii = tuple(jj)
-                    assert array[tdb_ii]["data"] == expected.data[ii].data
-            else:
-                pass
+            min_vals = [dim.domain[0] for dim in dims]
+            for ii in np.ndindex(array.shape):
+                jj = list(ii)
+                for idx in range(len(jj)):
+                    jj[idx] += min_vals[idx]
+                jj = tuple(jj)
+                assert array[jj]["data"] == expected.data[ii].data
