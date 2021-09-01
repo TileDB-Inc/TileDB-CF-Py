@@ -49,7 +49,24 @@ class NetCDFDimConverter(ABC):
         """
 
 
-class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
+class NetCDF4CoordToDimConverter(SharedDim, NetCDFDimConverter):
+    """Converter for a NetCDF variable/dimension pair to a TileDB dimension.
+
+    Parameters:
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+        input_name: The name of input NetCDF variable.
+        input_dtype: The numpy dtype of the input NetCDF variable.
+
+    Attributes:
+        name: Name of the TileDB dimension.
+        domain: The (inclusive) interval on which the dimension is valid.
+        dtype: The numpy dtype of the values and domain of the dimension.
+        input_name: The name of input NetCDF variable.
+        input_dtype: The numpy dtype of the input NetCDF variable.
+    """
+
     def __init__(
         self,
         dataspace_registry: DataspaceRegistry,
@@ -164,8 +181,8 @@ class NetCDFCoordToDimConverter(SharedDim, NetCDFDimConverter):
         return False
 
 
-class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
-    """Data for converting from a NetCDF dimension to a TileDB dimension.
+class NetCDF4DimToDimConverter(SharedDim, NetCDFDimConverter):
+    """Converter for a NetCDF dimension to a TileDB dimension.
 
     Parameters:
         name: Name of the TileDB dimension.
@@ -301,8 +318,8 @@ class NetCDFDimToDimConverter(SharedDim, NetCDFDimConverter):
         )
 
 
-class NetCDFScalarDimConverter(SharedDim, NetCDFDimConverter):
-    """Data for converting from a NetCDF dimension to a TileDB dimension.
+class NetCDF4ScalarToDimConverter(SharedDim, NetCDFDimConverter):
+    """Converter for NetCDF scalar (empty) dimensions to a TileDB Dimension.
 
     Parameters:
         name: Name of the TileDB dimension.
@@ -355,9 +372,8 @@ class NetCDFScalarDimConverter(SharedDim, NetCDFDimConverter):
         return cls(dataspace_registry, dim_name, (0, 0), dtype)
 
 
-# TODO: rename to NetCDFVariableToAttrConverter
-class NetCDFVariableConverter(AttrCreator):
-    """Data for converting from a NetCDF variable to a TileDB attribute.
+class NetCDF4VarToAttrConverter(AttrCreator):
+    """Converter for a NetCDF variable to a TileDB attribute.
 
     Parameters:
         name: Name of the new attribute.
@@ -467,7 +483,7 @@ class NetCDFVariableConverter(AttrCreator):
         )
 
 
-class NetCDFArrayConverter(ArrayCreator):
+class NetCDF4ArrayConverter(ArrayCreator):
     """Converter for a TileDB array from a collection of NetCDF variables.
 
     Parameters:
@@ -560,7 +576,7 @@ class NetCDFArrayConverter(ArrayCreator):
             "a NetCDFVariableConverter is not yet implemented."
         )
 
-    def add_ncvar_to_attr_converter(
+    def add_var_to_attr_converter(
         self,
         ncvar: netCDF4.Variable,
         name: Optional[str] = None,
@@ -601,7 +617,7 @@ class NetCDFArrayConverter(ArrayCreator):
                 f"Cannot add a scalar NetCDF variable to an array with {self.ndim} "
                 f"dimensions > 1."
             )
-        NetCDFVariableConverter.from_netcdf(
+        NetCDF4VarToAttrConverter.from_netcdf(
             array_registry=self._registry,
             ncvar=ncvar,
             name=name,
@@ -632,7 +648,7 @@ class NetCDFArrayConverter(ArrayCreator):
             )
         data = {}
         for attr_converter in self:
-            assert isinstance(attr_converter, NetCDFVariableConverter)
+            assert isinstance(attr_converter, NetCDF4VarToAttrConverter)
             try:
                 variable = netcdf_group.variables[attr_converter.input_name]
             except KeyError as err:
@@ -832,7 +848,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         f" array with that name already exists."
                     )
                 if scalar_array_name not in converter.array_names:
-                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
+                    converter.add_scalar_to_dim_converter("__scalars", dim_dtype)
                     converter.add_array(scalar_array_name, ("__scalars",))
                 converter.add_var_to_attr_converter(ncvar, scalar_array_name)
             else:
@@ -910,7 +926,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 coord_names.add(ncvar.name)
             else:
                 if not ncvar.dimensions and "__scalars" not in converter.dim_names:
-                    converter.add_scalar_dim_converter("__scalars", dim_dtype)
+                    converter.add_scalar_to_dim_converter("__scalars", dim_dtype)
                 dim_names = ncvar.dimensions if ncvar.dimensions else ("__scalars",)
                 dims_to_vars[dim_names].append(ncvar.name)
                 chunks = tiles_by_var.get(
@@ -1086,7 +1102,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         Raises:
             ValueError: Cannot add new array with given name.
         """
-        NetCDFArrayConverter(
+        NetCDF4ArrayConverter(
             dataspace_registry=self._registry,
             name=array_name,
             dims=dims,
@@ -1122,7 +1138,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 "Support for converting a NetCDF file with reserved dimension "
                 "name '__scalars' is not implemented."
             )
-        NetCDFCoordToDimConverter.from_netcdf(
+        NetCDF4CoordToDimConverter.from_netcdf(
             dataspace_registry=self._registry, var=var, name=dim_name
         )
 
@@ -1152,7 +1168,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 "Support for converting a NetCDF file with reserved dimension "
                 "name '__scalars' is not implemented."
             )
-        NetCDFDimToDimConverter.from_netcdf(
+        NetCDF4DimToDimConverter.from_netcdf(
             dataspace_registry=self._registry,
             dim=ncdim,
             unlimited_dim_size=unlimited_dim_size,
@@ -1171,7 +1187,25 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dim_name: Output name of the dimension.
             dtype: Numpy type to use for the scalar dimension
         """
-        NetCDFScalarDimConverter.create(
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use `add_scalar_to_dim_converter` instead.",
+                DeprecationWarning,
+            )
+        self.add_scalar_to_dim_converter(dim_name, dtype)
+
+    def add_scalar_to_dim_converter(
+        self,
+        dim_name: str = "__scalars",
+        dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
+    ):
+        """Adds a new NetCDF scalar dimension.
+
+        Parameters:
+            dim_name: Output name of the dimension.
+            dtype: Numpy type to use for the scalar dimension
+        """
+        NetCDF4ScalarToDimConverter.create(
             dataspace_registry=self._registry, dim_name=dim_name, dtype=dtype
         )
 
@@ -1216,7 +1250,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 f"Cannot add attribute to array '{array_name}'. No array named "
                 f"'{array_name}' exists."
             ) from err
-        array_creator.add_ncvar_to_attr_converter(
+        array_creator.add_var_to_attr_converter(
             ncvar=ncvar,
             name=attr_name,
             dtype=dtype,
@@ -1366,7 +1400,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 for group_key in netcdf_group.ncattrs():
                     copy_metadata_item(array.meta, netcdf_group, group_key)
                 # Copy variables and variable metadata to arrays
-                if isinstance(array_creator, NetCDFArrayConverter):
+                if isinstance(array_creator, NetCDF4ArrayConverter):
                     array_creator.copy(netcdf_group, array)
 
     def copy_to_group(
@@ -1417,7 +1451,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     copy_metadata_item(group.meta, netcdf_group, group_key)
             # Copy variables and variable metadata to arrays
             for array_creator in self._registry.array_creators():
-                if isinstance(array_creator, NetCDFArrayConverter):
+                if isinstance(array_creator, NetCDF4ArrayConverter):
                     with Group(
                         output_uri, mode="w", array=array_creator.name, key=key, ctx=ctx
                     ) as tiledb_group:
@@ -1472,7 +1506,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             # Copy variables and variable metadata to arrays
             for array_creator in self._registry.array_creators():
                 array_uri = output_uri + "_" + array_creator.name
-                if isinstance(array_creator, NetCDFArrayConverter):
+                if isinstance(array_creator, NetCDF4ArrayConverter):
                     with tiledb.open(array_uri, mode="w", key=key, ctx=ctx) as array:
                         array_creator.copy(netcdf_group, array)
 
