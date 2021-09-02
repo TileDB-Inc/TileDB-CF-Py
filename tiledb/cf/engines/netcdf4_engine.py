@@ -924,7 +924,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     )
                 if scalar_array_name not in converter.array_names:
                     converter.add_scalar_to_dim_converter("__scalars", dim_dtype)
-                    converter.add_array(scalar_array_name, ("__scalars",))
+                    converter.add_array_converter(scalar_array_name, ("__scalars",))
                 converter.add_var_to_attr_converter(ncvar, scalar_array_name)
             else:
                 for dim in ncvar.get_dims():
@@ -945,7 +945,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         None if has_coord_dim else get_variable_chunks(ncvar),
                     ),
                 )
-                converter.add_array(
+                converter.add_array_converter(
                     array_name, ncvar.dimensions, tiles=tiles, sparse=has_coord_dim
                 )
                 converter.add_var_to_attr_converter(ncvar, array_name)
@@ -1030,7 +1030,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
             has_coord_dim = any(dim_name in coord_names for dim_name in dim_names)
             chunks = autotiles.get(dim_names)
-            converter.add_array(
+            converter.add_array_converter(
                 f"array{count}", dim_names, tiles=chunks, sparse=has_coord_dim
             )
             for var_name in dims_to_vars[dim_names]:
@@ -1068,69 +1068,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         output.write("</ul>\n")
         return output.getvalue()
 
-    def add_array(
-        self,
-        array_name: str,
-        dims: Sequence[str],
-        cell_order: str = "row-major",
-        tile_order: str = "row-major",
-        capacity: int = 0,
-        tiles: Optional[Sequence[int]] = None,
-        coords_filters: Optional[tiledb.FilterList] = None,
-        dim_filters: Optional[Dict[str, tiledb.FilterList]] = None,
-        offsets_filters: Optional[tiledb.FilterList] = None,
-        allows_duplicates: bool = False,
-        sparse: bool = False,
-    ):
-        """Adds a new array to the CF dataspace.
-
-        The name of each array must be unique. All properties must match the normal
-        requirements for a ``TileDB.ArraySchema``.
-
-        Parameters:
-            array_name: Name of the new array to be created.
-            dims: An ordered list of the names of the shared dimensions for the domain
-                of this array.
-            cell_order: The order in which TileDB stores the cells on disk inside a
-                tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
-                ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert
-                curve.
-            tile_order: The order in which TileDB stores the tiles on disk. Valid values
-                are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
-                ``F`` for column major.
-            capacity: The number of cells in a data tile of a sparse fragment.
-            tiles: An optional ordered list of tile sizes for the dimensions of the
-                array. The length must match the number of dimensions in the array.
-            coords_filters: Filters for all dimensions that are not otherwise set by
-                ``dim_filters.``
-            dim_filters: A dict from dimension name to a ``FilterList`` for dimensions
-                in the array. Overrides the values set in ``coords_filters``.
-            offsets_filters: Filters for the offsets for variable length attributes or
-                dimensions.
-            allows_duplicates: Specifies if multiple values can be stored at the same
-                 coordinate. Only allowed for sparse arrays.
-            sparse: Specifies if the array is a sparse TileDB array (true) or dense
-                TileDB array (false).
-
-        Raises:
-            ValueError: Cannot add new array with given name.
-        """
-        # TODO: deprecate this method
-        self.add_netcdf_to_array_converter(
-            array_name=array_name,
-            dims=dims,
-            cell_order=cell_order,
-            tile_order=tile_order,
-            capacity=capacity,
-            tiles=tiles,
-            coords_filters=coords_filters,
-            dim_filters=dim_filters,
-            offsets_filters=offsets_filters,
-            allows_duplicates=allows_duplicates,
-            sparse=sparse,
-        )
-
-    def add_netcdf_to_array_converter(
+    def add_array_converter(
         self,
         array_name: str,
         dims: Sequence[str],

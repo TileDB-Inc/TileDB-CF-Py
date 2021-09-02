@@ -6,6 +6,8 @@
 
 ### Breaking Behavior
 
+* `NetCDF4ConverterEngine.add_array_converter` adds a `NetCDF4ArrayConverter` and `NetCDF4ConverterEngine.add_array` inherits from `DataspaceCreator`.
+
 ### New Features
 
 * Add `create_array` to `DataspaceCreator` for dataspaces with 1 array.
