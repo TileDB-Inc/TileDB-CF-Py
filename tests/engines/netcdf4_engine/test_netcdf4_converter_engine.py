@@ -730,21 +730,3 @@ def test_bad_dims_error():
     converter.add_dim("row", (0, 10), np.uint32)
     with pytest.raises(NotImplementedError):
         converter.add_array("array0", ("row",))
-
-
-@pytest.mark.parametrize("collect_attrs", [True, False])
-def test_reserved_dim_name_error(collect_attrs):
-    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-        dataset.createDimension("__scalars", 1)
-        dataset.createVariable("scalar", np.float64, ("__scalars",))
-        with pytest.raises(NotImplementedError):
-            NetCDF4ConverterEngine.from_group(dataset, collect_attrs=collect_attrs)
-
-
-@pytest.mark.parametrize("collect_attrs", [True, False])
-def test_reserved_coord_name_error(collect_attrs):
-    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-        dataset.createDimension("__scalars", 1)
-        dataset.createVariable("__scalars", np.float64, ("__scalars",))
-        with pytest.raises(NotImplementedError):
-            NetCDF4ConverterEngine.from_group(dataset, collect_attrs=collect_attrs)
