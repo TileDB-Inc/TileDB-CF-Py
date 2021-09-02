@@ -1208,11 +1208,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             NotImplementedError: Support for dimensions with reserved name
                 ``__scalars`` is not implemented.
         """
-        if dim_name == "__scalars" or (dim_name is None and var.name == "__scalars"):
-            raise NotImplementedError(
-                "Support for converting a NetCDF file with reserved dimension "
-                "name '__scalars' is not implemented."
-            )
         NetCDF4CoordToDimConverter.from_netcdf(
             dataspace_registry=self._registry, var=var, name=dim_name
         )
@@ -1238,11 +1233,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             NotImplementedError: Support for dimensions with reserved name
                 ``__scalars`` is not implemented.
         """
-        if dim_name == "__scalars" or (dim_name is None and ncdim.name == "__scalars"):
-            raise NotImplementedError(
-                "Support for converting a NetCDF file with reserved dimension "
-                "name '__scalars' is not implemented."
-            )
         NetCDF4DimToDimConverter.from_netcdf(
             dataspace_registry=self._registry,
             dim=ncdim,
