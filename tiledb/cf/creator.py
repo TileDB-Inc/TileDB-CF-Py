@@ -199,6 +199,10 @@ class DataspaceCreator:
         """
         SharedDim(self._registry, dim_name, domain, dtype)
 
+    def array_creators(self):
+        """Iterates over array creators in the CF dataspace."""
+        return self._registry.array_creators()
+
     @property
     def array_names(self):
         """A view of the names of arrays in the CF dataspace."""
@@ -271,6 +275,14 @@ class DataspaceCreator:
         """A view of the names of dimensions in the CF dataspace."""
         # TODO: deprecate this function
         return self._registry._shared_dims.keys()
+
+    def get_array_creator(self, array_name: str):
+        """Returns the array creator with the requested name.
+
+        Parameters:
+            array_name: Name of the array to return.
+        """
+        return self._registry.get_array_creator(array_name)
 
     def get_array_property(self, array_name: str, property_name: str) -> Any:
         """Returns a requested property from an array in the CF dataspace.
@@ -346,6 +358,14 @@ class DataspaceCreator:
         # TODO: deprecate this function
         dim = self._registry.get_shared_dim(dim_name)
         return getattr(dim, property_name)
+
+    def get_shared_dim(self, dim_name: str):
+        """Returns the array creator with the requested name.
+
+        Parameters:
+            array_name: Name of the array to return.
+        """
+        return self._registry.get_shared_dim(dim_name)
 
     def remove_array(self, array_name: str):
         """Removes the specified array and all its attributes from the CF dataspace.
@@ -492,6 +512,10 @@ class DataspaceCreator:
         dim = self._registry.get_shared_dim(dim_name)
         for property_name, value in properties.items():
             setattr(dim, property_name, value)
+
+    def shared_dims(self):
+        """Iterators over shared dimensions in the CF dataspace."""
+        return self._registry.shared_dims()
 
     def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> GroupSchema:
         """Returns a group schema for the CF dataspace.
