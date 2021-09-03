@@ -157,14 +157,14 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
 
     def test_not_implemented_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        converter.add_array("A1", ("row",))
+        converter.add_array_converter("A1", ("row",))
         with pytest.raises(NotImplementedError):
             converter.add_attr("a1", "array0", np.float64)
 
     def test_bad_array_name_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
         with pytest.raises(ValueError):
-            converter.add_array("array0", tuple())
+            converter.add_array_converter("array0", tuple())
 
 
 class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
@@ -729,4 +729,4 @@ def test_bad_dims_error():
     converter = NetCDF4ConverterEngine()
     converter.add_dim("row", (0, 10), np.uint32)
     with pytest.raises(NotImplementedError):
-        converter.add_array("array0", ("row",))
+        converter.add_array_converter("array0", ("row",))
