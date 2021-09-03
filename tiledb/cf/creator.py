@@ -360,7 +360,7 @@ class DataspaceCreator:
         return getattr(dim, property_name)
 
     def get_shared_dim(self, dim_name: str):
-        """Returns the array creator with the requested name.
+        """Returns the shared dimension with the requested name.
 
         Parameters:
             array_name: Name of the array to return.
@@ -685,30 +685,6 @@ class DataspaceRegistry:
 
 class ArrayCreator:
     """Creator for a TileDB array using shared dimension definitions.
-
-    Parameters:
-        dims: An ordered list of the shared dimensions for the domain of this array.
-        cell_order: The order in which TileDB stores the cells on disk inside a
-            tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
-            ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert curve.
-        tile_order: The order in which TileDB stores the tiles on disk. Valid values
-            are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
-            ``F`` for column major.
-        capacity: The number of cells in a data tile of a sparse fragment.
-        tiles: An optional ordered list of tile sizes for the dimensions of the
-            array. The length must match the number of dimensions in the array.
-        coords_filters: Filters for all dimensions that are not specified explicitly by
-            ``dim_filters``.
-        dim_filters: A dict from dimension name to a ``FilterList`` for dimensions in
-            the array. Overrides the values set in ``coords_filters``.
-        offsets_filters: Filters for the offsets for variable length attributes or
-            dimensions.
-        allows_duplicates: Specifies if multiple values can be stored at the same
-             coordinate. Only allowed for sparse arrays.
-        sparse: Specifies if the array is a sparse TileDB array (true) or dense
-            TileDB array (false).
-        name: Name of the array. Used for registering to a group or dataspace.
-        registry: Dataspace registry for the dataspace the array belongs to.
 
     Attributes:
         cell_order: The order in which TileDB stores the cells on disk inside a
@@ -1065,17 +1041,7 @@ class ArrayRegistry:
 class AttrCreator(metaclass=ABCMeta):
     """Creator for a TileDB attribute.
 
-    Parameters:
-        name: Name of the attribute.
-        dtype: Numpy dtype of the attribute.
-        fill: Fill value for unset cells.
-        var: Specifies if the attribute is variable length (automatic for
-            byte/strings).
-        nullable: Specifies if the attribute is nullable using validity tiles.
-        filters: Specifies compression filters for the attribute.
-
     Attributes:
-        name: Name of the new attribute.
         dtype: Numpy dtype of the attribute.
         fill: Fill value for unset cells.
         var: Specifies if the attribute is variable length (automatic for
@@ -1183,7 +1149,6 @@ class DimCreator:
     """Creator for a TileDB dimension using a SharedDim.
 
     Attributes:
-        base: Shared definition for the dimensions name, domain, and dtype.
         tile: The tile size for the dimension.
         filters: Specifies compression filters for the dimension.
     """
@@ -1262,13 +1227,7 @@ class DimCreator:
 
 
 class SharedDim(metaclass=ABCMeta):
-    """A class for a shared one-dimensional dimension.
-
-    Parameters:
-        name: Name of the shared dimension.
-        domain: The (inclusive) interval on which the :class:`SharedDim` is valid.
-        dtype: The numpy dtype of the values and domain of the dimension.
-    """
+    """Definition for the name, domain and data type of a collection of dimensions."""
 
     def __init__(
         self,
@@ -1309,9 +1268,9 @@ class SharedDim(metaclass=ABCMeta):
 
     @property
     def is_index_dim(self) -> bool:
-        """Returns if the :class:`SharedDim` is a 'index dimension'
+        """Returns ``True`` if this is an `index dimension` and ``False`` otherwise.
 
-        An index dimension is a dimension that is of an integer type and whose domain
+        An index dimension is a dimension with an integer data type and whose domain
         starts at 0.
         """
         if self.domain:
