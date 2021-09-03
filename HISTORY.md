@@ -14,6 +14,8 @@
 * Add `create_array` to `DataspaceCreator` for dataspaces with 1 array.
 * Add `convert_to_array` and `copy_to_array` to `NetCDF4ConverterEngine` for converters with 1 array.
 * Add `DimMetadata` class for handling dimension metadata.
+* Add `get_array_creator` and `get_shared_dim` methods to `DataspaceCreator` for direct access to `DataspaceCreator` components.
+* Add `array_creators` and `shared_dims` methods to `DataspaceCreator` for iterating over `DataspaceCreator` components.
 
 ### Improvements
 
