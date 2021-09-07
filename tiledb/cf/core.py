@@ -332,6 +332,7 @@ class Group:
                 )
 
         metadata_schema = array_schemas.get(METADATA_ARRAY_NAME)
+        print(f"metadata schema {metadata_schema}")
         group_schema = GroupSchema(array_schemas,
                                    metadata_schema=metadata_schema,
                                    use_default_metadata_schema=False,
