@@ -404,6 +404,10 @@ class Group:
         array.close()
 
     @property
+    def group_schema(self):
+        return GroupSchema.load(self.uri, self.ctx, self.key)
+
+    @property
     def metadata_array(self):
         if self.group_schema.metadata_schema is not None:
             return tiledb.open(
@@ -414,10 +418,6 @@ class Group:
                 ctx=self.ctx
             )
         return None
-
-    @property
-    def group_schema(self):
-        return GroupSchema.load(self.uri, self.ctx, self.key)
 
     @property
     def array_schemas(self):
