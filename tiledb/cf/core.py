@@ -371,16 +371,10 @@ class Group:
         self.open_arrays = dict()
 
         self._attr = attr
-        if array is None and attr is not None:
+        if attr is not None:
             array_names = group_schema.arrays_with_attr(attr)
             if array_names is None:
                 raise KeyError(f"No attribute with name '{attr}' found.")
-            if len(array_names) > 1:
-                raise ValueError(
-                    f"The array must be specified when opening an attribute that "
-                    f"exists in multiple arrays in a group. Arrays with attribute "
-                    f"'{attr}' include: {array_names}."
-                )
 
     def __enter__(self):
         return self
@@ -452,7 +446,7 @@ class Group:
 
     def array_schema(self, array_name):
         return self.group_schema.get(array_name)
-    
+
     def array_metadata(self, array_name: str) -> ArrayMetadata:
         with self.get_open_uri_key(array_name) as array:
             meta = ArrayMetadata(array.meta)
@@ -465,15 +459,16 @@ class Group:
         specified when initializing this group.
         """
         attr_metadata = dict()
-        for array_name, schema in self.group_schema.items():
-            if array_name != METADATA_ARRAY_NAME and attr in schema:
-                with self.get_open_uri_key(array_name) as array:
-                    metadata = AttrMetadata(array.meta, attr)
-                    attr_metadata[array_name] = metadata
-        if len(attr_metadata) == 0:
+        array_names = self.group_schema.arrays_with_attr(attr)
+        if len(array_names) == 0:
             return "no attr metadata found"
-        if len(attr_metadata) == 1:
-            return list(attr_metadata.values())[0]
+        for name in array_names:
+            if name != METADATA_ARRAY_NAME:
+                with self.get_open_uri_key(name) as array:
+                    metadata = AttrMetadata(array.meta, attr)
+                    attr_metadata[name] = metadata
+        if len(array_names) == 1:
+            return attr_metadata[array_names[0]]
         return attr_metadata
 
     @property
