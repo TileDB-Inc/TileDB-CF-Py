@@ -331,8 +331,7 @@ class Group:
                     DeprecationWarning,
                 )
 
-        metadata_schema = array_schemas[METADATA_ARRAY_NAME] if METADATA_ARRAY_NAME in array_schemas else None
-        print(f"metadata schema {metadata_schema}")
+        metadata_schema = array_schemas.get(METADATA_ARRAY_NAME)
         group_schema = GroupSchema(array_schemas,
                                    metadata_schema=metadata_schema,
                                    use_default_metadata_schema=False,
