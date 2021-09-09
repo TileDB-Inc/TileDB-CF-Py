@@ -219,4 +219,6 @@ class TestTileDB:
         ctx = tiledb.Ctx(config)
         with pytest.raises(tiledb.libtiledb.TileDBError) as err:
             xr.open_dataset(tiledb_quickstart_dense, engine="tiledb", ctx=ctx)
-        assert err.value.message.startswith('[TileDB::REST] Error: Error in libcurl GET operation')
+        assert err.value.message.startswith(
+            "[TileDB::REST] Error: Error in libcurl GET operation"
+        )
