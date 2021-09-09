@@ -49,6 +49,7 @@
 * Adds methods to convert NetCDF group where all attributes are stored in separate arrays.
 * Adds parameter to set default metadata schema in `GroupSchema` instance in not otherwise specified.
 * Adds ability to convert NetCDF coordinates to TileDB dimensions.
+* Adds the parameter `ctx` to classmethod `TileDBBackendEntrypoint.open_dataset` for accessing ctx-protected arrays.
 
 ### Bug fixes
 
