@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import ArrayMetadata, AttrMetadata, Group, GroupSchema
+from tiledb.cf import Group, GroupSchema
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
@@ -143,69 +143,33 @@ class TestGroupWithArrays:
         return uri
 
     def test_open_array_from_group(self, group_uri):
-        with Group(group_uri, array="A1") as group:
-            array = group.array
-            assert isinstance(array, tiledb.Array)
-            assert array.mode == "r"
-            assert np.array_equal(array[:, :]["a"], self._A1_data)
-
-    def test_array_metadata(self, group_uri):
-        with Group(group_uri, array="A1") as group:
-            isinstance(group.array_metadata, ArrayMetadata)
-
-    def test_attr_metadata_with_attr(self, group_uri):
-        with Group(group_uri, attr="a") as group:
-            isinstance(group.attr_metadata, AttrMetadata)
-
-    def test_attr_metadata_with_single_attr_array(self, group_uri):
-        with Group(group_uri, array="A3") as group:
-            isinstance(group.attr_metadata, AttrMetadata)
-
-    def test_get_attr_metadata(self, group_uri):
-        with Group(group_uri, array="A2") as group:
-            isinstance(group.get_attr_metadata("b"), AttrMetadata)
+        with Group(group_uri) as group:
+            with group.open_array(array="A1") as array:
+                assert isinstance(array, tiledb.Array)
+                assert array.mode == "r"
+                assert np.array_equal(array[:, :]["a"], self._A1_data)
 
     def test_open_attr(self, group_uri):
-        with Group(group_uri, attr="a") as group:
-            array = group.array
-            assert isinstance(array, tiledb.Array)
-            assert array.mode == "r"
-            assert np.array_equal(array[:, :], self._A1_data)
-
-    def test_ambiguous_metadata_attr_exception(self, group_uri):
-        with Group(group_uri, array="A2") as group:
-            with pytest.raises(RuntimeError):
-                isinstance(group.attr_metadata, AttrMetadata)
-
-    def test_no_array_execption(self, group_uri):
         with Group(group_uri) as group:
-            with pytest.raises(RuntimeError):
-                _ = group.array
-
-    def test_no_array_metadata_execption(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(RuntimeError):
-                _ = group.array_metadata
-
-    def test_no_attr_metadata_execption(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(RuntimeError):
-                _ = group.attr_metadata
-
-    def test_no_get_attr_metadata_execption(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(RuntimeError):
-                _ = group.get_attr_metadata("a")
+            with group.open_array(attr="a") as array:
+                assert isinstance(array, tiledb.Array)
+                assert array.mode == "r"
+                assert np.array_equal(array[:, :], self._A1_data)
 
     def test_no_array_with_attr_exception(self, group_uri):
-        with pytest.raises(KeyError):
-            with Group(group_uri, attr="bad_name"):
-                pass
+        with Group(group_uri) as group:
+            with pytest.raises(KeyError):
+                group.open_array(attr="bad_name")
 
     def test_ambiguous_array_exception(self, group_uri):
-        with pytest.raises(ValueError):
-            with Group(group_uri, attr="c"):
-                pass
+        with Group(group_uri) as group:
+            with pytest.raises(ValueError):
+                group.open_array(attr="c")
+
+    def test_no_values_error(self, group_uri):
+        with Group(group_uri) as group:
+            with pytest.raises(ValueError):
+                group.open_array()
 
 
 class TestNoMetadataArray:
