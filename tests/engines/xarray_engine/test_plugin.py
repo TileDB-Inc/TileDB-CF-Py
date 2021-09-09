@@ -215,7 +215,7 @@ class TestTileDB:
         tiledb_quickstart_dense = "tiledb://TileDB-Inc/quickstart_dense"
         config = tiledb.Config()
         config["rest.username"] = "a"
-        config["rest.password"] = "password"
+        config["rest.password"] = "pass_word"
         ctx = tiledb.Ctx(config)
         dataset = xr.open_dataset(tiledb_quickstart_dense, engine="tiledb", ctx=ctx)
         assert isinstance(dataset, xr.Dataset)
