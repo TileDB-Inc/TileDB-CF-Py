@@ -210,3 +210,12 @@ class TestTileDB:
         result = tiledb_data_array[[0, 2, 2], [1, 3]][[0, 0, 2], 1]
         expected = xarray_data_array[[0, 2, 2], [1, 3]][[0, 0, 2], 1]
         xr.testing.assert_allclose(result, expected)
+
+    def test_open_dataset_with_ctx(self):
+        tiledb_quickstart_dense = "tiledb://TileDB-Inc/quickstart_dense"
+        config = tiledb.Config()
+        config["rest.username"] = "a"
+        config["rest.password"] = "password"
+        ctx = tiledb.Ctx(config)
+        dataset = xr.open_dataset(tiledb_quickstart_dense, engine="tiledb", ctx=ctx)
+        assert isinstance(dataset, xr.Dataset)
