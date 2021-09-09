@@ -215,7 +215,8 @@ class TestTileDB:
         tiledb_quickstart_dense = "tiledb://TileDB-Inc/quickstart_dense"
         config = tiledb.Config()
         config["rest.username"] = "a"
-        config["rest.password"] = "pass_word"
+        config["rest.password"] = "b"
         ctx = tiledb.Ctx(config)
-        dataset = xr.open_dataset(tiledb_quickstart_dense, engine="tiledb", ctx=ctx)
-        assert isinstance(dataset, xr.Dataset)
+        with pytest.raises(tiledb.libtiledb.TileDBError) as err:
+            xr.open_dataset(tiledb_quickstart_dense, engine="tiledb", ctx=ctx)
+        assert err.value.message.startswith('[TileDB::REST] Error: Error in libcurl GET operation')
