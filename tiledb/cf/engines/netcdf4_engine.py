@@ -1415,13 +1415,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             with Group(output_uri, mode="w", key=key, ctx=ctx) as group:
                 for group_key in netcdf_group.ncattrs():
                     copy_metadata_item(group.meta, netcdf_group, group_key)
-            # Copy variables and variable metadata to arrays
-            for array_creator in self._registry.array_creators():
-                if isinstance(array_creator, NetCDFArrayConverter):
-                    with Group(
-                        output_uri, mode="w", array=array_creator.name, key=key, ctx=ctx
-                    ) as tiledb_group:
-                        array_creator.copy(netcdf_group, tiledb_group.array)
+                # Copy variables and variable metadata to arrays
+                for array_creator in self._registry.array_creators():
+                    if isinstance(array_creator, NetCDFArrayConverter):
+                        with group.open_array(array=array_creator.name) as array:
+                            array_creator.copy(netcdf_group, array)
 
     def copy_to_virtual_group(
         self,
