@@ -396,7 +396,7 @@ class Group:
         self._key = key
         self._timestamp = timestamp
         self._ctx = ctx
-        self._opened_arrays: List[tiledb.Array] = []
+        self._open_arrays: Dict[Tuple[str, Optional[str]], tiledb.Array] = dict()
         if array is not None:
             with warnings.catch_warnings():
                 warnings.warn(
@@ -422,9 +422,9 @@ class Group:
         """Closes this Group, flushing all buffered data."""
         if self._metadata_array is not None:
             self._metadata_array.close()
-        for array in self._opened_arrays:
+        for array in self._open_arrays.values():
             array.close()
-        self._opened_arrays.clear()
+        self._open_arrays.clear()
 
     @property
     def has_metadata_array(self) -> bool:
@@ -440,7 +440,7 @@ class Group:
         return self._metadata_array.meta
 
     def open_array(
-        self, array: Optional[str] = None, attr: Optional[str] = None
+        self, array: Optional[str] = None, attr: Optional[str] = None, mode: str = self._mode
     ) -> tiledb.Array:
         if array is None and attr is None:
             raise ValueError(
@@ -466,8 +466,37 @@ class Group:
             timestamp=self._timestamp,
             ctx=self._ctx,
         )
-        self._opened_arrays.append(tiledb_array)
+        array_key = (array, attr) if attr is not None else (array,)
+        self._open_arrays[array_key] = tiledb_array
         return tiledb_array
+
+    def close_array(self, array: Optional[str] = None, attr: Optional[str] = None):
+        if array is None and attr is None:
+            raise ValueError(
+                "Cannot open array. Either an array or attribute must be specified."
+            )
+        if array is None:
+            array_names = self._group_schema.arrays_with_attr(attr)
+            if array_names is None:
+                raise KeyError(f"No attribute with name '{attr}' found.")
+            if len(array_names) > 1:
+                raise ValueError(
+                    f"The array must be specified when opening an attribute that "
+                    f"exists in multiple arrays in a group. Arrays with attribute "
+                    f"'{attr}' include: {array_names}."
+                )
+            array = array_names[0]
+        try:
+            tiledb_array = self._open_arrays[array]
+            del self._open_arrays[array]
+            tiledb_array.close()
+        except KeyError:
+            message = f"No open array with name {array} found"
+            if attr is not None:
+                message += f" using attr {attr}"
+            with warnings.catch_warnings():
+                warnings.warn(message)
+            pass
 
 
 class VirtualGroup(Group):
@@ -572,7 +601,7 @@ class VirtualGroup(Group):
         self._key = key
         self._timestamp = timestamp
         self._ctx = ctx
-        self._opened_arrays: List[tiledb.Array] = []
+        self._open_arrays: Dict[Tuple[str, Optional[str]], tiledb.Array] = dict()
         if array is not None:
             with warnings.catch_warnings():
                 warnings.warn(
