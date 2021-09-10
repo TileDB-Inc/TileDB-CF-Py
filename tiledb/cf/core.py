@@ -668,7 +668,7 @@ class GroupSchema(Mapping):
         vfs = tiledb.VFS(ctx=ctx)
         array_schemas = {}
         for item_uri in vfs.ls(uri):
-            if not tiledb.object_type(item_uri) == "array":
+            if not tiledb.object_type(item_uri, ctx) == "array":
                 continue
             array_name = item_uri.split("/")[-1]
             local_key = _get_array_key(key, array_name)
