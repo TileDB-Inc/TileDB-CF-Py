@@ -5,6 +5,7 @@ import pytest
 
 import tiledb
 from tiledb.cf import METADATA_ARRAY_NAME, DataspaceCreator, GroupSchema
+from tiledb.cf.creator import ArrayCreator, SharedDim
 
 
 class TestDataspaceCreatorExample1:
@@ -47,6 +48,30 @@ class TestDataspaceCreatorExample1:
         except OSError:
             pytest.skip("unable to import libtidy backend")
         assert not bool(errors)
+
+    def test_array_creators(self, dataspace_creator):
+        array_names = set()
+        for array_creator in dataspace_creator.array_creators():
+            assert isinstance(array_creator, ArrayCreator)
+            array_names.add(array_creator.name)
+        assert array_names == {"A1", "A2", "A3"}
+
+    def test_get_array_creator(self, dataspace_creator):
+        array_creator = dataspace_creator.get_array_creator("A2")
+        assert isinstance(array_creator, ArrayCreator)
+        assert array_creator.name == "A2"
+
+    def test_shared_dims(self, dataspace_creator):
+        dim_names = set()
+        for shared_dim in dataspace_creator.shared_dims():
+            assert isinstance(shared_dim, SharedDim)
+            dim_names.add(shared_dim.name)
+        assert dim_names == {"pressure.index", "temperature"}
+
+    def test_get_shared_dims(self, dataspace_creator):
+        shared_dim = dataspace_creator.get_shared_dim("temperature")
+        assert isinstance(shared_dim, SharedDim)
+        assert shared_dim.name == "temperature"
 
     def test_array_names(self, dataspace_creator):
         assert set(dataspace_creator.array_names) == {"A1", "A2", "A3"}
