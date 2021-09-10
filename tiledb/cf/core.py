@@ -18,6 +18,7 @@ import tiledb
 DType = TypeVar("DType", covariant=True)
 METADATA_ARRAY_NAME = "__tiledb_group"
 ATTR_METADATA_FLAG = "__tiledb_attr."
+DIM_METADATA_FLAG = "__tiledb_dim."
 
 
 def _array_schema_html(schema: tiledb.ArraySchema) -> str:
@@ -197,10 +198,15 @@ class ArrayMetadata(Metadata):
     def _to_tiledb_key(self, key: str) -> str:
         if key.startswith(ATTR_METADATA_FLAG):
             raise KeyError("Key is reserved for attribute metadata.")
+        if key.startswith(DIM_METADATA_FLAG):
+            raise KeyError("Key is reserved for dimension metadata.")
         return key
 
     def _from_tiledb_key(self, tiledb_key: str) -> Optional[str]:
-        if not tiledb_key.startswith(ATTR_METADATA_FLAG):
+        if not (
+            tiledb_key.startswith(ATTR_METADATA_FLAG)
+            or tiledb_key.startswith(DIM_METADATA_FLAG)
+        ):
             return tiledb_key
         return None
 
@@ -222,8 +228,37 @@ class AttrMetadata(Metadata):
         try:
             attr_name = metadata.array.attr(attr).name
         except tiledb.TileDBError as err:
-            raise ValueError(f"Attribute `{attr}` not found in array.") from err
+            raise KeyError(f"Attribute `{attr}` not found in array.") from err
         self._key_prefix = ATTR_METADATA_FLAG + attr_name + "."
+
+    def _to_tiledb_key(self, key: str) -> str:
+        return self._key_prefix + key
+
+    def _from_tiledb_key(self, tiledb_key: str) -> Optional[str]:
+        if tiledb_key.startswith(self._key_prefix):
+            return tiledb_key[len(self._key_prefix) :]
+        return None
+
+
+class DimMetadata(Metadata):
+    """Metadata wrapper for accessing dimension metadata.
+
+    This class allows access to the metadata for a dimension stored in the metadata
+    for a TileDB array.
+
+    Parameters:
+        metadata (tiledb.Metadata): TileDB array metadata for the array containing the
+            desired attribute.
+        dim (str): Name or index of the arrary attribute being requested.
+    """
+
+    def __init__(self, metadata: tiledb.Metadata, dim: Union[str, int]):
+        super().__init__(metadata)
+        try:
+            dim_name = metadata.array.dim(dim).name
+        except tiledb.TileDBError as err:
+            raise KeyError(f"Dimension `{dim}` not found in array.") from err
+        self._key_prefix = DIM_METADATA_FLAG + dim_name + "."
 
     def _to_tiledb_key(self, key: str) -> str:
         return self._key_prefix + key

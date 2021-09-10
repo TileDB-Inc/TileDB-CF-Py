@@ -4,10 +4,10 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import AttrMetadata
+from tiledb.cf import DimMetadata
 
 
-class TestAttrMetadata:
+class TestDimMetadata:
     @pytest.fixture(scope="class")
     def array_uri(self, tmpdir_factory):
         array_uri = str(tmpdir_factory.mktemp("test_array"))
@@ -26,51 +26,51 @@ class TestAttrMetadata:
 
     def test_modify_metadata(self, array_uri):
         with tiledb.DenseArray(array_uri, mode="r") as array:
-            meta = AttrMetadata(array.meta, "attr")
+            meta = DimMetadata(array.meta, "dim")
             assert len(meta) == 0
         with tiledb.DenseArray(array_uri, mode="w", timestamp=1) as array:
-            meta = AttrMetadata(array.meta, "attr")
-            meta["key0"] = "attribute_value"
+            meta = DimMetadata(array.meta, "dim")
+            meta["key0"] = "dim_value"
             meta["key1"] = 10
             meta["key2"] = 0.1
         with tiledb.DenseArray(array_uri, mode="w", timestamp=2) as array:
-            meta = AttrMetadata(array.meta, "attr")
+            meta = DimMetadata(array.meta, "dim")
             del meta["key2"]
         with tiledb.DenseArray(array_uri, mode="r") as array:
-            meta = AttrMetadata(array.meta, "attr")
+            meta = DimMetadata(array.meta, "dim")
             assert set(meta.keys()) == set(["key0", "key1"])
             assert "key0" in meta
-            assert meta["key0"] == "attribute_value"
+            assert meta["key0"] == "dim_value"
 
     def test_open_from_index(self, array_uri):
         with tiledb.DenseArray(array_uri, mode="r") as array:
-            AttrMetadata(array.meta, 0)
+            DimMetadata(array.meta, 0)
 
     def test_attr_not_in_array_exception(self, array_uri):
         with pytest.raises(KeyError):
             with tiledb.DenseArray(array_uri, mode="w") as array:
-                _ = AttrMetadata(array.meta, "x")
+                _ = DimMetadata(array.meta, "x")
 
     def test_contains_not_string_exception(self, array_uri):
         with pytest.raises(TypeError):
             with tiledb.DenseArray(array_uri, mode="r") as array:
-                meta = AttrMetadata(array.meta, "attr")
+                meta = DimMetadata(array.meta, "dim")
                 _ = 1 in meta
 
     def test_delitem_not_string_exception(self, array_uri):
         with pytest.raises(TypeError):
             with tiledb.DenseArray(array_uri, mode="w") as array:
-                meta = AttrMetadata(array.meta, "attr")
+                meta = DimMetadata(array.meta, "dim")
                 del meta[1]
 
     def test_getitem_not_string_exception(self, array_uri):
         with pytest.raises(TypeError):
             with tiledb.DenseArray(array_uri, mode="r") as array:
-                meta = AttrMetadata(array.meta, "attr")
+                meta = DimMetadata(array.meta, "dim")
                 _ = meta[1]
 
     def test_setitem_not_string_exception(self, array_uri):
         with pytest.raises(TypeError):
             with tiledb.DenseArray(array_uri, mode="w") as array:
-                meta = AttrMetadata(array.meta, "attr")
+                meta = DimMetadata(array.meta, "dim")
                 meta[1] = "value"
