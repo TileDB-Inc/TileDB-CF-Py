@@ -9,7 +9,7 @@ import warnings
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping
 from io import StringIO
-from typing import Any, Dict, Iterator, List, Optional, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -396,7 +396,9 @@ class Group:
         self._key = key
         self._timestamp = timestamp
         self._ctx = ctx
-        self._open_arrays: Dict[Tuple[str, Optional[str]], tiledb.Array] = dict()
+        self._open_arrays: Dict[
+            Tuple[Union[str, Any], Union[str, Any]], tiledb.Array
+        ] = dict()
         if array is not None:
             with warnings.catch_warnings():
                 warnings.warn(
@@ -440,8 +442,13 @@ class Group:
         return self._metadata_array.meta
 
     def open_array(
-        self, array: Optional[str] = None, attr: Optional[str] = None, mode: str = self._mode
+        self,
+        array: Optional[str] = None,
+        attr: Optional[str] = None,
+        mode: str = None,
     ) -> tiledb.Array:
+        if mode is None:
+            mode = self._mode
         if array is None and attr is None:
             raise ValueError(
                 "Cannot open array. Either an array or attribute must be specified."
@@ -466,7 +473,7 @@ class Group:
             timestamp=self._timestamp,
             ctx=self._ctx,
         )
-        array_key = (array, attr) if attr is not None else (array,)
+        array_key = (array, attr)
         self._open_arrays[array_key] = tiledb_array
         return tiledb_array
 
@@ -486,9 +493,10 @@ class Group:
                     f"'{attr}' include: {array_names}."
                 )
             array = array_names[0]
+        array_key = (array, attr)
         try:
-            tiledb_array = self._open_arrays[array]
-            del self._open_arrays[array]
+            tiledb_array = self._open_arrays[array_key]
+            del self._open_arrays[array_key]
             tiledb_array.close()
         except KeyError:
             message = f"No open array with name {array} found"
@@ -601,7 +609,9 @@ class VirtualGroup(Group):
         self._key = key
         self._timestamp = timestamp
         self._ctx = ctx
-        self._open_arrays: Dict[Tuple[str, Optional[str]], tiledb.Array] = dict()
+        self._open_arrays: Dict[
+            Tuple[Union[str, Any], Union[str, Any]], tiledb.Array
+        ] = dict()
         if array is not None:
             with warnings.catch_warnings():
                 warnings.warn(
