@@ -22,6 +22,7 @@ class TestArrayMetadata:
         tiledb.Array.create(array_uri, schema)
         with tiledb.DenseArray(array_uri, mode="w") as array:
             array.meta["__tiledb_attr.attr"] = "attribute value"
+            array.meta["__tiledb_dim.dim"] = "dimension value"
         return array_uri
 
     def test_modify_metadata(self, array_uri):
@@ -29,6 +30,7 @@ class TestArrayMetadata:
             meta = ArrayMetadata(array.meta)
             assert len(meta) == 0
             assert "__tiledb_attr.attr" not in meta
+            assert "__tiledb_dim.dim" not in meta
         with tiledb.DenseArray(array_uri, mode="w", timestamp=1) as array:
             meta = ArrayMetadata(array.meta)
             meta["key0"] = "array value"
@@ -49,14 +51,32 @@ class TestArrayMetadata:
                 meta = ArrayMetadata(array.meta)
                 del meta["__tiledb_attr.attr"]
 
+    def test_delitem_dim_key_exeception(self, array_uri):
+        with pytest.raises(KeyError):
+            with tiledb.DenseArray(array_uri, mode="w") as array:
+                meta = ArrayMetadata(array.meta)
+                del meta["__tiledb_dim.dim"]
+
     def test_getitem_attr_key_exception(self, array_uri):
         with pytest.raises(KeyError):
             with tiledb.DenseArray(array_uri, mode="r") as array:
                 meta = ArrayMetadata(array.meta)
                 _ = meta["__tiledb_attr.attr"]
 
+    def test_getitem_dim_key_exception(self, array_uri):
+        with pytest.raises(KeyError):
+            with tiledb.DenseArray(array_uri, mode="r") as array:
+                meta = ArrayMetadata(array.meta)
+                _ = meta["__tiledb_dim.dim"]
+
     def test_setitem_attr_key_exception(self, array_uri):
         with pytest.raises(KeyError):
             with tiledb.DenseArray(array_uri, mode="w") as array:
                 meta = ArrayMetadata(array.meta)
                 meta["__tiledb_attr.a"] = "value"
+
+    def test_setitem_dim_key_exception(self, array_uri):
+        with pytest.raises(KeyError):
+            with tiledb.DenseArray(array_uri, mode="w") as array:
+                meta = ArrayMetadata(array.meta)
+                meta["__tiledb_dim.a"] = "value"

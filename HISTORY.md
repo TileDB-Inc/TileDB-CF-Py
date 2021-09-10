@@ -7,11 +7,13 @@
 ### Breaking Behavior
 
 * `NetCDF4ConverterEngine.add_array_converter` adds a `NetCDF4ArrayConverter` and `NetCDF4ConverterEngine.add_array` inherits from `DataspaceCreator`.
+* Update `ArrayMetadata` to skip `DimMetadata`.
 
 ### New Features
 
 * Add `create_array` to `DataspaceCreator` for dataspaces with 1 array.
 * Add `convert_to_array` and `copy_to_array` to `NetCDF4ConverterEngine` for converters with 1 array.
+* Add `DimMetadata` class for handling dimension metadata.
 
 ### Improvements
 

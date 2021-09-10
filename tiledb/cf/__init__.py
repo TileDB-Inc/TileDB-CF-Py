@@ -18,9 +18,11 @@ import numpy as np
 
 from .core import (
     ATTR_METADATA_FLAG,
+    DIM_METADATA_FLAG,
     METADATA_ARRAY_NAME,
     ArrayMetadata,
     AttrMetadata,
+    DimMetadata,
     Group,
     GroupSchema,
     VirtualGroup,
