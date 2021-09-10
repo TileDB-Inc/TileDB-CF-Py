@@ -283,12 +283,8 @@ class Group:
         key: If not ``None``, encryption key, or dictionary of encryption keys by
             array name, to decrypt arrays.
         timestamp: If not ``None``, timestamp to open the group metadata and array at.
-        array: If not ``None``, open the array in the group with this name.
-        attr: If not ``None``, open one attribute of the group; indexing a dense array
-            will return a Numpy ndarray directly rather than a dictionary. If ``array``
-            is specified, the attribute must be inside the specified array. If ``array``
-            is not specified, there must be only one attribute in the group with this
-            name.
+        array: DEPRECACTED: use group.open_array instead.
+        attr: DEPRECATED: use group.open_array instead.
         ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
     """
 
@@ -397,8 +393,8 @@ class Group:
         self._timestamp = timestamp
         self._ctx = ctx
         self._open_arrays: Dict[
-            Tuple[Union[str, Any], Union[str, Any]], tiledb.Array
-        ] = dict()
+            Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
+        ] = defaultdict(list)
         if array is not None:
             with warnings.catch_warnings():
                 warnings.warn(
@@ -424,8 +420,9 @@ class Group:
         """Closes this Group, flushing all buffered data."""
         if self._metadata_array is not None:
             self._metadata_array.close()
-        for array in self._open_arrays.values():
-            array.close()
+        for array_list in self._open_arrays.values():
+            for array in array_list:
+                array.close()
         self._open_arrays.clear()
 
     @property
@@ -447,6 +444,22 @@ class Group:
         attr: Optional[str] = None,
         mode: str = None,
     ) -> tiledb.Array:
+        """
+        Opens one of the arrays in the group, chosen by providing
+        array name or attr name, with an optional setting for a mode
+        different from the default group mode.
+
+        Parameters:
+            array: If not ``None``, open the array with this name.
+                Overrides attr if both are provided.
+            attr: If not ``None``, open the array that contains this attr.
+                Attr must be in only one of the group arrays.
+            mode: mode the array is opened in. Either read 'r' or write 'w'.
+                If not provided, defaults to group mode.
+
+        Returns:
+            tiledb.Array opened in the specified mode
+        """
         if mode is None:
             mode = self._mode
         if array is None and attr is None:
@@ -474,10 +487,20 @@ class Group:
             ctx=self._ctx,
         )
         array_key = (array, attr)
-        self._open_arrays[array_key] = tiledb_array
+        self._open_arrays[array_key].append(tiledb_array)
         return tiledb_array
 
     def close_array(self, array: Optional[str] = None, attr: Optional[str] = None):
+        """
+        Closes one of the open arrays in the group, chosen by providing
+        array name or attr name.
+
+        Parameters:
+            array: If not ``None``, close the array with this name.
+                Overrides attr if both are provided.
+            attr: If not ``None``, close the array that contains this attr.
+                Attr must be in only one of the group arrays.
+        """
         if array is None and attr is None:
             raise ValueError(
                 "Cannot open array. Either an array or attribute must be specified."
@@ -494,17 +517,13 @@ class Group:
                 )
             array = array_names[0]
         array_key = (array, attr)
-        try:
-            tiledb_array = self._open_arrays[array_key]
-            del self._open_arrays[array_key]
-            tiledb_array.close()
-        except KeyError:
-            message = f"No open array with name {array} found"
-            if attr is not None:
-                message += f" using attr {attr}"
+        tiledb_arrays = self._open_arrays.pop(array_key)
+        if len(tiledb_arrays) > 1:
             with warnings.catch_warnings():
-                warnings.warn(message)
-            pass
+                warnings.warn(f"Closing more than one array reference with name: {array}."
+                              f"If you are using another reference it is now closed.")
+        for tdb_array in tiledb_arrays:
+            tdb_array.close()
 
 
 class VirtualGroup(Group):
@@ -524,12 +543,8 @@ class VirtualGroup(Group):
         key: If not ``None``, encryption key, or dictionary of encryption keys, to
             decrypt arrays.
         timestamp: If not ``None``, timestamp to open the group metadata and array at.
-        array: If not ``None``, open the array with this name.
-        attr: If not ``None``, open one attribute of the group; indexing a dense array
-            will return a Numpy ndarray directly rather than a dictionary. If ``array``
-            is specified, the attribute must be inside the specified array. If ``array``
-            is not specified, there must be only one attribute in the group with this
-            name.
+        array: DEPRECACTED: use group.open_array instead.
+        attr: DEPRECATED: use group.open_array instead.
         ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
     """
 
