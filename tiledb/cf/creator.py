@@ -668,8 +668,7 @@ class DataspaceRegistry:
 
     def shared_dims(self):
         """Iterates over shared dimensions in the CF dataspace."""
-        for shared_dim in self._shared_dims.values():
-            yield shared_dim
+        return iter(self._shared_dims.values())
 
     def update_array_creator_name(self, original_name: str, new_name: str):
         self._array_creators[new_name] = self._array_creators.pop(original_name)
