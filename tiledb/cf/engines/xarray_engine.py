@@ -222,7 +222,7 @@ class TileDBDenseArrayWrapper(BackendArray):
     through a :class:`LazilyIndexedArray` object.
     """
 
-    def __init__(self, attr, uri, key, timestamp, index_converters):
+    def __init__(self, attr, uri, key, timestamp, ctx, index_converters):
         """
         Parameters
         ----------
@@ -253,6 +253,7 @@ class TileDBDenseArrayWrapper(BackendArray):
             "key": key,
             "timestamp": timestamp,
             "attr": attr.name,
+            "ctx": ctx,
         }
         self._index_converters = index_converters
         self.shape = tuple(converter.size for converter in index_converters)
@@ -294,6 +295,7 @@ class TileDBDataStore(AbstractDataStore):
         uri,
         key=None,
         timestamp=None,
+        ctx=None,
     ):
         """
         Parameters
@@ -309,10 +311,11 @@ class TileDBDataStore(AbstractDataStore):
         self._uri = uri
         self._key = key
         self._timestamp = timestamp
+        self._ctx = ctx
 
     def get_dimensions(self):
         """Returns a dictionary of dimension names to sizes."""
-        schema = tiledb.ArraySchema.load(self._uri, key=self._key)
+        schema = tiledb.ArraySchema.load(self._uri, ctx=self._ctx, key=self._key)
         return FrozenDict({dim.name: dim.size for dim in schema.domain})
 
     def get_attrs(self):
@@ -322,7 +325,7 @@ class TileDBDataStore(AbstractDataStore):
         metadata returned here metadata for the dataset, but excludes encoding data for
         TileDB and attribute metadata.
         """
-        with tiledb.open(self._uri, key=self._key, mode="r") as array:
+        with tiledb.open(self._uri, key=self._key, mode="r", ctx=self._ctx) as array:
             attrs = {
                 key: array.meta[key]
                 for key in array.meta.keys()
@@ -339,7 +342,7 @@ class TileDBDataStore(AbstractDataStore):
         the array.
         """
         variable_metadata = self.get_variable_metadata()
-        schema = tiledb.ArraySchema.load(self._uri, key=self._key)
+        schema = tiledb.ArraySchema.load(self._uri, ctx=self._ctx, key=self._key)
         index_converters = tuple(map(TileDBIndexConverter, schema.domain))
         variables = {}
         # Add TileDB dimensions as xarray variables (these are the coordinates for the
@@ -365,6 +368,7 @@ class TileDBDataStore(AbstractDataStore):
                     self._uri,
                     self._key,
                     self._timestamp,
+                    self._ctx,
                     index_converters,
                 )
             )
@@ -386,7 +390,7 @@ class TileDBDataStore(AbstractDataStore):
         dimensions.
         """
         variable_metadata = defaultdict(dict)
-        with tiledb.open(self._uri, key=self._key, mode="r") as array:
+        with tiledb.open(self._uri, key=self._key, mode="r", ctx=self._ctx) as array:
             for key in array.meta.keys():
                 if key.startswith((_ATTR_PREFIX, _DIM_PREFIX)):
                     last_dot_ix = key.rindex(".")
@@ -417,8 +421,9 @@ class TileDBBackendEntrypoint(BackendEntrypoint):
         decode_timedelta=None,
         key=None,
         timestamp=None,
+        ctx=None,
     ):
-        datastore = TileDBDataStore(filename_or_obj, key, timestamp)
+        datastore = TileDBDataStore(filename_or_obj, key, timestamp, ctx)
         store_entrypoint = StoreBackendEntrypoint()
         with close_on_error(datastore):
             dataset = store_entrypoint.open_dataset(
