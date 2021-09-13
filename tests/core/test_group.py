@@ -183,6 +183,21 @@ class TestGroupWithArrays:
                 group.close_array(attr="a")
                 assert not array.isopen
 
+    def test_close_array_no_values_error(self, group_uri):
+        with Group(group_uri) as group:
+            with pytest.raises(ValueError):
+                group.close_array()
+
+    def test_close_no_array_with_attr_exception(self, group_uri):
+        with Group(group_uri) as group:
+            with pytest.raises(KeyError):
+                group.close_array(attr="bad_name")
+
+    def test_close_ambiguous_array_exception(self, group_uri):
+        with Group(group_uri) as group:
+            with pytest.raises(ValueError):
+                group.close_array(attr="c")
+
 
 class TestNoMetadataArray:
     @pytest.fixture(scope="class")
