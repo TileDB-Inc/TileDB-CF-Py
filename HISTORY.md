@@ -5,24 +5,27 @@
 ### Bug fixes
 
 ### Breaking Behavior
-
+* Replaces array/attr setting in `Group` class initialization with `open` and `close` methods for opening any array in the group.
 * `NetCDF4ConverterEngine.add_array_converter` adds a `NetCDF4ArrayConverter` and `NetCDF4ConverterEngine.add_array` inherits from `DataspaceCreator`.
-* Update `ArrayMetadata` to skip `DimMetadata`.
+* Updates `ArrayMetadata` to skip `DimMetadata`.
 
 ### New Features
 
-* Add `create_array` to `DataspaceCreator` for dataspaces with 1 array.
-* Add `convert_to_array` and `copy_to_array` to `NetCDF4ConverterEngine` for converters with 1 array.
-* Add `DimMetadata` class for handling dimension metadata.
-* Add `get_array_creator` and `get_shared_dim` methods to `DataspaceCreator` for direct access to `DataspaceCreator` components.
-* Add `array_creators` and `shared_dims` methods to `DataspaceCreator` for iterating over `DataspaceCreator` components.
+* Adds `create_array` to `DataspaceCreator` for dataspaces with 1 array.
+* Adds `convert_to_array` and `copy_to_array` to `NetCDF4ConverterEngine` for converters with 1 array.
+* Adds `DimMetadata` class for handling dimension metadata.
+* Adds `get_array_creator` and `get_shared_dim` methods to `DataspaceCreator` for direct access to `DataspaceCreator` components.
+* Adds `array_creators` and `shared_dims` methods to `DataspaceCreator` for iterating over `DataspaceCreator` components.
+* Adds `open_array` to `Group` to open any array in a group.
+* Adds `close_array` to `Group` to close any open array in a group.
 
 ### Improvements
+* Adds `_open_array` attribute in `Group` and refactor `close` to close all open arrays in a group.
 
 ### Deprecation
 
-* Deprecate `Group.create_virtual` in favor of `VirtualGroup.create`.
-* Deprecate `NetCDF4ConverterEngine.add_scalar_dim_converter` in favor of `NetCDF4ConverterEngine.add_scalar_to_dim_converter`.
+* Deprecates `Group.create_virtual` in favor of `VirtualGroup.create`.
+* Deprecates `NetCDF4ConverterEngine.add_scalar_dim_converter` in favor of `NetCDF4ConverterEngine.add_scalar_to_dim_converter`.
 
 ## TileDB-CF-Py Release 0.3.0
 

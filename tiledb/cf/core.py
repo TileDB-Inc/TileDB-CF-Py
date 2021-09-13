@@ -9,7 +9,7 @@ import warnings
 from collections import defaultdict
 from collections.abc import Mapping, MutableMapping
 from io import StringIO
-from typing import Any, Dict, Iterator, List, Optional, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TypeVar, Union
 
 import numpy as np
 
@@ -283,12 +283,8 @@ class Group:
         key: If not ``None``, encryption key, or dictionary of encryption keys by
             array name, to decrypt arrays.
         timestamp: If not ``None``, timestamp to open the group metadata and array at.
-        array: If not ``None``, open the array in the group with this name.
-        attr: If not ``None``, open one attribute of the group; indexing a dense array
-            will return a Numpy ndarray directly rather than a dictionary. If ``array``
-            is specified, the attribute must be inside the specified array. If ``array``
-            is not specified, there must be only one attribute in the group with this
-            name.
+        array: DEPRECACTED: use group.open_array instead.
+        attr: DEPRECATED: use group.open_array instead.
         ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
     """
 
@@ -376,10 +372,14 @@ class Group:
         ctx: Optional[tiledb.Ctx] = None,
     ):
         """Constructs a new :class:`Group`."""
-        group_schema = GroupSchema.load(uri, ctx, key)
+        self._group_schema = GroupSchema.load(uri, ctx, key)
+        self._array_uris = {
+            array_name: _get_array_uri(uri, array_name, False)
+            for array_name in self._group_schema.keys()
+        }
         self._metadata_array = (
             None
-            if group_schema.metadata_schema is None
+            if self._group_schema.metadata_schema is None
             else tiledb.open(
                 uri=_get_metadata_array_uri(uri, False),
                 mode=mode,
@@ -388,31 +388,27 @@ class Group:
                 ctx=ctx,
             )
         )
-        self._attr = attr
-        if array is None and attr is not None:
-            array_names = group_schema.arrays_with_attr(attr)
-            if array_names is None:
-                raise KeyError(f"No attribute with name '{attr}' found.")
-            if len(array_names) > 1:
-                raise ValueError(
-                    f"The array must be specified when opening an attribute that "
-                    f"exists in multiple arrays in a group. Arrays with attribute "
-                    f"'{attr}' include: {array_names}."
+        self._mode = mode
+        self._key = key
+        self._timestamp = timestamp
+        self._ctx = ctx
+        self._open_arrays: Dict[
+            Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
+        ] = defaultdict(list)
+        if array is not None:
+            with warnings.catch_warnings():
+                warnings.warn(
+                    "The parameter `array` is deprecated. Use `open_array` to open "
+                    "an array in this group.",
+                    DeprecationWarning,
                 )
-            array = array_names[0]
-        self._array = (
-            None
-            if array is None
-            else tiledb.open(
-                _get_array_uri(uri, array, False),
-                mode=mode,
-                key=_get_array_key(key, array),
-                attr=attr,
-                config=None,
-                timestamp=timestamp,
-                ctx=ctx,
-            )
-        )
+        if attr is not None:
+            with warnings.catch_warnings():
+                warnings.warn(
+                    "The parameter `attr` is deprecated. Use `open_array` to open "
+                    "an array in this group.",
+                    DeprecationWarning,
+                )
 
     def __enter__(self):
         return self
@@ -424,65 +420,10 @@ class Group:
         """Closes this Group, flushing all buffered data."""
         if self._metadata_array is not None:
             self._metadata_array.close()
-        if self._array is not None:
-            self._array.close()
-
-    @property
-    def array(self) -> tiledb.Array:
-        """The array in the group accessed at initialization.
-
-        Can only be used if an array or attribute was specified when initializing this
-        group.
-        """
-        if self._array is None:
-            raise RuntimeError("Cannot access array: no array was opened.")
-        return self._array
-
-    @property
-    def array_metadata(self) -> ArrayMetadata:
-        """Array metadata wrapper for the array accessed at initialization.
-
-        Can only be used if an array or attribute was specified when initializing this
-        group. This object will exclude attribute metadata. To access all metadata in
-        the array use the ``Group.array.meta`` property instead.
-        """
-        if self._array is None:
-            raise RuntimeError(
-                "Cannot access group array metadata: no array was opened."
-            )
-        return ArrayMetadata(self._array.meta)
-
-    @property
-    def attr_metadata(self) -> AttrMetadata:
-        """Attribute metadata wrapper for the attribute accessed at initialization.
-
-        Can only be used if an attribute or an array with exactly one attribute was
-        specified when initializing this group.
-        """
-        if self._array is None:
-            raise RuntimeError("Cannot access attribute metadata: no array was opened.")
-        if self._attr is not None:
-            return AttrMetadata(self._array.meta, self._attr)
-        if self._array.nattr == 1:
-            return AttrMetadata(self._array.meta, 0)
-        raise RuntimeError(
-            "Cannot access attribute metadata. Array has multiple open attributes; use "
-            "get_attr_metadata to specify which attribute to open."
-        )
-
-    def get_attr_metadata(self, attr: Union[str, int]) -> AttrMetadata:
-        """Returns an attribute metadata wrapper corresponding to the requested
-        attribute.
-
-        Can only be used if an array or attribute was specified when initializing this
-        group.
-
-        Parameters:
-            attr: Name or index of the requested array attribute.
-        """
-        if self._array is None:
-            raise RuntimeError("Cannot access attribute metadata: no array was opened.")
-        return AttrMetadata(self._array.meta, attr)
+        for array_list in self._open_arrays.values():
+            for array in array_list:
+                array.close()
+        self._open_arrays.clear()
 
     @property
     def has_metadata_array(self) -> bool:
@@ -496,6 +437,95 @@ class Group:
         if self._metadata_array is None:
             return None
         return self._metadata_array.meta
+
+    def open_array(
+        self,
+        array: Optional[str] = None,
+        attr: Optional[str] = None,
+        mode: str = None,
+    ) -> tiledb.Array:
+        """
+        Opens one of the arrays in the group, chosen by providing
+        array name or attr name, with an optional setting for a mode
+        different from the default group mode.
+
+        Parameters:
+            array: If not ``None``, open the array with this name.
+                Overrides attr if both are provided.
+            attr: If not ``None``, open the array that contains this attr.
+                Attr must be in only one of the group arrays.
+            mode: mode the array is opened in. Either read 'r' or write 'w'.
+                If not provided, defaults to group mode.
+
+        Returns:
+            tiledb.Array opened in the specified mode
+        """
+        if mode is None:
+            mode = self._mode
+        if array is None and attr is None:
+            raise ValueError(
+                "Cannot open array. Either an array or attribute must be specified."
+            )
+        if array is None:
+            array_names = self._group_schema.arrays_with_attr(attr)
+            if array_names is None:
+                raise KeyError(f"No attribute with name '{attr}' found.")
+            if len(array_names) > 1:
+                raise ValueError(
+                    f"The array must be specified when opening an attribute that "
+                    f"exists in multiple arrays in a group. Arrays with attribute "
+                    f"'{attr}' include: {array_names}."
+                )
+            array = array_names[0]
+        tiledb_array = tiledb.open(
+            self._array_uris[array],
+            mode=self._mode,
+            key=_get_array_key(self._key, array),
+            attr=attr,
+            config=None,
+            timestamp=self._timestamp,
+            ctx=self._ctx,
+        )
+        array_key = (array, attr)
+        self._open_arrays[array_key].append(tiledb_array)
+        return tiledb_array
+
+    def close_array(self, array: Optional[str] = None, attr: Optional[str] = None):
+        """
+        Closes one of the open arrays in the group, chosen by providing
+        array name or attr name.
+
+        Parameters:
+            array: If not ``None``, close the array with this name.
+                Overrides attr if both are provided.
+            attr: If not ``None``, close the array that contains this attr.
+                Attr must be in only one of the group arrays.
+        """
+        if array is None and attr is None:
+            raise ValueError(
+                "Cannot open array. Either an array or attribute must be specified."
+            )
+        if array is None:
+            array_names = self._group_schema.arrays_with_attr(attr)
+            if array_names is None:
+                raise KeyError(f"No attribute with name '{attr}' found.")
+            if len(array_names) > 1:
+                raise ValueError(
+                    f"The array must be specified when opening an attribute that "
+                    f"exists in multiple arrays in a group. Arrays with attribute "
+                    f"'{attr}' include: {array_names}."
+                )
+            array = array_names[0]
+        array_key = (array, attr)
+        tiledb_arrays = self._open_arrays.pop(array_key)
+        if len(tiledb_arrays) > 1:
+            with warnings.catch_warnings():
+                warnings.warn(
+                    f"Closing more than one array reference with name: {array}."
+                    f"If you are using another reference it is now closed."
+                )
+        for tdb_array in tiledb_arrays:
+            tdb_array.close()
 
 
 class VirtualGroup(Group):
@@ -515,12 +545,8 @@ class VirtualGroup(Group):
         key: If not ``None``, encryption key, or dictionary of encryption keys, to
             decrypt arrays.
         timestamp: If not ``None``, timestamp to open the group metadata and array at.
-        array: If not ``None``, open the array with this name.
-        attr: If not ``None``, open one attribute of the group; indexing a dense array
-            will return a Numpy ndarray directly rather than a dictionary. If ``array``
-            is specified, the attribute must be inside the specified array. If ``array``
-            is not specified, there must be only one attribute in the group with this
-            name.
+        array: DEPRECACTED: use group.open_array instead.
+        attr: DEPRECATED: use group.open_array instead.
         ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
     """
 
@@ -583,6 +609,8 @@ class VirtualGroup(Group):
         attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
+        self._array_uris = array_uris
+        self._group_schema = GroupSchema.load_virtual(array_uris, ctx, key)
         self._metadata_array = (
             tiledb.open(
                 uri=array_uris[METADATA_ARRAY_NAME],
@@ -594,39 +622,27 @@ class VirtualGroup(Group):
             if METADATA_ARRAY_NAME in array_uris
             else None
         )
-        self._attr = attr
-        if array is None and attr is not None:
-            array_names = []
-            for array_name, array_uri in array_uris.items():
-                if array_name == METADATA_ARRAY_NAME:
-                    continue
-                array_schema = tiledb.ArraySchema.load(
-                    array_uri, ctx, _get_array_key(key, array_name)
+        self._mode = mode
+        self._key = key
+        self._timestamp = timestamp
+        self._ctx = ctx
+        self._open_arrays: Dict[
+            Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
+        ] = defaultdict(list)
+        if array is not None:
+            with warnings.catch_warnings():
+                warnings.warn(
+                    "The parameter `array` is deprecated. Use `open_array` to open "
+                    "an array in this group.",
+                    DeprecationWarning,
                 )
-                if array_schema.has_attr(attr):
-                    array_names.append(array_name)
-            if len(array_names) == 0:
-                raise KeyError(f"No attribute with name '{attr}' found.")
-            if len(array_names) > 1:
-                raise ValueError(
-                    f"The array must be specified when opening an attribute that "
-                    f"exists in multiple arrays in a group. Arrays with attribute "
-                    f"'{attr}' include: {array_names}."
+        if attr is not None:
+            with warnings.catch_warnings():
+                warnings.warn(
+                    "The parameter `attr` is deprecated. Use `open_array` to open "
+                    "an array in this group.",
+                    DeprecationWarning,
                 )
-            array = array_names[0]
-        self._array = (
-            None
-            if array is None
-            else tiledb.open(
-                uri=array_uris[array],
-                mode=mode,
-                key=_get_array_key(key, array),
-                attr=attr,
-                config=None,
-                timestamp=timestamp,
-                ctx=ctx,
-            )
-        )
 
 
 class GroupSchema(Mapping):

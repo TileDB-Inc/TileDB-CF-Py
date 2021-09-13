@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import ArrayMetadata, AttrMetadata, GroupSchema, VirtualGroup
+from tiledb.cf import GroupSchema, VirtualGroup
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
@@ -77,9 +77,9 @@ class TestMetadataOnlyGroup:
             assert group.meta is not None
 
     def test_no_such_attr_error(self, group_uris):
-        with pytest.raises(KeyError):
-            with VirtualGroup(group_uris, attr="a"):
-                pass
+        with VirtualGroup(group_uris) as group:
+            with pytest.raises(KeyError):
+                group.open_array(attr="a")
 
 
 class TestVirtualGroupWithArrays:
@@ -113,36 +113,20 @@ class TestVirtualGroupWithArrays:
         }
 
     def test_open_array_from_group(self, group_uris):
-        with VirtualGroup(group_uris, array="A1") as group:
-            array = group.array
-            assert isinstance(array, tiledb.Array)
-            assert array.mode == "r"
-            assert np.array_equal(array[:, :]["a"], self._A1_data)
-
-    def test_array_metadata(self, group_uris):
-        with VirtualGroup(group_uris, array="A1") as group:
-            assert isinstance(group.array_metadata, ArrayMetadata)
-
-    def test_attr_metadata_with_attr(self, group_uris):
-        with VirtualGroup(group_uris, attr="a") as group:
-            assert isinstance(group.attr_metadata, AttrMetadata)
-
-    def test_attr_metadata_with_single_attr_array(self, group_uris):
-        with VirtualGroup(group_uris, array="A3") as group:
-            assert isinstance(group.attr_metadata, AttrMetadata)
-
-    def test_get_attr_metadata(self, group_uris):
-        with VirtualGroup(group_uris, array="A2") as group:
-            assert isinstance(group.get_attr_metadata("b"), AttrMetadata)
+        with VirtualGroup(group_uris) as group:
+            with group.open_array(array="A1") as array:
+                assert isinstance(array, tiledb.Array)
+                assert array.mode == "r"
+                assert np.array_equal(array[:, :]["a"], self._A1_data)
 
     def test_open_attr(self, group_uris):
-        with VirtualGroup(group_uris, attr="a") as group:
-            array = group.array
-            assert isinstance(array, tiledb.Array)
-            assert array.mode == "r"
-            assert np.array_equal(array[:, :], self._A1_data)
+        with VirtualGroup(group_uris) as group:
+            with group.open_array(attr="a") as array:
+                assert isinstance(array, tiledb.Array)
+                assert array.mode == "r"
+                assert np.array_equal(array[:, :], self._A1_data)
 
     def test_attr_ambiguous_error(self, group_uris):
-        with pytest.raises(ValueError):
-            with VirtualGroup(group_uris, attr="c"):
-                pass
+        with VirtualGroup(group_uris) as group:
+            with pytest.raises(ValueError):
+                group.open_array(attr="c")
