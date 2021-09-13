@@ -1245,7 +1245,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 dataspace.
             ValueError: Cannot create a new attribute with the provided ``attr_name``.
         """
-        # TODO: deprecate this function
         try:
             array_creator = self._registry.get_array_creator(array_name)
         except KeyError as err:  # pragma: no cover

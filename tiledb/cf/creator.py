@@ -231,6 +231,36 @@ class DataspaceCreator:
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
     ):
+        """(DEPRECATED) Adds a new attribute to an array in the CF dataspace.
+
+        Parameters:
+            attr_name: Name of the new attribute that will be added.
+            array_name: Name of the array the attribute will be added to.
+            dtype: Numpy dtype of the new attribute.
+            fill: Fill value for unset cells.
+            var: Specifies if the attribute is variable length (automatic for
+                byte/strings).
+            nullable: Specifies if the attribute is nullable using validity tiles.
+            filters: Specifies compression filters for the attribute.
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use add_attr_creator instead.", DeprecationWarning
+            )
+        self.add_attr_creator(
+            attr_name, array_name, dtype, fill, var, nullable, filters
+        )
+
+    def add_attr_creator(
+        self,
+        attr_name: str,
+        array_name: str,
+        dtype: np.dtype,
+        fill: Optional[Union[int, float, str]] = None,
+        var: bool = False,
+        nullable: bool = False,
+        filters: Optional[tiledb.FilterList] = None,
+    ):
         """Adds a new attribute to an array in the CF dataspace.
 
         The 'dataspace name' (name after dropping the suffix ``.data`` or ``.index``)
@@ -246,7 +276,6 @@ class DataspaceCreator:
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
         """
-        # TODO deprecate in favor of get_array_creator[name].add_attr_creator
         array_creator = self._registry.get_array_creator(array_name)
         array_creator.add_attr_creator(attr_name, dtype, fill, var, nullable, filters)
 

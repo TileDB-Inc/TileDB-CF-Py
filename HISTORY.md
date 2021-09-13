@@ -26,7 +26,8 @@
 
 * Deprecates `Group.create_virtual` in favor of `VirtualGroup.create`.
 * Deprecates `NetCDF4ConverterEngine.add_scalar_dim_converter` in favor of `NetCDF4ConverterEngine.add_scalar_to_dim_converter`.
-* Deprecates `add_array` in favor of `add_array_creator`.
+* Deprecates `Dataspace.add_array` in favor of `Dataspace.add_array_creator`.
+* Deprecates `Dataspace.add_attr` in favor of `Dataspace.add_attr_creator`.
 
 ## TileDB-CF-Py Release 0.3.0
 

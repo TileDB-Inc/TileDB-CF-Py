@@ -161,7 +161,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
         converter.add_array_converter("A1", ("row",))
         with pytest.raises(NotImplementedError):
-            converter.add_attr("a1", "array0", np.float64)
+            converter.add_attr_creator("a1", "array0", np.float64)
 
     def test_bad_array_name_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
