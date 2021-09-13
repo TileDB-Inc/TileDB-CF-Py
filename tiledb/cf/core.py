@@ -520,8 +520,10 @@ class Group:
         tiledb_arrays = self._open_arrays.pop(array_key)
         if len(tiledb_arrays) > 1:
             with warnings.catch_warnings():
-                warnings.warn(f"Closing more than one array reference with name: {array}."
-                              f"If you are using another reference it is now closed.")
+                warnings.warn(
+                    f"Closing more than one array reference with name: {array}."
+                    f"If you are using another reference it is now closed."
+                )
         for tdb_array in tiledb_arrays:
             tdb_array.close()
 
