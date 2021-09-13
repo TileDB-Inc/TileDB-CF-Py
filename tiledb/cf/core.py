@@ -627,8 +627,8 @@ class VirtualGroup(Group):
         self._timestamp = timestamp
         self._ctx = ctx
         self._open_arrays: Dict[
-            Tuple[Union[str, Any], Union[str, Any]], tiledb.Array
-        ] = dict()
+            Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
+        ] = defaultdict(list)
         if array is not None:
             with warnings.catch_warnings():
                 warnings.warn(
