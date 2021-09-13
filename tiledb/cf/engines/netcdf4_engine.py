@@ -16,7 +16,7 @@ import numpy as np
 
 import tiledb
 
-from ..core import AttrMetadata, Group
+from ..core import AttrMetadata, DimMetadata, Group
 from ..creator import (
     ArrayCreator,
     ArrayRegistry,
@@ -177,6 +177,24 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
             input_name=var.name,
             input_dtype=dtype,
         )
+
+    def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
+        """Copy the metadata data from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the metadata items from.
+            tiledb_array: TileDB array to copy the metadata items to.
+        """
+        try:
+            variable = netcdf_group.variables[self.input_name]
+        except KeyError as err:
+            raise KeyError(
+                f"The variable '{self.input_name}' was not found in the provided "
+                f"NetCDF group."
+            ) from err
+        dim_meta = DimMetadata(tiledb_array.meta, self.name)
+        for key in variable.ncattrs():
+            safe_set_metadata(dim_meta, key, variable.getncattr(key))
 
     def get_values(
         self,
@@ -737,6 +755,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
             dim_query.append(
                 dim_creator.base.get_values(netcdf_group, sparse=self.sparse)
             )
+            dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
         if self.sparse:
             coord_values = tuple(
                 dim_data.flatten()

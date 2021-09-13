@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import AttrMetadata, Group, from_netcdf
+from tiledb.cf import AttrMetadata, DimMetadata, Group, from_netcdf
 from tiledb.cf.engines.netcdf4_engine import NetCDF4ConverterEngine
 
 netCDF4 = pytest.importorskip("netCDF4")
@@ -48,7 +48,7 @@ class ConvertNetCDFBase:
                 if variable.name in self.variable_data:
                     variable[...] = self.variable_data[variable.name]
                 if variable.name in self.variable_metadata:
-                    variable.setncattrs(self.variable_metadata[variable.name])
+                    variable.setncatts(self.variable_metadata[variable.name])
         return filepath
 
     def check_attrs(self, group_uri):
@@ -195,6 +195,10 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
         "x": np.array([2.0, 5.0, -1.0, 4.0]),
         "y": np.array([4.0, 25.0, 1.0, 16.0]),
     }
+    variable_metadata = {
+        "x": {"description": "x array"},
+        "y": {"description": "y array"},
+    }
     attr_to_var_map = {"x.data": "x", "y": "y"}
 
     @pytest.mark.parametrize("collect_attrs", [True, False])
@@ -213,6 +217,14 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
                 schema = array.schema
                 assert schema.sparse
                 data = array[:]
+                attr_meta = AttrMetadata(array.meta, "y")
+                assert (
+                    attr_meta["description"] == "y array"
+                ), "attribute metadata not correctly copied."
+                dim_meta = DimMetadata(array.meta, "x")
+                assert (
+                    dim_meta["description"] == "x array"
+                ), "dim metadata not correctly copied."
         index = np.argsort(data["x"])
         x = data["x"][index]
         y = data["y"][index]
