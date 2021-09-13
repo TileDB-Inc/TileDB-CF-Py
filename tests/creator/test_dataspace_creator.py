@@ -61,6 +61,11 @@ class TestDataspaceCreatorExample1:
         assert isinstance(array_creator, ArrayCreator)
         assert array_creator.name == "A2"
 
+    def test_get_array_creator_by_attr(self, dataspace_creator):
+        array_creator = dataspace_creator.get_array_creator_by_attr("d")
+        assert isinstance(array_creator, ArrayCreator)
+        assert array_creator.name == "A2"
+
     def test_shared_dims(self, dataspace_creator):
         dim_names = set()
         for shared_dim in dataspace_creator.shared_dims():
