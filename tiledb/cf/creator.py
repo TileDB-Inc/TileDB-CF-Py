@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import warnings
 from abc import ABCMeta
 from collections import OrderedDict
 from io import StringIO
@@ -98,6 +99,69 @@ class DataspaceCreator:
         return output.getvalue()
 
     def add_array(
+        self,
+        array_name: str,
+        dims: Sequence[str],
+        cell_order: str = "row-major",
+        tile_order: str = "row-major",
+        capacity: int = 0,
+        tiles: Optional[Sequence[int]] = None,
+        coords_filters: Optional[tiledb.FilterList] = None,
+        dim_filters: Optional[Dict[str, tiledb.FilterList]] = None,
+        offsets_filters: Optional[tiledb.FilterList] = None,
+        allows_duplicates: bool = False,
+        sparse: bool = False,
+    ):
+        """Adds a new array to the CF dataspace.
+
+        The name of each array must be unique. All other properties should satisfy
+        the same requirements as a ``tiledb.ArraySchema``.
+
+        Parameters:
+            array_name: Name of the new array to be created.
+            dims: An ordered list of the names of the shared dimensions for the domain
+                of this array.
+            cell_order: The order in which TileDB stores the cells on disk inside a
+                tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
+                ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert
+                curve.
+            tile_order: The order in which TileDB stores the tiles on disk. Valid values
+                are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
+                ``F`` for column major.
+            capacity: The number of cells in a data tile of a sparse fragment.
+            tiles: An optional ordered list of tile sizes for the dimensions of the
+                array. The length must match the number of dimensions in the array.
+            coords_filters: Filters for all dimensions that are not otherwise set by
+                ``dim_filters.``
+            dim_filters: A dict from dimension name to a :class:`tiledb.FilterList`
+                for dimensions in the array. Overrides the values set in
+                ``coords_filters``.
+            offsets_filters: Filters for the offsets for variable length attributes or
+                dimensions.
+            allows_duplicates: Specifies if multiple values can be stored at the same
+                 coordinate. Only allowed for sparse arrays.
+            sparse: Specifies if the array is a sparse TileDB array (true) or dense
+                TileDB array (false).
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use add_array_creator instead.", DeprecationWarning
+            )
+        self.add_array_creator(
+            array_name=array_name,
+            dims=dims,
+            cell_order=cell_order,
+            tile_order=tile_order,
+            capacity=capacity,
+            tiles=tiles,
+            coords_filters=coords_filters,
+            dim_filters=dim_filters,
+            offsets_filters=offsets_filters,
+            allows_duplicates=allows_duplicates,
+            sparse=sparse,
+        )
+
+    def add_array_creator(
         self,
         array_name: str,
         dims: Sequence[str],

@@ -14,19 +14,19 @@ class TestDataspaceCreatorExample1:
         creator = DataspaceCreator()
         creator.add_dim("pressure.index", (0, 3), np.uint64)
         creator.add_dim("temperature", (1, 8), np.uint64)
-        creator.add_array("A1", ("pressure.index",))
+        creator.add_array_creator("A1", ("pressure.index",))
         filters = tiledb.FilterList(
             [
                 tiledb.ZstdFilter(level=1),
             ]
         )
-        creator.add_array(
+        creator.add_array_creator(
             "A2",
             ("pressure.index", "temperature"),
             sparse=True,
             dim_filters={"temperature": filters},
         )
-        creator.add_array("A3", ("temperature",))
+        creator.add_array_creator("A3", ("temperature",))
         creator.set_array_properties("A1", tiles=(2,))
         creator.set_array_properties("A2", tiles=(2, 4))
         creator.set_array_properties("A3", tiles=[8])
@@ -165,16 +165,16 @@ def test_create_array_no_array_error():
 def test_array_name_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (0, 3), np.int64)
-    creator.add_array("array1", ("row",))
+    creator.add_array_creator("array1", ("row",))
     with pytest.raises(ValueError):
-        creator.add_array("array1", ("row",))
+        creator.add_array_creator("array1", ("row",))
 
 
 def test_array_name_reserved_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (0, 3), np.int64)
     with pytest.raises(ValueError):
-        creator.add_array(METADATA_ARRAY_NAME, ("row",))
+        creator.add_array_creator(METADATA_ARRAY_NAME, ("row",))
 
 
 def test_add_attr_no_array_error():
@@ -186,8 +186,8 @@ def test_add_attr_no_array_error():
 def test_add_attr_name_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (0, 3), np.int64)
-    creator.add_array("array1", ("row",))
-    creator.add_array("array2", ("row",))
+    creator.add_array_creator("array1", ("row",))
+    creator.add_array_creator("array2", ("row",))
     creator.add_attr("attr1", "array1", np.float64)
     with pytest.raises(ValueError):
         creator.add_attr("attr1", "array2", np.float64)
@@ -196,7 +196,7 @@ def test_add_attr_name_exists_error():
 def test_add_attr_dim_name_in_array_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (0, 3), np.uint64)
-    creator.add_array("array1", ("row",))
+    creator.add_array_creator("array1", ("row",))
     with pytest.raises(ValueError):
         creator.add_attr("row", "array1", np.float64)
 
@@ -204,8 +204,8 @@ def test_add_attr_dim_name_in_array_exists_error():
 def test_add_attr_axis_data_coord_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", (0, 3), np.int64)
-    creator.add_array("array1", ("row",))
-    creator.add_array("array2", ("row",))
+    creator.add_array_creator("array1", ("row",))
+    creator.add_array_creator("array2", ("row",))
     creator.add_attr("attr1", "array1", np.float64)
     with pytest.raises(ValueError):
         creator.add_attr("attr1.data", "array2", np.float64)
@@ -227,7 +227,7 @@ def test_get_property_attr_key_error():
 def test_remove_empty_array():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 10], np.int64)
-    creator.add_array("A1", ["row"])
+    creator.add_array_creator("A1", ["row"])
     creator.remove_array("A1")
     assert set(creator.array_names) == set()
 
@@ -235,8 +235,8 @@ def test_remove_empty_array():
 def test_remove_array_with_attrs():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 10], np.int64)
-    creator.add_array("A1", ["row"])
-    creator.add_array("A2", ["row"])
+    creator.add_array_creator("A1", ["row"])
+    creator.add_array_creator("A2", ["row"])
     creator.add_attr("x1", "A1", np.float64)
     creator.add_attr("x2", "A1", np.float64)
     creator.add_attr("y1", "A2", np.float64)
@@ -248,8 +248,8 @@ def test_remove_array_with_attrs():
 def test_remove_renamed_array():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 10], np.int64)
-    creator.add_array("A1", ["row"])
-    creator.add_array("A2", ["row"])
+    creator.add_array_creator("A1", ["row"])
+    creator.add_array_creator("A2", ["row"])
     creator.add_attr("x1", "A1", np.float64)
     creator.add_attr("x2", "A1", np.float64)
     creator.add_attr("y1", "A2", np.float64)
@@ -262,12 +262,12 @@ def test_remove_renamed_array():
 def test_remove_attr():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("A1", ["row"])
+    creator.add_array_creator("A1", ["row"])
     creator.add_attr("x1", "A1", np.float64)
     assert set(creator.attr_names) == {"x1"}
     creator.remove_attr("x1")
     assert set(creator.attr_names) == set()
-    creator.add_array("A2", ["row"])
+    creator.add_array_creator("A2", ["row"])
     creator.add_attr("x1", "A2", np.float64)
     assert set(creator.attr_names) == {"x1"}
 
@@ -275,7 +275,7 @@ def test_remove_attr():
 def test_remove_attr_no_attr_error():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("A1", ["row"])
+    creator.add_array_creator("A1", ["row"])
     with pytest.raises(KeyError):
         creator.remove_attr("x1")
 
@@ -299,8 +299,8 @@ def test_remove_dim_axis_data():
 def test_remove_dim_in_use_error():
     creator = DataspaceCreator()
     creator.add_dim("row.data", [0.0, 100.0], np.float64)
-    creator.add_array("A1", ["row.data"], sparse=True)
-    creator.add_array("A2", ["row.data"], sparse=True)
+    creator.add_array_creator("A1", ["row.data"], sparse=True)
+    creator.add_array_creator("A2", ["row.data"], sparse=True)
     with pytest.raises(ValueError):
         creator.remove_dim("row.data")
 
@@ -308,7 +308,7 @@ def test_remove_dim_in_use_error():
 def test_rename_array():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("A1", ["row"])
+    creator.add_array_creator("A1", ["row"])
     assert set(creator.array_names) == {"A1"}
     creator.rename_array("A1", "B1")
     assert set(creator.array_names) == {"B1"}
@@ -318,7 +318,7 @@ def test_rename_array_with_attrs():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 3], np.int32)
     creator.add_dim("col", [0, 3], np.int32)
-    creator.add_array("A1", ["row", "col"], sparse=True, tiles=[2, 2])
+    creator.add_array_creator("A1", ["row", "col"], sparse=True, tiles=[2, 2])
     creator.add_attr("x1", "A1", np.float64)
     creator.add_attr("x2", "A1", np.float64)
     assert set(creator.array_names) == {"A1"}
@@ -329,8 +329,8 @@ def test_rename_array_with_attrs():
 def test_rename_array_name_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("A1", ["row"])
-    creator.add_array("B1", ["row"])
+    creator.add_array_creator("A1", ["row"])
+    creator.add_array_creator("B1", ["row"])
     with pytest.raises(ValueError):
         creator.rename_array("A1", "B1")
 
@@ -338,7 +338,7 @@ def test_rename_array_name_exists_error():
 def test_rename_attr():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("A1", ["row"])
+    creator.add_array_creator("A1", ["row"])
     creator.add_attr("x1", "A1", np.float64)
     assert set(creator.attr_names) == {"x1"}
     creator.rename_attr("x1", "y1")
@@ -350,7 +350,7 @@ def test_rename_attr():
 def test_rename_attr_with_set_attr_properties():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("A1", ["row"])
+    creator.add_array_creator("A1", ["row"])
     creator.add_attr("x1", "A1", np.float64)
     assert set(creator.attr_names) == {"x1"}
     creator.set_attr_properties("x1", name="y1")
@@ -362,7 +362,7 @@ def test_rename_attr_with_set_attr_properties():
 def test_rename_attr_name_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("A1", ["row"])
+    creator.add_array_creator("A1", ["row"])
     creator.add_attr("x1", "A1", np.float64)
     creator.add_attr("y1", "A1", np.float64)
     with pytest.raises(ValueError):
@@ -372,7 +372,7 @@ def test_rename_attr_name_exists_error():
 def test_rename_attr_dim_name_in_array_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("y1", (0, 4), np.int32)
-    creator.add_array("A1", ["y1"])
+    creator.add_array_creator("A1", ["y1"])
     creator.add_attr("x1", "A1", np.float64)
     with pytest.raises(ValueError):
         creator.rename_attr("x1", "y1")
@@ -397,7 +397,7 @@ def test_rename_dim_dataspace_axis():
 def test_rename_dim_used():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("A1", ["row"])
+    creator.add_array_creator("A1", ["row"])
     assert set(creator.dim_names) == {"row"}
     creator.rename_dim("row", "unit")
     assert set(creator.dim_names) == {"unit"}
@@ -409,7 +409,7 @@ def test_rename_dim_used():
 def test_array_no_dims_error():
     creator = DataspaceCreator()
     with pytest.raises(ValueError):
-        creator.add_array("A1", [])
+        creator.add_array_creator("A1", [])
 
 
 def test_rename_dim_name_exists_in_dataspace_error():
@@ -431,7 +431,7 @@ def test_rename_dim_no_merge_error():
 def test_rename_dim_attr_name__in_array_exists_error():
     creator = DataspaceCreator()
     creator.add_dim("y1", (0, 4), np.int32)
-    creator.add_array("A1", ["y1"])
+    creator.add_array_creator("A1", ["y1"])
     creator.add_attr("x1", "A1", np.float64)
     with pytest.raises(ValueError):
         creator.rename_dim("y1", "x1")
@@ -440,7 +440,7 @@ def test_rename_dim_attr_name__in_array_exists_error():
 def test_set_attr_property():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("A1", ["row"])
+    creator.add_array_creator("A1", ["row"])
     creator.add_attr("x1", "A1", np.float64)
     creator.set_attr_properties("x1", fill=-1)
     group_schema = creator.to_schema()
@@ -475,7 +475,7 @@ def test_set_dim_name():
 def test_set_dim_dtype_with_array_check():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, 7], np.int64)
-    creator.add_array("array1", ("row",))
+    creator.add_array_creator("array1", ("row",))
     creator.set_dim_properties("row", dtype=np.uint32)
     dtype = creator.get_dim_property("row", "dtype")
     assert dtype == np.dtype(np.uint32)
@@ -498,7 +498,7 @@ def test_dataspace_creator_name():
 def test_to_schema_bad_array():
     creator = DataspaceCreator()
     creator.add_dim("row", [0, -1], np.int64)
-    creator.add_array("A1", ("row",))
+    creator.add_array_creator("A1", ("row",))
     creator.add_attr("x1", "A1", dtype=np.float64)
     with pytest.raises(RuntimeError):
         creator.to_schema()
