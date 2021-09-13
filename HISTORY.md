@@ -28,6 +28,7 @@
 * Deprecates `NetCDF4ConverterEngine.add_scalar_dim_converter` in favor of `NetCDF4ConverterEngine.add_scalar_to_dim_converter`.
 * Deprecates `Dataspace.add_array` in favor of `Dataspace.add_array_creator`.
 * Deprecates `Dataspace.add_attr` in favor of `Dataspace.add_attr_creator`.
+* Deprecates `Dataspace.add_dim` in favor of `Dataspace.add_shared_dim`.
 
 ## TileDB-CF-Py Release 0.3.0
 

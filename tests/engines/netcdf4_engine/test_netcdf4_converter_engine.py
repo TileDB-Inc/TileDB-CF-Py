@@ -738,6 +738,6 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
 
 def test_bad_dims_error():
     converter = NetCDF4ConverterEngine()
-    converter.add_dim("row", (0, 10), np.uint32)
+    converter.add_shared_dim("row", (0, 10), np.uint32)
     with pytest.raises(NotImplementedError):
         converter.add_array_converter("array0", ("row",))

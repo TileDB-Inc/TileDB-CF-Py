@@ -280,6 +280,21 @@ class DataspaceCreator:
         array_creator.add_attr_creator(attr_name, dtype, fill, var, nullable, filters)
 
     def add_dim(self, dim_name: str, domain: Tuple[Any, Any], dtype: np.dtype):
+        """(DEPRECATED) Adds a new dimension to the CF dataspace.
+
+        Parameters:
+            dim_name: Name of the new dimension to be created.
+            domain: The (inclusive) interval on which the dimension is valid.
+            dtype: The numpy dtype of the values and domain of the dimension.
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use add_shared_dim instead.",
+                DeprecationWarning,
+            )
+        SharedDim(self._registry, dim_name, domain, dtype)
+
+    def add_shared_dim(self, dim_name: str, domain: Tuple[Any, Any], dtype: np.dtype):
         """Adds a new dimension to the CF dataspace.
 
         Each dimension name must be unique. Adding a dimension where the name, domain,
