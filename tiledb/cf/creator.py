@@ -284,6 +284,14 @@ class DataspaceCreator:
         """
         return self._registry.get_array_creator(array_name)
 
+    def get_array_creator_by_attr(self, attr_name: str):
+        """Returns the array creator with the requested attribute in it.
+
+        Parameters:
+            attr_name: Name of the attribute to return the array creator with.
+        """
+        return self._registry.get_array_creator_by_attr(attr_name)
+
     def get_array_property(self, array_name: str, property_name: str) -> Any:
         """Returns a requested property from an array in the CF dataspace.
 
