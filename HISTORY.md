@@ -10,6 +10,8 @@
 
 ### Improvements
 
+* Updates `NetCDF4CreatorEngine` to copy variable metadata when copying a NetCDF coordinate to a TileDB dimension.
+
 ### Deprecation
 
 ## TileDB-CF-Py Release 0.4.0
