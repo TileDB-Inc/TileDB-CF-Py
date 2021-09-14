@@ -458,7 +458,8 @@ class DataspaceCreator:
         return getattr(attr_creator, property_name)
 
     def get_dim_property(self, dim_name: str, property_name: str) -> Any:
-        """(DEPRECATED) Returns a requested property for a dimension in the CF dataspace.
+        """(DEPRECATED) Returns a requested property for a dimension in the CF
+        dataspace.
 
         Parameters:
             dim_name: Name of the dimension to get the property from.
@@ -482,6 +483,19 @@ class DataspaceCreator:
         return self._registry.get_shared_dim(dim_name)
 
     def remove_array(self, array_name: str):
+        """(DEPRECATED). Removes the specified array and all its attributes from the CF
+        dataspace.
+
+        Parameters:
+            array_name: Name of the array that will be removed.
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use remove_array_creator instead.", DeprecationWarning
+            )
+        self.remove_array_creator(array_name)
+
+    def remove_array_creator(self, array_name: str):
         """Removes the specified array and all its attributes from the CF dataspace.
 
         Parameters:
@@ -490,6 +504,18 @@ class DataspaceCreator:
         self._registry.deregister_array_creator(array_name)
 
     def remove_attr(self, attr_name: str):
+        """Removes the specified attribute from the CF dataspace.
+
+        Parameters:
+            attr_name: Name of the attribute that will be removed.
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use remove_attr_creator instead.", DeprecationWarning
+            )
+        self.remove_attr_creator(attr_name)
+
+    def remove_attr_creator(self, attr_name: str):
         """Removes the specified attribute from the CF dataspace.
 
         Parameters:
@@ -507,6 +533,21 @@ class DataspaceCreator:
         Parameters:
             dim_name: Name of the dimension to be removed.
         """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use remove_shared_dim instead.", DeprecationWarning
+            )
+        self.remove_shared_dim(dim_name)
+
+    def remove_shared_dim(self, dim_name: str):
+        """Removes the specified dimension from the CF dataspace.
+
+        This can only be used to remove dimensions that are not currently being used in
+        an array.
+
+        Parameters:
+            dim_name: Name of the dimension to be removed.
+        """
         self._registry.deregister_shared_dim(dim_name)
 
     def rename_array(self, original_name: str, new_name: str):
@@ -516,7 +557,12 @@ class DataspaceCreator:
             original_name: Current name of the array to be renamed.
             new_name: New name the array will be renamed to.
         """
-        # TODO: deprecate and replace with direct call to array name
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set array creator properties directly in the array "
+                f"creator, accessible with get_array_creator({original_name}).",
+                DeprecationWarning,
+            )
         self._registry.get_array_creator(original_name).name = new_name
 
     def rename_attr(self, original_name: str, new_name: str):
@@ -526,18 +572,29 @@ class DataspaceCreator:
             original_name: Current name of the attribute to be renamed.
             new_name: New name the attribute will be renamed to.
         """
-        # TODO: deprecate and replace with direct call to attribute name
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set attribute creator properties directly from attribute"
+                f"creator, accessible with get_array_creator_by_attr({original_name})."
+                f"attr_creator({original_name}).",
+                DeprecationWarning,
+            )
         attr_creator = self._registry.get_attr_creator(original_name)
         attr_creator.name = new_name
 
     def rename_dim(self, original_name: str, new_name: str):
-        """Renames a dimension in the CF dataspace.
+        """(DEPRECATED) Renames a dimension in the CF dataspace.
 
         Parameters:
             original_name: Current name of the dimension to be renamed.
             new_name: New name the dimension will be renamed to.
         """
-        # TODO: deprecate and replace with direct call to dimension name
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set shared dimension properties directly in the shared "
+                f"dimension accessible with get_shared_dim({original_name}).",
+                DeprecationWarning,
+            )
         self._registry.get_shared_dim(original_name).name = new_name
 
     def set_array_properties(self, array_name: str, **properties):
@@ -584,7 +641,6 @@ class DataspaceCreator:
                 f"attr_creator({attr_name}).",
                 DeprecationWarning,
             )
-
         attr_creator = self._registry.get_attr_creator(attr_name)
         for property_name, value in properties.items():
             setattr(attr_creator, property_name, value)

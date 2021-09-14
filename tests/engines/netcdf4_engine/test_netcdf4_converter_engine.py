@@ -144,13 +144,13 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
 
     def test_rename_array(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        converter.rename_array("array0", "A1")
+        converter.get_array_creator("array0").name = "A1"
         names = {array_creator.name for array_creator in converter.array_creators()}
         assert names == set(["A1"])
 
     def test_rename_attr(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        converter.rename_attr("x1", "y1")
+        converter.get_array_creator_by_attr("x1").attr_creator("x1").name = "y1"
         attr_names = {
             attr_creator.name for attr_creator in next(converter.array_creators())
         }
@@ -158,7 +158,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
 
     def test_rename_dim(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        converter.rename_dim("row", "col")
+        converter.get_shared_dim("row").name = "col"
         dim_names = {shared_dim.name for shared_dim in converter.shared_dims()}
         assert dim_names == set(["col"])
 

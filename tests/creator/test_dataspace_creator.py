@@ -236,7 +236,7 @@ def test_remove_empty_array():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 10], np.int64)
     creator.add_array_creator("A1", ["row"])
-    creator.remove_array("A1")
+    creator.remove_array_creator("A1")
     assert set(creator.array_creators()) == set()
 
 
@@ -248,7 +248,7 @@ def test_remove_array_with_attrs():
     creator.add_attr_creator("x1", "A1", np.float64)
     creator.add_attr_creator("x2", "A1", np.float64)
     creator.add_attr_creator("y1", "A2", np.float64)
-    creator.remove_array("A2")
+    creator.remove_array_creator("A2")
     array_creators = creator.array_creators()
     assert next(array_creators).name == "A1"
     assert tuple(array_creators) == tuple()
@@ -262,8 +262,8 @@ def test_remove_renamed_array():
     creator.add_attr_creator("x1", "A1", np.float64)
     creator.add_attr_creator("x2", "A1", np.float64)
     creator.add_attr_creator("y1", "A2", np.float64)
-    creator.rename_array("A2", "B1")
-    creator.remove_array("B1")
+    creator.get_array_creator("A2").name = "B1"
+    creator.remove_array_creator("B1")
     array_names = {array_creator.name for array_creator in creator.array_creators()}
     assert array_names == {"A1"}
 
@@ -275,7 +275,7 @@ def test_remove_attr():
     creator.add_attr_creator("x1", "A1", np.float64)
     array_creator = creator.get_array_creator("A1")
     assert array_creator.nattr == 1
-    creator.remove_attr("x1")
+    creator.remove_attr_creator("x1")
     assert array_creator.nattr == 0
     creator.add_array_creator("A2", ["row"])
     creator.add_attr_creator("x1", "A2", np.float64)
@@ -287,7 +287,7 @@ def test_remove_attr_no_attr_error():
     creator.add_shared_dim("row", [0, 7], np.int64)
     creator.add_array_creator("A1", ["row"])
     with pytest.raises(KeyError):
-        creator.remove_attr("x1")
+        creator.remove_attr_creator("x1")
 
 
 def test_remove_dim():
@@ -295,7 +295,7 @@ def test_remove_dim():
     creator.add_shared_dim("row", [0, 7], np.int32)
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == set(["row"])
-    creator.remove_dim("row")
+    creator.remove_shared_dim("row")
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == set()
 
@@ -305,7 +305,7 @@ def test_remove_dim_axis_data():
     creator.add_shared_dim("row.data", [0.0, 100.0], np.float64)
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == {"row.data"}
-    creator.remove_dim("row.data")
+    creator.remove_shared_dim("row.data")
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == set()
 
@@ -316,7 +316,7 @@ def test_remove_dim_in_use_error():
     creator.add_array_creator("A1", ["row.data"], sparse=True)
     creator.add_array_creator("A2", ["row.data"], sparse=True)
     with pytest.raises(ValueError):
-        creator.remove_dim("row.data")
+        creator.remove_shared_dim("row.data")
 
 
 def test_rename_array():
@@ -325,7 +325,7 @@ def test_rename_array():
     creator.add_array_creator("A1", ["row"])
     array_names = {array.name for array in creator.array_creators()}
     assert array_names == {"A1"}
-    creator.rename_array("A1", "B1")
+    creator.get_array_creator("A1").name = "B1"
     array_names = {array.name for array in creator.array_creators()}
     assert array_names == {"B1"}
 
@@ -339,7 +339,7 @@ def test_rename_array_with_attrs():
     creator.add_attr_creator("x2", "A1", np.float64)
     array_names = {array.name for array in creator.array_creators()}
     assert array_names == {"A1"}
-    creator.rename_array("A1", "B1")
+    creator.get_array_creator("A1").name = "B1"
     array_names = {array.name for array in creator.array_creators()}
     assert array_names == {"B1"}
 
@@ -350,7 +350,7 @@ def test_rename_array_name_exists_error():
     creator.add_array_creator("A1", ["row"])
     creator.add_array_creator("B1", ["row"])
     with pytest.raises(ValueError):
-        creator.rename_array("A1", "B1")
+        creator.get_array_creator("A1").name = "B1"
 
 
 def test_rename_attr():
@@ -361,7 +361,7 @@ def test_rename_attr():
     A1 = creator.get_array_creator("A1")
     assert A1.nattr == 1
     assert A1.attr_creator(0).name == "x1"
-    creator.rename_attr("x1", "y1")
+    A1.attr_creator(0).name = "y1"
     assert A1.attr_creator(0).name == "y1"
     group_schema = creator.to_schema()
     assert group_schema["A1"].has_attr("y1")
@@ -374,7 +374,7 @@ def test_rename_attr_name_exists_error():
     creator.add_attr_creator("x1", "A1", np.float64)
     creator.add_attr_creator("y1", "A1", np.float64)
     with pytest.raises(ValueError):
-        creator.rename_attr("x1", "y1")
+        creator.get_array_creator("A1").attr_creator("x1").name = "y1"
 
 
 def test_rename_attr_dim_name_in_array_exists_error():
@@ -383,7 +383,7 @@ def test_rename_attr_dim_name_in_array_exists_error():
     creator.add_array_creator("A1", ["y1"])
     creator.add_attr_creator("x1", "A1", np.float64)
     with pytest.raises(ValueError):
-        creator.rename_attr("x1", "y1")
+        creator.get_array_creator("A1").attr_creator("x1").name = "y1"
 
 
 def test_rename_dim_not_used():
@@ -391,7 +391,7 @@ def test_rename_dim_not_used():
     creator.add_shared_dim("row", [0, 3], np.int32)
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == {"row"}
-    creator.rename_dim("row", "col")
+    creator.get_shared_dim("row").name = "col"
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == {"col"}
 
@@ -401,7 +401,7 @@ def test_rename_dim_dataspace_axis():
     creator.add_shared_dim("row", [0, 3], np.float64)
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == {"row"}
-    creator.rename_dim("row", "col")
+    creator.get_shared_dim("row").name = "col"
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == {"col"}
 
@@ -412,7 +412,7 @@ def test_rename_dim_used():
     creator.add_array_creator("A1", ["row"])
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == {"row"}
-    creator.rename_dim("row", "unit")
+    creator.get_shared_dim("row").name = "unit"
     dim_names = set(dim.name for dim in creator.shared_dims())
     assert dim_names == {"unit"}
     creator.add_attr_creator("x1", "A1", np.int32)
@@ -431,7 +431,7 @@ def test_rename_dim_name_exists_in_dataspace_error():
     creator.add_shared_dim("row", [0, 3], np.int32)
     creator.add_shared_dim("col", [0, 7], np.int32)
     with pytest.raises(NotImplementedError):
-        creator.rename_dim("col", "row")
+        creator.get_shared_dim("col").name = "row"
 
 
 def test_rename_dim_no_merge_error():
@@ -439,7 +439,7 @@ def test_rename_dim_no_merge_error():
     creator.add_shared_dim("row", [0, 3], np.int32)
     creator.add_shared_dim("col", [0, 3], np.int32)
     with pytest.raises(NotImplementedError):
-        creator.rename_dim("col", "row")
+        creator.get_shared_dim("col").name = "row"
 
 
 def test_rename_dim_attr_name__in_array_exists_error():
@@ -448,7 +448,7 @@ def test_rename_dim_attr_name__in_array_exists_error():
     creator.add_array_creator("A1", ["y1"])
     creator.add_attr_creator("x1", "A1", np.float64)
     with pytest.raises(ValueError):
-        creator.rename_dim("y1", "x1")
+        creator.get_shared_dim("y1").name = "x1"
 
 
 def test_set_attr_property():
