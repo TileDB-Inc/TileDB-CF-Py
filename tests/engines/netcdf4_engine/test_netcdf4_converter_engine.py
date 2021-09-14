@@ -249,8 +249,9 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             collect_attrs=collect_attrs,
             tiles_by_var={"y": (100.0,)},
         )
-        tiles = converter.get_array_property(array_name, "tiles")
-        assert tiles == (100.0,)
+        domain_creator = converter.get_array_creator(array_name).domain_creator
+        tile = domain_creator.dim_creator(0).tile
+        assert tile == 100.0
 
     @pytest.mark.parametrize(
         "collect_attrs, array_name", [(True, "array0"), (False, "y")]
@@ -262,8 +263,9 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             collect_attrs=collect_attrs,
             tiles_by_dims={("x",): (100.0,)},
         )
-        tiles = converter.get_array_property(array_name, "tiles")
-        assert tiles == (100.0,)
+        domain_creator = converter.get_array_creator(array_name).domain_creator
+        tile = domain_creator.dim_creator(0).tile
+        assert tile == 100.0
 
     def test_convert_coordinate_domain_not_set_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=True)
