@@ -456,7 +456,8 @@ def test_set_attr_property():
     creator.add_shared_dim("row", [0, 7], np.int64)
     creator.add_array_creator("A1", ["row"])
     creator.add_attr_creator("x1", "A1", np.float64)
-    creator.set_attr_properties("x1", fill=-1)
+    with pytest.warns(DeprecationWarning):
+        creator.set_attr_properties("x1", fill=-1)
     group_schema = creator.to_schema()
     attr_schema = group_schema["A1"].attr(0)
     assert attr_schema.fill == -1
@@ -465,7 +466,8 @@ def test_set_attr_property():
 def test_set_dim_dtype():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 7], np.int64)
-    creator.set_dim_properties("row", dtype=np.float64)
+    with pytest.warns(DeprecationWarning):
+        creator.set_dim_properties("row", dtype=np.float64)
     shared_dim = creator.get_shared_dim("row")
     assert shared_dim.dtype == np.dtype(np.float64)
 
@@ -473,7 +475,8 @@ def test_set_dim_dtype():
 def test_set_dim_domain():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 7], np.int64)
-    creator.set_dim_properties("row", domain=(1, 8))
+    with pytest.warns(DeprecationWarning):
+        creator.set_dim_properties("row", domain=(1, 8))
     shared_dim = creator.get_shared_dim("row")
     assert shared_dim.domain == (1, 8)
 
@@ -481,15 +484,17 @@ def test_set_dim_domain():
 def test_set_dim_name():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 7], np.int64)
-    creator.set_dim_properties("row", name="column")
+    with pytest.warns(DeprecationWarning):
+        creator.set_dim_properties("row", name="column")
     shared_dim = creator.get_shared_dim("column")
     assert isinstance(shared_dim, SharedDim)
 
 
 def test_set_attr_property_no_attr_err():
-    creator = DataspaceCreator()
-    with pytest.raises(KeyError):
-        creator.set_attr_properties("x1", fill=-1)
+    with pytest.warns(DeprecationWarning):
+        creator = DataspaceCreator()
+        with pytest.raises(KeyError):
+            creator.set_attr_properties("x1", fill=-1)
 
 
 def test_dataspace_creator_name():

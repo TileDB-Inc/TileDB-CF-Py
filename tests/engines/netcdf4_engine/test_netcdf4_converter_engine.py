@@ -205,7 +205,8 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=collect_attrs,
         )
-        converter.set_dim_properties("x", domain=(None, None))
+        shared_x = converter.get_shared_dim("x")
+        shared_x.domain = (None, None)
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="y") as array:
@@ -225,7 +226,8 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=True,
         )
-        converter.set_dim_properties("x", domain=(None, None))
+        shared_x = converter.get_shared_dim("x")
+        shared_x.domain = (None, None)
         converter.convert_to_array(uri)
         with tiledb.open(uri, attr="y") as array:
             schema = array.schema
@@ -305,8 +307,10 @@ class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=collect_attrs,
         )
-        converter.set_dim_properties("x", domain=(None, None))
-        converter.set_dim_properties("y", domain=(None, None))
+        shared_x = converter.get_shared_dim("x")
+        shared_x.domain = (None, None)
+        shared_y = converter.get_shared_dim("y")
+        shared_y.domain = (None, None)
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="z") as array:
@@ -364,7 +368,8 @@ class TestConvertNetCDFCoordWithTiles(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=collect_attrs,
         )
-        converter.set_dim_properties("index", domain=(1, 4))
+        index_dim = converter.get_shared_dim("index")
+        index_dim.domain = (1, 4)
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="y") as array:

@@ -543,34 +543,16 @@ class DataspaceCreator:
     def set_array_properties(self, array_name: str, **properties):
         """Sets properties for an array in the CF dataspace.
 
-        Valid properties are:
-
-            * ``cell_order``: The order in which TileDB stores the cells on disk inside
-              a tile. Valid values are: ``row-major`` (default) or ``C`` for row
-              major; ``col-major`` or ``F`` for column major; or ``Hilbert`` for a
-              Hilbert curve.
-            * ``tile_order``: The order in which TileDB stores the tiles on disk. Valid
-              values are: ``row-major`` or ``C`` (default) for row major; or
-              ``col-major`` or ``F`` for column major.
-            * ``capacity``: The number of cells in a data tile of a sparse fragment.
-            * ``tiles``: An optional ordered list of tile sizes for the dimensions of
-              the array. The length must match the number of dimensions in the array.
-            * ``coords_filters``: Filters for all dimensions that do not otherwise have
-              a specified filter list.
-            * ``dim_filters``: A dict from dimension name to a ``FilterList`` for
-              dimensions in the array. Overrides the values set in ``coords_filters``.
-            * ``offsets_filters``: Filters for the offsets for variable length
-              attributes or dimensions.
-            * ``allows_duplicates``: Specifies if multiple values can be stored at the
-              same coordinate. Only allowed for sparse arrays.
-            * ``sparse``: Specifies if the array is a sparse TileDB array (true) or
-              dense TileDB array (false).
-
         Parameters:
             array_name: Name of the array to set properties for.
             properties: Keyword arguments for array properties.
         """
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set array creator properties directly in the array "
+                f"creator, accessible with get_array_creator({array_name}).",
+                DeprecationWarning,
+            )
         array_creator = self._registry.get_array_creator(array_name)
         if "tiles" in properties:
             tiles = properties.pop("tiles")
@@ -591,20 +573,18 @@ class DataspaceCreator:
     def set_attr_properties(self, attr_name: str, **properties):
         """Sets properties for an attribute in the CF dataspace.
 
-        Valid properties are:
-            * ``name``: The name of the attribute.
-            * ``dtype``: Numpy dtype of the attribute.
-            * ``fill``: Fill value for unset cells.
-            * ``var``: Specifies if the attribute is variable length (automatic for
-              bytes/strings).
-            * ``nullable``: Specifies if the attribute is nullable using validity tiles.
-            * ``filters``: Specifies compression filters for the attributes.
-
         Parameters:
             attr_name: Name of the attribute to set properties for.
             properties: Keyword arguments for attribute properties.
         """
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set attribute creator properties directly from attribute"
+                f"creator, accessible with get_array_creator_by_attr({attr_name})."
+                f"attr_creator({attr_name}).",
+                DeprecationWarning,
+            )
+
         attr_creator = self._registry.get_attr_creator(attr_name)
         for property_name, value in properties.items():
             setattr(attr_creator, property_name, value)
@@ -612,16 +592,16 @@ class DataspaceCreator:
     def set_dim_properties(self, dim_name: str, **properties):
         """Sets properties for a shared dimension in the CF dataspace.
 
-        Valid properties are:
-            * ``name``: The name of the dimension.
-            * ``domain``: The (inclusive) inverval on which the dimension is valid.
-            * ``dtype``: The data type of the dimension.
-
         Parameters:
             dim_name: Name of the dimension to set properties for.
             properties: Keyword arguments for dimension properties.
         """
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set shared dimension properties directly in the shared "
+                f"dimension accessible with get_shared_dim({dim_name}).",
+                DeprecationWarning,
+            )
         dim = self._registry.get_shared_dim(dim_name)
         for property_name, value in properties.items():
             setattr(dim, property_name, value)
