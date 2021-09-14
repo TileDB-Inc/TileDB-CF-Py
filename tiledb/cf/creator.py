@@ -937,12 +937,11 @@ class ArrayCreator:
     ):
         """Adds a new attribute to an array in the CF dataspace.
 
-        The 'dataspace name' (name after dropping the suffix ``.data`` or ``.index``)
-        must be unique.
+        The attribute's 'dataspace name' (name after dropping the suffix ``.data`` or
+        ``.index``) must be unique.
 
         Parameters:
-            attr_name: Name of the new attribute that will be added.
-            array_name: Name of the array the attribute will be added to.
+            name: Name of the new attribute that will be added.
             dtype: Numpy dtype of the new attribute.
             fill: Fill value for unset cells.
             var: Specifies if the attribute is variable length (automatic for

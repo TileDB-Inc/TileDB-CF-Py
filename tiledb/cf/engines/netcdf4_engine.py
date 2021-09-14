@@ -94,13 +94,6 @@ class NetCDF4ToDimConverter(SharedDim):
 class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
     """Converter for a NetCDF variable/dimension pair to a TileDB dimension.
 
-    Parameters:
-        name: Name of the TileDB dimension.
-        domain: The (inclusive) interval on which the dimension is valid.
-        dtype: The numpy dtype of the values and domain of the dimension.
-        input_name: The name of input NetCDF variable.
-        input_dtype: The numpy dtype of the input NetCDF variable.
-
     Attributes:
         name: Name of the TileDB dimension.
         domain: The (inclusive) interval on which the dimension is valid.
@@ -147,14 +140,6 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
         name: Optional[str] = None,
         domain: Optional[Tuple[DType, DType]] = None,
     ):
-        """Returns a :class:`NetCDFCoordToDimConverter` from a
-        :class:`netcdf4.Variable`.
-
-        Parameters:
-            var: The input netCDF4 variable to convert.
-            dim_name: The name of the output TileDB dimension. If ``None``, the name
-                will be the same as the name of the input NetCDF variable.
-        """
         if len(var.dimensions) != 1:
             raise ValueError(
                 f"Cannot create dimension from variable '{var.name}' with shape "
@@ -243,14 +228,6 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
 class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
     """Converter for a NetCDF dimension to a TileDB dimension.
 
-    Parameters:
-        name: Name of the TileDB dimension.
-        domain: The (inclusive) interval on which the dimension is valid.
-        dtype: The numpy dtype of the values and domain of the dimension.
-        input_name: Name of the input NetCDF variable.
-        input_size: Size of the input NetCDF variable.
-        is_unlimited: If True, the input NetCDF variable is unlimited.
-
     Attributes:
         name: Name of the TileDB dimension.
         domain: The (inclusive) interval on which the dimension is valid.
@@ -304,19 +281,6 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
         dtype: np.dtype,
         name: Optional[str] = None,
     ):
-        """Returns a :class:`NetCDFDimToDimConverter` from a
-        :class:`netcdf4.Dimension`.
-
-        Parameters:
-            dim: The input netCDF4 dimension.
-            unlimited_dim_size: The size of the domain of the output TileDB dimension
-                when the input NetCDF dimension is unlimited. If ``None``, the current
-                size of the NetCDF dimension will be used.
-            dtype: The numpy dtype of the values and domain of the output TileDB
-                dimension.
-            dim_name: The name of the output TileDB dimension. If ``None``, the name
-                will be the same as the name of the input NetCDF dimension.
-        """
         size = (
             unlimited_dim_size
             if dim.isunlimited() and unlimited_dim_size is not None
@@ -379,11 +343,6 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
 class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
     """Converter for NetCDF scalar (empty) dimensions to a TileDB Dimension.
 
-    Parameters:
-        name: Name of the TileDB dimension.
-        domain: The (inclusive) interval on which the dimension is valid.
-        dtype: The numpy dtype of the values and domain of the dimension.
-
     Attributes:
         name: Name of the TileDB dimension.
         domain: The (inclusive) interval on which the dimension is valid.
@@ -432,17 +391,6 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
 
 class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
     """Converter for a NetCDF variable to a TileDB attribute.
-
-    Parameters:
-        name: Name of the new attribute.
-        dtype: Numpy dtype of the attribute.
-        fill: Fill value for unset cells.
-        var: Specifies if the attribute is variable length (automatic for
-            byte/strings).
-        nullable: Specifies if the attribute is nullable using validity tiles.
-        filters: Specifies compression filters for the attribute.
-        input_name: Name of the input NetCDF variable that will be converted.
-        input_dtype: Numpy dtype of the input NetCDF variable.
 
     Attributes:
         name: Name of the new attribute.
@@ -522,21 +470,6 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
     ):
-        """Returns a :class:`NetCDFVariableConverter` from a :class:`netCDF4.Variable`.
-
-        Parameters:
-            ncvar: The input netCDF4 variable.
-            name: The name of the output TileDB attribute. If ``None``, the name
-                will be generated from the name of the NetCDF variable.
-            dtype: The numpy dtype of the output TileDB attribute. If ``None``, the name
-                will be generated from the NetCDF variable.
-            fill: Fill value for unset values in the input NetCDF variable. If ``None``,
-                the fill value will be generated from the NetCDF variable.
-            var: Specifies if the attribute is variable length (automatic for
-                byte/strings).
-            nullable: Specifies if the attribute is nullable using validity tiles.
-            filters: Specifies compression filters for the attribute.
-        """
         if fill is None and "_FillValue" in ncvar.ncattrs():
             fill = ncvar.getncattr("_FillValue")
         if name is None:
@@ -585,28 +518,6 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
 
 class NetCDF4ArrayConverter(ArrayCreator):
     """Converter for a TileDB array from a collection of NetCDF variables.
-
-    Parameters:
-        dims: An ordered list of the shared dimensions for the domain of this array.
-        cell_order: The order in which TileDB stores the cells on disk inside a
-            tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
-            ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert curve.
-        tile_order: The order in which TileDB stores the tiles on disk. Valid values
-            are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
-            ``F`` for column major.
-        capacity: The number of cells in a data tile of a sparse fragment.
-        tiles: An optional ordered list of tile sizes for the dimensions of the
-            array. The length must match the number of dimensions in the array.
-        coords_filters: Filters for all dimensions that are not specified explicitly by
-            ``dim_filters``.
-        dim_filters: A dict from dimension name to a ``FilterList`` for dimensions in
-            the array. Overrides the values set in ``coords_filters``.
-        offsets_filters: Filters for the offsets for variable length attributes or
-            dimensions.
-        allows_duplicates: Specifies if multiple values can be stored at the same
-             coordinate. Only allowed for sparse arrays.
-        sparse: Specifies if the array is a sparse TileDB array (true) or dense
-            TileDB array (false).
 
     Attributes:
         cell_order: The order in which TileDB stores the cells on disk inside a
@@ -690,24 +601,21 @@ class NetCDF4ArrayConverter(ArrayCreator):
     ):
         """Adds a new variable to attribute converter to the array creator.
 
-        Each attribute name must be unique. It also cannot conflict with the name of a
-        dimension in the array it is being added to, and the attribute's
-        'dataspace name' (name after dropping the suffix ``.data`` or ``.index``) cannot
-        conflict with the dataspace name of an existing attribute.
+        The attribute's 'dataspace name' (name after dropping the suffix ``.data`` or
+        ``.index``) be unique.
 
         Parameters:
-            name: Name of the new attribute that will be added.
-            dtype: Numpy dtype of the new attribute.
-            fill: Fill value for unset cells.
+            ncvar: NetCDF variable to convert to a TileDB attribute.
+            name: Name of the new attribute that will be added. If ``None``, the name
+                will be copied from the NetCDF variable.
+            dtype: Numpy dtype of the new attribute. If ``None``, the data type will be
+                copied from the variable.
+            fill: Fill value for unset cells. If ``None``, the fill value will be
+                copied from the NetCDF variable if it has a fill value.
             var: Specifies if the attribute is variable length (automatic for
                 byte/strings).
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
-
-        Raises:
-            KeyError: The provided ``array_name`` does not correspond to an array in the
-                dataspace.
-            ValueError: Cannot create a new attribute with the provided ``attr_name``.
         """
         if ncvar.ndim not in (0, self.ndim):  # pragma: no cover
             raise ValueError(
@@ -1109,7 +1017,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
-        """Adds a new netcdf to array converter to the CF dataspace.
+        """Adds a new NetCDF to TileDB array converter to the CF dataspace.
 
         The name of each array must be unique. All properties must match the normal
         requirements for a ``TileDB.ArraySchema``.
@@ -1138,9 +1046,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                  coordinate. Only allowed for sparse arrays.
             sparse: Specifies if the array is a sparse TileDB array (true) or dense
                 TileDB array (false).
-
-        Raises:
-            ValueError: Cannot add new array with given name.
         """
         NetCDF4ArrayConverter(
             dataspace_registry=self._registry,
@@ -1167,11 +1072,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         Parameters:
             var: NetCDF coordinate variable to be converted.
             dim_name: If not ``None``, name to use for the TileDB dimension.
-
-        Raises:
-            ValueError: Cannot create a new dimension with the provided ``dim_name``.
-            NotImplementedError: Support for dimensions with reserved name
-                ``__scalars`` is not implemented.
         """
         NetCDF4CoordToDimConverter.from_netcdf(
             dataspace_registry=self._registry, var=var, name=dim_name
@@ -1192,11 +1092,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 ``None``, the current size of the NetCDF dimension will be used.
             dtype: Numpy type to use for the NetCDF dimension.
             dim_name: If not ``None``, output name of the TileDB dimension.
-
-        Raises:
-            ValueError: Cannot create a new dimension with the provided ``dim_name``.
-            NotImplementedError: Support for dimensions with reserved name
-                ``__scalars`` is not implemented.
         """
         NetCDF4DimToDimConverter.from_netcdf(
             dataspace_registry=self._registry,
@@ -1252,25 +1147,21 @@ class NetCDF4ConverterEngine(DataspaceCreator):
     ):
         """Adds a new variable to attribute converter to an array in the CF dataspace.
 
-        Each attribute name must be unique. It also cannot conflict with the name of a
-        dimension in the array it is being added to, and the attribute's
-        'dataspace name' (name after dropping the suffix ``.data`` or ``.index``) cannot
-        conflict with the dataspace name of an existing attribute.
+        The attribute's 'dataspace name' (name after dropping the suffix ``.data`` or
+        ``.index``) must be unique.
 
         Parameters:
-            attr_name: Name of the new attribute that will be added.
-            array_name: Name of the array the attribute will be added to.
-            dtype: Numpy dtype of the new attribute.
-            fill: Fill value for unset cells.
+            ncvar: NetCDF variable to convert to a TileDB attribute.
+            name: Name of the new attribute that will be added. If ``None``, the name
+                will be copied from the NetCDF variable.
+            dtype: Numpy dtype of the new attribute. If ``None``, the data type will be
+                copied from the variable.
+            fill: Fill value for unset cells. If ``None``, the fill value will be
+                copied from the NetCDF variable if it has a fill value.
             var: Specifies if the attribute is variable length (automatic for
                 byte/strings).
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
-
-        Raises:
-            KeyError: The provided ``array_name`` does not correspond to an array in the
-                dataspace.
-            ValueError: Cannot create a new attribute with the provided ``attr_name``.
         """
         try:
             array_creator = self._registry.get_array_creator(array_name)
