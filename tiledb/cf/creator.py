@@ -390,7 +390,7 @@ class DataspaceCreator:
         """(DEPRECATED) A view of the names of dimensions in the CF dataspace."""
         with warnings.catch_warnings():
             warnings.warn(
-                "Deprecated. Access dimension names directly by iterator over "
+                "Deprecated. Access dimension names directly by iterating over "
                 "shared dimensions.",
                 DeprecationWarning,
             )

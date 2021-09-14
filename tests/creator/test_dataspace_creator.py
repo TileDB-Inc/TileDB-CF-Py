@@ -442,7 +442,7 @@ def test_rename_dim_no_merge_error():
         creator.get_shared_dim("col").name = "row"
 
 
-def test_rename_dim_attr_name__in_array_exists_error():
+def test_rename_dim_attr_name_in_array_exists_error():
     creator = DataspaceCreator()
     creator.add_shared_dim("y1", (0, 4), np.int32)
     creator.add_array_creator("A1", ["y1"])
