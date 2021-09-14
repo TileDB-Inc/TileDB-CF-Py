@@ -5,6 +5,21 @@
 ### Bug fixes
 
 ### Breaking Behavior
+
+### New Features
+
+### Improvements
+
+### Deprecation
+
+## TileDB-CF-Py Release 0.4.0
+
+### Bug fixes
+
+* Fix missing context in `GroupSchema.load`.
+
+### Breaking Behavior
+
 * Replaces array/attr setting in `Group` class initialization with `open` and `close` methods for opening any array in the group.
 * `NetCDF4ConverterEngine.add_array_converter` adds a `NetCDF4ArrayConverter` and `NetCDF4ConverterEngine.add_array` inherits from `DataspaceCreator`.
 * Updates `ArrayMetadata` to skip `DimMetadata`.
@@ -20,7 +35,8 @@
 * Adds `close_array` to `Group` to close any open array in a group.
 
 ### Improvements
-* Adds `_open_array` attribute in `Group` and refactor `close` to close all open arrays in a group.
+
+* Supports opening and explicitly closing multiple arrays with a `Group` object.
 
 ### Deprecation
 
