@@ -112,10 +112,7 @@ class DataspaceCreator:
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
-        """Adds a new array to the CF dataspace.
-
-        The name of each array must be unique. All other properties should satisfy
-        the same requirements as a ``tiledb.ArraySchema``.
+        """(DEPRECATED) Adds a new array to the CF dataspace.
 
         Parameters:
             array_name: Name of the new array to be created.
@@ -324,7 +321,7 @@ class DataspaceCreator:
 
     @property
     def attr_names(self):
-        """A view of the names of attributes in the CF dataspace."""
+        """(DEPRECATED) A view of the names of attributes in the CF dataspace."""
         with warnings.catch_warnings():
             warnings.warn(
                 "Deprecated. Access attribute names directly by iterating over "
@@ -504,7 +501,7 @@ class DataspaceCreator:
         self._registry.deregister_array_creator(array_name)
 
     def remove_attr(self, attr_name: str):
-        """Removes the specified attribute from the CF dataspace.
+        """(DEPRECATED) Removes the specified attribute from the CF dataspace.
 
         Parameters:
             attr_name: Name of the attribute that will be removed.
@@ -525,10 +522,7 @@ class DataspaceCreator:
         array_creator.remove_attr_creator(attr_name)
 
     def remove_dim(self, dim_name: str):
-        """Removes the specified dimension from the CF dataspace.
-
-        This can only be used to remove dimensions that are not currently being used in
-        an array.
+        """(DEPRECATED) Removes the specified dimension from the CF dataspace.
 
         Parameters:
             dim_name: Name of the dimension to be removed.
@@ -551,7 +545,7 @@ class DataspaceCreator:
         self._registry.deregister_shared_dim(dim_name)
 
     def rename_array(self, original_name: str, new_name: str):
-        """Renames an array in the CF dataspace.
+        """(DEPRECATED) Renames an array in the CF dataspace.
 
         Parameters:
             original_name: Current name of the array to be renamed.
@@ -566,7 +560,7 @@ class DataspaceCreator:
         self._registry.get_array_creator(original_name).name = new_name
 
     def rename_attr(self, original_name: str, new_name: str):
-        """Renames an attribute in the CF dataspace.
+        """(DEPRECATED) Renames an attribute in the CF dataspace.
 
         Parameters:
             original_name: Current name of the attribute to be renamed.
@@ -598,7 +592,7 @@ class DataspaceCreator:
         self._registry.get_shared_dim(original_name).name = new_name
 
     def set_array_properties(self, array_name: str, **properties):
-        """Sets properties for an array in the CF dataspace.
+        """(DEPRECATED) Sets properties for an array in the CF dataspace.
 
         Parameters:
             array_name: Name of the array to set properties for.
@@ -628,7 +622,7 @@ class DataspaceCreator:
             setattr(array_creator, property_name, value)
 
     def set_attr_properties(self, attr_name: str, **properties):
-        """Sets properties for an attribute in the CF dataspace.
+        """(DEPRECATED) Sets properties for an attribute in the CF dataspace.
 
         Parameters:
             attr_name: Name of the attribute to set properties for.
@@ -646,7 +640,7 @@ class DataspaceCreator:
             setattr(attr_creator, property_name, value)
 
     def set_dim_properties(self, dim_name: str, **properties):
-        """Sets properties for a shared dimension in the CF dataspace.
+        """(DEPRECATED) Sets properties for a shared dimension in the CF dataspace.
 
         Parameters:
             dim_name: Name of the dimension to set properties for.
