@@ -313,14 +313,24 @@ class DataspaceCreator:
 
     @property
     def array_names(self):
-        """A view of the names of arrays in the CF dataspace."""
-        # TODO: deprecate this function
+        """(DEPREACTED) A view of the names of arrays in the CF dataspace."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Access array names directly by iterating over "
+                "array creators.",
+                DeprecationWarning,
+            )
         return self._registry._array_creators.keys()
 
     @property
     def attr_names(self):
         """A view of the names of attributes in the CF dataspace."""
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Access attribute names directly by iterating over "
+                "attribute creators in array creators.",
+                DeprecationWarning,
+            )
         return self._registry._attr_to_array.keys()
 
     def create_array(
@@ -380,8 +390,13 @@ class DataspaceCreator:
 
     @property
     def dim_names(self):
-        """A view of the names of dimensions in the CF dataspace."""
-        # TODO: deprecate this function
+        """(DEPRECATED) A view of the names of dimensions in the CF dataspace."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Access dimension names directly by iterator over "
+                "shared dimensions.",
+                DeprecationWarning,
+            )
         return self._registry._shared_dims.keys()
 
     def get_array_creator(self, array_name: str):

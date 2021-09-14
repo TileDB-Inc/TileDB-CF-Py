@@ -27,9 +27,13 @@ class TestDataspaceCreatorExample1:
             dim_filters={"temperature": filters},
         )
         creator.add_array_creator("A3", ("temperature",))
-        creator.set_array_properties("A1", tiles=(2,))
-        creator.set_array_properties("A2", tiles=(2, 4))
-        creator.set_array_properties("A3", tiles=[8])
+        A1_domain = creator.get_array_creator("A1").domain_creator
+        A1_domain.dim_creator(0).tile = 2
+        A2_domain = creator.get_array_creator("A2").domain_creator
+        A2_domain.dim_creator(0).tile = 2
+        A2_domain.dim_creator(1).tile = 4
+        A3_domain = creator.get_array_creator("A3").domain_creator
+        A3_domain.dim_creator(0).tile = 8
         creator.add_attr_creator("pressure.data", "A1", np.float64)
         creator.add_attr_creator("b", "A1", np.float64)
         creator.add_attr_creator("c", "A1", np.uint64)
@@ -79,22 +83,22 @@ class TestDataspaceCreatorExample1:
         assert shared_dim.name == "temperature"
 
     def test_array_names(self, dataspace_creator):
-        assert set(dataspace_creator.array_names) == {"A1", "A2", "A3"}
+        with pytest.warns(DeprecationWarning):
+            assert set(dataspace_creator.array_names) == {"A1", "A2", "A3"}
 
     def test_attr_names(self, dataspace_creator):
-        assert set(dataspace_creator.attr_names) == {
-            "pressure.data",
-            "b",
-            "c",
-            "d",
-            "e",
-        }
+        with pytest.warns(DeprecationWarning):
+            assert set(dataspace_creator.attr_names) == {
+                "pressure.data",
+                "b",
+                "c",
+                "d",
+                "e",
+            }
 
     def test_dim_names(self, dataspace_creator):
-        assert set(dataspace_creator.dim_names) == {
-            "pressure.index",
-            "temperature",
-        }
+        with pytest.warns(DeprecationWarning):
+            assert dataspace_creator.dim_names == {"pressure.index", "temperature"}
 
     def test_get_array_property(self, dataspace_creator):
         tiles = dataspace_creator.get_array_property("A1", "tiles")
@@ -229,7 +233,7 @@ def test_remove_empty_array():
     creator.add_shared_dim("row", [0, 10], np.int64)
     creator.add_array_creator("A1", ["row"])
     creator.remove_array("A1")
-    assert set(creator.array_names) == set()
+    assert set(creator.array_creators()) == set()
 
 
 def test_remove_array_with_attrs():
@@ -241,8 +245,9 @@ def test_remove_array_with_attrs():
     creator.add_attr_creator("x2", "A1", np.float64)
     creator.add_attr_creator("y1", "A2", np.float64)
     creator.remove_array("A2")
-    assert set(creator.array_names) == {"A1"}
-    assert set(creator.attr_names) == {"x1", "x2"}
+    array_creators = creator.array_creators()
+    assert next(array_creators).name == "A1"
+    assert tuple(array_creators) == tuple()
 
 
 def test_remove_renamed_array():
@@ -255,8 +260,8 @@ def test_remove_renamed_array():
     creator.add_attr_creator("y1", "A2", np.float64)
     creator.rename_array("A2", "B1")
     creator.remove_array("B1")
-    assert set(creator.array_names) == {"A1"}
-    assert set(creator.attr_names) == {"x1", "x2"}
+    array_names = {array_creator.name for array_creator in creator.array_creators()}
+    assert array_names == {"A1"}
 
 
 def test_remove_attr():
@@ -264,12 +269,13 @@ def test_remove_attr():
     creator.add_shared_dim("row", [0, 7], np.int64)
     creator.add_array_creator("A1", ["row"])
     creator.add_attr_creator("x1", "A1", np.float64)
-    assert set(creator.attr_names) == {"x1"}
+    array_creator = creator.get_array_creator("A1")
+    assert array_creator.nattr == 1
     creator.remove_attr("x1")
-    assert set(creator.attr_names) == set()
+    assert array_creator.nattr == 0
     creator.add_array_creator("A2", ["row"])
     creator.add_attr_creator("x1", "A2", np.float64)
-    assert set(creator.attr_names) == {"x1"}
+    assert creator.get_array_creator("A2").nattr == 1
 
 
 def test_remove_attr_no_attr_error():
@@ -283,17 +289,21 @@ def test_remove_attr_no_attr_error():
 def test_remove_dim():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 7], np.int32)
-    assert set(creator.dim_names) == set(["row"])
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == set(["row"])
     creator.remove_dim("row")
-    assert set(creator.dim_names) == set()
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == set()
 
 
 def test_remove_dim_axis_data():
     creator = DataspaceCreator()
     creator.add_shared_dim("row.data", [0.0, 100.0], np.float64)
-    assert set(creator.dim_names) == {"row.data"}
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == {"row.data"}
     creator.remove_dim("row.data")
-    assert set(creator.dim_names) == set()
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == set()
 
 
 def test_remove_dim_in_use_error():
@@ -309,9 +319,11 @@ def test_rename_array():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 7], np.int64)
     creator.add_array_creator("A1", ["row"])
-    assert set(creator.array_names) == {"A1"}
+    array_names = {array.name for array in creator.array_creators()}
+    assert array_names == {"A1"}
     creator.rename_array("A1", "B1")
-    assert set(creator.array_names) == {"B1"}
+    array_names = {array.name for array in creator.array_creators()}
+    assert array_names == {"B1"}
 
 
 def test_rename_array_with_attrs():
@@ -321,9 +333,11 @@ def test_rename_array_with_attrs():
     creator.add_array_creator("A1", ["row", "col"], sparse=True, tiles=[2, 2])
     creator.add_attr_creator("x1", "A1", np.float64)
     creator.add_attr_creator("x2", "A1", np.float64)
-    assert set(creator.array_names) == {"A1"}
+    array_names = {array.name for array in creator.array_creators()}
+    assert array_names == {"A1"}
     creator.rename_array("A1", "B1")
-    assert set(creator.array_names) == {"B1"}
+    array_names = {array.name for array in creator.array_creators()}
+    assert array_names == {"B1"}
 
 
 def test_rename_array_name_exists_error():
@@ -340,21 +354,11 @@ def test_rename_attr():
     creator.add_shared_dim("row", [0, 7], np.int64)
     creator.add_array_creator("A1", ["row"])
     creator.add_attr_creator("x1", "A1", np.float64)
-    assert set(creator.attr_names) == {"x1"}
+    A1 = creator.get_array_creator("A1")
+    assert A1.nattr == 1
+    assert A1.attr_creator(0).name == "x1"
     creator.rename_attr("x1", "y1")
-    assert set(creator.attr_names) == {"y1"}
-    group_schema = creator.to_schema()
-    assert group_schema["A1"].has_attr("y1")
-
-
-def test_rename_attr_with_set_attr_properties():
-    creator = DataspaceCreator()
-    creator.add_shared_dim("row", [0, 7], np.int64)
-    creator.add_array_creator("A1", ["row"])
-    creator.add_attr_creator("x1", "A1", np.float64)
-    assert set(creator.attr_names) == {"x1"}
-    creator.set_attr_properties("x1", name="y1")
-    assert set(creator.attr_names) == {"y1"}
+    assert A1.attr_creator(0).name == "y1"
     group_schema = creator.to_schema()
     assert group_schema["A1"].has_attr("y1")
 
@@ -381,26 +385,32 @@ def test_rename_attr_dim_name_in_array_exists_error():
 def test_rename_dim_not_used():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 3], np.int32)
-    assert set(creator.dim_names) == {"row"}
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == {"row"}
     creator.rename_dim("row", "col")
-    assert set(creator.dim_names) == {"col"}
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == {"col"}
 
 
 def test_rename_dim_dataspace_axis():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 3], np.float64)
-    assert set(creator.dim_names) == {"row"}
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == {"row"}
     creator.rename_dim("row", "col")
-    assert set(creator.dim_names) == {"col"}
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == {"col"}
 
 
 def test_rename_dim_used():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 7], np.int64)
     creator.add_array_creator("A1", ["row"])
-    assert set(creator.dim_names) == {"row"}
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == {"row"}
     creator.rename_dim("row", "unit")
-    assert set(creator.dim_names) == {"unit"}
+    dim_names = set(dim.name for dim in creator.shared_dims())
+    assert dim_names == {"unit"}
     creator.add_attr_creator("x1", "A1", np.int32)
     group_schema = creator.to_schema()
     assert group_schema["A1"].domain.has_dim("unit")
@@ -468,8 +478,8 @@ def test_set_dim_name():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 7], np.int64)
     creator.set_dim_properties("row", name="column")
-    name = tuple(creator.dim_names)[0]
-    assert name == "column"
+    shared_dim = creator.get_shared_dim("column")
+    assert isinstance(shared_dim, SharedDim)
 
 
 def test_set_dim_dtype_with_array_check():

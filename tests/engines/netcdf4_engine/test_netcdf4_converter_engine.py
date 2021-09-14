@@ -109,8 +109,8 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     def test_convert_to_sparse_array(self, netcdf_file, tmpdir):
         uri = str(tmpdir.mkdir("output").join("sparse_example"))
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        for array_name in converter.array_names:
-            converter.set_array_properties(array_name, sparse=True)
+        for array_creator in converter.array_creators():
+            array_creator.sparse = True
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="x1") as array:
@@ -145,17 +145,22 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     def test_rename_array(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
         converter.rename_array("array0", "A1")
-        assert set(converter.array_names) == set(["A1"])
+        names = {array_creator.name for array_creator in converter.array_creators()}
+        assert names == set(["A1"])
 
     def test_rename_attr(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
         converter.rename_attr("x1", "y1")
-        assert set(converter.attr_names) == set(["y1"])
+        attr_names = {
+            attr_creator.name for attr_creator in next(converter.array_creators())
+        }
+        assert attr_names == set(["y1"])
 
     def test_rename_dim(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
         converter.rename_dim("row", "col")
-        assert set(converter.dim_names) == set(["col"])
+        dim_names = {shared_dim.name for shared_dim in converter.shared_dims()}
+        assert dim_names == set(["col"])
 
     def test_not_implemented_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
@@ -428,8 +433,8 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         converter = NetCDF4ConverterEngine.from_file(
             netcdf_file, coords_to_dims=False, collect_attrs=False
         )
-        for array_name in converter.array_names:
-            converter.set_array_properties(array_name, sparse=True)
+        for array_creator in converter.array_creators():
+            array_creator.sparse = True
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(array="scalars") as array:
@@ -536,8 +541,8 @@ class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
             netcdf_file,
             coords_to_dims=False,
         )
-        for array_name in converter.array_names:
-            converter.set_array_properties(array_name, sparse=True)
+        for array_creator in converter.array_creators():
+            array_creator.sparse = True
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="x1") as array:

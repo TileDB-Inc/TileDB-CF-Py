@@ -29,6 +29,8 @@
 * Deprecates `Dataspace.add_array` in favor of `Dataspace.add_array_creator`.
 * Deprecates `Dataspace.add_attr` in favor of `Dataspace.add_attr_creator`.
 * Deprecates `Dataspace.add_dim` in favor of `Dataspace.add_shared_dim`.
+* Deprecates `Dataspace.array_names`, `Dataspace.dim_names`, and `Dataspace.attr_names`
+
 
 ## TileDB-CF-Py Release 0.3.0
 
