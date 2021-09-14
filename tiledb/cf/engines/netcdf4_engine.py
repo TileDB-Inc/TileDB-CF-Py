@@ -922,13 +922,17 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         f"Cannot name array of scalar values `{scalar_array_name}`. An"
                         f" array with that name already exists."
                     )
-                if scalar_array_name not in converter.array_names:
+                if scalar_array_name not in {
+                    array_creator.name for array_creator in converter.array_creators()
+                }:
                     converter.add_scalar_to_dim_converter("__scalars", dim_dtype)
                     converter.add_array_converter(scalar_array_name, ("__scalars",))
                 converter.add_var_to_attr_converter(ncvar, scalar_array_name)
             else:
                 for dim in ncvar.get_dims():
-                    if dim.name not in converter.dim_names:
+                    if dim.name not in {
+                        shared_dim.name for shared_dim in converter.shared_dims()
+                    }:
                         converter.add_dim_to_dim_converter(
                             dim,
                             unlimited_dim_size,
@@ -1000,7 +1004,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 converter.add_coord_to_dim_converter(ncvar)
                 coord_names.add(ncvar.name)
             else:
-                if not ncvar.dimensions and "__scalars" not in converter.dim_names:
+                if not ncvar.dimensions and "__scalars" not in {
+                    shared_dim.name for shared_dim in converter.shared_dims()
+                }:
                     converter.add_scalar_to_dim_converter("__scalars", dim_dtype)
                 dim_names = ncvar.dimensions if ncvar.dimensions else ("__scalars",)
                 dims_to_vars[dim_names].append(ncvar.name)
@@ -1020,7 +1026,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         # Add index dimensions to converter.
         for ncvar in netcdf_group.variables.values():
             for dim in ncvar.get_dims():
-                if dim.name not in converter.dim_names:
+                if dim.name not in {
+                    shared_dim.name for shared_dim in converter.shared_dims()
+                }:
                     converter.add_dim_to_dim_converter(
                         dim,
                         unlimited_dim_size,
@@ -1245,7 +1253,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 dataspace.
             ValueError: Cannot create a new attribute with the provided ``attr_name``.
         """
-        # TODO: deprecate this function
         try:
             array_creator = self._registry.get_array_creator(array_name)
         except KeyError as err:  # pragma: no cover

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import warnings
 from abc import ABCMeta
 from collections import OrderedDict
 from io import StringIO
@@ -111,6 +112,66 @@ class DataspaceCreator:
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
+        """(DEPRECATED) Adds a new array to the CF dataspace.
+
+        Parameters:
+            array_name: Name of the new array to be created.
+            dims: An ordered list of the names of the shared dimensions for the domain
+                of this array.
+            cell_order: The order in which TileDB stores the cells on disk inside a
+                tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
+                ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert
+                curve.
+            tile_order: The order in which TileDB stores the tiles on disk. Valid values
+                are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
+                ``F`` for column major.
+            capacity: The number of cells in a data tile of a sparse fragment.
+            tiles: An optional ordered list of tile sizes for the dimensions of the
+                array. The length must match the number of dimensions in the array.
+            coords_filters: Filters for all dimensions that are not otherwise set by
+                ``dim_filters.``
+            dim_filters: A dict from dimension name to a :class:`tiledb.FilterList`
+                for dimensions in the array. Overrides the values set in
+                ``coords_filters``.
+            offsets_filters: Filters for the offsets for variable length attributes or
+                dimensions.
+            allows_duplicates: Specifies if multiple values can be stored at the same
+                 coordinate. Only allowed for sparse arrays.
+            sparse: Specifies if the array is a sparse TileDB array (true) or dense
+                TileDB array (false).
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use add_array_creator instead.", DeprecationWarning
+            )
+        self.add_array_creator(
+            array_name=array_name,
+            dims=dims,
+            cell_order=cell_order,
+            tile_order=tile_order,
+            capacity=capacity,
+            tiles=tiles,
+            coords_filters=coords_filters,
+            dim_filters=dim_filters,
+            offsets_filters=offsets_filters,
+            allows_duplicates=allows_duplicates,
+            sparse=sparse,
+        )
+
+    def add_array_creator(
+        self,
+        array_name: str,
+        dims: Sequence[str],
+        cell_order: str = "row-major",
+        tile_order: str = "row-major",
+        capacity: int = 0,
+        tiles: Optional[Sequence[int]] = None,
+        coords_filters: Optional[tiledb.FilterList] = None,
+        dim_filters: Optional[Dict[str, tiledb.FilterList]] = None,
+        offsets_filters: Optional[tiledb.FilterList] = None,
+        allows_duplicates: bool = False,
+        sparse: bool = False,
+    ):
         """Adds a new array to the CF dataspace.
 
         The name of each array must be unique. All other properties should satisfy
@@ -167,6 +228,36 @@ class DataspaceCreator:
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
     ):
+        """(DEPRECATED) Adds a new attribute to an array in the CF dataspace.
+
+        Parameters:
+            attr_name: Name of the new attribute that will be added.
+            array_name: Name of the array the attribute will be added to.
+            dtype: Numpy dtype of the new attribute.
+            fill: Fill value for unset cells.
+            var: Specifies if the attribute is variable length (automatic for
+                byte/strings).
+            nullable: Specifies if the attribute is nullable using validity tiles.
+            filters: Specifies compression filters for the attribute.
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use add_attr_creator instead.", DeprecationWarning
+            )
+        self.add_attr_creator(
+            attr_name, array_name, dtype, fill, var, nullable, filters
+        )
+
+    def add_attr_creator(
+        self,
+        attr_name: str,
+        array_name: str,
+        dtype: np.dtype,
+        fill: Optional[Union[int, float, str]] = None,
+        var: bool = False,
+        nullable: bool = False,
+        filters: Optional[tiledb.FilterList] = None,
+    ):
         """Adds a new attribute to an array in the CF dataspace.
 
         The 'dataspace name' (name after dropping the suffix ``.data`` or ``.index``)
@@ -182,11 +273,25 @@ class DataspaceCreator:
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
         """
-        # TODO deprecate in favor of get_array_creator[name].add_attr_creator
         array_creator = self._registry.get_array_creator(array_name)
         array_creator.add_attr_creator(attr_name, dtype, fill, var, nullable, filters)
 
     def add_dim(self, dim_name: str, domain: Tuple[Any, Any], dtype: np.dtype):
+        """(DEPRECATED) Adds a new dimension to the CF dataspace.
+
+        Parameters:
+            dim_name: Name of the new dimension to be created.
+            domain: The (inclusive) interval on which the dimension is valid.
+            dtype: The numpy dtype of the values and domain of the dimension.
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use add_shared_dim instead.",
+                DeprecationWarning,
+            )
+        SharedDim(self._registry, dim_name, domain, dtype)
+
+    def add_shared_dim(self, dim_name: str, domain: Tuple[Any, Any], dtype: np.dtype):
         """Adds a new dimension to the CF dataspace.
 
         Each dimension name must be unique. Adding a dimension where the name, domain,
@@ -205,14 +310,24 @@ class DataspaceCreator:
 
     @property
     def array_names(self):
-        """A view of the names of arrays in the CF dataspace."""
-        # TODO: deprecate this function
+        """(DEPREACTED) A view of the names of arrays in the CF dataspace."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Access array names directly by iterating over "
+                "array creators.",
+                DeprecationWarning,
+            )
         return self._registry._array_creators.keys()
 
     @property
     def attr_names(self):
-        """A view of the names of attributes in the CF dataspace."""
-        # TODO: deprecate this function
+        """(DEPRECATED) A view of the names of attributes in the CF dataspace."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Access attribute names directly by iterating over "
+                "attribute creators in array creators.",
+                DeprecationWarning,
+            )
         return self._registry._attr_to_array.keys()
 
     def create_array(
@@ -272,8 +387,13 @@ class DataspaceCreator:
 
     @property
     def dim_names(self):
-        """A view of the names of dimensions in the CF dataspace."""
-        # TODO: deprecate this function
+        """(DEPRECATED) A view of the names of dimensions in the CF dataspace."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Access dimension names directly by iterating over "
+                "shared dimensions.",
+                DeprecationWarning,
+            )
         return self._registry._shared_dims.keys()
 
     def get_array_creator(self, array_name: str):
@@ -293,36 +413,18 @@ class DataspaceCreator:
         return self._registry.get_array_creator_by_attr(attr_name)
 
     def get_array_property(self, array_name: str, property_name: str) -> Any:
-        """Returns a requested property from an array in the CF dataspace.
-
-        Valid properties are:
-
-            * ``cell_order``: The order in which TileDB stores the cells on disk inside
-              a tile. Valid values are: ``row-major`` (default) or ``C`` for row
-              major; ``col-major`` or ``F`` for column major; or ``Hilbert`` for a
-              Hilbert curve.
-            * ``tile_order``: The order in which TileDB stores the tiles on disk. Valid
-              values are: ``row-major`` or ``C`` (default) for row major; or
-              ``col-major`` or ``F`` for column major.
-            * ``capacity``: The number of cells in a data tile of a sparse fragment.
-            * ``tiles``: An optional ordered list of tile sizes for the dimensions of
-              the array. The length must match the number of dimensions in the array.
-            * ``coords_filters``: Filters for all dimensions that do not otherwise have
-              a specified filter list.
-            * ``dim_filters``: A dict from dimension name to a ``FilterList`` for
-              dimensions in the array. Overrides the values set in ``coords_filters``.
-            * ``offsets_filters``: Filters for the offsets for variable length
-              attributes or dimensions.
-            * ``allows_duplicates``: Specifies if multiple values can be stored at the
-              same coordinate. Only allowed for sparse arrays.
-            * ``sparse``: Specifies if the array is a sparse TileDB array (true) or
-              dense TileDB array (false).
+        """(DEPRECATED) Returns a requested property from an array in the CF dataspace.
 
         Parameters:
             array_name: Name of the array to get the property from.
             property_name: Name of the requested property.
         """
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Get array creator properties directly in the array "
+                f"creator, accessible with get_array_creator({array_name}).",
+                DeprecationWarning,
+            )
         array_creator = self._registry.get_array_creator(array_name)
         if property_name == "tiles":
             return tuple(
@@ -336,34 +438,36 @@ class DataspaceCreator:
         return getattr(array_creator, property_name)
 
     def get_attr_property(self, attr_name: str, property_name: str) -> Any:
-        """Returns a requested property for an attribute in the CF dataspace.
-
-        Valid properties are:
-            * ``name``: The name of the attribute.
-            * ``dtype``: Numpy dtype of the attribute.
-            * ``fill``: Fill value for unset cells.
-            * ``var``: Specifies if the attribute is variable length (automatic for
-              bytes/strings).
-            * ``nullable``: Specifies if the attribute is nullable using validity tiles.
-            * ``filters``: Specifies compression filters for the attributes.
+        """(DEPRECATED) Returns a requested property for an attribute in the CF dataspace.
 
         Parameters:
             attr_name: Name of the attribute to get the property from.
             property_name: Name of the requested property.
         """
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Get attribute creator properties directly from attribute"
+                f"creator, accessible with get_array_creator_by_attr({attr_name})."
+                f"attr_creator({attr_name}).",
+                DeprecationWarning,
+            )
         attr_creator = self._registry.get_attr_creator(attr_name)
         return getattr(attr_creator, property_name)
 
     def get_dim_property(self, dim_name: str, property_name: str) -> Any:
-        """Returns a requested property for a dimension in the CF dataspace.
+        """(DEPRECATED) Returns a requested property for a dimension in the CF
+        dataspace.
 
-        Valid properties are:
-            * ``name``: The name of the dimension.
-            * ``domain``: The (inclusive) valid range for the dimensions.
-            * ``dtype``: The Numpy data type of the dimension.
+        Parameters:
+            dim_name: Name of the dimension to get the property from.
+            property_name: Name of the requested property.
         """
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Get shared dimension properties directly in the shared "
+                f"dimension accessible with get_shared_dim({dim_name}).",
+                DeprecationWarning,
+            )
         dim = self._registry.get_shared_dim(dim_name)
         return getattr(dim, property_name)
 
@@ -376,6 +480,19 @@ class DataspaceCreator:
         return self._registry.get_shared_dim(dim_name)
 
     def remove_array(self, array_name: str):
+        """(DEPRECATED). Removes the specified array and all its attributes from the CF
+        dataspace.
+
+        Parameters:
+            array_name: Name of the array that will be removed.
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use remove_array_creator instead.", DeprecationWarning
+            )
+        self.remove_array_creator(array_name)
+
+    def remove_array_creator(self, array_name: str):
         """Removes the specified array and all its attributes from the CF dataspace.
 
         Parameters:
@@ -384,16 +501,39 @@ class DataspaceCreator:
         self._registry.deregister_array_creator(array_name)
 
     def remove_attr(self, attr_name: str):
+        """(DEPRECATED) Removes the specified attribute from the CF dataspace.
+
+        Parameters:
+            attr_name: Name of the attribute that will be removed.
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use remove_attr_creator instead.", DeprecationWarning
+            )
+        self.remove_attr_creator(attr_name)
+
+    def remove_attr_creator(self, attr_name: str):
         """Removes the specified attribute from the CF dataspace.
 
         Parameters:
             attr_name: Name of the attribute that will be removed.
         """
-        # TODO: deprecate and replace with function directly in array_creator.
         array_creator = self._registry.get_array_creator_by_attr(attr_name=attr_name)
         array_creator.remove_attr_creator(attr_name)
 
     def remove_dim(self, dim_name: str):
+        """(DEPRECATED) Removes the specified dimension from the CF dataspace.
+
+        Parameters:
+            dim_name: Name of the dimension to be removed.
+        """
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use remove_shared_dim instead.", DeprecationWarning
+            )
+        self.remove_shared_dim(dim_name)
+
+    def remove_shared_dim(self, dim_name: str):
         """Removes the specified dimension from the CF dataspace.
 
         This can only be used to remove dimensions that are not currently being used in
@@ -405,67 +545,65 @@ class DataspaceCreator:
         self._registry.deregister_shared_dim(dim_name)
 
     def rename_array(self, original_name: str, new_name: str):
-        """Renames an array in the CF dataspace.
+        """(DEPRECATED) Renames an array in the CF dataspace.
 
         Parameters:
             original_name: Current name of the array to be renamed.
             new_name: New name the array will be renamed to.
         """
-        # TODO: deprecate and replace with direct call to array name
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set array creator properties directly in the array "
+                f"creator, accessible with get_array_creator({original_name}).",
+                DeprecationWarning,
+            )
         self._registry.get_array_creator(original_name).name = new_name
 
     def rename_attr(self, original_name: str, new_name: str):
-        """Renames an attribute in the CF dataspace.
+        """(DEPRECATED) Renames an attribute in the CF dataspace.
 
         Parameters:
             original_name: Current name of the attribute to be renamed.
             new_name: New name the attribute will be renamed to.
         """
-        # TODO: deprecate and replace with direct call to attribute name
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set attribute creator properties directly from attribute"
+                f"creator, accessible with get_array_creator_by_attr({original_name})."
+                f"attr_creator({original_name}).",
+                DeprecationWarning,
+            )
         attr_creator = self._registry.get_attr_creator(original_name)
         attr_creator.name = new_name
 
     def rename_dim(self, original_name: str, new_name: str):
-        """Renames a dimension in the CF dataspace.
+        """(DEPRECATED) Renames a dimension in the CF dataspace.
 
         Parameters:
             original_name: Current name of the dimension to be renamed.
             new_name: New name the dimension will be renamed to.
         """
-        # TODO: deprecate and replace with direct call to dimension name
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set shared dimension properties directly in the shared "
+                f"dimension accessible with get_shared_dim({original_name}).",
+                DeprecationWarning,
+            )
         self._registry.get_shared_dim(original_name).name = new_name
 
     def set_array_properties(self, array_name: str, **properties):
-        """Sets properties for an array in the CF dataspace.
-
-        Valid properties are:
-
-            * ``cell_order``: The order in which TileDB stores the cells on disk inside
-              a tile. Valid values are: ``row-major`` (default) or ``C`` for row
-              major; ``col-major`` or ``F`` for column major; or ``Hilbert`` for a
-              Hilbert curve.
-            * ``tile_order``: The order in which TileDB stores the tiles on disk. Valid
-              values are: ``row-major`` or ``C`` (default) for row major; or
-              ``col-major`` or ``F`` for column major.
-            * ``capacity``: The number of cells in a data tile of a sparse fragment.
-            * ``tiles``: An optional ordered list of tile sizes for the dimensions of
-              the array. The length must match the number of dimensions in the array.
-            * ``coords_filters``: Filters for all dimensions that do not otherwise have
-              a specified filter list.
-            * ``dim_filters``: A dict from dimension name to a ``FilterList`` for
-              dimensions in the array. Overrides the values set in ``coords_filters``.
-            * ``offsets_filters``: Filters for the offsets for variable length
-              attributes or dimensions.
-            * ``allows_duplicates``: Specifies if multiple values can be stored at the
-              same coordinate. Only allowed for sparse arrays.
-            * ``sparse``: Specifies if the array is a sparse TileDB array (true) or
-              dense TileDB array (false).
+        """(DEPRECATED) Sets properties for an array in the CF dataspace.
 
         Parameters:
             array_name: Name of the array to set properties for.
             properties: Keyword arguments for array properties.
         """
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set array creator properties directly in the array "
+                f"creator, accessible with get_array_creator({array_name}).",
+                DeprecationWarning,
+            )
         array_creator = self._registry.get_array_creator(array_name)
         if "tiles" in properties:
             tiles = properties.pop("tiles")
@@ -484,39 +622,36 @@ class DataspaceCreator:
             setattr(array_creator, property_name, value)
 
     def set_attr_properties(self, attr_name: str, **properties):
-        """Sets properties for an attribute in the CF dataspace.
-
-        Valid properties are:
-            * ``name``: The name of the attribute.
-            * ``dtype``: Numpy dtype of the attribute.
-            * ``fill``: Fill value for unset cells.
-            * ``var``: Specifies if the attribute is variable length (automatic for
-              bytes/strings).
-            * ``nullable``: Specifies if the attribute is nullable using validity tiles.
-            * ``filters``: Specifies compression filters for the attributes.
+        """(DEPRECATED) Sets properties for an attribute in the CF dataspace.
 
         Parameters:
             attr_name: Name of the attribute to set properties for.
             properties: Keyword arguments for attribute properties.
         """
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set attribute creator properties directly from attribute"
+                f"creator, accessible with get_array_creator_by_attr({attr_name})."
+                f"attr_creator({attr_name}).",
+                DeprecationWarning,
+            )
         attr_creator = self._registry.get_attr_creator(attr_name)
         for property_name, value in properties.items():
             setattr(attr_creator, property_name, value)
 
     def set_dim_properties(self, dim_name: str, **properties):
-        """Sets properties for a shared dimension in the CF dataspace.
-
-        Valid properties are:
-            * ``name``: The name of the dimension.
-            * ``domain``: The (inclusive) inverval on which the dimension is valid.
-            * ``dtype``: The data type of the dimension.
+        """(DEPRECATED) Sets properties for a shared dimension in the CF dataspace.
 
         Parameters:
             dim_name: Name of the dimension to set properties for.
             properties: Keyword arguments for dimension properties.
         """
-        # TODO: deprecate this function
+        with warnings.catch_warnings():
+            warnings.warn(
+                f"Deprecated. Set shared dimension properties directly in the shared "
+                f"dimension accessible with get_shared_dim({dim_name}).",
+                DeprecationWarning,
+            )
         dim = self._registry.get_shared_dim(dim_name)
         for property_name, value in properties.items():
             setattr(dim, property_name, value)

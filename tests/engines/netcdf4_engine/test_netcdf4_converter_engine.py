@@ -109,8 +109,8 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     def test_convert_to_sparse_array(self, netcdf_file, tmpdir):
         uri = str(tmpdir.mkdir("output").join("sparse_example"))
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        for array_name in converter.array_names:
-            converter.set_array_properties(array_name, sparse=True)
+        for array_creator in converter.array_creators():
+            array_creator.sparse = True
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="x1") as array:
@@ -144,24 +144,29 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
 
     def test_rename_array(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        converter.rename_array("array0", "A1")
-        assert set(converter.array_names) == set(["A1"])
+        converter.get_array_creator("array0").name = "A1"
+        names = {array_creator.name for array_creator in converter.array_creators()}
+        assert names == set(["A1"])
 
     def test_rename_attr(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        converter.rename_attr("x1", "y1")
-        assert set(converter.attr_names) == set(["y1"])
+        converter.get_array_creator_by_attr("x1").attr_creator("x1").name = "y1"
+        attr_names = {
+            attr_creator.name for attr_creator in next(converter.array_creators())
+        }
+        assert attr_names == set(["y1"])
 
     def test_rename_dim(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        converter.rename_dim("row", "col")
-        assert set(converter.dim_names) == set(["col"])
+        converter.get_shared_dim("row").name = "col"
+        dim_names = {shared_dim.name for shared_dim in converter.shared_dims()}
+        assert dim_names == set(["col"])
 
     def test_not_implemented_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
         converter.add_array_converter("A1", ("row",))
         with pytest.raises(NotImplementedError):
-            converter.add_attr("a1", "array0", np.float64)
+            converter.add_attr_creator("a1", "array0", np.float64)
 
     def test_bad_array_name_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
@@ -200,7 +205,8 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=collect_attrs,
         )
-        converter.set_dim_properties("x", domain=(None, None))
+        shared_x = converter.get_shared_dim("x")
+        shared_x.domain = (None, None)
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="y") as array:
@@ -220,7 +226,8 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=True,
         )
-        converter.set_dim_properties("x", domain=(None, None))
+        shared_x = converter.get_shared_dim("x")
+        shared_x.domain = (None, None)
         converter.convert_to_array(uri)
         with tiledb.open(uri, attr="y") as array:
             schema = array.schema
@@ -244,8 +251,9 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             collect_attrs=collect_attrs,
             tiles_by_var={"y": (100.0,)},
         )
-        tiles = converter.get_array_property(array_name, "tiles")
-        assert tiles == (100.0,)
+        domain_creator = converter.get_array_creator(array_name).domain_creator
+        tile = domain_creator.dim_creator(0).tile
+        assert tile == 100.0
 
     @pytest.mark.parametrize(
         "collect_attrs, array_name", [(True, "array0"), (False, "y")]
@@ -257,8 +265,9 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
             collect_attrs=collect_attrs,
             tiles_by_dims={("x",): (100.0,)},
         )
-        tiles = converter.get_array_property(array_name, "tiles")
-        assert tiles == (100.0,)
+        domain_creator = converter.get_array_creator(array_name).domain_creator
+        tile = domain_creator.dim_creator(0).tile
+        assert tile == 100.0
 
     def test_convert_coordinate_domain_not_set_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=True)
@@ -298,8 +307,10 @@ class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=collect_attrs,
         )
-        converter.set_dim_properties("x", domain=(None, None))
-        converter.set_dim_properties("y", domain=(None, None))
+        shared_x = converter.get_shared_dim("x")
+        shared_x.domain = (None, None)
+        shared_y = converter.get_shared_dim("y")
+        shared_y.domain = (None, None)
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="z") as array:
@@ -357,7 +368,8 @@ class TestConvertNetCDFCoordWithTiles(ConvertNetCDFBase):
             coords_to_dims=True,
             collect_attrs=collect_attrs,
         )
-        converter.set_dim_properties("index", domain=(1, 4))
+        index_dim = converter.get_shared_dim("index")
+        index_dim.domain = (1, 4)
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="y") as array:
@@ -428,8 +440,8 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         converter = NetCDF4ConverterEngine.from_file(
             netcdf_file, coords_to_dims=False, collect_attrs=False
         )
-        for array_name in converter.array_names:
-            converter.set_array_properties(array_name, sparse=True)
+        for array_creator in converter.array_creators():
+            array_creator.sparse = True
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(array="scalars") as array:
@@ -536,8 +548,8 @@ class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
             netcdf_file,
             coords_to_dims=False,
         )
-        for array_name in converter.array_names:
-            converter.set_array_properties(array_name, sparse=True)
+        for array_creator in converter.array_creators():
+            array_creator.sparse = True
         converter.convert_to_group(uri)
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="x1") as array:
@@ -738,6 +750,6 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
 
 def test_bad_dims_error():
     converter = NetCDF4ConverterEngine()
-    converter.add_dim("row", (0, 10), np.uint32)
+    converter.add_shared_dim("row", (0, 10), np.uint32)
     with pytest.raises(NotImplementedError):
         converter.add_array_converter("array0", ("row",))
