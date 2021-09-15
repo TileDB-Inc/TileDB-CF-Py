@@ -842,6 +842,7 @@ class ArrayCreator:
             dimensions.
         allows_duplicates: Specifies if multiple values can be stored at the same
              coordinate. Only allowed for sparse arrays.
+        sparse: If ``True``, creates a sparse array. Otherwise, create
     """
 
     def __init__(

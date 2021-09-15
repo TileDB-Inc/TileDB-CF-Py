@@ -565,7 +565,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
             name=name,
             dims=dims,
             cell_order=cell_order,
-            tile_order=cell_order,
+            tile_order=tile_order,
             capacity=capacity,
             tiles=tiles,
             coords_filters=coords_filters,
