@@ -16,6 +16,10 @@
 
 ### Deprecation
 
+* Deprecates `input_name` in favor of `input_dim_name` and `input_var_name` and `input_dtype` in favor of `input_var_dtype` in `NetCDF4CoordToDimConverter`.
+* Deprecates `input_name` and `input_size` in favor of `input_dim_name` and `input_dim_size` in `NetCDF4DimToDimConverter`.
+* Deprecates `input_name` and `input_dtype` in favor of `input_var_name` and `input_var_dtype` in `NetCDF4VarToAttrConverter`.
+
 ## TileDB-CF-Py Release 0.4.0
 
 ### Bug fixes
