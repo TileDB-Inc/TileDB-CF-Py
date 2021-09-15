@@ -4,6 +4,8 @@
 
 ### Bug fixes
 
+* Fixes initialization of `tile_order` in `NetCDF4ArrayConverter`.
+
 ### Breaking Behavior
 
 ### New Features
