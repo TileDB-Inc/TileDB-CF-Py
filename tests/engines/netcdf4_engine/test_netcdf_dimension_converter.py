@@ -37,8 +37,9 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             assert converter.domain is None
             assert converter.dtype == np.dtype(np.float64)
             assert isinstance(repr(converter), str)
-            assert converter.input_name == var.name
-            assert converter.input_dtype == np.dtype(np.float64)
+            assert converter.input_var_name == "value"
+            assert converter.input_dim_name == "value"
+            assert converter.input_var_dtype == np.dtype(np.float64)
 
     def test_get_values(self):
         data = np.random.rand((8))
@@ -109,8 +110,8 @@ class TestNetCDFDimToDimConverterSimpleDim:
                 registry, dim, 1000, np.uint64
             )
             assert isinstance(repr(converter), str)
-            assert converter.input_name == dim.name
-            assert converter.input_size == dim.size
+            assert converter.input_dim_name == dim.name
+            assert converter.input_dim_size == dim.size
             assert not converter.is_unlimited
             assert converter.name == dim.name
             assert converter.domain == (0, dim.size - 1)
@@ -169,8 +170,8 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
                 registry, dim, max_size, np.uint64
             )
             assert isinstance(repr(converter), str)
-            assert converter.input_name == dim.name
-            assert converter.input_size == dim.size
+            assert converter.input_dim_name == dim.name
+            assert converter.input_dim_size == dim.size
             assert converter.is_unlimited
             assert converter.name == dim.name
             assert converter.domain == (0, max_size - 1)

@@ -98,8 +98,9 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
         name: Name of the TileDB dimension.
         domain: The (inclusive) interval on which the dimension is valid.
         dtype: The numpy dtype of the values and domain of the dimension.
-        input_name: The name of input NetCDF variable.
-        input_dtype: The numpy dtype of the input NetCDF variable.
+        input_dim_name: The name of input NetCDF dimension.
+        input_var_name: The name of input NetCDF variable.
+        input_var_dtype: The numpy dtype of the input NetCDF variable.
     """
 
     def __init__(
@@ -108,29 +109,34 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
-        input_name: str,
-        input_dtype: np.dtype,
+        input_dim_name: str,
+        input_var_name: str,
+        input_var_dtype: np.dtype,
     ):
         super().__init__(dataspace_registry, name, domain, dtype)
-        self.input_name = input_name
-        self.input_dtype = input_dtype
+        self.input_dim_name = input_dim_name
+        self.input_var_name = input_var_name
+        self.input_var_dtype = input_var_dtype
 
     def __eq__(self, other):
         return (
             super.__eq__(self, other)
-            and self.input_name == other.input_name
-            and self.input_dtype == other.input_dtype
+            and self.input_dim_name == other.input_dim_name
+            and self.input_var_name == other.input_var_name
+            and self.input_var_dtype == other.input_var_dtype
         )
 
     def __repr__(self):
         return (
-            f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype}) -> "
-            f"{super().__repr__()}"
+            f"NetCDFVariable(name={self.input_var_name}, dtype={self.input_var_dtype}) "
+            f" -> {super().__repr__()}"
         )
 
     def html_input_summary(self):
         """Returns a HTML string summarizing the input for the dimension."""
-        return f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype})"
+        return (
+            f"NetCDFVariable(name={self.input_var_name}, dtype={self.input_var_dtype})"
+        )
 
     @classmethod
     def from_netcdf(
@@ -159,8 +165,9 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
             name=name if name is not None else var.name,
             domain=domain,
             dtype=dtype,
-            input_name=var.name,
-            input_dtype=dtype,
+            input_dim_name=var.dimensions[0],
+            input_var_name=var.name,
+            input_var_dtype=dtype,
         )
 
     def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
@@ -171,10 +178,10 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
             tiledb_array: TileDB array to copy the metadata items to.
         """
         try:
-            variable = netcdf_group.variables[self.input_name]
+            variable = netcdf_group.variables[self.input_var_name]
         except KeyError as err:
             raise KeyError(
-                f"The variable '{self.input_name}' was not found in the provided "
+                f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
         dim_meta = DimMetadata(tiledb_array.meta, self.name)
@@ -204,21 +211,47 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
                 "been implemented."
             )
         try:
-            variable = netcdf_group.variables[self.input_name]
+            variable = netcdf_group.variables[self.input_var_name]
         except KeyError as err:
             raise KeyError(
-                f"The variable '{self.input_name}' was not found in the provided "
+                f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
         if variable.ndim != 1:
             raise ValueError(
-                f"The variable '{self.input_name}' with {variable.ndim} dimensions is "
-                f"not a valid NetCDF coordinate. Cannot copy data from variable "
-                f"'{self.input_name}' to TileDB dimension '{self.name}'."
+                f"The variable '{self.input_var_name}' with {variable.ndim} dimensions "
+                f"is not a valid NetCDF coordinate. Cannot copy data from variable "
+                f"'{self.input_var_name}' to TileDB dimension '{self.name}'."
             )
         if variable.get_dims()[0].size < 1:
             return None
         return variable[:]
+
+    @property
+    def input_name(self) -> str:
+        """(DEPRECATED) Name of the input NetCDF variable and dimension."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use `input_var_name` to get the name of the input NetCDF "
+                "variable and `input_dim_name` to get the input NetCDF dimension.",
+                DeprecationWarning,
+            )
+        if self.input_var_name != self.input_dim_name:
+            raise ValueError(
+                "Input name is ambiguous. The input variable and input dimension have "
+                "different names."
+            )
+        return self.input_var_name
+
+    @property
+    def input_dtype(self) -> np.dtype:
+        """(DEPRECATED) Name of the input NetCDF variable and dimension."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use `input_var_dtype` instead.",
+                DeprecationWarning,
+            )
+        return self.input_var_dtype
 
     @property
     def is_index_dim(self) -> bool:
@@ -232,8 +265,8 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
         name: Name of the TileDB dimension.
         domain: The (inclusive) interval on which the dimension is valid.
         dtype: The numpy dtype of the values and domain of the dimension.
-        input_name: Name of the input NetCDF variable.
-        input_size: Size of the input NetCDF variable.
+        input_dim_name: Name of the input NetCDF variable.
+        input_dim_size: Size of the input NetCDF variable.
         is_unlimited: If True, the input NetCDF variable is unlimited.
     """
 
@@ -243,34 +276,34 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
-        input_name: str,
-        input_size: int,
+        input_dim_name: str,
+        input_dim_size: int,
         is_unlimited: bool,
     ):
         super().__init__(dataspace_registry, name, domain, dtype)
-        self.input_name = input_name
-        self.input_size = input_size
+        self.input_dim_name = input_dim_name
+        self.input_dim_size = input_dim_size
         self.is_unlimited = is_unlimited
 
     def __eq__(self, other):
         return (
             super.__eq__(self, other)
-            and self.input_name == other.input_name
-            and self.input_size == other.input_size
+            and self.input_dim_name == other.input_dim_name
+            and self.input_dim_size == other.input_dim_size
             and self.is_unlimited == other.is_unlimited
         )
 
     def __repr__(self):
-        size_str = "unlimited" if self.is_unlimited else str(self.input_size)
+        size_str = "unlimited" if self.is_unlimited else str(self.input_dim_size)
         return (
-            f"NetCDFDimension(name={self.input_name}, size={size_str}) -> "
+            f"NetCDFDimension(name={self.input_dim_name}, size={size_str}) -> "
             f"{super().__repr__()}"
         )
 
     def html_input_summary(self):
         """Returns a HTML string summarizing the input for the dimension."""
-        size_str = "unlimited" if self.is_unlimited else str(self.input_size)
-        return f"NetCDFDimension(name={self.input_name}, size={size_str})"
+        size_str = "unlimited" if self.is_unlimited else str(self.input_dim_size)
+        return f"NetCDFDimension(name={self.input_dim_name}, size={size_str})"
 
     @classmethod
     def from_netcdf(
@@ -291,8 +324,8 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
             name=name if name is not None else dim.name,
             domain=(0, size - 1),
             dtype=dtype,
-            input_name=dim.name,
-            input_size=dim.size,
+            input_dim_name=dim.name,
+            input_dim_size=dim.size,
             is_unlimited=dim.isunlimited(),
         )
 
@@ -312,21 +345,21 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
         """
         group = netcdf_group
         while group is not None:
-            if self.input_name in group.dimensions:
-                dim = group.dimensions[self.input_name]
+            if self.input_dim_name in group.dimensions:
+                dim = group.dimensions[self.input_dim_name]
                 if dim.size == 0:
                     raise ValueError(
                         f"Cannot copy dimension data from NetCDF dimension "
-                        f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
-                        f"NetCDF dimension is of size 0; there is no data to copy."
+                        f"'{self.input_dim_name}' to TileDB dimension '{self.name}'. "
+                        f"The NetCDF dimension is of size 0; there is no data to copy."
                     )
                 if self.domain is not None and (
                     self.domain[1] is not None and dim.size - 1 > self.domain[1]
                 ):
                     raise IndexError(
                         f"Cannot copy dimension data from NetCDF dimension "
-                        f"'{self.input_name}' to TileDB dimension '{self.name}'. The "
-                        f"NetCDF dimension size of {dim.size} does not fit in the "
+                        f"'{self.input_dim_name}' to TileDB dimension '{self.name}'. "
+                        f"The NetCDF dimension size of {dim.size} does not fit in the "
                         f"domain {self.domain} of the TileDB dimension."
                     )
                 if sparse:
@@ -334,10 +367,30 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
                 return slice(dim.size)
             group = group.parent
         raise KeyError(
-            f"Unable to copy NetCDF dimension '{self.input_name}' to the TileDB "
+            f"Unable to copy NetCDF dimension '{self.input_dim_name}' to the TileDB "
             f"dimension '{self.name}'. No NetCDF dimension with that name exists in "
             f"the NetCDF group '{netcdf_group.path}' or its parent groups."
         )
+
+    @property
+    def input_name(self) -> str:
+        """(DEPRECATED) Name of the input NetCDF dimension."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use `input_dim_name` instead.",
+                DeprecationWarning,
+            )
+        return self.input_dim_name
+
+    @property
+    def input_size(self) -> int:
+        """(DEPRECATED) Size of the input NetCDF dimension."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use `input_dim_size` instead.",
+                DeprecationWarning,
+            )
+        return self.input_dim_size
 
 
 class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
@@ -378,14 +431,6 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
     def create(
         cls, dataspace_registry: DataspaceRegistry, dim_name: str, dtype: np.dtype
     ):
-        """Returns a :class:`NetCDFDimToDimConverter` from a
-        :class:`netcdf4.Dimension`.
-
-        Parameters:
-            dim_name: The name of the output TileDB dimension.
-            dtype: The numpy dtype of the values and domain of the output TileDB
-                dimension.
-        """
         return cls(dataspace_registry, dim_name, (0, 0), dtype)
 
 
@@ -400,8 +445,8 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             byte/strings).
         nullable: Specifies if the attribute is nullable using validity tiles.
         filters: Specifies compression filters for the attribute.
-        input_name: Name of the input NetCDF variable that will be converted.
-        input_dtype: Numpy dtype of the input NetCDF variable.
+        input_var_name: Name of the input NetCDF variable that will be converted.
+        input_var_dtype: Numpy dtype of the input NetCDF variable.
     """
 
     def __init__(
@@ -409,12 +454,12 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         array_registry: ArrayRegistry,
         name: str,
         dtype: np.dtype,
-        fill: Optional[Union[int, float, str]] = None,
-        var: bool = False,
-        nullable: bool = False,
-        filters: Optional[tiledb.FilterList] = None,
-        input_name: Optional[str] = None,
-        input_dtype: Optional[np.dtype] = None,
+        fill: Optional[Union[int, float, str]],
+        var: bool,
+        nullable: bool,
+        filters: Optional[tiledb.FilterList],
+        input_var_name: str,
+        input_var_dtype: np.dtype,
     ):
         super().__init__(
             array_registry=array_registry,
@@ -425,13 +470,13 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             nullable=nullable,
             filters=filters,
         )
-        self.input_name = input_name
-        self.input_dtype = input_dtype
+        self.input_var_name = input_var_name
+        self.input_var_dtype = input_var_dtype
 
     def __repr__(self):
         return (
-            f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype}) -> "
-            f"{super().__repr__()}"
+            f"NetCDFVariable(name={self.input_var_name}, dtype={self.input_var_dtype})"
+            f" -> {super().__repr__()}"
         )
 
     def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
@@ -442,10 +487,10 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             tiledb_array: TileDB array to copy the metadata items to.
         """
         try:
-            variable = netcdf_group.variables[self.input_name]
+            variable = netcdf_group.variables[self.input_var_name]
         except KeyError as err:
             raise KeyError(
-                f"The variable '{self.input_name}' was not found in the provided "
+                f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
         attr_meta = AttrMetadata(tiledb_array.meta, self.name)
@@ -453,8 +498,9 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             safe_set_metadata(attr_meta, key, variable.getncattr(key))
 
     def html_summary(self):
+        """Returns a string HTML summary."""
         return (
-            f"NetCDFVariable(name={self.input_name}, dtype={self.input_dtype})"
+            f"NetCDFVariable(name={self.input_var_name}, dtype={self.input_var_dtype})"
             f"{super().html_summary()}"
         )
 
@@ -487,8 +533,8 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             var=var,
             nullable=nullable,
             filters=filters,
-            input_name=ncvar.name,
-            input_dtype=ncvar.dtype,
+            input_var_name=ncvar.name,
+            input_var_dtype=ncvar.dtype,
         )
 
     def get_values(
@@ -507,13 +553,33 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         be returned as an ND array.
         """
         try:
-            variable = netcdf_group.variables[self.input_name]
+            variable = netcdf_group.variables[self.input_var_name]
         except KeyError as err:
             raise KeyError(
-                f"The variable '{self.input_name}' was not found in the provided "
+                f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
         return variable[...].flatten() if sparse else variable[...]
+
+    @property
+    def input_name(self) -> str:
+        """(DEPRECATED) Name of the input NetCDF variable."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use `input_var_name` instead.",
+                DeprecationWarning,
+            )
+        return self.input_var_name
+
+    @property
+    def input_dtype(self) -> np.dtype:
+        """(DEPRECATED) Size of the input NetCDF dimension."""
+        with warnings.catch_warnings():
+            warnings.warn(
+                "Deprecated. Use `input_var_dtype` instead.",
+                DeprecationWarning,
+            )
+        return self.input_var_dtype
 
 
 class NetCDF4ArrayConverter(ArrayCreator):
