@@ -29,7 +29,7 @@ def from_netcdf(
 ):
     """Converts a NetCDF input file to nested TileDB CF dataspaces.
 
-    See :class:`~tiledb.cf.engines.netcdf4_engine.NetCDF4ConverterEngine` for more
+    See :class:`~tiledb.cf.NetCDF4ConverterEngine` for more
     information on the backend converter engine used for the conversion.
 
     Parameters:

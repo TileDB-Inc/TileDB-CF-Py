@@ -73,8 +73,8 @@ Attribute Creator
   :members:
 
 
-NetCDF4 to TileDB Conversion
-############################
+NetCDF to TileDB Conversion
+###########################
 
 Auto-convert Function
 =====================
@@ -90,25 +90,25 @@ NetCDF4 Converter Engine
 NetCDF4 to TileDB Array Converter
 =================================
 
-.. autoclass:: tiledb.cf.netcdf4_engine.NetCDF4ArrayConverter
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4ArrayConverter
   :members:
 
 NetCDF4 to TileDB Dimension Converters
 =======================================
 
-.. autoclass:: tiledb.cf.netcdf4_engine.NetCDF4CoordToDimConverter
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4CoordToDimConverter
   :members:
 
-.. autoclass:: tiledb.cf.netcdf4_engine.NetCDF4DimToDimConverter
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4DimToDimConverter
   :members:
 
-.. autoclass:: tiledb.cf.netcdf4_engine.NetCDF4ScalarToDimConverter
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4ScalarToDimConverter
   :members:
 
 NetCDF4 to TileDB Attribute Converters
 =======================================
 
-.. autoclass:: tiledb.cf.netcdf4_engine.NetCDF4VarToAttrConverter
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter
   :members:
 
 TileDB Backend for xarray

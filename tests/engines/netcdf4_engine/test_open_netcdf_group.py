@@ -2,7 +2,7 @@
 # Licensed under the MIT License.
 import pytest
 
-from tiledb.cf.netcdf4_engine import open_netcdf_group
+from tiledb.cf.netcdf_engine import open_netcdf_group
 
 netCDF4 = pytest.importorskip("netCDF4")
 
