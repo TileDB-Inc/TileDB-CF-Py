@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from tiledb.cf.creator import DataspaceRegistry
-from tiledb.cf.engines.netcdf4_engine import NetCDF4CoordToDimConverter
+from tiledb.cf.netcdf4_engine import NetCDF4CoordToDimConverter
 
 netCDF4 = pytest.importorskip("netCDF4")
 

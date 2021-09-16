@@ -15,9 +15,8 @@ import netCDF4
 import numpy as np
 
 import tiledb
-
-from ..core import AttrMetadata, DimMetadata, Group
-from ..creator import (
+from tiledb.cf.core import AttrMetadata, DimMetadata, Group
+from tiledb.cf.creator import (
     ArrayCreator,
     ArrayRegistry,
     AttrCreator,
