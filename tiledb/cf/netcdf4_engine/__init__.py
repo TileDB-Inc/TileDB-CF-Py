@@ -15,6 +15,7 @@ __all__ = ["has_netCDF4", "from_netcdf"]  # type: ignore
 
 if has_netCDF4:
     from .converter import (
+        NetCDF4ArrayConverter,
         NetCDF4ConverterEngine,
         NetCDF4CoordToDimConverter,
         NetCDF4DimToDimConverter,

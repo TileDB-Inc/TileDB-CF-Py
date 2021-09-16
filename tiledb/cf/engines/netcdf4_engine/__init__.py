@@ -4,6 +4,6 @@
 
 import warnings
 
-from tiledb.cf.netcdf4_engine.converter import NetCDF4ConverterEngine
+from tiledb.cf.netcdf4_engine import *
 
 warnings.warn("This module is deprecated. Use tiledb.cf.netcdf4_converter instead.")
