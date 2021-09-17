@@ -10,6 +10,8 @@
 
 ### New Features
 
+* Adds `tiles` property to `DomainCreator` to make getting/setting tiles easier.
+
 ### Improvements
 
 * Updates `NetCDF4CreatorEngine` to copy variable metadata when copying a NetCDF coordinate to a TileDB dimension.
