@@ -427,9 +427,7 @@ class DataspaceCreator:
             )
         array_creator = self._registry.get_array_creator(array_name)
         if property_name == "tiles":
-            return tuple(
-                dim_creator.tile for dim_creator in array_creator.domain_creator
-            )
+            return array_creator.domain_creator.tiles
         if property_name == "dim_filters":
             return {
                 dim_creator.name: dim_creator.filters
@@ -607,13 +605,7 @@ class DataspaceCreator:
         array_creator = self._registry.get_array_creator(array_name)
         if "tiles" in properties:
             tiles = properties.pop("tiles")
-            if len(tiles) != array_creator.ndim:
-                raise ValueError(
-                    f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
-                    f"{array_creator.ndim} dimension(s)."
-                )
-            for dim_creator, tile in zip(array_creator.domain_creator, tiles):
-                dim_creator.tile = tile
+            array_creator.domain_creator.tiles = tiles
         if "dim_filters" in properties:
             dim_filters = properties.pop("dim_filters")
             for dim_name, filters in dim_filters.items():
@@ -866,13 +858,7 @@ class ArrayCreator:
         self.tile_order = tile_order
         self.capacity = capacity
         if tiles is not None:
-            if len(tiles) != self.ndim:
-                raise ValueError(
-                    f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
-                    f"{self.ndim} dimension(s)."
-                )
-            for dim_creator, tile in zip(self._domain_creator, tiles):
-                dim_creator.tile = tile
+            self._domain_creator.tiles = tiles
         self.coords_filters = coords_filters
         if dim_filters is not None:
             for dim_name, filters in dim_filters.items():
@@ -1279,6 +1265,20 @@ class DomainCreator:
             dim_id: dimension index (int) or name (str)
         """
         return self._array_registry.get_dim_creator(dim_id)
+
+    @property
+    def tiles(self):
+        return tuple(dim_creator.tile for dim_creator in self)
+
+    @tiles.setter
+    def tiles(self, tiles: Sequence[Optional[int]]):
+        if len(tiles) != self.ndim:
+            raise ValueError(
+                f"Cannot set tiles. Got {len(tiles)} tile(s) for an array with "
+                f"{self.ndim} dimension(s)."
+            )
+        for dim_creator, tile in zip(self, tiles):
+            dim_creator.tile = tile
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
         """Returns a TileDB domain from the contained dimension creators."""
