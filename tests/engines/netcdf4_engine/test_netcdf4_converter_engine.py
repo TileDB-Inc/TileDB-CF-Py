@@ -7,7 +7,7 @@ import pytest
 
 import tiledb
 from tiledb.cf import AttrMetadata, DimMetadata, Group, from_netcdf
-from tiledb.cf.engines.netcdf4_engine import NetCDF4ConverterEngine
+from tiledb.cf.netcdf_engine import NetCDF4ConverterEngine
 
 netCDF4 = pytest.importorskip("netCDF4")
 

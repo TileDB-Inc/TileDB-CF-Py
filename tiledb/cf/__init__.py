@@ -28,7 +28,10 @@ from .core import (
     VirtualGroup,
 )
 from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
-from .engines import from_netcdf
+from .netcdf_engine import from_netcdf, has_netCDF4
+
+if has_netCDF4:
+    from .netcdf_engine import NetCDF4ConverterEngine
 
 
 @click.group()
