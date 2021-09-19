@@ -173,7 +173,11 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
                 f"'{self.input_var_name}' to TileDB dimension '{self.name}'."
             )
         if variable.get_dims()[0].size < 1:
-            return None
+            raise ValueError(
+                f"Cannot copy dimension data from NetCDF variable "
+                f"'{self.input_var_name}' to TileDB dimension '{self.name}'. "
+                f"There is no data to copy."
+            )
         return variable[:]
 
     def html_input_summary(self):

@@ -58,8 +58,8 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             var = dataset.createVariable("value", np.float64, ("value",))
             registry = DataspaceRegistry()
             converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
-            result = converter.get_values(dataset, sparse=True)
-            assert result is None
+            with pytest.raises(ValueError):
+                converter.get_values(dataset, sparse=True)
 
     def test_get_values_dense_error(self):
         data = np.random.rand((8))
