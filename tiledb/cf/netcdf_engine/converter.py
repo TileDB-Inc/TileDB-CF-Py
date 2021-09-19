@@ -104,6 +104,12 @@ class NetCDF4ArrayConverter(ArrayCreator):
             dim_values: Mapping from dimension name to value for dimensions that are
                 not from the NetCDF group.
         """
+        shape = tuple(
+            dim_creator.base.get_query_size(netcdf_group)
+            if isinstance(dim_creator.base, NetCDF4ToDimConverter)
+            else 1
+            for dim_creator in self._domain_creator
+        )
         dim_query = []
         for dim_creator in self._domain_creator:
             if isinstance(dim_creator.base, NetCDF4ToDimConverter):
@@ -115,17 +121,11 @@ class NetCDF4ArrayConverter(ArrayCreator):
                 if dim_values is None:
                     raise KeyError("Missing value for dimension {dim_creator}.")
                 dim_query.append(np.ndarray([dim_values[dim_creator.name]]))
-        #        shape = tuple(
-        #            dim_creator.dense_query_length(netcdf_group)
-        #            if isinstance(dim_creator.base, NetCDF4ToDimConverter)
-        #            else 1
-        #            for dim_creator in self._domain_creator
-        #        )
         data = {}
         for attr_converter in self:
             assert isinstance(attr_converter, NetCDF4ToAttrConverter)
             data[attr_converter.name] = attr_converter.get_values(
-                netcdf_group, sparse=self.sparse  # , shape=shape
+                netcdf_group, sparse=self.sparse, shape=shape
             )
             attr_converter.copy_metadata(netcdf_group, tiledb_array)
         coord_values = tuple(dim_query)
