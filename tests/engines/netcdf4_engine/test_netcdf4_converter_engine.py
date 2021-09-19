@@ -37,6 +37,10 @@ class ConvertNetCDFBase:
 
     @pytest.fixture(scope="class")
     def netcdf_file(self, tmpdir_factory):
+        """Returns a NetCDF file created from the group variables.
+
+        Use group variables to create a NetCDF file with a single root group.
+        """
         filepath = tmpdir_factory.mktemp("input_file").join(f"{self.name}.nc")
         with netCDF4.Dataset(filepath, mode="w") as dataset:
             if self.group_metadata:
@@ -52,6 +56,9 @@ class ConvertNetCDFBase:
         return filepath
 
     def check_attrs(self, group_uri):
+        """Checks the values in each attribute match the values from the NetCDF
+        variable it was copied from.
+        """
         with Group(group_uri) as group:
             for attr_name, var_name in self.attr_to_var_map.items():
                 with group.open_array(attr=attr_name) as array:
@@ -70,6 +77,7 @@ class ConvertNetCDFBase:
 
     @pytest.mark.parametrize("collect_attrs", [True, False])
     def test_converter_from_netcdf(self, netcdf_file, tmpdir, collect_attrs):
+        """Integration test for converting using `from_file` and `convert_to_group`."""
         converter = NetCDF4ConverterEngine.from_file(
             netcdf_file, coords_to_dims=False, collect_attrs=collect_attrs
         )
@@ -79,6 +87,7 @@ class ConvertNetCDFBase:
         self.check_attrs(uri)
 
     def test_converter_html_repr(self, netcdf_file):
+        """Test generated HTML is valid."""
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         try:
             tidylib = pytest.importorskip("tidylib")
@@ -105,6 +114,30 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     )
     variable_data = {"x1": np.linspace(1.0, 4.0, 8)}
     attr_to_var_map = {"x1": "x1"}
+
+    def test_convert_dense_with_non_netcdf_dims(self, netcdf_file, tmpdir):
+        """Test converting the NetCDF variable 'x1' into a TileDB array with
+        an extra non-NetCDF dimension."""
+        uri = str(tmpdir.mkdir("output").join("dense_dim_values"))
+        converter = NetCDF4ConverterEngine()
+        dim_dtype = np.dtype("uint32")
+        converter.add_shared_dim("col", domain=(0, 4), dtype=dim_dtype)
+        with netCDF4.Dataset(netcdf_file) as netcdf_group:
+            converter.add_dim_to_dim_converter(
+                netcdf_group.dimensions["row"], dtype=dim_dtype
+            )
+            converter.add_array_converter("array", ("row", "col"))
+            converter.add_var_to_attr_converter(netcdf_group.variables["x1"], "array")
+            converter.convert_to_array(
+                uri, input_netcdf_group=netcdf_group, dim_values={"col": 2}
+            )
+        with tiledb.open(uri) as array:
+            nonempty_domain = array.nonempty_domain()
+            data = array[:, 2]
+        assert nonempty_domain == ((0, 7), (2, 2))
+        tiledb_array = data["x1"]
+        original = self.variable_data["x1"]
+        assert np.array_equal(tiledb_array, original)
 
     def test_convert_to_sparse_array(self, netcdf_file, tmpdir):
         uri = str(tmpdir.mkdir("output").join("sparse_example"))
@@ -758,10 +791,3 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
     converter.create_group(uri)
     with pytest.raises(KeyError):
         converter.copy_to_group(uri, input_file=simple1_netcdf_file.filepath)
-
-
-def test_bad_dims_error():
-    converter = NetCDF4ConverterEngine()
-    converter.add_shared_dim("row", (0, 10), np.uint32)
-    with pytest.raises(NotImplementedError):
-        converter.add_array_converter("array0", ("row",))
