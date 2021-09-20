@@ -34,7 +34,7 @@ class NetCDF4ToAttrConverter(AttrCreator):
         self,
         netcdf_group: netCDF4.Dataset,
         sparse: bool,
-        shape: Optional[Sequence[int]] = None,
+        shape: Optional[Union[int, Sequence[int]]] = None,
     ) -> np.ndarray:
         """Returns TileDB attribute values from a NetCDF group.
 
@@ -151,7 +151,7 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         self,
         netcdf_group: netCDF4.Dataset,
         sparse: bool,
-        shape: Optional[Sequence[int]] = None,
+        shape: Optional[Union[int, Sequence[int]]] = None,
     ) -> np.ndarray:
         """Returns TileDB attribute values from a NetCDF group.
 
@@ -175,8 +175,6 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             ) from err
         if shape is not None:
             return np.reshape(variable[...], shape)
-        if sparse:
-            return variable[...].flatten()
         return variable[...]
 
     @property
