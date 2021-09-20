@@ -190,11 +190,13 @@ class NetCDF4DomainConverter(DomainCreator):
         sparse: bool,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
     ):
-        """Returns the shape of the coordinates used in a query to the requested
-        NetCDF group.
+        """Returns the coordinates used to copy data from a NetCDF group.
 
         Parameters:
             netcdf_group: Group to query the data from.
+            sparse: If ``True``, return coordinates for a sparse write. If ``False``,
+                return coordinates for a dense write.
+            assigned_dim_values: Values for any non-NetCDF dimensions.
         """
         query_coords = []
         for dim_creator in self:

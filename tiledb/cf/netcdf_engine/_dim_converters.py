@@ -30,6 +30,14 @@ class NetCDF4ToDimConverter(SharedDim):
         """
 
     @abstractmethod
+    def get_query_size(self, netcdf_group: netCDF4.Dataset):
+        """Returns the number of coordinates to copy from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to copy the data from.
+        """
+
+    @abstractmethod
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
@@ -43,14 +51,6 @@ class NetCDF4ToDimConverter(SharedDim):
         Returns:
             The coordinates needed for querying the create TileDB dimension in the form
                 of a numpy array if sparse is ``True`` and a slice otherwise.
-        """
-
-    @abstractmethod
-    def get_query_size(self, netcdf_group: netCDF4.Dataset):
-        """Returns the number of coordinates to copy from NetCDF to TileDB.
-
-        Parameters:
-            netcdf_group: NetCDF group to copy the data from.
         """
 
 
@@ -155,6 +155,15 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
             input_var_dtype=dtype,
         )
 
+    def get_query_size(self, netcdf_group: netCDF4.Dataset):
+        """Returns the number of coordinates to copy from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to copy the data from.
+        """
+        variable = self._get_ncvar(netcdf_group)
+        return variable.get_dims()[0].size
+
     def get_values(
         self,
         netcdf_group: netCDF4.Dataset,
@@ -185,15 +194,6 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
                 f"There is no data to copy."
             )
         return variable[:]
-
-    def get_query_size(self, netcdf_group: netCDF4.Dataset):
-        """Returns the number of coordinates to copy from NetCDF to TileDB.
-
-        Parameters:
-            netcdf_group: NetCDF group to copy the data from.
-        """
-        variable = self._get_ncvar(netcdf_group)
-        return variable.get_dims()[0].size
 
     def html_input_summary(self):
         """Returns a HTML string summarizing the input for the dimension."""
@@ -310,6 +310,15 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
             is_unlimited=dim.isunlimited(),
         )
 
+    def get_query_size(self, netcdf_group: netCDF4.Dataset):
+        """Returns the number of coordinates to copy from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to copy the data from.
+        """
+        dim = self._get_ncdim(netcdf_group)
+        return dim.size
+
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
@@ -343,15 +352,6 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
         if sparse:
             return np.arange(dim.size)
         return slice(dim.size)
-
-    def get_query_size(self, netcdf_group: netCDF4.Dataset):
-        """Returns the number of coordinates to copy from NetCDF to TileDB.
-
-        Parameters:
-            netcdf_group: NetCDF group to copy the data from.
-        """
-        dim = self._get_ncdim(netcdf_group)
-        return dim.size
 
     def html_input_summary(self):
         """Returns a HTML string summarizing the input for the dimension."""
@@ -397,6 +397,14 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
     ):
         return cls(dataspace_registry, dim_name, (0, 0), dtype)
 
+    def get_query_size(self, netcdf_group: netCDF4.Dataset):
+        """Returns the number of coordinates to copy from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to copy the data from.
+        """
+        return 1
+
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
@@ -414,14 +422,6 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
         if sparse:
             return np.array([0])
         return slice(1)
-
-    def get_query_size(self, netcdf_group: netCDF4.Dataset):
-        """Returns the number of coordinates to copy from NetCDF to TileDB.
-
-        Parameters:
-            netcdf_group: NetCDF group to copy the data from.
-        """
-        return 1
 
     def html_input_summary(self):
         """Returns a string HTML summary."""
