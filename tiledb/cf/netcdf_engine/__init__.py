@@ -19,6 +19,7 @@ if has_netCDF4:
         NetCDF4ConverterEngine,
         NetCDF4CoordToDimConverter,
         NetCDF4DimToDimConverter,
+        NetCDF4DomainConverter,
         NetCDF4ScalarToDimConverter,
         NetCDF4VarToAttrConverter,
         open_netcdf_group,

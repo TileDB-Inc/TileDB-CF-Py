@@ -852,8 +852,9 @@ class ArrayCreator:
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
-        self._registry = ArrayRegistry(dataspace_registry, name, dims)
-        self._domain_creator = DomainCreator(self._registry)
+        self._registry, self._domain_creator = self._register(
+            dataspace_registry, name, dims
+        )
         self.cell_order = cell_order
         self.tile_order = tile_order
         self.capacity = capacity
@@ -901,6 +902,12 @@ class ArrayCreator:
             output.write("])\n")
         output.write("  )")
         return output.getvalue()
+
+    def _register(
+        self, dataspace_registry: DataspaceRegistry, name: str, dims: Sequence[str]
+    ):
+        array_registry = ArrayRegistry(dataspace_registry, name, dims)
+        return array_registry, DomainCreator(array_registry)
 
     def attr_creator(self, key: Union[int, str]) -> AttrCreator:
         """Returns the requested attribute creator

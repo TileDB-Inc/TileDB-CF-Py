@@ -4,7 +4,7 @@
 
 import warnings
 from abc import abstractmethod
-from typing import Optional, Union
+from typing import Optional, Sequence, Union
 
 import netCDF4
 import numpy as np
@@ -31,18 +31,23 @@ class NetCDF4ToAttrConverter(AttrCreator):
 
     @abstractmethod
     def get_values(
-        self, netcdf_group: netCDF4.Dataset, sparse: bool
-    ) -> Union[np.ndarray, slice]:
-        """Returns values from a NetCDF group that will be copied to TileDB.
+        self,
+        netcdf_group: netCDF4.Dataset,
+        sparse: bool,
+        shape: Optional[Union[int, Sequence[int]]] = None,
+    ) -> np.ndarray:
+        """Returns TileDB attribute values from a NetCDF group.
 
         Parameters:
-            netcdf_group: NetCDF group to get the values from.
+            netcdf_group: NetCDF group to get the dimension values from.
             sparse: ``True`` if copying into a sparse array and ``False`` if copying
                 into a dense array.
+            shape: If not ``None``, the shape to return the numpy array as.
 
         Returns:
-            The coordinates needed for querying the create TileDB dimension in the form
-                of a numpy array if sparse is ``True`` and a slice otherwise.
+            The values needed to set an attribute in a TileDB array. If the array
+        is sparse the values will be returned as an 1D array; otherwise, they will
+        be returned as an ND array.
         """
 
 
@@ -143,14 +148,18 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         )
 
     def get_values(
-        self, netcdf_group: netCDF4.Dataset, sparse: bool
-    ) -> Union[np.ndarray, slice]:
+        self,
+        netcdf_group: netCDF4.Dataset,
+        sparse: bool,
+        shape: Optional[Union[int, Sequence[int]]] = None,
+    ) -> np.ndarray:
         """Returns TileDB attribute values from a NetCDF group.
 
         Parameters:
             netcdf_group: NetCDF group to get the dimension values from.
             sparse: ``True`` if copying into a sparse array and ``False`` if copying
                 into a dense array.
+            shape: If not ``None``, the shape to return the numpy array as.
 
         Returns:
             The values needed to set an attribute in a TileDB array. If the array
@@ -164,7 +173,9 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
                 f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
-        return variable[...].flatten() if sparse else variable[...]
+        if shape is not None:
+            return np.reshape(variable[...], shape)
+        return variable[...]
 
     @property
     def input_dtype(self) -> np.dtype:

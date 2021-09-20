@@ -93,6 +93,13 @@ NetCDF4 to TileDB Array Converter
 .. autoclass:: tiledb.cf.netcdf_engine.NetCDF4ArrayConverter
   :members:
 
+NetCDF4 to TileDB Domain Converter
+==================================
+
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4DomainConverter
+  :members:
+
+
 NetCDF4 to TileDB Dimension Converters
 =======================================
 

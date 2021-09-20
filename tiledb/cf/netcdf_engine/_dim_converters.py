@@ -30,6 +30,14 @@ class NetCDF4ToDimConverter(SharedDim):
         """
 
     @abstractmethod
+    def get_query_size(self, netcdf_group: netCDF4.Dataset):
+        """Returns the number of coordinates to copy from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to copy the data from.
+        """
+
+    @abstractmethod
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
@@ -87,13 +95,7 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
             f" -> {super().__repr__()}"
         )
 
-    def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
-        """Copy the metadata data from NetCDF to TileDB.
-
-        Parameters:
-            netcdf_group: NetCDF group to get the metadata items from.
-            tiledb_array: TileDB array to copy the metadata items to.
-        """
+    def _get_ncvar(self, netcdf_group: netCDF4.Dataset) -> netCDF4.Variable:
         try:
             variable = netcdf_group.variables[self.input_var_name]
         except KeyError as err:
@@ -101,6 +103,22 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
                 f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
+        if variable.ndim != 1:
+            raise ValueError(
+                f"The variable '{self.input_var_name}' with {variable.ndim} dimensions "
+                f"is not a valid NetCDF coordinate. A coordinate must have exactly 1 "
+                f"dimension."
+            )
+        return variable
+
+    def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
+        """Copy the metadata data from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to get the metadata items from.
+            tiledb_array: TileDB array to copy the metadata items to.
+        """
+        variable = self._get_ncvar(netcdf_group)
         dim_meta = DimMetadata(tiledb_array.meta, self.name)
         for key in variable.ncattrs():
             safe_set_metadata(dim_meta, key, variable.getncattr(key))
@@ -137,6 +155,15 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
             input_var_dtype=dtype,
         )
 
+    def get_query_size(self, netcdf_group: netCDF4.Dataset):
+        """Returns the number of coordinates to copy from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to copy the data from.
+        """
+        variable = self._get_ncvar(netcdf_group)
+        return variable.get_dims()[0].size
+
     def get_values(
         self,
         netcdf_group: netCDF4.Dataset,
@@ -154,26 +181,18 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
             The coordinate values needed for querying the TileDB dimension in the
                 form a numpy array.
         """
+        variable = self._get_ncvar(netcdf_group)
         if not sparse:
             raise NotImplementedError(
                 "Support for copying NetCDF coordinates to dense arrays has not "
                 "been implemented."
             )
-        try:
-            variable = netcdf_group.variables[self.input_var_name]
-        except KeyError as err:
-            raise KeyError(
-                f"The variable '{self.input_var_name}' was not found in the provided "
-                f"NetCDF group."
-            ) from err
-        if variable.ndim != 1:
-            raise ValueError(
-                f"The variable '{self.input_var_name}' with {variable.ndim} dimensions "
-                f"is not a valid NetCDF coordinate. Cannot copy data from variable "
-                f"'{self.input_var_name}' to TileDB dimension '{self.name}'."
-            )
         if variable.get_dims()[0].size < 1:
-            return None
+            raise ValueError(
+                f"Cannot copy dimension data from NetCDF variable "
+                f"'{self.input_var_name}' to TileDB dimension '{self.name}'. "
+                f"There is no data to copy."
+            )
         return variable[:]
 
     def html_input_summary(self):
@@ -255,6 +274,18 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
             f"{super().__repr__()}"
         )
 
+    def _get_ncdim(self, netcdf_group: netCDF4.Dataset) -> netCDF4.Dimension:
+        group = netcdf_group
+        while group is not None:
+            if self.input_dim_name in group.dimensions:
+                return group.dimensions[self.input_dim_name]
+            group = group.parent
+        raise KeyError(
+            f"Unable to copy NetCDF dimension '{self.input_dim_name}' to the TileDB "
+            f"dimension '{self.name}'. No NetCDF dimension with that name exists in "
+            f"the NetCDF group '{netcdf_group.path}' or its parent groups."
+        )
+
     @classmethod
     def from_netcdf(
         cls,
@@ -279,6 +310,15 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
             is_unlimited=dim.isunlimited(),
         )
 
+    def get_query_size(self, netcdf_group: netCDF4.Dataset):
+        """Returns the number of coordinates to copy from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to copy the data from.
+        """
+        dim = self._get_ncdim(netcdf_group)
+        return dim.size
+
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
     ) -> Union[np.ndarray, slice]:
@@ -293,34 +333,25 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
             The coordinates needed for querying the created TileDB dimension in the form
                 of a numpy array if sparse is ``True`` and a slice otherwise.
         """
-        group = netcdf_group
-        while group is not None:
-            if self.input_dim_name in group.dimensions:
-                dim = group.dimensions[self.input_dim_name]
-                if dim.size == 0:
-                    raise ValueError(
-                        f"Cannot copy dimension data from NetCDF dimension "
-                        f"'{self.input_dim_name}' to TileDB dimension '{self.name}'. "
-                        f"The NetCDF dimension is of size 0; there is no data to copy."
-                    )
-                if self.domain is not None and (
-                    self.domain[1] is not None and dim.size - 1 > self.domain[1]
-                ):
-                    raise IndexError(
-                        f"Cannot copy dimension data from NetCDF dimension "
-                        f"'{self.input_dim_name}' to TileDB dimension '{self.name}'. "
-                        f"The NetCDF dimension size of {dim.size} does not fit in the "
-                        f"domain {self.domain} of the TileDB dimension."
-                    )
-                if sparse:
-                    return np.arange(dim.size)
-                return slice(dim.size)
-            group = group.parent
-        raise KeyError(
-            f"Unable to copy NetCDF dimension '{self.input_dim_name}' to the TileDB "
-            f"dimension '{self.name}'. No NetCDF dimension with that name exists in "
-            f"the NetCDF group '{netcdf_group.path}' or its parent groups."
-        )
+        dim = self._get_ncdim(netcdf_group)
+        if dim.size == 0:
+            raise ValueError(
+                f"Cannot copy dimension data from NetCDF dimension "
+                f"'{self.input_dim_name}' to TileDB dimension '{self.name}'. "
+                f"The NetCDF dimension is of size 0; there is no data to copy."
+            )
+        if self.domain is not None and (
+            self.domain[1] is not None and dim.size - 1 > self.domain[1]
+        ):
+            raise IndexError(
+                f"Cannot copy dimension data from NetCDF dimension "
+                f"'{self.input_dim_name}' to TileDB dimension '{self.name}'. "
+                f"The NetCDF dimension size of {dim.size} does not fit in the "
+                f"domain {self.domain} of the TileDB dimension."
+            )
+        if sparse:
+            return np.arange(dim.size)
+        return slice(dim.size)
 
     def html_input_summary(self):
         """Returns a HTML string summarizing the input for the dimension."""
@@ -365,6 +396,14 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
         cls, dataspace_registry: DataspaceRegistry, dim_name: str, dtype: np.dtype
     ):
         return cls(dataspace_registry, dim_name, (0, 0), dtype)
+
+    def get_query_size(self, netcdf_group: netCDF4.Dataset):
+        """Returns the number of coordinates to copy from NetCDF to TileDB.
+
+        Parameters:
+            netcdf_group: NetCDF group to copy the data from.
+        """
+        return 1
 
     def get_values(
         self, netcdf_group: netCDF4.Dataset, sparse: bool
