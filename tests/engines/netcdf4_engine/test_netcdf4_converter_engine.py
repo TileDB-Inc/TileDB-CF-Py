@@ -118,7 +118,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     def test_convert_dense_with_non_netcdf_dims(self, netcdf_file, tmpdir):
         """Test converting the NetCDF variable 'x1' into a TileDB array with
         an extra non-NetCDF dimension."""
-        uri = str(tmpdir.mkdir("output").join("dense_dim_values"))
+        uri = str(tmpdir.mkdir("output").join("dense_assigned_dim_values"))
         converter = NetCDF4ConverterEngine()
         dim_dtype = np.dtype("uint32")
         converter.add_shared_dim("col", domain=(0, 4), dtype=dim_dtype)
@@ -129,7 +129,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
             converter.add_array_converter("array", ("row", "col"))
             converter.add_var_to_attr_converter(netcdf_group.variables["x1"], "array")
             converter.convert_to_array(
-                uri, input_netcdf_group=netcdf_group, dim_values={"col": 2}
+                uri, input_netcdf_group=netcdf_group, assigned_dim_values={"col": 2}
             )
         with tiledb.open(uri) as array:
             nonempty_domain = array.nonempty_domain()
@@ -463,7 +463,7 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
     def test_convert_dense_with_non_netcdf_dims(self, netcdf_file, tmpdir):
         """Test converting the NetCDF variable 'x1' into a TileDB array with
         an extra non-NetCDF dimension."""
-        uri = str(tmpdir.mkdir("output").join("dense_dim_values"))
+        uri = str(tmpdir.mkdir("output").join("dense_assigned_dim_values"))
         converter = NetCDF4ConverterEngine()
         dim_dtype = np.dtype("uint32")
         converter.add_shared_dim("extra", domain=(0, 4), dtype=dim_dtype)
@@ -477,7 +477,7 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
             converter.add_array_converter("array", ("row", "extra", "col"))
             converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
             converter.convert_to_array(
-                uri, input_netcdf_group=netcdf_group, dim_values={"extra": 2}
+                uri, input_netcdf_group=netcdf_group, assigned_dim_values={"extra": 2}
             )
         with tiledb.open(uri) as array:
             nonempty_domain = array.nonempty_domain()
@@ -490,7 +490,7 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
     def test_convert_sparse_with_non_netcdf_dims(self, netcdf_file, tmpdir):
         """Test converting the NetCDF variable 'x1' into a TileDB array with
         an extra non-NetCDF dimension."""
-        uri = str(tmpdir.mkdir("output").join("dense_dim_values"))
+        uri = str(tmpdir.mkdir("output").join("dense_assigned_dim_values"))
         converter = NetCDF4ConverterEngine()
         dim_dtype = np.dtype("uint32")
         converter.add_shared_dim("extra", domain=(0, 4), dtype=dim_dtype)
@@ -504,7 +504,7 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
             converter.add_array_converter("array", ("row", "extra", "col"), sparse=True)
             converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
             converter.convert_to_array(
-                uri, input_netcdf_group=netcdf_group, dim_values={"extra": 2}
+                uri, input_netcdf_group=netcdf_group, assigned_dim_values={"extra": 2}
             )
         with tiledb.open(uri) as array:
             nonempty_domain = array.nonempty_domain()
