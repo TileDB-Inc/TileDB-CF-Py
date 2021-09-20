@@ -107,7 +107,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
             raise ValueError(
                 f"Cannot add NetCDF variable converter with NetCDF dimensions "
                 f"that do not match the array NetCDF dimension converters. Variable "
-                f"dimensions={ncvar.dimenions} and array NetCDF dimension="
+                f"dimensions={ncvar.dimensions}, array NetCDF dimensions="
                 f"{self.domain_creator.netcdf_dims}."
             )
         NetCDF4VarToAttrConverter.from_netcdf(
@@ -207,7 +207,7 @@ class NetCDF4DomainConverter(DomainCreator):
                     assigned_dim_values is None
                     or dim_creator.name not in assigned_dim_values
                 ):
-                    raise KeyError("Missing value for dimension {dim_creator}.")
+                    raise KeyError(f"Missing value for dimension '{dim_creator.name}'.")
                 query_coords.append(assigned_dim_values[dim_creator.name])
         if sparse:
             return tuple(

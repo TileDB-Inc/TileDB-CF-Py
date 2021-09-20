@@ -514,6 +514,25 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
         original = self.variable_data["data"].reshape(-1)
         assert np.array_equal(tiledb_array, original)
 
+    def test_copy_missing_dim(self, netcdf_file, tmpdir):
+        """Test converting the NetCDF variable 'x1' into a TileDB array with
+        an extra non-NetCDF dimension."""
+        uri = str(tmpdir.mkdir("output").join("dense_assigned_dim_values"))
+        converter = NetCDF4ConverterEngine()
+        dim_dtype = np.dtype("uint32")
+        converter.add_shared_dim("extra", domain=(0, 4), dtype=dim_dtype)
+        with netCDF4.Dataset(netcdf_file) as netcdf_group:
+            converter.add_dim_to_dim_converter(
+                netcdf_group.dimensions["row"], dtype=dim_dtype
+            )
+            converter.add_dim_to_dim_converter(
+                netcdf_group.dimensions["col"], dtype=dim_dtype
+            )
+            converter.add_array_converter("array", ("row", "extra", "col"))
+            converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
+            with pytest.raises(KeyError):
+                converter.convert_to_array(uri, input_netcdf_group=netcdf_group)
+
 
 class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
     """NetCDF conversion test cases for NetCDF with multiple scalar variables.
@@ -845,3 +864,16 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
     converter.create_group(uri)
     with pytest.raises(KeyError):
         converter.copy_to_group(uri, input_file=simple1_netcdf_file.filepath)
+
+
+def test_mismatched_netcdf_dims():
+    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+        x_dim = dataset.createDimension("x")
+        y_dim = dataset.createDimension("y")
+        var = dataset.createVariable("value", np.float64, ("y", "x"))
+        converter = NetCDF4ConverterEngine()
+        converter.add_dim_to_dim_converter(x_dim)
+        converter.add_dim_to_dim_converter(y_dim)
+        converter.add_array_converter("array", ("x", "y"))
+        with pytest.raises(ValueError):
+            converter.add_var_to_attr_converter(array_name="array", ncvar=var)
