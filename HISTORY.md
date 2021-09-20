@@ -4,9 +4,19 @@
 
 ### Bug fixes
 
-* Fixes initialization of `tile_order` in `NetCDF4ArrayConverter`.
-
 ### Breaking Behavior
+
+### New Features
+
+### Improvements
+
+### Deprecation
+
+##  TileDB-CF-Py Release O.4.1
+
+### Bug fixes
+
+* Fixes initialization of `tile_order` in `NetCDF4ArrayConverter`.
 
 ### New Features
 
