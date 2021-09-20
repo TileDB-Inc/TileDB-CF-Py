@@ -460,6 +460,60 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
     }
     attr_to_var_map = {"data": "data", "x": "x", "y": "y"}
 
+    def test_convert_dense_with_non_netcdf_dims(self, netcdf_file, tmpdir):
+        """Test converting the NetCDF variable 'x1' into a TileDB array with
+        an extra non-NetCDF dimension."""
+        uri = str(tmpdir.mkdir("output").join("dense_dim_values"))
+        converter = NetCDF4ConverterEngine()
+        dim_dtype = np.dtype("uint32")
+        converter.add_shared_dim("extra", domain=(0, 4), dtype=dim_dtype)
+        with netCDF4.Dataset(netcdf_file) as netcdf_group:
+            converter.add_dim_to_dim_converter(
+                netcdf_group.dimensions["row"], dtype=dim_dtype
+            )
+            converter.add_dim_to_dim_converter(
+                netcdf_group.dimensions["col"], dtype=dim_dtype
+            )
+            converter.add_array_converter("array", ("row", "extra", "col"))
+            converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
+            converter.convert_to_array(
+                uri, input_netcdf_group=netcdf_group, dim_values={"extra": 2}
+            )
+        with tiledb.open(uri) as array:
+            nonempty_domain = array.nonempty_domain()
+            data = array[:, 2, :]
+        assert nonempty_domain == ((0, 3), (2, 2), (0, 3))
+        tiledb_array = data["data"]
+        original = self.variable_data["data"]
+        assert np.array_equal(tiledb_array, original)
+
+    def test_convert_sparse_with_non_netcdf_dims(self, netcdf_file, tmpdir):
+        """Test converting the NetCDF variable 'x1' into a TileDB array with
+        an extra non-NetCDF dimension."""
+        uri = str(tmpdir.mkdir("output").join("dense_dim_values"))
+        converter = NetCDF4ConverterEngine()
+        dim_dtype = np.dtype("uint32")
+        converter.add_shared_dim("extra", domain=(0, 4), dtype=dim_dtype)
+        with netCDF4.Dataset(netcdf_file) as netcdf_group:
+            converter.add_dim_to_dim_converter(
+                netcdf_group.dimensions["row"], dtype=dim_dtype
+            )
+            converter.add_dim_to_dim_converter(
+                netcdf_group.dimensions["col"], dtype=dim_dtype
+            )
+            converter.add_array_converter("array", ("row", "extra", "col"), sparse=True)
+            converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
+            converter.convert_to_array(
+                uri, input_netcdf_group=netcdf_group, dim_values={"extra": 2}
+            )
+        with tiledb.open(uri) as array:
+            nonempty_domain = array.nonempty_domain()
+            data = array[:, 2, :]
+        assert nonempty_domain == ((0, 3), (2, 2), (0, 3))
+        tiledb_array = data["data"]
+        original = self.variable_data["data"].reshape(-1)
+        assert np.array_equal(tiledb_array, original)
+
 
 class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
     """NetCDF conversion test cases for NetCDF with multiple scalar variables.

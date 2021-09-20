@@ -129,9 +129,9 @@ class NetCDF4ArrayConverter(ArrayCreator):
             else:
                 if dim_values is None:
                     raise KeyError("Missing value for dimension {dim_creator}.")
-                dim_query.append(np.ndarray([dim_values[dim_creator.name]]))
+                dim_query.append(dim_values[dim_creator.name])
         coord_values = tuple(
-            dim_data.flatten() for dim_data in np.meshgrid(*dim_query, indexing="ij")
+            dim_data.reshape(-1) for dim_data in np.meshgrid(*dim_query, indexing="ij")
         )
         tiledb_array[coord_values] = data
 
