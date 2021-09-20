@@ -11,6 +11,7 @@
 ### New Features
 
 * Adds `tiles` property to `DomainCreator` to make getting/setting tiles easier.
+* Adds support for adding non-NetCDF dimensions in the `NetCDF4ConverterArray`.
 
 ### Improvements
 
