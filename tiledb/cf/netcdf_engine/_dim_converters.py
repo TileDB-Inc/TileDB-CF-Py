@@ -118,13 +118,7 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
             netcdf_group: NetCDF group to get the metadata items from.
             tiledb_array: TileDB array to copy the metadata items to.
         """
-        try:
-            variable = netcdf_group.variables[self.input_var_name]
-        except KeyError as err:
-            raise KeyError(
-                f"The variable '{self.input_var_name}' was not found in the provided "
-                f"NetCDF group."
-            ) from err
+        variable = self._get_ncvar(netcdf_group)
         dim_meta = DimMetadata(tiledb_array.meta, self.name)
         for key in variable.ncattrs():
             safe_set_metadata(dim_meta, key, variable.getncattr(key))

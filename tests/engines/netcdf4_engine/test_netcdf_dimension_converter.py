@@ -52,6 +52,17 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             result = converter.get_values(dataset, sparse=True)
         assert np.array_equal(result, data)
 
+    def test_get_query_size(self):
+        data = np.random.rand((8))
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dataset.createDimension("value")
+            var = dataset.createVariable("value", np.float64, ("value",))
+            var[:] = data
+            registry = DataspaceRegistry()
+            converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
+            query_size = converter.get_query_size(dataset)
+        assert np.array_equal(query_size, 8)
+
     def test_get_values_no_data(self):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dataset.createDimension("value")
@@ -130,6 +141,16 @@ class TestNetCDFDimToDimConverterSimpleDim:
             result = converter.get_values(dataset, sparse=sparse)
             assert np.array_equal(result, values)
 
+    def test_get_query_size(self):
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dim = dataset.createDimension("row", 8)
+            registry = DataspaceRegistry()
+            converter = NetCDF4DimToDimConverter.from_netcdf(
+                registry, dim, 1000, np.uint64
+            )
+            query_size = converter.get_query_size(dataset)
+            assert np.array_equal(query_size, 8)
+
     @pytest.mark.parametrize(
         "sparse,values", [(True, np.arange(0, 8)), (False, slice(8))]
     )
@@ -204,6 +225,19 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
             result = converter.get_values(dataset, sparse=sparse)
             assert np.array_equal(result, values)
 
+    def test_get_query_size(self):
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dim = dataset.createDimension("row", None)
+            var = dataset.createVariable("data", np.int32, ("row",))
+            size = 10
+            var[:] = np.arange(size)
+            registry = DataspaceRegistry()
+            converter = NetCDF4DimToDimConverter.from_netcdf(
+                registry, dim, 100, np.uint64
+            )
+            query_size = converter.get_query_size(dataset)
+            assert np.array_equal(query_size, size)
+
     def test_data_too_large_error(self):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", None)
@@ -240,3 +274,10 @@ class TestNetCDFScalarToDimConverter:
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             result = converter.get_values(dataset, sparse=sparse)
             assert np.array_equal(result, values)
+
+    def test_get_query_size(self):
+        registry = DataspaceRegistry()
+        converter = NetCDF4ScalarToDimConverter.create(registry, "__scalars", np.uint32)
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            result = converter.get_query_size(dataset)
+            assert np.array_equal(result, 1)
