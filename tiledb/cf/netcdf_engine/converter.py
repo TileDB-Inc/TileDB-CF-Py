@@ -145,7 +145,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
                 dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
         # Copy array data to TileDB.
         if self.sparse:
-            shape = -1
+            shape: Optional[Union[int, Sequence[int]]] = -1
         else:
             shape = (
                 None
