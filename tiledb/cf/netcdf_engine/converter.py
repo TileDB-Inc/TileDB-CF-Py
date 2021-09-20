@@ -144,11 +144,17 @@ class NetCDF4ArrayConverter(ArrayCreator):
             if isinstance(dim_creator.base, NetCDF4ToDimConverter):
                 dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
         # Copy array data to TileDB.
-        shape = (
-            -1
-            if self.sparse
-            else self.domain_creator.get_dense_query_shape(netcdf_group)
-        )
+        if self.sparse:
+            shape = -1
+        else:
+            shape = (
+                None
+                if all(
+                    isinstance(dim_creator.base, NetCDF4ToDimConverter)
+                    for dim_creator in self._domain_creator
+                )
+                else self.domain_creator.get_dense_query_shape(netcdf_group)
+            )
         data = {}
         for attr_converter in self:
             assert isinstance(attr_converter, NetCDF4ToAttrConverter)
