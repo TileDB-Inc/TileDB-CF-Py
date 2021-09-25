@@ -210,3 +210,55 @@ class TestNoMetadataArray:
     def test_no_metadata_array_exception(self, group_uri):
         with Group(group_uri) as group:
             assert group.meta is None
+
+
+def test_append_group(tmpdir):
+    uri = str(tmpdir.mkdir("append_group_test"))
+    group_schema_1 = GroupSchema({"A1": _array_schema_1})
+    Group.create(uri, group_schema_1)
+    group_schema_2 = GroupSchema({"A2": _array_schema_2})
+    Group.create(uri, group_schema_2, append=True)
+    result = GroupSchema.load(uri)
+    expected = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
+    assert result == expected
+
+
+def test_append_group_add_metadata(tmpdir):
+    uri = str(tmpdir.mkdir("append_group_test"))
+    group_schema_1 = GroupSchema(
+        {"A1": _array_schema_1}, use_default_metadata_schema=False
+    )
+    Group.create(uri, group_schema_1)
+    group_schema_2 = GroupSchema({"A2": _array_schema_2})
+    Group.create(uri, group_schema_2, append=True)
+    result = GroupSchema.load(uri)
+    expected = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
+    assert result == expected
+
+
+def test_append_group_no_metadata(tmpdir):
+    uri = str(tmpdir.mkdir("append_group_test"))
+    group_schema_1 = GroupSchema(
+        {"A1": _array_schema_1}, use_default_metadata_schema=False
+    )
+    Group.create(uri, group_schema_1)
+    group_schema_2 = GroupSchema(
+        {"A2": _array_schema_2}, use_default_metadata_schema=False
+    )
+    Group.create(uri, group_schema_2, append=True)
+    result = GroupSchema.load(uri)
+    expected = GroupSchema(
+        {"A1": _array_schema_1, "A2": _array_schema_2},
+        use_default_metadata_schema=False,
+    )
+    assert result == expected
+
+
+def test_append_group_array_exists_error(tmpdir):
+    uri = str(tmpdir.mkdir("append_group_test"))
+    group_schema_1 = GroupSchema(
+        {"A1": _array_schema_1}, use_default_metadata_schema=False
+    )
+    Group.create(uri, group_schema_1)
+    with pytest.raises(ValueError):
+        Group.create(uri, group_schema_1, append=True)
