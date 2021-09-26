@@ -8,6 +8,8 @@
 
 ### New Features
 
+* Adds support for adding non-NetCDF attributes in the `NetCDF4ConverterArray`.
+
 ### Improvements
 
 ### Deprecation

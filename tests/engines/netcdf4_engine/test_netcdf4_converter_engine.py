@@ -195,11 +195,36 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         dim_names = {shared_dim.name for shared_dim in converter.shared_dims()}
         assert dim_names == set(["col"])
 
-    def test_not_implemented_error(self, netcdf_file):
+    def test_non_netcdf_attr(self, netcdf_file, tmpdir):
+        """Tests converting a NetCDF file with an external attribute."""
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
-        converter.add_array_converter("A1", ("row",))
-        with pytest.raises(NotImplementedError):
-            converter.add_attr_creator("a1", "array0", np.float64)
+        converter.add_attr_creator("a1", "array0", np.float64)
+        a1_data = np.linspace(-1.0, 1.0, 8, dtype=np.float64)
+        uri = str(tmpdir.mkdir("non-netcdf-attr-test"))
+        converter.convert_to_group(uri, assigned_attr_values={"a1": a1_data})
+        with Group(uri) as group:
+            with group.open_array(attr="a1") as array:
+                result = array[:]
+        assert np.array_equal(a1_data, result)
+
+    def test_non_netcdf_attr_missing_data_error(self, netcdf_file, tmpdir):
+        """Tests error converting a NetCDF file with an external attribute when data is
+        missing."""
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        converter.add_attr_creator("a1", "array0", np.float64)
+        uri = str(tmpdir.mkdir("non-netcdf-attr-test"))
+        with pytest.raises(KeyError):
+            converter.convert_to_group(uri)
+
+    def test_non_netcdf_attr_bad_shape_error(self, netcdf_file, tmpdir):
+        """Tests error converting a NetCDF file with an external attribue when the size
+        of the provided data is mismatched."""
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
+        converter.add_attr_creator("a1", "array0", np.float64)
+        a1_data = np.linspace(-1.0, 1.0, 4, dtype=np.float64)
+        uri = str(tmpdir.mkdir("non-netcdf-attr-test"))
+        with pytest.raises(tiledb.libtiledb.TileDBError):
+            converter.convert_to_group(uri, assigned_attr_values={"a1": a1_data})
 
     def test_bad_array_name_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
