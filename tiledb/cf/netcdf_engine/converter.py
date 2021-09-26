@@ -783,6 +783,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         input_group_path: Optional[str] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
+        append: bool = False,
     ):
         """Creates a TileDB group and its arrays from the defined CF dataspace and
         copies data into them using the converter engine.
@@ -801,8 +802,11 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 that are not converted from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not converted from the NetCDF group.
+            append: If ``True``, add arrays in the dataspace to an already existing
+                group. The arrays in the dataspace cannot be in the group that is being
+                append to.
         """
-        self.create_group(output_uri, key, ctx)
+        self.create_group(output_uri, key, ctx, append=append)
         self.copy_to_group(
             output_uri,
             key,

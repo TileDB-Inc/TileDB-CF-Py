@@ -296,6 +296,7 @@ class Group:
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
         is_virtual: bool = False,
+        append: bool = False,
     ):
         """Create a TileDB group and the arrays inside the group from a group schema.
 
@@ -311,18 +312,34 @@ class Group:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             is_virtual: (DEPRECATED) If ``True``, create arrays in a flat directory
                 without creating a TileDB group.
+            append: If ``True``, add arrays from the provided group schema to an
+                already existing group. The names for the arrays in the group schema
+                cannot already exist in the group being append to.
         """
-        if not is_virtual:
-            tiledb.group_create(uri, ctx)
-        else:  # pragma: no cover
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "`Group.create_virtual` and the parameter `is_virtual in "
-                    "`Group.create` are deprecated. Use `VirtualGroup.create` "
-                    "instead.",
-                    DeprecationWarning,
-                )
-        if group_schema.metadata_schema is not None:
+        if append:
+            original_group_schema = GroupSchema.load(uri)
+            for array_name in group_schema:
+                if array_name in original_group_schema:
+                    raise ValueError(
+                        f"Cannot append to group. Array `{array_name}` already exists."
+                    )
+            create_metadata_group = (
+                original_group_schema.metadata_schema is None
+                and group_schema.metadata_schema is not None
+            )
+        else:
+            if not is_virtual:
+                tiledb.group_create(uri, ctx)
+            else:  # pragma: no cover
+                with warnings.catch_warnings():
+                    warnings.warn(
+                        "`Group.create_virtual` and the parameter `is_virtual in "
+                        "`Group.create` are deprecated. Use `VirtualGroup.create` "
+                        "instead.",
+                        DeprecationWarning,
+                    )
+            create_metadata_group = group_schema.metadata_schema is not None
+        if create_metadata_group:
             tiledb.Array.create(
                 _get_metadata_array_uri(uri, is_virtual),
                 group_schema.metadata_schema,
@@ -558,6 +575,7 @@ class VirtualGroup(Group):
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
         is_virtual: bool = True,
+        append: bool = False,
     ):
         """Create the arrays in a group schema.
 
@@ -574,7 +592,13 @@ class VirtualGroup(Group):
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
             is_virtual: (DEPRECATED) If ``True``, create arrays in a flat directory
                 without creating a TileDB group.
+            append: If ``True``, add to existing group. Not valid for virtual groups.
         """
+        if append:
+            with warnings.catch_warnings():
+                warnings.warn(
+                    "Ignoring parameter append. Cannot append to a virtual group."
+                )
         if not is_virtual:  # pragma: no cover
             with warnings.catch_warnings():
                 warnings.warn(

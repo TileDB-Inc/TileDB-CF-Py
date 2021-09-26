@@ -130,3 +130,13 @@ class TestVirtualGroupWithArrays:
         with VirtualGroup(group_uris) as group:
             with pytest.raises(ValueError):
                 group.open_array(attr="c")
+
+
+def test_append_group_warning(tmpdir):
+    uri = str(tmpdir.mkdir("append_group_test"))
+    with pytest.warns(Warning):
+        VirtualGroup.create(
+            uri + "/test", GroupSchema({"A1": _array_schema_1}), append=True
+        )
+    schema = tiledb.ArraySchema.load(uri + "/test_A1")
+    assert schema == _array_schema_1
