@@ -313,8 +313,8 @@ class Group:
             is_virtual: (DEPRECATED) If ``True``, create arrays in a flat directory
                 without creating a TileDB group.
             append: If ``True``, add arrays from the provided group schema to an
-                already existing group. The arrays in the new group schema cannot be in
-                the current group.
+                already existing group. The names for the arrays in the group schema
+                cannot already exist in the group being append to.
         """
         if append:
             original_group_schema = GroupSchema.load(uri)
