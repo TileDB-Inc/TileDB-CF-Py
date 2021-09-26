@@ -96,6 +96,13 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             f" -> {super().__repr__()}"
         )
 
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`AttrCreator`."""
+        return (
+            f"NetCDFVariable(name={self.input_var_name}, dtype={self.input_var_dtype})"
+            f"{super().html_summary()}"
+        )
+
     def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
         """Copy the metadata data from NetCDF to TileDB.
 
