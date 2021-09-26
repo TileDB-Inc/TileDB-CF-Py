@@ -356,6 +356,7 @@ class DataspaceCreator:
         uri: str,
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
+        append: bool = False,
     ):
         """Creates a TileDB group and arrays for the CF dataspace.
 
@@ -364,9 +365,12 @@ class DataspaceCreator:
             key: If not ``None``, encryption key, or dictionary of encryption keys, to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            append: If ``True``, add arrays in the dataspace to an already existing
+                group. The arrays in the dataspace cannot be in the group that is being
+                append to.
         """
         schema = self.to_schema(ctx)
-        Group.create(uri, schema, key, ctx)
+        Group.create(uri, schema, key, ctx, append=append)
 
     def create_virtual_group(
         self,

@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import AttrMetadata, DimMetadata, Group, from_netcdf
+from tiledb.cf import AttrMetadata, DimMetadata, Group, GroupSchema, from_netcdf
 from tiledb.cf.netcdf_engine import NetCDF4ConverterEngine
 
 netCDF4 = pytest.importorskip("netCDF4")
@@ -138,6 +138,34 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         tiledb_array = data["x1"]
         original = self.variable_data["x1"]
         assert np.array_equal(tiledb_array, original)
+
+    def test_append_to_group(self, netcdf_file, tmpdir):
+        """Tests adding the arrays from the converter to an existing group."""
+        uri = str(tmpdir.mkdir("output").join("append_example"))
+        tiledb.group_create(uri)
+        schema = tiledb.ArraySchema(
+            domain=tiledb.Domain(tiledb.Dim("d0", dtype=np.int32, domain=(0, 4))),
+            attrs=[tiledb.Attr("a2", dtype=np.float64)],
+        )
+        tiledb.Array.create(f"{uri}/original_array", schema)
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        converter.convert_to_group(uri, append=True)
+        group_schema = GroupSchema.load(uri)
+        assert set(group_schema.keys()) == {"original_array", "array0"}
+
+    def test_append_to_group_bad_name_error(self, netcdf_file, tmpdir):
+        """Tests raising error when appending to group with an array name that is in
+        the NetCDF4ConverterEngine."""
+        uri = str(tmpdir.mkdir("output").join("append_example"))
+        tiledb.group_create(uri)
+        schema = tiledb.ArraySchema(
+            domain=tiledb.Domain(tiledb.Dim("d0", dtype=np.int32, domain=(0, 4))),
+            attrs=[tiledb.Attr("a2", dtype=np.float64)],
+        )
+        tiledb.Array.create(f"{uri}/array0", schema)
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        with pytest.raises(ValueError):
+            converter.convert_to_group(uri, append=True)
 
     def test_convert_to_sparse_array(self, netcdf_file, tmpdir):
         uri = str(tmpdir.mkdir("output").join("sparse_example"))
