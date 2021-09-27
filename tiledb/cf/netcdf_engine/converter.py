@@ -18,6 +18,7 @@ from tiledb.cf.creator import (
     ArrayRegistry,
     DataspaceCreator,
     DataspaceRegistry,
+    DimCreator,
     DomainCreator,
 )
 
@@ -59,7 +60,10 @@ class NetCDF4ArrayConverter(ArrayCreator):
         self, dataspace_registry: DataspaceRegistry, name: str, dims: Sequence[str]
     ):
         array_registry = ArrayRegistry(dataspace_registry, name, dims)
-        return array_registry, NetCDF4DomainConverter(array_registry)
+        return (
+            array_registry,
+            NetCDF4DomainConverter(array_registry, dataspace_registry),
+        )
 
     def add_var_to_attr_converter(
         self,
@@ -215,6 +219,36 @@ class NetCDF4DomainConverter(DomainCreator):
                 for dim_data in np.meshgrid(*query_coords, indexing="ij")
             )
         return tuple(query_coords)
+
+    def inject_dim_creator(
+        self,
+        dim_name: str,
+        position: int,
+        tiles: Optional[Union[int, float]] = None,
+        filters: Optional[Union[tiledb.FilterList]] = None,
+    ):
+        """Add an additional dimension into the domain of the array.
+
+        Parameters:
+            dim_name: Name of the shared dimension to add to the array's domain.
+            position: Position of the shared dimension. Negative values count backwards
+                from the end of the new number of dimensions.
+            tiles: The size size for the dimension.
+            filters: Compression filters for the dimension.
+        """
+        shared_dim = self._dataspace_registry.get_shared_dim(dim_name)
+        if isinstance(shared_dim, NetCDF4ToDimConverter):
+            if any(
+                isinstance(attr_creator, NetCDF4VarToAttrConverter)
+                for attr_creator in self._array_registry.attr_creators()
+            ):
+                raise ValueError(
+                    "Cannot add a new NetCDF dimension converter to an array that "
+                    "already contains NetCDF variable to attribute converters."
+                )
+        self._array_registry.inject_dim_creator(
+            DimCreator(shared_dim, tiles, filters), position
+        )
 
     @property
     def netcdf_dims(self):

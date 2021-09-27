@@ -10,6 +10,7 @@
 
 * Adds support for adding non-NetCDF attributes in the `NetCDF4ConverterArray`.
 * Adds ability to append to an existing group when creating a `Group` either directly or with a `DataspaceCreator` or `NetCDF4CreatorEngine`.
+* Adds ability to inject additional dimensions after `ArrayCreator` is initialized.
 
 ### Improvements
 

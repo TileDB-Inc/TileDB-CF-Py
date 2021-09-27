@@ -254,6 +254,25 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         with pytest.raises(tiledb.libtiledb.TileDBError):
             converter.convert_to_group(uri, assigned_attr_values={"a1": a1_data})
 
+    def test_inject_dim_creator(self, netcdf_file):
+        """Tests injecting a dimension into a NetCDF4ConverterArray."""
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        converter.add_shared_dim("dim0", domain=(0, 4), dtype=np.uint32)
+        array_converter = converter.get_array_creator("array0")
+        array_converter.domain_creator.inject_dim_creator("dim0", 0)
+        dim_names = tuple(
+            dim_creator.name for dim_creator in array_converter.domain_creator
+        )
+        assert dim_names == ("dim0", "row")
+
+    def test_inject_dim_mismatch_attr_dims_error(self, netcdf_file):
+        """Tests injecting a dimension into a NetCDF4ConverterArray."""
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        converter.add_scalar_dim_converter(dim_name="dim0", dtype=np.uint32)
+        array_converter = converter.get_array_creator("array0")
+        with pytest.raises(ValueError):
+            array_converter.domain_creator.inject_dim_creator("dim0", 0)
+
     def test_bad_array_name_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
         with pytest.raises(ValueError):
