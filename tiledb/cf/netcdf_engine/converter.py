@@ -265,18 +265,11 @@ class NetCDF4DomainConverter(DomainCreator):
         Parameters:
             dim_id: dimension index (int) or name (str)
         """
-        if isinstance(dim_id, int):
-            index = dim_id
-        else:
-            for local_index, dim_creator in enumerate(self):
-                if dim_id == dim_creator.name:
-                    index = local_index
-                    break
-            else:
-                raise KeyError(
-                    f"Cannot remove dimensions creator `{dim_id}`. No such dimension is"
-                    f" in the array."
-                )
+        index = (
+            dim_id
+            if isinstance(dim_id, int)
+            else self._array_registry.get_dim_position_by_name(dim_id)
+        )
         dim_creator = self._array_registry.get_dim_creator(index)
         if isinstance(dim_creator.base, NetCDF4ToDimConverter):
             if any(

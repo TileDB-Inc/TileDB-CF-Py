@@ -1135,10 +1135,22 @@ class ArrayRegistry:
         """
         if isinstance(key, int):
             return self._dim_creators[key]
-        for dim_creator in self._dim_creators:
-            if key == dim_creator.name:
-                return dim_creator
-        raise KeyError(f"Dimension creator with name '{key}' not found.")
+        index = self.get_dim_position_by_name(key)
+        return self._dim_creators[index]
+
+    def get_dim_position_by_name(self, dim_name: str) -> int:
+        """Returns the dimension position of the requested dimension name.
+
+        Parameters:
+            dim_name: Name of the dimension to get the position of.
+
+        Returns:
+            The position of the requested dimension in the array domain.
+        """
+        for index, dim_creator in enumerate(self._dim_creators):
+            if dim_creator.name == dim_name:
+                return index
+        raise KeyError(f"Dimension creator with name '{dim_name}' not found.")
 
     def inject_dim_creator(self, dim_creator: DimCreator, position: int):
         """Add an additional dimension into the domain of the array.
@@ -1349,14 +1361,10 @@ class DomainCreator:
             dim_id: dimension index (int) or name (str)
         """
         if isinstance(dim_id, int):
-            return self._array_registry.remove_dim_creator(dim_id)
-        for index, dim_creator in enumerate(self):
-            if dim_id == dim_creator.name:
-                return self._array_registry.remove_dim_creator(index)
-        raise KeyError(
-            f"Cannot remove dimensions creator `{dim_id}`. No such dimension is in the "
-            f"array."
-        )
+            self._array_registry.remove_dim_creator(dim_id)
+        else:
+            index = self._array_registry.get_dim_position_by_name(dim_id)
+            self._array_registry.remove_dim_creator(index)
 
     @property
     def tiles(self):
