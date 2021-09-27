@@ -268,10 +268,18 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     def test_inject_dim_mismatch_attr_dims_error(self, netcdf_file):
         """Tests injecting a dimension into a NetCDF4ConverterArray."""
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
-        converter.add_scalar_dim_converter(dim_name="dim0", dtype=np.uint32)
+        converter.add_scalar_to_dim_converter(dim_name="dim0", dtype=np.uint32)
         array_converter = converter.get_array_creator("array0")
         with pytest.raises(ValueError):
             array_converter.domain_creator.inject_dim_creator("dim0", 0)
+
+    def test_remove_dim_needed_by_attr_error(self, netcdf_file):
+        """Tests raising an error when attempting to remove a dimension in a
+        NetCDF4ConverterArray that is needed by an AttrCreator."""
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        array_converter = converter.get_array_creator("array0")
+        with pytest.raises(ValueError):
+            array_converter.domain_creator.remove_dim_creator("row")
 
     def test_bad_array_name_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
