@@ -426,6 +426,13 @@ def test_array_no_dims():
     assert creator.get_array_creator("A1").domain_creator.ndim == 0
 
 
+def test_array_no_dims_to_schema_error():
+    creator = DataspaceCreator()
+    creator.add_array_creator("A1", [])
+    with pytest.raises(ValueError):
+        creator.to_schema()
+
+
 def test_rename_dim_name_exists_in_dataspace_error():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", [0, 3], np.int32)
