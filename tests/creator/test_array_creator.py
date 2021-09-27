@@ -235,3 +235,62 @@ def test_inject_dim_pos_out_of_bound_error():
     creator = ArrayCreator(registry, "array", ("x0", "x2"))
     with pytest.raises(IndexError):
         creator.domain_creator.inject_dim_creator("x1", 3)
+
+
+def test_remove_dim_creator_by_int():
+    """Tests injecting a position into the front of the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    creator.domain_creator.remove_dim_creator(0)
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x1", "x2")
+
+
+def test_remove_dim_creator_front():
+    """Tests injecting a position into the front of the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    creator.domain_creator.remove_dim_creator("x0")
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x1", "x2")
+
+
+def test_remove_dim_creator_back():
+    """Tests injecting a position into the front of the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 7), np.uint32)
+    SharedDim(registry, "x3", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x1", "x2", "x3"))
+    creator.domain_creator.remove_dim_creator("x3")
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x1", "x2")
+
+
+def test_remove_dim_creator_middle():
+    """Tests injecting a position into the front of the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    creator.domain_creator.remove_dim_creator("x1")
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x0", "x2")
+
+
+def test_remove_dim_creator_key_error():
+    """Tests injecting a position into the front of the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    with pytest.raises(KeyError):
+        creator.domain_creator.remove_dim_creator("x4")

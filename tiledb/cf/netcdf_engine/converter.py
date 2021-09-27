@@ -259,6 +259,36 @@ class NetCDF4DomainConverter(DomainCreator):
             if hasattr(dim_creator.base, "input_dim_name")
         )
 
+    def remove_dim_creator(self, dim_id: Union[str, int]):
+        """Removes a dimension creator from the array creator.
+
+        Parameters:
+            dim_id: dimension index (int) or name (str)
+        """
+        if isinstance(dim_id, int):
+            index = dim_id
+        else:
+            for local_index, dim_creator in enumerate(self):
+                if dim_id == dim_creator.name:
+                    index = local_index
+                    break
+            else:
+                raise KeyError(
+                    f"Cannot remove dimensions creator `{dim_id}`. No such dimension is"
+                    f" in the array."
+                )
+        dim_creator = self._array_registry.get_dim_creator(index)
+        if isinstance(dim_creator.base, NetCDF4ToDimConverter):
+            if any(
+                isinstance(attr_creator, NetCDF4VarToAttrConverter)
+                for attr_creator in self._array_registry.attr_creators()
+            ):
+                raise ValueError(
+                    "Cannot remove NetCDF dimension converter from an array that "
+                    "contains NetCDF variable to attribute converters."
+                )
+        self._array_registry.remove_dim_creator(index)
+
 
 class NetCDF4ConverterEngine(DataspaceCreator):
     """Converter for NetCDF to TileDB using netCDF4.

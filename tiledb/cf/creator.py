@@ -1195,6 +1195,18 @@ class ArrayRegistry:
             self._dataspace_registry.register_attr_to_array(self._name, attr_name)
         self._attr_creators[attr_name] = attr_creator
 
+    def remove_dim_creator(self, dim_index: int):
+        """Remove a dim creator from the array.
+
+        Parameters:
+            dim_creator: The dimension creator to add.
+            position: Position of the shared dimension. Negative values count backwards
+                from the end of the new number of dimensions.
+        """
+        self._dim_creators = (
+            self._dim_creators[:dim_index] + self._dim_creators[dim_index + 1 :]
+        )
+
     def update_attr_creator_name(self, original_name: str, new_name: str):
         """Renames an attribute in the array.
 
@@ -1329,6 +1341,22 @@ class DomainCreator:
             dim_id: dimension index (int) or name (str)
         """
         return self._array_registry.get_dim_creator(dim_id)
+
+    def remove_dim_creator(self, dim_id: Union[str, int]):
+        """Removes a dimension creator from the array creator.
+
+        Parameters:
+            dim_id: dimension index (int) or name (str)
+        """
+        if isinstance(dim_id, int):
+            return self._array_registry.remove_dim_creator(dim_id)
+        for index, dim_creator in enumerate(self):
+            if dim_id == dim_creator.name:
+                return self._array_registry.remove_dim_creator(index)
+        raise KeyError(
+            f"Cannot remove dimensions creator `{dim_id}`. No such dimension is in the "
+            f"array."
+        )
 
     @property
     def tiles(self):
