@@ -1211,6 +1211,11 @@ class ArrayRegistry:
             position: Position of the shared dimension. Negative values count backwards
                 from the end of the new number of dimensions.
         """
+        index = dim_index + self.ndim if dim_index < 0 else dim_index
+        if index < 0 or index >= self.ndim:
+            raise IndexError(
+                f"Dimension index {dim_index} is outside the bounds of the domain."
+            )
         self._dim_creators = (
             self._dim_creators[:dim_index] + self._dim_creators[dim_index + 1 :]
         )
