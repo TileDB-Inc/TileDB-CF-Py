@@ -1172,7 +1172,6 @@ class ArrayRegistry:
                 f"Cannot add dimension to position {position} for an array with "
                 f"{self.ndim} dimensions."
             )
-        print(f"INDEX: {index}")
         self._dim_creators = (
             self._dim_creators[:index] + (dim_creator,) + self._dim_creators[index:]
         )

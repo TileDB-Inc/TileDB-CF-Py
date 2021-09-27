@@ -9,7 +9,7 @@ netcdf_engine = pytest.importorskip("tiledb.cf.netcdf_engine")
 
 
 def test_remove_dim_creator_front():
-    """Tests injecting a position into the front of the domain."""
+    """Tests removing a dimension in the front of the domain."""
     registry = DataspaceRegistry()
     SharedDim(registry, "x0", (0, 7), np.uint32)
     SharedDim(registry, "x1", (0, 7), np.uint32)
@@ -21,7 +21,7 @@ def test_remove_dim_creator_front():
 
 
 def test_remove_dim_creator_back():
-    """Tests injecting a position into the front of the domain."""
+    """Tests removing a dimension in the back of the domain."""
     registry = DataspaceRegistry()
     SharedDim(registry, "x1", (0, 7), np.uint32)
     SharedDim(registry, "x2", (0, 7), np.uint32)
@@ -33,7 +33,7 @@ def test_remove_dim_creator_back():
 
 
 def test_remove_dim_creator_middle():
-    """Tests injecting a position into the front of the domain."""
+    """Tests removing a dimension in the middle of the domain."""
     registry = DataspaceRegistry()
     SharedDim(registry, "x0", (0, 7), np.uint32)
     SharedDim(registry, "x1", (0, 7), np.uint32)
@@ -45,7 +45,7 @@ def test_remove_dim_creator_middle():
 
 
 def test_remove_dim_creator_key_error():
-    """Tests injecting a position into the front of the domain."""
+    """Tests key error when removing a dimension by name."""
     registry = DataspaceRegistry()
     SharedDim(registry, "x0", (0, 7), np.uint32)
     SharedDim(registry, "x1", (0, 7), np.uint32)
