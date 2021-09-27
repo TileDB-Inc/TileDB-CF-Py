@@ -106,9 +106,9 @@ def test_rename_attr():
     assert attr_names == ("enthalpy",)
 
 
-def test_array_no_dim_error():
-    with pytest.raises(ValueError):
-        ArrayCreator(DataspaceRegistry(), "array", [])
+def test_array_no_dim():
+    creator = ArrayCreator(DataspaceRegistry(), "array", [])
+    assert creator.domain_creator.ndim == 0
 
 
 def test_repeating_name_error():

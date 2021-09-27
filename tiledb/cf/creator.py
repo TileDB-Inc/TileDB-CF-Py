@@ -1071,10 +1071,6 @@ class ArrayRegistry:
     ):
         self._dataspace_registry = dataspace_registry
         self._name = name
-        if not dim_names:
-            raise ValueError(
-                "Cannot create array. Array must have at least one dimension."
-            )
         if isinstance(dim_names, str):
             dim_names = (dim_names,)
         if len(set(dim_name for dim_name in dim_names)) != len(dim_names):
@@ -1382,7 +1378,8 @@ class DomainCreator:
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
         """Returns a TileDB domain from the contained dimension creators."""
-        assert self.ndim > 0, "Must have at least one dimension."
+        if self.ndim == 0:
+            raise ValueError("Cannot create schema for array with no dimensions.")
         tiledb_dims = [dim_creator.to_tiledb() for dim_creator in self]
         return tiledb.Domain(tiledb_dims, ctx=ctx)
 

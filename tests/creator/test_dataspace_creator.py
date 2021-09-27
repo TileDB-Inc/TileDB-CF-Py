@@ -420,10 +420,10 @@ def test_rename_dim_used():
     assert group_schema["A1"].domain.has_dim("unit")
 
 
-def test_array_no_dims_error():
+def test_array_no_dims():
     creator = DataspaceCreator()
-    with pytest.raises(ValueError):
-        creator.add_array_creator("A1", [])
+    creator.add_array_creator("A1", [])
+    assert creator.get_array_creator("A1").domain_creator.ndim == 0
 
 
 def test_rename_dim_name_exists_in_dataspace_error():
