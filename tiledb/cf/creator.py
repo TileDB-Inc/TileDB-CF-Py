@@ -911,7 +911,7 @@ class ArrayCreator:
         self, dataspace_registry: DataspaceRegistry, name: str, dims: Sequence[str]
     ):
         array_registry = ArrayRegistry(dataspace_registry, name, dims)
-        return array_registry, DomainCreator(array_registry)
+        return array_registry, DomainCreator(array_registry, dataspace_registry)
 
     def attr_creator(self, key: Union[int, str]) -> AttrCreator:
         """Returns the requested attribute creator
@@ -1071,10 +1071,6 @@ class ArrayRegistry:
     ):
         self._dataspace_registry = dataspace_registry
         self._name = name
-        if not dim_names:
-            raise ValueError(
-                "Cannot create array. Array must have at least one dimension."
-            )
         if isinstance(dim_names, str):
             dim_names = (dim_names,)
         if len(set(dim_name for dim_name in dim_names)) != len(dim_names):
@@ -1135,10 +1131,50 @@ class ArrayRegistry:
         """
         if isinstance(key, int):
             return self._dim_creators[key]
-        for dim_creator in self._dim_creators:
-            if key == dim_creator.name:
-                return dim_creator
-        raise KeyError(f"Dimension creator with name '{key}' not found.")
+        index = self.get_dim_position_by_name(key)
+        return self._dim_creators[index]
+
+    def get_dim_position_by_name(self, dim_name: str) -> int:
+        """Returns the dimension position of the requested dimension name.
+
+        Parameters:
+            dim_name: Name of the dimension to get the position of.
+
+        Returns:
+            The position of the requested dimension in the array domain.
+        """
+        for index, dim_creator in enumerate(self._dim_creators):
+            if dim_creator.name == dim_name:
+                return index
+        raise KeyError(f"Dimension creator with name '{dim_name}' not found.")
+
+    def inject_dim_creator(self, dim_creator: DimCreator, position: int):
+        """Add an additional dimension into the domain of the array.
+
+        Parameters:
+            dim_creator: The dimension creator to add.
+            position: Position of the shared dimension. Negative values count backwards
+                from the end of the new number of dimensions.
+        """
+        if dim_creator.name in {dim_creator.name for dim_creator in self._dim_creators}:
+            raise ValueError(
+                f"Cannot add dimension creator `{dim_creator.name}` to this array. "
+                f"That dimension is already in use."
+            )
+        if dim_creator.name in self._attr_creators:
+            raise ValueError(
+                f"Cannot add dimension creator `{dim_creator.name}` to this array. An "
+                f"attribute creator with that name already exists."
+            )
+        index = self.ndim + 1 + position if position < 0 else position
+        if index < 0 or index > self.ndim:
+            raise IndexError(
+                f"Cannot add dimension to position {position} for an array with "
+                f"{self.ndim} dimensions."
+            )
+        self._dim_creators = (
+            self._dim_creators[:index] + (dim_creator,) + self._dim_creators[index:]
+        )
 
     @property
     def name(self) -> str:
@@ -1165,6 +1201,23 @@ class ArrayRegistry:
         if self._dataspace_registry is not None:
             self._dataspace_registry.register_attr_to_array(self._name, attr_name)
         self._attr_creators[attr_name] = attr_creator
+
+    def remove_dim_creator(self, dim_index: int):
+        """Remove a dim creator from the array.
+
+        Parameters:
+            dim_creator: The dimension creator to add.
+            position: Position of the shared dimension. Negative values count backwards
+                from the end of the new number of dimensions.
+        """
+        index = dim_index + self.ndim if dim_index < 0 else dim_index
+        if index < 0 or index >= self.ndim:
+            raise IndexError(
+                f"Dimension index {dim_index} is outside the bounds of the domain."
+            )
+        self._dim_creators = (
+            self._dim_creators[:dim_index] + self._dim_creators[dim_index + 1 :]
+        )
 
     def update_attr_creator_name(self, original_name: str, new_name: str):
         """Renames an attribute in the array.
@@ -1254,14 +1307,38 @@ class AttrCreator(metaclass=ABCMeta):
 class DomainCreator:
     """Creator for a TileDB domain."""
 
-    def __init__(self, array_registry):
+    def __init__(self, array_registry, dataspace_registry):
         self._array_registry = array_registry
+        self._dataspace_registry = dataspace_registry
 
     def __iter__(self):
         return self._array_registry.dim_creators()
 
     def __len__(self):
         return self.ndim
+
+    def inject_dim_creator(
+        self,
+        dim_name: str,
+        position: int,
+        tiles: Optional[Union[int, float]] = None,
+        filters: Optional[Union[tiledb.FilterList]] = None,
+    ):
+        """Adds a new dimension creator at a specified location.
+
+        Parameters:
+            dim_name: Name of the shared dimension to add to the array's domain.
+            position: Position of the shared dimension. Negative values count backwards
+                from the end of the new number of dimensions.
+            tiles: The size size for the dimension.
+            filters: Compression filters for the dimension.
+        """
+        self._array_registry.inject_dim_creator(
+            DimCreator(
+                self._dataspace_registry.get_shared_dim(dim_name), tiles, filters
+            ),
+            position,
+        )
 
     @property
     def ndim(self):
@@ -1276,6 +1353,18 @@ class DomainCreator:
             dim_id: dimension index (int) or name (str)
         """
         return self._array_registry.get_dim_creator(dim_id)
+
+    def remove_dim_creator(self, dim_id: Union[str, int]):
+        """Removes a dimension creator from the array creator.
+
+        Parameters:
+            dim_id: dimension index (int) or name (str)
+        """
+        if isinstance(dim_id, int):
+            self._array_registry.remove_dim_creator(dim_id)
+        else:
+            index = self._array_registry.get_dim_position_by_name(dim_id)
+            self._array_registry.remove_dim_creator(index)
 
     @property
     def tiles(self):
@@ -1293,7 +1382,8 @@ class DomainCreator:
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
         """Returns a TileDB domain from the contained dimension creators."""
-        assert self.ndim > 0, "Must have at least one dimension."
+        if self.ndim == 0:
+            raise ValueError("Cannot create schema for array with no dimensions.")
         tiledb_dims = [dim_creator.to_tiledb() for dim_creator in self]
         return tiledb.Domain(tiledb_dims, ctx=ctx)
 

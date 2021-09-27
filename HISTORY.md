@@ -10,8 +10,11 @@
 
 * Adds support for adding non-NetCDF attributes in the `NetCDF4ConverterArray`.
 * Adds ability to append to an existing group when creating a `Group` either directly or with a `DataspaceCreator` or `NetCDF4CreatorEngine`.
+* Adds ability to inject and remove dimensions for `ArrayCreator` and `NetCDF4ToArrayConverter` after initializations.
 
 ### Improvements
+
+* Allows ArrayCreators to initialized with no dimensions. Dimension check moved to TileDB schema or array creation.
 
 ### Deprecation
 

@@ -106,9 +106,9 @@ def test_rename_attr():
     assert attr_names == ("enthalpy",)
 
 
-def test_array_no_dim_error():
-    with pytest.raises(ValueError):
-        ArrayCreator(DataspaceRegistry(), "array", [])
+def test_array_no_dim():
+    creator = ArrayCreator(DataspaceRegistry(), "array", [])
+    assert creator.domain_creator.ndim == 0
 
 
 def test_repeating_name_error():
@@ -153,3 +153,170 @@ def test_to_schema_no_attrs_error():
     creator = ArrayCreator(registry, "array", ("row", "col"))
     with pytest.raises(ValueError):
         creator.to_schema()
+
+
+def test_inject_dim_creator_front():
+    """Tests injecting a dimension into the front of the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 7), np.uint32)
+    SharedDim(registry, "x0", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x1", "x2"))
+    creator.domain_creator.inject_dim_creator("x0", 0)
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x0", "x1", "x2")
+
+
+def test_inject_dim_creator_back():
+    """Tests injecting a dimension into the back of the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 7), np.uint32)
+    SharedDim(registry, "x3", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x1", "x2"))
+    creator.domain_creator.inject_dim_creator("x3", -1)
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x1", "x2", "x3")
+
+
+def test_inject_dim_creator_middle():
+    """Tests injecting a dimension into the middle of the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x2"))
+    creator.domain_creator.inject_dim_creator("x1", 1)
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x0", "x1", "x2")
+
+
+def test_inject_dim_attr_name_conflict_error():
+    """Tests error when injecting a dimension with name matching a current attribute
+    name."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1"))
+    creator.add_attr_creator("x2", dtype=np.int32)
+    with pytest.raises(ValueError):
+        creator.domain_creator.inject_dim_creator("x2", 0)
+
+
+def test_inject_dim_name_conflict_error():
+    """Tests error when injecting a dimension with name matching a current dimension
+    name."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1"))
+    with pytest.raises(ValueError):
+        creator.domain_creator.inject_dim_creator("x1", 0)
+
+
+def test_inject_dim_neg_out_of_bound_error():
+    """Tests error when injecting a dimension when poviding a negative position that is
+    one element out-of-bounds."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x2"))
+    with pytest.raises(IndexError):
+        creator.domain_creator.inject_dim_creator("x1", -4)
+
+
+def test_inject_dim_pos_out_of_bound_error():
+    """Tests error when injecting a dimension when providing a positive position that is
+    one more than the size of the domain after creation."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x2"))
+    with pytest.raises(IndexError):
+        creator.domain_creator.inject_dim_creator("x1", 3)
+
+
+def test_remove_dim_creator_by_positive_int():
+    """Tests removing a dimension using a positive dimension index."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    creator.domain_creator.remove_dim_creator(0)
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x1", "x2")
+
+
+def test_remove_dim_creator_by_negative_int():
+    """Tests removing a dimension using a negative dimension index."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    creator.domain_creator.remove_dim_creator(-3)
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x1", "x2")
+
+
+def test_remove_dim_creator_front():
+    """Tests removing the first dimension in the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    creator.domain_creator.remove_dim_creator("x0")
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x1", "x2")
+
+
+def test_remove_dim_creator_back():
+    """Tests removing the last dimension in the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 7), np.uint32)
+    SharedDim(registry, "x3", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x1", "x2", "x3"))
+    creator.domain_creator.remove_dim_creator("x3")
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x1", "x2")
+
+
+def test_remove_dim_creator_middle():
+    """Tests removing a dimension in the middle of the domain."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    creator.domain_creator.remove_dim_creator("x1")
+    dim_names = tuple(dim_creator.name for dim_creator in creator.domain_creator)
+    assert dim_names == ("x0", "x2")
+
+
+def test_remove_dim_creator_position_index_error():
+    """Tests attempting to remove a dimension that does not exist with a dimension
+    index."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    with pytest.raises(IndexError):
+        creator.domain_creator.remove_dim_creator(4)
+
+
+def test_remove_dim_creator_name_key_error():
+    """Tests attempting to remove a dimension that does not exist by name."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x0", (0, 7), np.uint32)
+    SharedDim(registry, "x1", (0, 7), np.uint32)
+    SharedDim(registry, "x2", (0, 4), np.uint32)
+    creator = ArrayCreator(registry, "array", ("x0", "x1", "x2"))
+    with pytest.raises(KeyError):
+        creator.domain_creator.remove_dim_creator("x4")
