@@ -1,10 +1,23 @@
 # History
 
+
 ## Unreleased
 
 ### Bug fixes
 
 ### Breaking Behavior
+
+### New Features
+
+### Improvements
+
+### Deprecation
+
+## 0.4.2
+
+### Bug fixes
+
+* Fixes regression in html representation of `NetCDFVarToAttrConverter`
 
 ### New Features
 
@@ -16,9 +29,7 @@
 
 * Allows ArrayCreators to initialized with no dimensions. Dimension check moved to TileDB schema or array creation.
 
-### Deprecation
-
-##  TileDB-CF-Py Release O.4.1
+##  TileDB-CF-Py Release 0.4.1
 
 ### Bug fixes
 
