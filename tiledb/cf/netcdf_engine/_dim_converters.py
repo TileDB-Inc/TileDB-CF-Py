@@ -2,7 +2,6 @@
 # Licensed under the MIT License.
 """Classes for converting NetCDF4 objects to TileDB attributes."""
 
-import warnings
 from abc import abstractmethod
 from typing import Optional, Tuple, Union
 
@@ -202,32 +201,6 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
         )
 
     @property
-    def input_dtype(self) -> np.dtype:
-        """(DEPRECATED) Name of the input NetCDF variable and dimension."""
-        with warnings.catch_warnings():
-            warnings.warn(
-                "Deprecated. Use `input_var_dtype` instead.",
-                DeprecationWarning,
-            )
-        return self.input_var_dtype
-
-    @property
-    def input_name(self) -> str:
-        """(DEPRECATED) Name of the input NetCDF variable and dimension."""
-        with warnings.catch_warnings():
-            warnings.warn(
-                "Deprecated. Use `input_var_name` to get the name of the input NetCDF "
-                "variable and `input_dim_name` to get the input NetCDF dimension.",
-                DeprecationWarning,
-            )
-        if self.input_var_name != self.input_dim_name:
-            raise ValueError(
-                "Input name is ambiguous. The input variable and input dimension have "
-                "different names."
-            )
-        return self.input_var_name
-
-    @property
     def is_index_dim(self) -> bool:
         return False
 
@@ -357,26 +330,6 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
         """Returns a HTML string summarizing the input for the dimension."""
         size_str = "unlimited" if self.is_unlimited else str(self.input_dim_size)
         return f"NetCDFDimension(name={self.input_dim_name}, size={size_str})"
-
-    @property
-    def input_name(self) -> str:
-        """(DEPRECATED) Name of the input NetCDF dimension."""
-        with warnings.catch_warnings():
-            warnings.warn(
-                "Deprecated. Use `input_dim_name` instead.",
-                DeprecationWarning,
-            )
-        return self.input_dim_name
-
-    @property
-    def input_size(self) -> int:
-        """(DEPRECATED) Size of the input NetCDF dimension."""
-        with warnings.catch_warnings():
-            warnings.warn(
-                "Deprecated. Use `input_dim_size` instead.",
-                DeprecationWarning,
-            )
-        return self.input_dim_size
 
 
 class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
