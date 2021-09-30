@@ -14,15 +14,14 @@ from .api import from_netcdf
 __all__ = ["has_netCDF4", "from_netcdf"]  # type: ignore
 
 if has_netCDF4:
-    from .converter import (
-        NetCDF4ArrayConverter,
-        NetCDF4ConverterEngine,
+    from ._array_converters import NetCDF4ArrayConverter, NetCDF4DomainConverter
+    from ._attr_converters import NetCDF4VarToAttrConverter
+    from ._dim_converters import (
         NetCDF4CoordToDimConverter,
         NetCDF4DimToDimConverter,
-        NetCDF4DomainConverter,
         NetCDF4ScalarToDimConverter,
-        NetCDF4VarToAttrConverter,
-        open_netcdf_group,
     )
+    from ._utils import open_netcdf_group
+    from .converter import NetCDF4ConverterEngine
 
     __all__.append("NetCDF4ConverterEngine")
