@@ -348,8 +348,6 @@ class Group:
         mode: str = "r",
         key: Optional[Union[Dict[str, str], str]] = None,
         timestamp: Optional[int] = None,
-        array: Optional[str] = None,
-        attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
         """Constructs a new :class:`Group`."""
@@ -376,20 +374,6 @@ class Group:
         self._open_arrays: Dict[
             Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
         ] = defaultdict(list)
-        if array is not None:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "The parameter `array` is deprecated. Use `open_array` to open "
-                    "an array in this group.",
-                    DeprecationWarning,
-                )
-        if attr is not None:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "The parameter `attr` is deprecated. Use `open_array` to open "
-                    "an array in this group.",
-                    DeprecationWarning,
-                )
 
     def __enter__(self):
         return self
@@ -583,8 +567,6 @@ class VirtualGroup(Group):
         mode: str = "r",
         key: Optional[Union[Dict[str, str], str]] = None,
         timestamp: Optional[int] = None,
-        array: Optional[str] = None,
-        attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
         self._array_uris = array_uris
@@ -607,20 +589,6 @@ class VirtualGroup(Group):
         self._open_arrays: Dict[
             Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
         ] = defaultdict(list)
-        if array is not None:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "The parameter `array` is deprecated. Use `open_array` to open "
-                    "an array in this group.",
-                    DeprecationWarning,
-                )
-        if attr is not None:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "The parameter `attr` is deprecated. Use `open_array` to open "
-                    "an array in this group.",
-                    DeprecationWarning,
-                )
 
 
 class GroupSchema(Mapping):
