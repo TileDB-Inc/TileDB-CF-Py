@@ -2,7 +2,6 @@
 # Licensed under the MIT License.
 """Classes for converting NetCDF4 objects to TileDB attributes."""
 
-import warnings
 from abc import abstractmethod
 from typing import Optional, Sequence, Union
 
@@ -183,23 +182,3 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         if shape is not None:
             return np.reshape(variable[...], shape)
         return variable[...]
-
-    @property
-    def input_dtype(self) -> np.dtype:
-        """(DEPRECATED) Size of the input NetCDF dimension."""
-        with warnings.catch_warnings():
-            warnings.warn(
-                "Deprecated. Use `input_var_dtype` instead.",
-                DeprecationWarning,
-            )
-        return self.input_var_dtype
-
-    @property
-    def input_name(self) -> str:
-        """(DEPRECATED) Name of the input NetCDF variable."""
-        with warnings.catch_warnings():
-            warnings.warn(
-                "Deprecated. Use `input_var_name` instead.",
-                DeprecationWarning,
-            )
-        return self.input_var_name

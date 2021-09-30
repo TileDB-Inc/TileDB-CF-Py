@@ -295,7 +295,6 @@ class Group:
         group_schema: GroupSchema,
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
-        is_virtual: bool = False,
         append: bool = False,
     ):
         """Create a TileDB group and the arrays inside the group from a group schema.
@@ -310,8 +309,6 @@ class Group:
             key: If not ``None``, encryption key, or dictionary of encryption keys to
                 decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            is_virtual: (DEPRECATED) If ``True``, create arrays in a flat directory
-                without creating a TileDB group.
             append: If ``True``, add arrays from the provided group schema to an
                 already existing group. The names for the arrays in the group schema
                 cannot already exist in the group being append to.
@@ -328,55 +325,22 @@ class Group:
                 and group_schema.metadata_schema is not None
             )
         else:
-            if not is_virtual:
-                tiledb.group_create(uri, ctx)
-            else:  # pragma: no cover
-                with warnings.catch_warnings():
-                    warnings.warn(
-                        "`Group.create_virtual` and the parameter `is_virtual in "
-                        "`Group.create` are deprecated. Use `VirtualGroup.create` "
-                        "instead.",
-                        DeprecationWarning,
-                    )
+            tiledb.group_create(uri, ctx)
             create_metadata_group = group_schema.metadata_schema is not None
         if create_metadata_group:
             tiledb.Array.create(
-                _get_metadata_array_uri(uri, is_virtual),
+                _get_metadata_array_uri(uri, is_virtual=False),
                 group_schema.metadata_schema,
                 _get_array_key(key, METADATA_ARRAY_NAME),
                 ctx,
             )
         for array_name, array_schema in group_schema.items():
             tiledb.Array.create(
-                _get_array_uri(uri, array_name, is_virtual),
+                _get_array_uri(uri, array_name, is_virtual=False),
                 array_schema,
                 _get_array_key(key, array_name),
                 ctx,
             )
-
-    @classmethod
-    def create_virtual(
-        cls,
-        uri: str,
-        group_schema: GroupSchema,
-        key: Optional[Union[Dict[str, str], str]] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        """(DEPRECATED) Create the arrays in a group schema.
-
-        This will create a virtual group where the group metadata array is created at
-        the provided URI and all other arrays are created at ``{uri}_{array_name}``
-        where ``{uri}`` is the provided URI and ``{array_name}`` is the
-        name of the array as stored in the group schema.
-
-        Parameters:
-            uri: Uniform resource identifier for group metadata and prefix for arrays.
-            group_schema: Schema that defines the group to be created.
-            key: If not ``None``, encryption key, or dictionary of encryption keys to
-                decrypt arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-        """
-        cls.create(uri, group_schema, key, ctx, is_virtual=True)  # pragma: no cover
 
     def __init__(
         self,
@@ -384,8 +348,6 @@ class Group:
         mode: str = "r",
         key: Optional[Union[Dict[str, str], str]] = None,
         timestamp: Optional[int] = None,
-        array: Optional[str] = None,
-        attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
         """Constructs a new :class:`Group`."""
@@ -412,20 +374,6 @@ class Group:
         self._open_arrays: Dict[
             Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
         ] = defaultdict(list)
-        if array is not None:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "The parameter `array` is deprecated. Use `open_array` to open "
-                    "an array in this group.",
-                    DeprecationWarning,
-                )
-        if attr is not None:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "The parameter `attr` is deprecated. Use `open_array` to open "
-                    "an array in this group.",
-                    DeprecationWarning,
-                )
 
     def __enter__(self):
         return self
@@ -574,7 +522,6 @@ class VirtualGroup(Group):
         group_schema: GroupSchema,
         key: Optional[Union[Dict[str, str], str]] = None,
         ctx: Optional[tiledb.Ctx] = None,
-        is_virtual: bool = True,
         append: bool = False,
     ):
         """Create the arrays in a group schema.
@@ -599,15 +546,6 @@ class VirtualGroup(Group):
                 warnings.warn(
                     "Ignoring parameter append. Cannot append to a virtual group."
                 )
-        if not is_virtual:  # pragma: no cover
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "The parameter `is_virtual in `VirtualGroup.create` is deprecated."
-                    "Use `Group.create` instead.",
-                    DeprecationWarning,
-                )
-            Group.create(uri, group_schema, key, ctx, is_virtual)
-            return
         if group_schema.metadata_schema is not None:
             tiledb.Array.create(
                 _get_metadata_array_uri(uri, is_virtual=True),
@@ -629,8 +567,6 @@ class VirtualGroup(Group):
         mode: str = "r",
         key: Optional[Union[Dict[str, str], str]] = None,
         timestamp: Optional[int] = None,
-        array: Optional[str] = None,
-        attr: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
     ):
         self._array_uris = array_uris
@@ -653,20 +589,6 @@ class VirtualGroup(Group):
         self._open_arrays: Dict[
             Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
         ] = defaultdict(list)
-        if array is not None:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "The parameter `array` is deprecated. Use `open_array` to open "
-                    "an array in this group.",
-                    DeprecationWarning,
-                )
-        if attr is not None:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "The parameter `attr` is deprecated. Use `open_array` to open "
-                    "an array in this group.",
-                    DeprecationWarning,
-                )
 
 
 class GroupSchema(Mapping):

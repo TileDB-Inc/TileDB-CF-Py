@@ -82,39 +82,6 @@ class TestDataspaceCreatorExample1:
         assert isinstance(shared_dim, SharedDim)
         assert shared_dim.name == "temperature"
 
-    def test_array_names(self, dataspace_creator):
-        with pytest.warns(DeprecationWarning):
-            assert set(dataspace_creator.array_names) == {"A1", "A2", "A3"}
-
-    def test_attr_names(self, dataspace_creator):
-        with pytest.warns(DeprecationWarning):
-            assert set(dataspace_creator.attr_names) == {
-                "pressure.data",
-                "b",
-                "c",
-                "d",
-                "e",
-            }
-
-    def test_dim_names(self, dataspace_creator):
-        with pytest.warns(DeprecationWarning):
-            assert dataspace_creator.dim_names == {"pressure.index", "temperature"}
-
-    def test_get_array_property(self, dataspace_creator):
-        with pytest.warns(DeprecationWarning):
-            tiles = dataspace_creator.get_array_property("A1", "tiles")
-            assert tiles == (2,)
-
-    def test_get_attr_property(self, dataspace_creator):
-        with pytest.warns(DeprecationWarning):
-            dtype = dataspace_creator.get_attr_property("b", "dtype")
-            assert dtype == np.dtype(np.float64)
-
-    def test_get_dim_property(self, dataspace_creator):
-        with pytest.warns(DeprecationWarning):
-            dtype = dataspace_creator.get_dim_property("temperature", "dtype")
-            assert dtype == np.dtype(np.uint64)
-
     def test_to_schema(self, dataspace_creator):
         group_schema = dataspace_creator.to_schema()
         assert isinstance(group_schema, GroupSchema)
@@ -223,13 +190,6 @@ def test_add_dim_name_exists_error():
     creator.add_shared_dim("row", (1, 4), np.uint64)
     with pytest.raises(ValueError):
         creator.add_shared_dim("row", (0, 3), np.int64)
-
-
-def test_get_property_attr_key_error():
-    with pytest.warns(DeprecationWarning):
-        creator = DataspaceCreator()
-        with pytest.raises(KeyError):
-            creator.get_attr_property("a1", "nullable")
 
 
 def test_remove_empty_array():
@@ -456,52 +416,6 @@ def test_rename_dim_attr_name_in_array_exists_error():
     creator.add_attr_creator("x1", "A1", np.float64)
     with pytest.raises(ValueError):
         creator.get_shared_dim("y1").name = "x1"
-
-
-def test_set_attr_property():
-    creator = DataspaceCreator()
-    creator.add_shared_dim("row", [0, 7], np.int64)
-    creator.add_array_creator("A1", ["row"])
-    creator.add_attr_creator("x1", "A1", np.float64)
-    with pytest.warns(DeprecationWarning):
-        creator.set_attr_properties("x1", fill=-1)
-    group_schema = creator.to_schema()
-    attr_schema = group_schema["A1"].attr(0)
-    assert attr_schema.fill == -1
-
-
-def test_set_dim_dtype():
-    creator = DataspaceCreator()
-    creator.add_shared_dim("row", [0, 7], np.int64)
-    with pytest.warns(DeprecationWarning):
-        creator.set_dim_properties("row", dtype=np.float64)
-    shared_dim = creator.get_shared_dim("row")
-    assert shared_dim.dtype == np.dtype(np.float64)
-
-
-def test_set_dim_domain():
-    creator = DataspaceCreator()
-    creator.add_shared_dim("row", [0, 7], np.int64)
-    with pytest.warns(DeprecationWarning):
-        creator.set_dim_properties("row", domain=(1, 8))
-    shared_dim = creator.get_shared_dim("row")
-    assert shared_dim.domain == (1, 8)
-
-
-def test_set_dim_name():
-    creator = DataspaceCreator()
-    creator.add_shared_dim("row", [0, 7], np.int64)
-    with pytest.warns(DeprecationWarning):
-        creator.set_dim_properties("row", name="column")
-    shared_dim = creator.get_shared_dim("column")
-    assert isinstance(shared_dim, SharedDim)
-
-
-def test_set_attr_property_no_attr_err():
-    with pytest.warns(DeprecationWarning):
-        creator = DataspaceCreator()
-        with pytest.raises(KeyError):
-            creator.set_attr_properties("x1", fill=-1)
 
 
 def test_dataspace_creator_name():

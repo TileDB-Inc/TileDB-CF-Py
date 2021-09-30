@@ -54,33 +54,6 @@ class TestCreateGroup:
             assert tiledb.ArraySchema.load(array_uri, key=self._key) == schema
 
 
-class TestCreateVirtualGroup:
-
-    _metadata_schema = _array_schema_1
-    _array_schemas = [
-        ("A1", _array_schema_1),
-        ("A2", _array_schema_2),
-    ]
-    _group_schema = GroupSchema(_array_schemas, _metadata_schema)
-    _key = None
-
-    @pytest.fixture(scope="class")
-    def group_uri(self, tmpdir_factory):
-        """Creates a TileDB Group from GroupSchema and returns scenario dict."""
-        uri = str(tmpdir_factory.mktemp("group1"))
-        ctx = None
-        with pytest.deprecated_call():
-            Group.create_virtual(uri, self._group_schema, self._key, ctx)
-        return uri
-
-    def test_array_schemas(self, group_uri):
-        uri = group_uri
-        assert tiledb.ArraySchema.load(uri, key=self._key) == self._metadata_schema
-        for name, schema in self._array_schemas:
-            array_uri = group_uri + "_" + name
-            assert tiledb.ArraySchema.load(array_uri, key=self._key) == schema
-
-
 class TestNotTileDBURI:
     @pytest.fixture(scope="class")
     def empty_uri(self, tmpdir_factory):
