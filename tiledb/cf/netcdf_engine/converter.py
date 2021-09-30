@@ -2,7 +2,6 @@
 # Licensed under the MIT License.
 """Classes for converting NetCDF4 files to TileDB."""
 
-import warnings
 from collections import defaultdict
 from io import StringIO
 from pathlib import Path
@@ -709,24 +708,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dtype=dtype,
             name=dim_name,
         )
-
-    def add_scalar_dim_converter(
-        self,
-        dim_name: str = "__scalars",
-        dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-    ):
-        """Adds a new NetCDF scalar dimension.
-
-        Parameters:
-            dim_name: Output name of the dimension.
-            dtype: Numpy type to use for the scalar dimension
-        """
-        with warnings.catch_warnings():
-            warnings.warn(
-                "Deprecated. Use `add_scalar_to_dim_converter` instead.",
-                DeprecationWarning,
-            )
-        self.add_scalar_to_dim_converter(dim_name, dtype)
 
     def add_scalar_to_dim_converter(
         self,
