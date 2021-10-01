@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 """Classes for converting NetCDF4 files to TileDB."""
 
+import os
 from collections import defaultdict
 from io import StringIO
 from pathlib import Path
@@ -11,7 +12,7 @@ import netCDF4
 import numpy as np
 
 import tiledb
-from tiledb.cf.core import Group
+from tiledb.cf.core import METADATA_ARRAY_NAME
 from tiledb.cf.creator import DataspaceCreator
 
 from ._array_converters import NetCDF4ArrayConverter
@@ -345,6 +346,43 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         if self.default_group_path is not None:
             output.write(f"Deault NetCDF group path: {self.default_group_path}\n")
         return output.getvalue()
+
+    def _copy_data(
+        self,
+        group_uri: str,
+        array_uris: Dict[str, str],
+        key: Optional[str],
+        ctx: Optional[tiledb.Ctx],
+        input_netcdf_group: Optional[netCDF4.Group],
+        input_file: Optional[Union[str, Path]],
+        input_group_path: Optional[str],
+        assigned_dim_values: Optional[Dict[str, Any]],
+        assigned_attr_values: Optional[Dict[str, np.ndarray]],
+    ):
+        if input_netcdf_group is None:
+            input_file = (
+                input_file if input_file is not None else self.default_input_file
+            )
+            input_group_path = (
+                input_group_path
+                if input_group_path is not None
+                else self.default_group_path
+            )
+        with open_netcdf_group(
+            input_netcdf_group, input_file, input_group_path
+        ) as netcdf_group:
+            with tiledb.open(group_uri, mode="w", key=key, ctx=ctx) as group_array:
+                copy_group_metadata(netcdf_group, group_array.meta)
+            for array_creator in self._registry.array_creators():
+                if isinstance(array_creator, NetCDF4ArrayConverter):
+                    array_creator.copy(
+                        netcdf_group=netcdf_group,
+                        tiledb_uri=array_uris[array_creator.name],
+                        tiledb_key=key,
+                        tiledb_ctx=ctx,
+                        assigned_dim_values=assigned_dim_values,
+                        assigned_attr_values=assigned_attr_values,
+                    )
 
     def _repr_html_(self):
         output = StringIO()
@@ -686,28 +724,17 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 f"{self._registry.narray} array creators."
             )
         array_creator = next(self._registry.array_creators())
-        if input_netcdf_group is None:
-            input_file = (
-                input_file if input_file is not None else self.default_input_file
-            )
-            input_group_path = (
-                input_group_path
-                if input_group_path is not None
-                else self.default_group_path
-            )
-        with open_netcdf_group(
-            input_netcdf_group,
-            input_file,
-            input_group_path,
-        ) as netcdf_group:
-            with tiledb.open(output_uri, mode="w", key=key, ctx=ctx) as array:
-                # Copy group metadata
-                copy_group_metadata(netcdf_group, array.meta)
-                # Copy variables and variable metadata to arrays
-                if isinstance(array_creator, NetCDF4ArrayConverter):
-                    array_creator.copy(
-                        netcdf_group, array, assigned_dim_values, assigned_attr_values
-                    )
+        self._copy_data(
+            group_uri=output_uri,
+            array_uris={array_creator.name: output_uri},
+            key=key,
+            ctx=ctx,
+            input_netcdf_group=input_netcdf_group,
+            input_file=input_file,
+            input_group_path=input_group_path,
+            assigned_dim_values=assigned_dim_values,
+            assigned_attr_values=assigned_attr_values,
+        )
 
     def copy_to_group(
         self,
@@ -745,31 +772,22 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for the attributes that are not copied from the NetCDF group.
         """
-        if input_netcdf_group is None:
-            input_file = (
-                input_file if input_file is not None else self.default_input_file
-            )
-            input_group_path = (
-                input_group_path
-                if input_group_path is not None
-                else self.default_group_path
-            )
-        with open_netcdf_group(
-            input_netcdf_group, input_file, input_group_path
-        ) as netcdf_group:
-            # Copy group metadata
-            with Group(output_uri, mode="w", key=key, ctx=ctx) as group:
-                copy_group_metadata(netcdf_group, group.meta)
-                # Copy variables and variable metadata to arrays
-                for array_creator in self._registry.array_creators():
-                    if isinstance(array_creator, NetCDF4ArrayConverter):
-                        with group.open_array(array=array_creator.name) as array:
-                            array_creator.copy(
-                                netcdf_group,
-                                array,
-                                assigned_dim_values,
-                                assigned_attr_values,
-                            )
+        group_uri = os.path.join(output_uri, METADATA_ARRAY_NAME)
+        array_uris = {
+            array_creator.name: os.path.join(output_uri, array_creator.name)
+            for array_creator in self._registry.array_creators()
+        }
+        self._copy_data(
+            group_uri=group_uri,
+            array_uris=array_uris,
+            key=key,
+            ctx=ctx,
+            input_netcdf_group=input_netcdf_group,
+            input_file=input_file,
+            input_group_path=input_group_path,
+            assigned_dim_values=assigned_dim_values,
+            assigned_attr_values=assigned_attr_values,
+        )
 
     def copy_to_virtual_group(
         self,
@@ -807,29 +825,18 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not copied from the NetCDF group.
         """
-        if input_netcdf_group is None:
-            input_file = (
-                input_file if input_file is not None else self.default_input_file
-            )
-            input_group_path = (
-                input_group_path
-                if input_group_path is not None
-                else self.default_group_path
-            )
-        with open_netcdf_group(
-            input_netcdf_group, input_file, input_group_path
-        ) as netcdf_group:
-            # Copy group metadata
-            with tiledb.Array(output_uri, mode="w", key=key, ctx=ctx) as array:
-                copy_group_metadata(netcdf_group, array.meta)
-            # Copy variables and variable metadata to arrays
-            for array_creator in self._registry.array_creators():
-                array_uri = output_uri + "_" + array_creator.name
-                if isinstance(array_creator, NetCDF4ArrayConverter):
-                    with tiledb.open(array_uri, mode="w", key=key, ctx=ctx) as array:
-                        array_creator.copy(
-                            netcdf_group,
-                            array,
-                            assigned_dim_values,
-                            assigned_attr_values,
-                        )
+        array_uris = {
+            array_creator.name: f"{output_uri}_{array_creator.name}"
+            for array_creator in self._registry.array_creators()
+        }
+        self._copy_data(
+            group_uri=output_uri,
+            array_uris=array_uris,
+            key=key,
+            ctx=ctx,
+            input_netcdf_group=input_netcdf_group,
+            input_file=input_file,
+            input_group_path=input_group_path,
+            assigned_dim_values=assigned_dim_values,
+            assigned_attr_values=assigned_attr_values,
+        )

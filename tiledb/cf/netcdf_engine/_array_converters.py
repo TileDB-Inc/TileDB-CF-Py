@@ -97,7 +97,9 @@ class NetCDF4ArrayConverter(ArrayCreator):
     def copy(
         self,
         netcdf_group: netCDF4.Group,
-        tiledb_array: tiledb.Array,
+        tiledb_uri: str,
+        tiledb_key: Optional[str] = None,
+        tiledb_ctx: Optional[str] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
     ):
@@ -105,51 +107,56 @@ class NetCDF4ArrayConverter(ArrayCreator):
 
         Parameters:
             netcdf_group: The NetCDF group to copy data from.
-            tiledb_arary: The TileDB array to copy data into. The array must be open
-                in write mode.
+            tiledb_uri: The TileDB array uri to copy data into.
+            tiledb_key: If not ``None``, the encryption key for the TileDB array.
+            tiledb_ctx: If not ``None``, the TileDB context wrapper for a TileDB
+                storage manager to use when opening the TileDB array.
             assigned_dim_values: Mapping from dimension name to value for dimensions
                 that are not copied from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not copied from the NetCDF group.
         """
-        # Copy metadata for TileDB dimensions and attributes.
-        for attr_creator in self:
-            if isinstance(attr_creator, NetCDF4ToAttrConverter):
-                attr_creator.copy_metadata(netcdf_group, tiledb_array)
-        for dim_creator in self._domain_creator:
-            if isinstance(dim_creator.base, NetCDF4ToDimConverter):
-                dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
-        # Copy array data to TileDB.
-        if self.sparse:
-            shape: Optional[Union[int, Sequence[int]]] = -1
-        else:
-            shape = (
-                None
-                if all(
-                    isinstance(dim_creator.base, NetCDF4ToDimConverter)
-                    for dim_creator in self._domain_creator
-                )
-                else self.domain_creator.get_dense_query_shape(netcdf_group)
-            )
-        data = {}
-        for attr_creator in self:
-            if isinstance(attr_creator, NetCDF4ToAttrConverter):
-                data[attr_creator.name] = attr_creator.get_values(
-                    netcdf_group, sparse=self.sparse, shape=shape
-                )
+        with tiledb.open(
+            tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
+        ) as tiledb_array:
+            # Copy metadata for TileDB dimensions and attributes.
+            for attr_creator in self:
+                if isinstance(attr_creator, NetCDF4ToAttrConverter):
+                    attr_creator.copy_metadata(netcdf_group, tiledb_array)
+            for dim_creator in self._domain_creator:
+                if isinstance(dim_creator.base, NetCDF4ToDimConverter):
+                    dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
+            # Copy array data to TileDB.
+            if self.sparse:
+                shape: Optional[Union[int, Sequence[int]]] = -1
             else:
-                if (
-                    assigned_attr_values is None
-                    or attr_creator.name not in assigned_attr_values
-                ):
-                    raise KeyError(
-                        f"Missing value for attribute '{attr_creator.name}'."
+                shape = (
+                    None
+                    if all(
+                        isinstance(dim_creator.base, NetCDF4ToDimConverter)
+                        for dim_creator in self._domain_creator
                     )
-                data[attr_creator.name] = assigned_attr_values[attr_creator.name]
-        coord_values = self._domain_creator.get_query_coordinates(
-            netcdf_group, self.sparse, assigned_dim_values
-        )
-        tiledb_array[coord_values] = data
+                    else self.domain_creator.get_dense_query_shape(netcdf_group)
+                )
+            data = {}
+            for attr_creator in self:
+                if isinstance(attr_creator, NetCDF4ToAttrConverter):
+                    data[attr_creator.name] = attr_creator.get_values(
+                        netcdf_group, sparse=self.sparse, shape=shape
+                    )
+                else:
+                    if (
+                        assigned_attr_values is None
+                        or attr_creator.name not in assigned_attr_values
+                    ):
+                        raise KeyError(
+                            f"Missing value for attribute '{attr_creator.name}'."
+                        )
+                    data[attr_creator.name] = assigned_attr_values[attr_creator.name]
+            coord_values = self._domain_creator.get_query_coordinates(
+                netcdf_group, self.sparse, assigned_dim_values
+            )
+            tiledb_array[coord_values] = data
 
 
 class NetCDF4DomainConverter(DomainCreator):
