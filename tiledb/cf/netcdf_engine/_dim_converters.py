@@ -15,7 +15,7 @@ from tiledb.cf.creator import DataspaceRegistry, SharedDim
 from ._utils import get_ncattr, safe_set_metadata
 
 
-class NetCDF4ToDimConverter(SharedDim):
+class NetCDF4ToDimBase(SharedDim):
     """Abstract base class for classes that copy data from objects in a NetCDF group to
     a TileDB dimension.
     """
@@ -53,7 +53,7 @@ class NetCDF4ToDimConverter(SharedDim):
         """
 
 
-class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
+class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
     """Converter for a NetCDF variable/dimension pair to a TileDB dimension.
 
     Attributes:
@@ -205,7 +205,7 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimConverter):
         return False
 
 
-class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
+class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
     """Converter for a NetCDF dimension to a TileDB dimension.
 
     Attributes:
@@ -332,7 +332,7 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimConverter):
         return f"NetCDFDimension(name={self.input_dim_name}, size={size_str})"
 
 
-class NetCDF4ScalarToDimConverter(NetCDF4ToDimConverter):
+class NetCDF4ScalarToDimConverter(NetCDF4ToDimBase):
     """Converter for NetCDF scalar (empty) dimensions to a TileDB Dimension.
 
     Attributes:

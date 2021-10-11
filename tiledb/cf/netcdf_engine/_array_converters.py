@@ -17,7 +17,7 @@ from tiledb.cf.creator import (
 )
 
 from ._attr_converters import NetCDF4ToAttrConverter, NetCDF4VarToAttrConverter
-from ._dim_converters import NetCDF4ToDimConverter
+from ._dim_converters import NetCDF4ToDimBase
 
 
 class NetCDF4ArrayConverter(ArrayCreator):
@@ -124,7 +124,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
                 if isinstance(attr_creator, NetCDF4ToAttrConverter):
                     attr_creator.copy_metadata(netcdf_group, tiledb_array)
             for dim_creator in self._domain_creator:
-                if isinstance(dim_creator.base, NetCDF4ToDimConverter):
+                if isinstance(dim_creator.base, NetCDF4ToDimBase):
                     dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
             # Copy array data to TileDB.
             if self.sparse:
@@ -133,7 +133,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
                 shape = (
                     None
                     if all(
-                        isinstance(dim_creator.base, NetCDF4ToDimConverter)
+                        isinstance(dim_creator.base, NetCDF4ToDimBase)
                         for dim_creator in self._domain_creator
                     )
                     else self.domain_creator.get_dense_query_shape(netcdf_group)
@@ -171,7 +171,7 @@ class NetCDF4DomainConverter(DomainCreator):
         """
         return tuple(
             dim_creator.base.get_query_size(netcdf_group)
-            if isinstance(dim_creator.base, NetCDF4ToDimConverter)
+            if isinstance(dim_creator.base, NetCDF4ToDimBase)
             else 1
             for dim_creator in self
         )
@@ -192,7 +192,7 @@ class NetCDF4DomainConverter(DomainCreator):
         """
         query_coords = []
         for dim_creator in self:
-            if isinstance(dim_creator.base, NetCDF4ToDimConverter):
+            if isinstance(dim_creator.base, NetCDF4ToDimBase):
                 query_coords.append(
                     dim_creator.base.get_values(netcdf_group, sparse=sparse)
                 )
@@ -227,7 +227,7 @@ class NetCDF4DomainConverter(DomainCreator):
             filters: Compression filters for the dimension.
         """
         shared_dim = self._dataspace_registry.get_shared_dim(dim_name)
-        if isinstance(shared_dim, NetCDF4ToDimConverter):
+        if isinstance(shared_dim, NetCDF4ToDimBase):
             if any(
                 isinstance(attr_creator, NetCDF4VarToAttrConverter)
                 for attr_creator in self._array_registry.attr_creators()
@@ -261,7 +261,7 @@ class NetCDF4DomainConverter(DomainCreator):
             else self._array_registry.get_dim_position_by_name(dim_id)
         )
         dim_creator = self._array_registry.get_dim_creator(index)
-        if isinstance(dim_creator.base, NetCDF4ToDimConverter):
+        if isinstance(dim_creator.base, NetCDF4ToDimBase):
             if any(
                 isinstance(attr_creator, NetCDF4VarToAttrConverter)
                 for attr_creator in self._array_registry.attr_creators()
