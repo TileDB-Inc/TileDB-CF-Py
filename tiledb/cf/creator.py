@@ -517,6 +517,13 @@ class ArrayCreator:
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
+        if isinstance(dims, str):
+            dims = (dims,)
+        if len(set(dim_name for dim_name in dims)) != len(dims):
+            raise ValueError(
+                "Cannot create array; the array has repeating dimensions. All "
+                "dimensions must have a unique name."
+            )
         self._registry, self._domain_creator = self._register(
             dataspace_registry, name, dims
         )
@@ -569,9 +576,14 @@ class ArrayCreator:
         return output.getvalue()
 
     def _register(
-        self, dataspace_registry: DataspaceRegistry, name: str, dims: Sequence[str]
+        self, dataspace_registry: DataspaceRegistry, name: str, dim_names: Sequence[str]
     ):
-        array_registry = ArrayRegistry(dataspace_registry, name, dims)
+        dim_creators = tuple(
+            DimCreator(dataspace_registry.get_shared_dim(dim_name))
+            for dim_name in dim_names
+        )
+
+        array_registry = ArrayRegistry(dataspace_registry, name, dim_creators)
         return array_registry, DomainCreator(array_registry, dataspace_registry)
 
     def attr_creator(self, key: Union[int, str]) -> AttrCreator:
@@ -728,21 +740,11 @@ class ArrayRegistry:
         self,
         dataspace_registry: DataspaceRegistry,
         name: str,
-        dim_names: Sequence[str],
+        dim_creators: Tuple[DimCreator, ...],
     ):
         self._dataspace_registry = dataspace_registry
         self._name = name
-        if isinstance(dim_names, str):
-            dim_names = (dim_names,)
-        if len(set(dim_name for dim_name in dim_names)) != len(dim_names):
-            raise ValueError(
-                "Cannot create array; the array has repeating dimensions. All "
-                "dimensions must have a unique name."
-            )
-        self._dim_creators = tuple(
-            DimCreator(dataspace_registry.get_shared_dim(dim_name))
-            for dim_name in dim_names
-        )
+        self._dim_creators = dim_creators
         self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
 
     def attr_creators(self):

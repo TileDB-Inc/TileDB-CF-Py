@@ -17,7 +17,7 @@ from tiledb.cf.creator import (
 )
 
 from ._attr_converters import NetCDF4ToAttrConverter, NetCDF4VarToAttrConverter
-from ._dim_converters import NetCDF4ToDimBase
+from ._dim_converters import NetCDF4ToDimBase, NetCDF4ToDimConverter
 
 
 class NetCDF4ArrayConverter(ArrayCreator):
@@ -40,9 +40,20 @@ class NetCDF4ArrayConverter(ArrayCreator):
     """
 
     def _register(
-        self, dataspace_registry: DataspaceRegistry, name: str, dims: Sequence[str]
+        self, dataspace_registry: DataspaceRegistry, name: str, dim_names: Sequence[str]
     ):
-        array_registry = ArrayRegistry(dataspace_registry, name, dims)
+        shared_dims = (
+            dataspace_registry.get_shared_dim(dim_name) for dim_name in dim_names
+        )
+        dim_creators = tuple(
+            (
+                NetCDF4ToDimConverter(shared_dim)
+                if isinstance(shared_dim, NetCDF4ToDimBase)
+                else DimCreator(shared_dim)
+            )
+            for shared_dim in shared_dims
+        )
+        array_registry = ArrayRegistry(dataspace_registry, name, dim_creators)
         return (
             array_registry,
             NetCDF4DomainConverter(array_registry, dataspace_registry),
@@ -236,9 +247,14 @@ class NetCDF4DomainConverter(DomainCreator):
                     "Cannot add a new NetCDF dimension converter to an array that "
                     "already contains NetCDF variable to attribute converters."
                 )
-        self._array_registry.inject_dim_creator(
-            DimCreator(shared_dim, tiles, filters), position
-        )
+        if isinstance(shared_dim, NetCDF4ToDimBase):
+            self._array_registry.inject_dim_creator(
+                NetCDF4ToDimConverter(shared_dim, tiles, filters), position
+            )
+        else:
+            self._array_registry.inject_dim_creator(
+                DimCreator(shared_dim, tiles, filters), position
+            )
 
     @property
     def netcdf_dims(self):
