@@ -44,7 +44,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
         self,
         netcdf_group: netCDF4.Group,
         tiledb_array: tiledb.Array,
-        netcdf_indices: Sequence[Tuple[int, int]],
+        indexer: Tuple[slice, ...],
         assigned_dim_values: Optional[Dict[str, Any]],
         assigned_attr_values: Optional[Dict[str, np.ndarray]],
     ):
@@ -61,28 +61,38 @@ class NetCDF4ArrayConverter(ArrayCreator):
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not copied from the NetCDF group.
         """
-        shape = (
+        netcdf_indexer = tuple(
+            index_slice
+            for index_slice, dim_creator in zip(indexer, self.domain_creator)
+            if isinstance(dim_creator, NetCDF4ToDimConverter)
+        )
+        shape: Union[int, Tuple[int, ...]] = (
             -1
             if self.sparse
-            else self.domain_creator.get_dense_query_shape(netcdf_group)
+            else tuple(
+                index_slice.stop - index_slice.start for index_slice in netcdf_indexer
+            )
         )
         data = {}
         for attr_creator in self:
             if isinstance(attr_creator, NetCDF4ToAttrConverter):
                 data[attr_creator.name] = attr_creator.get_values(
-                    netcdf_group, sparse=self.sparse, shape=shape
+                    netcdf_group=netcdf_group,
+                    sparse=self.sparse,
+                    shape=shape,
+                    indexer=netcdf_indexer,
                 )
             else:
+                attr_name = attr_creator.name
                 if (
                     assigned_attr_values is None
-                    or attr_creator.name not in assigned_attr_values
+                    or attr_name not in assigned_attr_values
                 ):
-                    raise KeyError(
-                        f"Missing value for attribute '{attr_creator.name}'."
-                    )
-                data[attr_creator.name] = assigned_attr_values[attr_creator.name]
+                    raise KeyError(f"Missing value for attribute '{attr_name}'.")
+
+                data[attr_name] = assigned_attr_values[attr_name][indexer]
         coord_values = self._domain_creator.get_query_coordinates(
-            netcdf_group, self.sparse, assigned_dim_values
+            netcdf_group, self.sparse, indexer, assigned_dim_values
         )
         tiledb_array[coord_values] = data
 
@@ -240,6 +250,7 @@ class NetCDF4DomainConverter(DomainCreator):
         self,
         netcdf_group: netCDF4.Group,
         sparse: bool,
+        indexer: Sequence[slice],
         assigned_dim_values: Optional[Dict[str, Any]] = None,
     ):
         """Returns the coordinates used to copy data from a NetCDF group.
@@ -251,10 +262,12 @@ class NetCDF4DomainConverter(DomainCreator):
             assigned_dim_values: Values for any non-NetCDF dimensions.
         """
         query_coords = []
-        for dim_creator in self:
+        for index_slice, dim_creator in zip(indexer, self):
             if isinstance(dim_creator.base, NetCDF4ToDimBase):
                 query_coords.append(
-                    dim_creator.base.get_values(netcdf_group, sparse=sparse)
+                    dim_creator.base.get_values(
+                        netcdf_group, sparse=sparse, indexer=index_slice
+                    )
                 )
             else:
                 if (
