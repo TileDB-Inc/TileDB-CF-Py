@@ -20,7 +20,8 @@
 * Removes deprecated parameters `input_name` and `input_size` from the `NetCDF4DimToDimConverter` class.
 * Removes deprecated parameters `input_name` and `input_dtype` from the `NetCDF4VarToAttrConverter` class.
 * Removes deprecated module `tiledb.cf.engines.netcdf4_engine`.
-* Changes `copy` in `NetCDF4ConverterArray` to use TileDB URI, context, and key instead of an open array.
+* Changes `copy` in `NetCDF4ArrayConverter` to use TileDB URI, context, and key instead of an open array.
+* Removes `get_dense_query_shape` from `NetCDF4DomainConverter`.
 * Adds required positional argument to `get_values` in `NetCDF4ToDimBase` classes.
 
 ### New Features

@@ -232,20 +232,6 @@ class NetCDF4DomainConverter(DomainCreator):
         )
         return itertools.product(*dim_slices)
 
-    def get_dense_query_shape(self, netcdf_group: netCDF4.Dataset) -> Tuple[int, ...]:
-        """Returns the shape of the coordinates for copying from the requested NetCDF
-        group to a dense array.
-
-        Parameters:
-            netcdf_group: Group to query the data from.
-        """
-        return tuple(
-            dim_creator.base.get_query_size(netcdf_group)
-            if isinstance(dim_creator.base, NetCDF4ToDimBase)
-            else 1
-            for dim_creator in self
-        )
-
     def get_query_coordinates(
         self,
         netcdf_group: netCDF4.Group,
