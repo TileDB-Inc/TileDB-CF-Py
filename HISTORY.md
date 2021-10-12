@@ -21,9 +21,11 @@
 * Removes deprecated parameters `input_name` and `input_dtype` from the `NetCDF4VarToAttrConverter` class.
 * Removes deprecated module `tiledb.cf.engines.netcdf4_engine`.
 * Changes `copy` in `NetCDF4ConverterArray` to use TileDB URI, context, and key instead of an open array.
-
+* Adds required positional argument to `get_values` in `NetCDF4ToDimBase` classes.
 
 ### New Features
+
+* Adds `NetCDF4ToDimConverter` subclass of `DimCreator` that supports setting maximum fragment size for copying NetCDF file in chunks.
 
 ### Improvements
 
