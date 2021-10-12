@@ -13,7 +13,6 @@ from tiledb.cf.creator import (
     ArrayCreator,
     ArrayRegistry,
     DataspaceRegistry,
-    DimCreator,
     DomainCreator,
 )
 
@@ -64,7 +63,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
         netcdf_indexer = tuple(
             index_slice
             for index_slice, dim_creator in zip(indexer, self.domain_creator)
-            if isinstance(dim_creator, NetCDF4ToDimConverter)
+            if dim_creator.is_from_netcdf
         )
         shape: Union[int, Tuple[int, ...]] = (
             -1
@@ -103,12 +102,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
             dataspace_registry.get_shared_dim(dim_name) for dim_name in dim_names
         )
         dim_creators = tuple(
-            (
-                NetCDF4ToDimConverter(shared_dim)
-                if isinstance(shared_dim, NetCDF4ToDimBase)
-                else DimCreator(shared_dim)
-            )
-            for shared_dim in shared_dims
+            NetCDF4ToDimConverter(shared_dim) for shared_dim in shared_dims
         )
         array_registry = ArrayRegistry(dataspace_registry, name, dim_creators)
         return (
@@ -223,12 +217,7 @@ class NetCDF4DomainConverter(DomainCreator):
     def get_fragment_indexers(self, netcdf_group: netCDF4.Dataset):
         """Returns an iterator over indices for input NetCDF dimension values."""
         dim_slices = tuple(
-            (
-                dim_creator.get_fragment_indices(netcdf_group)
-                if isinstance(dim_creator, NetCDF4ToDimConverter)
-                else (slice(None),)
-            )
-            for dim_creator in self
+            dim_creator.get_fragment_indices(netcdf_group) for dim_creator in self
         )
         return itertools.product(*dim_slices)
 
@@ -247,27 +236,18 @@ class NetCDF4DomainConverter(DomainCreator):
                 return coordinates for a dense write.
             assigned_dim_values: Values for any non-NetCDF dimensions.
         """
-        query_coords = []
-        for index_slice, dim_creator in zip(indexer, self):
-            if isinstance(dim_creator.base, NetCDF4ToDimBase):
-                query_coords.append(
-                    dim_creator.base.get_values(
-                        netcdf_group, sparse=sparse, indexer=index_slice
-                    )
-                )
-            else:
-                if (
-                    assigned_dim_values is None
-                    or dim_creator.name not in assigned_dim_values
-                ):
-                    raise KeyError(f"Missing value for dimension '{dim_creator.name}'.")
-                query_coords.append(assigned_dim_values[dim_creator.name])
+        query_coords = tuple(
+            dim_creator.get_query_coordinates(
+                netcdf_group, sparse, index_slice, assigned_dim_values
+            )
+            for index_slice, dim_creator in zip(indexer, self)
+        )
         if sparse:
             return tuple(
                 dim_data.reshape(-1)
                 for dim_data in np.meshgrid(*query_coords, indexing="ij")
             )
-        return tuple(query_coords)
+        return query_coords
 
     def inject_dim_creator(
         self,
@@ -285,8 +265,12 @@ class NetCDF4DomainConverter(DomainCreator):
             tiles: The size size for the dimension.
             filters: Compression filters for the dimension.
         """
-        shared_dim = self._dataspace_registry.get_shared_dim(dim_name)
-        if isinstance(shared_dim, NetCDF4ToDimBase):
+        dim_creator = NetCDF4ToDimConverter(
+            self._dataspace_registry.get_shared_dim(dim_name),
+            tiles,
+            filters,
+        )
+        if dim_creator.is_from_netcdf:
             if any(
                 isinstance(attr_creator, NetCDF4VarToAttrConverter)
                 for attr_creator in self._array_registry.attr_creators()
@@ -295,14 +279,7 @@ class NetCDF4DomainConverter(DomainCreator):
                     "Cannot add a new NetCDF dimension converter to an array that "
                     "already contains NetCDF variable to attribute converters."
                 )
-        if isinstance(shared_dim, NetCDF4ToDimBase):
-            self._array_registry.inject_dim_creator(
-                NetCDF4ToDimConverter(shared_dim, tiles, filters), position
-            )
-        else:
-            self._array_registry.inject_dim_creator(
-                DimCreator(shared_dim, tiles, filters), position
-            )
+        self._array_registry.inject_dim_creator(dim_creator, position)
 
     @property
     def netcdf_dims(self):

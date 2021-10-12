@@ -176,7 +176,7 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         """
         try:
             variable = netcdf_group.variables[self.input_var_name]
-        except KeyError as err:
+        except KeyError as err:  # pragma: no cover
             raise KeyError(
                 f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
