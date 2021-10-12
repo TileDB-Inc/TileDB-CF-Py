@@ -46,9 +46,7 @@ class NetCDF4ToDimConverter(DimCreator):
             raise ValueError("The maximum fragment length must be a positive value.")
         self._max_fragment_length = value
 
-    def get_fragment_indices(
-        self, netcdf_group: netCDF4.Dataset
-    ) -> Iterable[Tuple[int, int]]:
+    def get_fragment_indices(self, netcdf_group: netCDF4.Dataset) -> Iterable[slice]:
         """Returns a sequence of tuples of the start and stop indices for copying
             chunks of the dimension data for each TileDB fragment.
 
@@ -60,17 +58,17 @@ class NetCDF4ToDimConverter(DimCreator):
             chunks of the dimension data for each TileDB fragment.
         """
         if not isinstance(self.base, NetCDF4ToDimBase):
-            return ((0, 1),)
+            return (slice(0, 1),)
         size = self.base.get_query_size(netcdf_group)
         if self.max_fragment_length is None:
-            return ((0, size),)
+            return (slice(0, size),)
         if self.max_fragment_length < 1:
             raise ValueError("The max_fragment_length must be a positive value.")
         indices = np.arange(
             0, size + self.max_fragment_length, self.max_fragment_length
         )
         indices[-1] = size
-        return zip(indices[0:], indices[1:])
+        return (slice(ind0, ind1) for ind0, ind1 in zip(indices[0:], indices[1:]))
 
 
 class NetCDF4ToDimBase(SharedDim):

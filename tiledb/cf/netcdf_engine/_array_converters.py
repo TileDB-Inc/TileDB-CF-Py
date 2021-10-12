@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 """Classes for converting NetCDF4 files to TileDB."""
 
+import itertools
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import netCDF4
@@ -38,6 +39,52 @@ class NetCDF4ArrayConverter(ArrayCreator):
         allows_duplicates: Specifies if multiple values can be stored at the same
              coordinate. Only allowed for sparse arrays.
     """
+
+    def _copy_to_array(
+        self,
+        netcdf_group: netCDF4.Group,
+        tiledb_array: tiledb.Array,
+        netcdf_indices: Sequence[Tuple[int, int]],
+        assigned_dim_values: Optional[Dict[str, Any]],
+        assigned_attr_values: Optional[Dict[str, np.ndarray]],
+    ):
+        """Copies data from a NetCDF group to a TileDB CF array.
+
+        Parameters:
+            netcdf_group: The NetCDF group to copy data from.
+            tiledb_uri: The TileDB array uri to copy data into.
+            tiledb_key: If not ``None``, the encryption key for the TileDB array.
+            tiledb_ctx: If not ``None``, the TileDB context wrapper for a TileDB
+                storage manager to use when opening the TileDB array.
+            assigned_dim_values: Mapping from dimension name to value for dimensions
+                that are not copied from the NetCDF group.
+            assigned_attr_values: Mapping from attribute name to numpy array of values
+                for attributes that are not copied from the NetCDF group.
+        """
+        shape = (
+            -1
+            if self.sparse
+            else self.domain_creator.get_dense_query_shape(netcdf_group)
+        )
+        data = {}
+        for attr_creator in self:
+            if isinstance(attr_creator, NetCDF4ToAttrConverter):
+                data[attr_creator.name] = attr_creator.get_values(
+                    netcdf_group, sparse=self.sparse, shape=shape
+                )
+            else:
+                if (
+                    assigned_attr_values is None
+                    or attr_creator.name not in assigned_attr_values
+                ):
+                    raise KeyError(
+                        f"Missing value for attribute '{attr_creator.name}'."
+                    )
+                data[attr_creator.name] = assigned_attr_values[attr_creator.name]
+        coord_values = self._domain_creator.get_query_coordinates(
+            netcdf_group, self.sparse, assigned_dim_values
+        )
+        tiledb_array[coord_values] = data
 
     def _register(
         self, dataspace_registry: DataspaceRegistry, name: str, dim_names: Sequence[str]
@@ -127,6 +174,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not copied from the NetCDF group.
         """
+        fragment_indexers = self.domain_creator.get_fragment_indexers(netcdf_group)
         with tiledb.open(
             tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
         ) as tiledb_array:
@@ -137,41 +185,42 @@ class NetCDF4ArrayConverter(ArrayCreator):
             for dim_creator in self._domain_creator:
                 if isinstance(dim_creator.base, NetCDF4ToDimBase):
                     dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
-            # Copy array data to TileDB.
-            if self.sparse:
-                shape: Optional[Union[int, Sequence[int]]] = -1
-            else:
-                shape = (
-                    None
-                    if all(
-                        isinstance(dim_creator.base, NetCDF4ToDimBase)
-                        for dim_creator in self._domain_creator
-                    )
-                    else self.domain_creator.get_dense_query_shape(netcdf_group)
-                )
-            data = {}
-            for attr_creator in self:
-                if isinstance(attr_creator, NetCDF4ToAttrConverter):
-                    data[attr_creator.name] = attr_creator.get_values(
-                        netcdf_group, sparse=self.sparse, shape=shape
-                    )
-                else:
-                    if (
-                        assigned_attr_values is None
-                        or attr_creator.name not in assigned_attr_values
-                    ):
-                        raise KeyError(
-                            f"Missing value for attribute '{attr_creator.name}'."
-                        )
-                    data[attr_creator.name] = assigned_attr_values[attr_creator.name]
-            coord_values = self._domain_creator.get_query_coordinates(
-                netcdf_group, self.sparse, assigned_dim_values
+            # Copy array data for first fragment.
+            self._copy_to_array(
+                netcdf_group,
+                tiledb_array,
+                next(fragment_indexers),
+                assigned_dim_values,
+                assigned_attr_values,
             )
-            tiledb_array[coord_values] = data
+        # Copy array data for remaining fragments.
+        for indexer in fragment_indexers:
+            with tiledb.open(
+                tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
+            ) as tiledb_array:
+                self._copy_to_array(
+                    netcdf_group,
+                    tiledb_array,
+                    indexer,
+                    assigned_dim_values,
+                    assigned_attr_values,
+                )
 
 
 class NetCDF4DomainConverter(DomainCreator):
     """Converter for NetCDF dimensions to a TileDB domain."""
+
+    def get_fragment_indexers(self, netcdf_group: netCDF4.Dataset):
+        """Returns an iterator over indices for input NetCDF dimension values."""
+        dim_slices = tuple(
+            (
+                dim_creator.get_fragment_indices(netcdf_group)
+                if isinstance(dim_creator, NetCDF4ToDimConverter)
+                else (slice(None),)
+            )
+            for dim_creator in self
+        )
+        return itertools.product(*dim_slices)
 
     def get_dense_query_shape(self, netcdf_group: netCDF4.Dataset) -> Tuple[int, ...]:
         """Returns the shape of the coordinates for copying from the requested NetCDF
