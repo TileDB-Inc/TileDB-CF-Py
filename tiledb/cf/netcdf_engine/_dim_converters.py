@@ -16,6 +16,14 @@ from ._utils import get_ncattr, safe_set_metadata
 
 
 class NetCDF4ToDimConverter(DimCreator):
+    """Converter from NetCDF to a TileDB dimension in a :class:`NetCDF4ArrayConverter`
+    using a :class:`SharedDim` for the base dimension.
+
+    Attributes:
+        tile: The tile size for the dimension.
+        filters: Specifies compression filters for the dimension.
+    """
+
     def __init__(
         self,
         base: SharedDim,
