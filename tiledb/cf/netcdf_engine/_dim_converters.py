@@ -253,6 +253,8 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
             The coordinate values needed for querying the TileDB dimension in the
                 form a numpy array.
         """
+        if indexer.step not in {1, None}:
+            raise ValueError("Dimension indexer must have step size of 1.")
         variable = self._get_ncvar(netcdf_group)
         if not sparse:
             raise NotImplementedError(
