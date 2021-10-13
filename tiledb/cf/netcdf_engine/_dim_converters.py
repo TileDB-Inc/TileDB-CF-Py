@@ -87,11 +87,6 @@ class NetCDF4ToDimConverter(DimCreator):
 
     @max_fragment_length.setter
     def max_fragment_length(self, value: Optional[int]):
-        if not isinstance(self.base, NetCDF4ToDimBase):
-            raise ValueError(
-                f"Cannot set maximum fragment length for dimension {self.name} that is "
-                f"not convertered from NetCDF."
-            )
         if value is not None and value < 1:
             raise ValueError("The maximum fragment length must be a positive value.")
         self._max_fragment_length = value
