@@ -282,6 +282,20 @@ class NetCDF4DomainConverter(DomainCreator):
         self._array_registry.inject_dim_creator(dim_creator, position)
 
     @property
+    def max_fragment_shape(self):
+        """Maximum shape of a fragment when copying from NetCDF to TileDB.
+
+        For a dense array, this is the shape of dense fragment. For a sparse array,
+        it is the maximum number of coordinates copied for each dimension.
+        """
+        return tuple(dim_creator.max_fragment_length for dim_creator in self)
+
+    @max_fragment_shape.setter
+    def max_fragment_shape(self, value: Sequence[Optional[int]]):
+        for max_fragment_length, dim_creator in zip(value, self):
+            dim_creator.max_fragment_length = max_fragment_length
+
+    @property
     def netcdf_dims(self):
         """Ordered tuple of NetCDF dimension names for dimension converters."""
         return tuple(
