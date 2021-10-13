@@ -249,26 +249,17 @@ class NetCDF4DomainConverter(DomainCreator):
             )
         return query_coords
 
-    def inject_dim_creator(
-        self,
-        dim_name: str,
-        position: int,
-        tiles: Optional[Union[int, float]] = None,
-        filters: Optional[Union[tiledb.FilterList]] = None,
-    ):
+    def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Add an additional dimension into the domain of the array.
 
         Parameters:
             dim_name: Name of the shared dimension to add to the array's domain.
             position: Position of the shared dimension. Negative values count backwards
                 from the end of the new number of dimensions.
-            tiles: The size size for the dimension.
-            filters: Compression filters for the dimension.
+            dim_kwargs: Keyword arguments to pass to :class:`NetCDF4ToDimConverter`.
         """
         dim_creator = NetCDF4ToDimConverter(
-            self._dataspace_registry.get_shared_dim(dim_name),
-            tiles,
-            filters,
+            self._dataspace_registry.get_shared_dim(dim_name), **dim_kwargs
         )
         if dim_creator.is_from_netcdf:
             if any(

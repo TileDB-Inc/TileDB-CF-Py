@@ -980,26 +980,17 @@ class DomainCreator:
     def __len__(self):
         return self.ndim
 
-    def inject_dim_creator(
-        self,
-        dim_name: str,
-        position: int,
-        tiles: Optional[Union[int, float]] = None,
-        filters: Optional[Union[tiledb.FilterList]] = None,
-    ):
+    def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Adds a new dimension creator at a specified location.
 
         Parameters:
             dim_name: Name of the shared dimension to add to the array's domain.
             position: Position of the shared dimension. Negative values count backwards
                 from the end of the new number of dimensions.
-            tiles: The size size for the dimension.
-            filters: Compression filters for the dimension.
+            dim_kwargs: Keyword arguments to pass to :class:`DimCreator`.
         """
         self._array_registry.inject_dim_creator(
-            DimCreator(
-                self._dataspace_registry.get_shared_dim(dim_name), tiles, filters
-            ),
+            DimCreator(self._dataspace_registry.get_shared_dim(dim_name), **dim_kwargs),
             position,
         )
 
