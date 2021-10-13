@@ -20,6 +20,7 @@ if has_netCDF4:
         NetCDF4CoordToDimConverter,
         NetCDF4DimToDimConverter,
         NetCDF4ScalarToDimConverter,
+        NetCDF4ToDimConverter,
     )
     from ._utils import open_netcdf_group
     from .converter import NetCDF4ConverterEngine
