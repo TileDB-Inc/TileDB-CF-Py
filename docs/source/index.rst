@@ -87,6 +87,18 @@ NetCDF4 Converter Engine
 .. autoclass:: tiledb.cf.NetCDF4ConverterEngine
   :members:
 
+NetCDF4 to TileDB Shared Dimension Converters
+=============================================
+
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4CoordToDimConverter
+  :members:
+
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4DimToDimConverter
+  :members:
+
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4ScalarToDimConverter
+  :members:
+
 NetCDF4 to TileDB Array Converter
 =================================
 
@@ -103,14 +115,7 @@ NetCDF4 to TileDB Domain Converter
 NetCDF4 to TileDB Dimension Converters
 =======================================
 
-.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4CoordToDimConverter
-  :members:
-
-.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4DimToDimConverter
-  :members:
-
-.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4ScalarToDimConverter
-  :members:
+.. autoclass:: tiledb.cf.netcdf_engine.NetCDF4ToDimConverter
 
 NetCDF4 to TileDB Attribute Converters
 =======================================
