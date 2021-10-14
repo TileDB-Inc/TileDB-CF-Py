@@ -519,7 +519,7 @@ class ArrayCreator:
     ):
         if isinstance(dims, str):
             dims = (dims,)
-        if len(set(dim_name for dim_name in dims)) != len(dims):
+        if len(set(dims)) != len(dims):
             raise ValueError(
                 "Cannot create array; the array has repeating dimensions. All "
                 "dimensions must have a unique name."

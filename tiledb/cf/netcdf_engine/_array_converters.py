@@ -51,15 +51,14 @@ class NetCDF4ArrayConverter(ArrayCreator):
 
         Parameters:
             netcdf_group: The NetCDF group to copy data from.
-            tiledb_uri: The TileDB array uri to copy data into.
-            tiledb_key: If not ``None``, the encryption key for the TileDB array.
-            tiledb_ctx: If not ``None``, the TileDB context wrapper for a TileDB
-                storage manager to use when opening the TileDB array.
+            tiledb_array: The TileDB array to  copy data to.
+            indexer: Slices defining what values to copy for each dimension.
             assigned_dim_values: Mapping from dimension name to value for dimensions
                 that are not copied from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not copied from the NetCDF group.
         """
+        assert len(indexer) == self.ndim, "indexer has incorrect number of values"
         netcdf_indexer = tuple(
             index_slice
             for index_slice, dim_creator in zip(indexer, self.domain_creator)
@@ -74,15 +73,15 @@ class NetCDF4ArrayConverter(ArrayCreator):
         )
         data = {}
         for attr_creator in self:
+            attr_name = attr_creator.name
             if isinstance(attr_creator, NetCDF4ToAttrConverter):
-                data[attr_creator.name] = attr_creator.get_values(
+                data[attr_name] = attr_creator.get_values(
                     netcdf_group=netcdf_group,
                     sparse=self.sparse,
                     shape=shape,
                     indexer=netcdf_indexer,
                 )
             else:
-                attr_name = attr_creator.name
                 if (
                     assigned_attr_values is None
                     or attr_name not in assigned_attr_values
@@ -98,12 +97,8 @@ class NetCDF4ArrayConverter(ArrayCreator):
     def _register(
         self, dataspace_registry: DataspaceRegistry, name: str, dim_names: Sequence[str]
     ):
-        shared_dims = (
-            dataspace_registry.get_shared_dim(dim_name) for dim_name in dim_names
-        )
-        dim_creators = tuple(
-            NetCDF4ToDimConverter(shared_dim) for shared_dim in shared_dims
-        )
+        shared_dims = map(dataspace_registry.get_shared_dim, dim_names)
+        dim_creators = tuple(map(NetCDF4ToDimConverter, shared_dims))
         array_registry = ArrayRegistry(dataspace_registry, name, dim_creators)
         return (
             array_registry,
@@ -178,7 +173,11 @@ class NetCDF4ArrayConverter(ArrayCreator):
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not copied from the NetCDF group.
         """
-        fragment_indexers = self.domain_creator.get_fragment_indexers(netcdf_group)
+        dim_slices = tuple(
+            dim_creator.get_fragment_indices(netcdf_group)
+            for dim_creator in self.domain_creator
+        )
+        fragment_indexers = itertools.product(*dim_slices)
         with tiledb.open(
             tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
         ) as tiledb_array:
@@ -214,13 +213,6 @@ class NetCDF4ArrayConverter(ArrayCreator):
 class NetCDF4DomainConverter(DomainCreator):
     """Converter for NetCDF dimensions to a TileDB domain."""
 
-    def get_fragment_indexers(self, netcdf_group: netCDF4.Dataset):
-        """Returns an iterator over indices for input NetCDF dimension values."""
-        dim_slices = tuple(
-            dim_creator.get_fragment_indices(netcdf_group) for dim_creator in self
-        )
-        return itertools.product(*dim_slices)
-
     def get_query_coordinates(
         self,
         netcdf_group: netCDF4.Group,
@@ -236,6 +228,12 @@ class NetCDF4DomainConverter(DomainCreator):
                 return coordinates for a dense write.
             assigned_dim_values: Values for any non-NetCDF dimensions.
         """
+        if len(indexer) != self.ndim:
+            raise ValueError(
+                f"Indexer must be the same length as the domain of the array. Indexer "
+                f"of length {len(indexer)} provide for an array with {self.ndim} "
+                f"dimensions."
+            )
         query_coords = tuple(
             dim_creator.get_query_coordinates(
                 netcdf_group, sparse, index_slice, assigned_dim_values
@@ -283,6 +281,12 @@ class NetCDF4DomainConverter(DomainCreator):
 
     @max_fragment_shape.setter
     def max_fragment_shape(self, value: Sequence[Optional[int]]):
+        if len(value) != self.ndim:
+            raise ValueError(
+                f"The length of the max_fragment_shape must match the number of "
+                f"dimensions. Input of length {len(value)} provide for an array with "
+                f"{self.ndim} dimensions."
+            )
         for max_fragment_length, dim_creator in zip(value, self):
             dim_creator.max_fragment_length = max_fragment_length
 

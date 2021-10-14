@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 """Classes for converting NetCDF4 objects to TileDB attributes."""
 
+import itertools
 from abc import abstractmethod
 from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
@@ -28,26 +29,26 @@ class NetCDF4ToDimConverter(DimCreator):
         self,
         base: SharedDim,
         tile: Optional[Union[int, float]] = None,
-        filters: Optional[Union[tiledb.FilterList]] = None,
+        filters: Optional[tiledb.FilterList] = None,
         max_fragment_length: Optional[int] = None,
     ):
         self._base = base
         self.tile = tile
         self.filters = filters
-        self._max_fragment_length = max_fragment_length
+        self.max_fragment_length = max_fragment_length
 
     def get_fragment_indices(self, netcdf_group: netCDF4.Dataset) -> Iterable[slice]:
-        """Returns a sequence of tuples of the start and stop indices for copying
-            chunks of the dimension data for each TileDB fragment.
+        """Returns a sequence of slices for copying chunks of the dimension data for
+        each TileDB fragment.
 
         Parameters:
             netcdf_group: NetCDF group to copy the data from.
 
         Returns:
-            A sequence of tuples providing the start and stop indices for copying
-            chunks of the dimension data for each TileDB fragment.
+            A sequence of slices for copying chunks of the dimension data for each
+            TileDB fragment.
         """
-        if not isinstance(self.base, NetCDF4ToDimBase):
+        if not self.is_from_netcdf:
             return (slice(None),)
         size = self.base.get_query_size(netcdf_group)
         if self.max_fragment_length is None:
@@ -56,7 +57,7 @@ class NetCDF4ToDimConverter(DimCreator):
             0, size + self.max_fragment_length, self.max_fragment_length
         )
         indices[-1] = size
-        return (slice(ind0, ind1) for ind0, ind1 in zip(indices[0:], indices[1:]))
+        return itertools.starmap(slice, zip(indices, indices[1:]))
 
     def get_query_coordinates(
         self,
@@ -65,7 +66,7 @@ class NetCDF4ToDimConverter(DimCreator):
         indexer: slice,
         assigned_dim_values: Optional[Dict[str, Any]],
     ):
-        if isinstance(self._base, NetCDF4ToDimBase):
+        if self.is_from_netcdf:
             return self._base.get_values(netcdf_group, sparse=sparse, indexer=indexer)
         if assigned_dim_values is None or self.name not in assigned_dim_values:
             raise KeyError(f"Missing value for dimension '{self.name}'.")
@@ -387,13 +388,13 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
         stop = indexer.stop
         if stop is None:
             dim = self._get_ncdim(netcdf_group)
-            if dim.size <= start:
-                raise IndexError(
-                    f"Cannot copy dimension data from NetCDF dimension "
-                    f"'{self.input_dim_name}' of length {dim.size} less than starting ."
-                    f"fragment index {start}."
-                )
             stop = dim.size
+        if stop <= start:
+            raise IndexError(
+                f"Cannot copy dimension data from NetCDF dimension "
+                f"'{self.input_dim_name}' of length {stop} less than starting ."
+                f"fragment index {start}."
+            )
         if self.domain is not None and (
             self.domain[1] is not None and stop - 1 > self.domain[1]
         ):
@@ -403,9 +404,7 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
                 f"The NetCDF chunk ending at {stop} is out of bounds "
                 f"of the TileDB dimensions's domain {self.domain}."
             )
-        if sparse:
-            return np.arange(start, stop)
-        return slice(start, stop)
+        return np.arange(start, stop) if sparse else slice(start, stop)
 
     def html_input_summary(self):
         """Returns a HTML string summarizing the input for the dimension."""
@@ -465,9 +464,7 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimBase):
                 f"Cannot copy scalar data to TileDB dimension '{self.name}'. The NetCDF"
                 f" chunk ending at {indexer.stop} is out of bounds."
             )
-        if sparse:
-            return np.array([0])
-        return slice(0, 1)
+        return np.array([0]) if sparse else slice(0, 1)
 
     def html_input_summary(self):
         """Returns a string HTML summary."""
