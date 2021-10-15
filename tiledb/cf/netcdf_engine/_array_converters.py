@@ -177,7 +177,6 @@ class NetCDF4ArrayConverter(ArrayCreator):
             dim_creator.get_fragment_indices(netcdf_group)
             for dim_creator in self.domain_creator
         )
-        fragment_indexers = itertools.product(*dim_slices)
         with tiledb.open(
             tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
         ) as tiledb_array:
@@ -188,26 +187,18 @@ class NetCDF4ArrayConverter(ArrayCreator):
             for dim_creator in self._domain_creator:
                 if isinstance(dim_creator.base, NetCDF4ToDimBase):
                     dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
-            # Copy array data for first fragment.
-            self._copy_to_array(
-                netcdf_group,
-                tiledb_array,
-                next(fragment_indexers),
-                assigned_dim_values,
-                assigned_attr_values,
-            )
-        # Copy array data for remaining fragments.
-        for indexer in fragment_indexers:
-            with tiledb.open(
-                tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
-            ) as tiledb_array:
-                self._copy_to_array(
-                    netcdf_group,
-                    tiledb_array,
-                    indexer,
-                    assigned_dim_values,
-                    assigned_attr_values,
-                )
+            # Copy array data.
+            for indexer in itertools.product(*dim_slices):
+                with tiledb.open(
+                    tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
+                ) as tiledb_array:
+                    self._copy_to_array(
+                        netcdf_group,
+                        tiledb_array,
+                        indexer,
+                        assigned_dim_values,
+                        assigned_attr_values,
+                    )
 
 
 class NetCDF4DomainConverter(DomainCreator):
