@@ -2,6 +2,7 @@
 # Licensed under the MIT License.
 """Classes for converting NetCDF4 files to TileDB."""
 
+import itertools
 from typing import Any, Dict, Optional, Sequence, Tuple, Union
 
 import netCDF4
@@ -12,12 +13,11 @@ from tiledb.cf.creator import (
     ArrayCreator,
     ArrayRegistry,
     DataspaceRegistry,
-    DimCreator,
     DomainCreator,
 )
 
 from ._attr_converters import NetCDF4ToAttrConverter, NetCDF4VarToAttrConverter
-from ._dim_converters import NetCDF4ToDimConverter
+from ._dim_converters import NetCDF4ToDimBase, NetCDF4ToDimConverter
 
 
 class NetCDF4ArrayConverter(ArrayCreator):
@@ -39,10 +39,67 @@ class NetCDF4ArrayConverter(ArrayCreator):
              coordinate. Only allowed for sparse arrays.
     """
 
-    def _register(
-        self, dataspace_registry: DataspaceRegistry, name: str, dims: Sequence[str]
+    def _copy_to_array(
+        self,
+        netcdf_group: netCDF4.Group,
+        tiledb_array: tiledb.Array,
+        indexer: Tuple[slice, ...],
+        assigned_dim_values: Optional[Dict[str, Any]],
+        assigned_attr_values: Optional[Dict[str, np.ndarray]],
     ):
-        array_registry = ArrayRegistry(dataspace_registry, name, dims)
+        """Copies data from a NetCDF group to a TileDB CF array.
+
+        Parameters:
+            netcdf_group: The NetCDF group to copy data from.
+            tiledb_array: The TileDB array to  copy data to.
+            indexer: Slices defining what values to copy for each dimension.
+            assigned_dim_values: Mapping from dimension name to value for dimensions
+                that are not copied from the NetCDF group.
+            assigned_attr_values: Mapping from attribute name to numpy array of values
+                for attributes that are not copied from the NetCDF group.
+        """
+        assert len(indexer) == self.ndim, "indexer has incorrect number of values"
+        netcdf_indexer = tuple(
+            index_slice
+            for index_slice, dim_creator in zip(indexer, self.domain_creator)
+            if dim_creator.is_from_netcdf
+        )
+        shape: Union[int, Tuple[int, ...]] = (
+            -1
+            if self.sparse
+            else tuple(
+                index_slice.stop - index_slice.start for index_slice in netcdf_indexer
+            )
+        )
+        data = {}
+        for attr_creator in self:
+            attr_name = attr_creator.name
+            if isinstance(attr_creator, NetCDF4ToAttrConverter):
+                data[attr_name] = attr_creator.get_values(
+                    netcdf_group=netcdf_group,
+                    sparse=self.sparse,
+                    shape=shape,
+                    indexer=netcdf_indexer,
+                )
+            else:
+                if (
+                    assigned_attr_values is None
+                    or attr_name not in assigned_attr_values
+                ):
+                    raise KeyError(f"Missing value for attribute '{attr_name}'.")
+
+                data[attr_name] = assigned_attr_values[attr_name][indexer]
+        coord_values = self._domain_creator.get_query_coordinates(
+            netcdf_group, self.sparse, indexer, assigned_dim_values
+        )
+        tiledb_array[coord_values] = data
+
+    def _register(
+        self, dataspace_registry: DataspaceRegistry, name: str, dim_names: Sequence[str]
+    ):
+        shared_dims = map(dataspace_registry.get_shared_dim, dim_names)
+        dim_creators = tuple(map(NetCDF4ToDimConverter, shared_dims))
+        array_registry = ArrayRegistry(dataspace_registry, name, dim_creators)
         return (
             array_registry,
             NetCDF4DomainConverter(array_registry, dataspace_registry),
@@ -116,6 +173,10 @@ class NetCDF4ArrayConverter(ArrayCreator):
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not copied from the NetCDF group.
         """
+        dim_slices = tuple(
+            dim_creator.get_fragment_indices(netcdf_group)
+            for dim_creator in self.domain_creator
+        )
         with tiledb.open(
             tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
         ) as tiledb_array:
@@ -124,62 +185,30 @@ class NetCDF4ArrayConverter(ArrayCreator):
                 if isinstance(attr_creator, NetCDF4ToAttrConverter):
                     attr_creator.copy_metadata(netcdf_group, tiledb_array)
             for dim_creator in self._domain_creator:
-                if isinstance(dim_creator.base, NetCDF4ToDimConverter):
+                if isinstance(dim_creator.base, NetCDF4ToDimBase):
                     dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
-            # Copy array data to TileDB.
-            if self.sparse:
-                shape: Optional[Union[int, Sequence[int]]] = -1
-            else:
-                shape = (
-                    None
-                    if all(
-                        isinstance(dim_creator.base, NetCDF4ToDimConverter)
-                        for dim_creator in self._domain_creator
+            # Copy array data.
+            for indexer in itertools.product(*dim_slices):
+                with tiledb.open(
+                    tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
+                ) as tiledb_array:
+                    self._copy_to_array(
+                        netcdf_group,
+                        tiledb_array,
+                        indexer,
+                        assigned_dim_values,
+                        assigned_attr_values,
                     )
-                    else self.domain_creator.get_dense_query_shape(netcdf_group)
-                )
-            data = {}
-            for attr_creator in self:
-                if isinstance(attr_creator, NetCDF4ToAttrConverter):
-                    data[attr_creator.name] = attr_creator.get_values(
-                        netcdf_group, sparse=self.sparse, shape=shape
-                    )
-                else:
-                    if (
-                        assigned_attr_values is None
-                        or attr_creator.name not in assigned_attr_values
-                    ):
-                        raise KeyError(
-                            f"Missing value for attribute '{attr_creator.name}'."
-                        )
-                    data[attr_creator.name] = assigned_attr_values[attr_creator.name]
-            coord_values = self._domain_creator.get_query_coordinates(
-                netcdf_group, self.sparse, assigned_dim_values
-            )
-            tiledb_array[coord_values] = data
 
 
 class NetCDF4DomainConverter(DomainCreator):
     """Converter for NetCDF dimensions to a TileDB domain."""
 
-    def get_dense_query_shape(self, netcdf_group: netCDF4.Dataset) -> Tuple[int, ...]:
-        """Returns the shape of the coordinates for copying from the requested NetCDF
-        group to a dense array.
-
-        Parameters:
-            netcdf_group: Group to query the data from.
-        """
-        return tuple(
-            dim_creator.base.get_query_size(netcdf_group)
-            if isinstance(dim_creator.base, NetCDF4ToDimConverter)
-            else 1
-            for dim_creator in self
-        )
-
     def get_query_coordinates(
         self,
         netcdf_group: netCDF4.Group,
         sparse: bool,
+        indexer: Sequence[slice],
         assigned_dim_values: Optional[Dict[str, Any]] = None,
     ):
         """Returns the coordinates used to copy data from a NetCDF group.
@@ -190,44 +219,38 @@ class NetCDF4DomainConverter(DomainCreator):
                 return coordinates for a dense write.
             assigned_dim_values: Values for any non-NetCDF dimensions.
         """
-        query_coords = []
-        for dim_creator in self:
-            if isinstance(dim_creator.base, NetCDF4ToDimConverter):
-                query_coords.append(
-                    dim_creator.base.get_values(netcdf_group, sparse=sparse)
-                )
-            else:
-                if (
-                    assigned_dim_values is None
-                    or dim_creator.name not in assigned_dim_values
-                ):
-                    raise KeyError(f"Missing value for dimension '{dim_creator.name}'.")
-                query_coords.append(assigned_dim_values[dim_creator.name])
+        if len(indexer) != self.ndim:
+            raise ValueError(
+                f"Indexer must be the same length as the domain of the array. Indexer "
+                f"of length {len(indexer)} provide for an array with {self.ndim} "
+                f"dimensions."
+            )
+        query_coords = tuple(
+            dim_creator.get_query_coordinates(
+                netcdf_group, sparse, index_slice, assigned_dim_values
+            )
+            for index_slice, dim_creator in zip(indexer, self)
+        )
         if sparse:
             return tuple(
                 dim_data.reshape(-1)
                 for dim_data in np.meshgrid(*query_coords, indexing="ij")
             )
-        return tuple(query_coords)
+        return query_coords
 
-    def inject_dim_creator(
-        self,
-        dim_name: str,
-        position: int,
-        tiles: Optional[Union[int, float]] = None,
-        filters: Optional[Union[tiledb.FilterList]] = None,
-    ):
+    def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Add an additional dimension into the domain of the array.
 
         Parameters:
             dim_name: Name of the shared dimension to add to the array's domain.
             position: Position of the shared dimension. Negative values count backwards
                 from the end of the new number of dimensions.
-            tiles: The size size for the dimension.
-            filters: Compression filters for the dimension.
+            dim_kwargs: Keyword arguments to pass to :class:`NetCDF4ToDimConverter`.
         """
-        shared_dim = self._dataspace_registry.get_shared_dim(dim_name)
-        if isinstance(shared_dim, NetCDF4ToDimConverter):
+        dim_creator = NetCDF4ToDimConverter(
+            self._dataspace_registry.get_shared_dim(dim_name), **dim_kwargs
+        )
+        if dim_creator.is_from_netcdf:
             if any(
                 isinstance(attr_creator, NetCDF4VarToAttrConverter)
                 for attr_creator in self._array_registry.attr_creators()
@@ -236,9 +259,27 @@ class NetCDF4DomainConverter(DomainCreator):
                     "Cannot add a new NetCDF dimension converter to an array that "
                     "already contains NetCDF variable to attribute converters."
                 )
-        self._array_registry.inject_dim_creator(
-            DimCreator(shared_dim, tiles, filters), position
-        )
+        self._array_registry.inject_dim_creator(dim_creator, position)
+
+    @property
+    def max_fragment_shape(self):
+        """Maximum shape of a fragment when copying from NetCDF to TileDB.
+
+        For a dense array, this is the shape of dense fragment. For a sparse array,
+        it is the maximum number of coordinates copied for each dimension.
+        """
+        return tuple(dim_creator.max_fragment_length for dim_creator in self)
+
+    @max_fragment_shape.setter
+    def max_fragment_shape(self, value: Sequence[Optional[int]]):
+        if len(value) != self.ndim:
+            raise ValueError(
+                f"The length of the max_fragment_shape must match the number of "
+                f"dimensions. Input of length {len(value)} provide for an array with "
+                f"{self.ndim} dimensions."
+            )
+        for max_fragment_length, dim_creator in zip(value, self):
+            dim_creator.max_fragment_length = max_fragment_length
 
     @property
     def netcdf_dims(self):
@@ -261,7 +302,7 @@ class NetCDF4DomainConverter(DomainCreator):
             else self._array_registry.get_dim_position_by_name(dim_id)
         )
         dim_creator = self._array_registry.get_dim_creator(index)
-        if isinstance(dim_creator.base, NetCDF4ToDimConverter):
+        if isinstance(dim_creator.base, NetCDF4ToDimBase):
             if any(
                 isinstance(attr_creator, NetCDF4VarToAttrConverter)
                 for attr_creator in self._array_registry.attr_creators()

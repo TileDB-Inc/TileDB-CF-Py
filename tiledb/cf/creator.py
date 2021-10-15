@@ -517,6 +517,13 @@ class ArrayCreator:
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
+        if isinstance(dims, str):
+            dims = (dims,)
+        if len(set(dims)) != len(dims):
+            raise ValueError(
+                "Cannot create array; the array has repeating dimensions. All "
+                "dimensions must have a unique name."
+            )
         self._registry, self._domain_creator = self._register(
             dataspace_registry, name, dims
         )
@@ -569,9 +576,14 @@ class ArrayCreator:
         return output.getvalue()
 
     def _register(
-        self, dataspace_registry: DataspaceRegistry, name: str, dims: Sequence[str]
+        self, dataspace_registry: DataspaceRegistry, name: str, dim_names: Sequence[str]
     ):
-        array_registry = ArrayRegistry(dataspace_registry, name, dims)
+        dim_creators = tuple(
+            DimCreator(dataspace_registry.get_shared_dim(dim_name))
+            for dim_name in dim_names
+        )
+
+        array_registry = ArrayRegistry(dataspace_registry, name, dim_creators)
         return array_registry, DomainCreator(array_registry, dataspace_registry)
 
     def attr_creator(self, key: Union[int, str]) -> AttrCreator:
@@ -728,21 +740,11 @@ class ArrayRegistry:
         self,
         dataspace_registry: DataspaceRegistry,
         name: str,
-        dim_names: Sequence[str],
+        dim_creators: Tuple[DimCreator, ...],
     ):
         self._dataspace_registry = dataspace_registry
         self._name = name
-        if isinstance(dim_names, str):
-            dim_names = (dim_names,)
-        if len(set(dim_name for dim_name in dim_names)) != len(dim_names):
-            raise ValueError(
-                "Cannot create array; the array has repeating dimensions. All "
-                "dimensions must have a unique name."
-            )
-        self._dim_creators = tuple(
-            DimCreator(dataspace_registry.get_shared_dim(dim_name))
-            for dim_name in dim_names
-        )
+        self._dim_creators = dim_creators
         self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
 
     def attr_creators(self):
@@ -978,26 +980,17 @@ class DomainCreator:
     def __len__(self):
         return self.ndim
 
-    def inject_dim_creator(
-        self,
-        dim_name: str,
-        position: int,
-        tiles: Optional[Union[int, float]] = None,
-        filters: Optional[Union[tiledb.FilterList]] = None,
-    ):
+    def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Adds a new dimension creator at a specified location.
 
         Parameters:
             dim_name: Name of the shared dimension to add to the array's domain.
             position: Position of the shared dimension. Negative values count backwards
                 from the end of the new number of dimensions.
-            tiles: The size size for the dimension.
-            filters: Compression filters for the dimension.
+            dim_kwargs: Keyword arguments to pass to :class:`DimCreator`.
         """
         self._array_registry.inject_dim_creator(
-            DimCreator(
-                self._dataspace_registry.get_shared_dim(dim_name), tiles, filters
-            ),
+            DimCreator(self._dataspace_registry.get_shared_dim(dim_name), **dim_kwargs),
             position,
         )
 

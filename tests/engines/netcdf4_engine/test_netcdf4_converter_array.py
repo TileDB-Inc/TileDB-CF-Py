@@ -5,6 +5,7 @@ import pytest
 
 from tiledb.cf.creator import DataspaceRegistry, SharedDim
 
+netCDF4 = pytest.importorskip("netCDF4")
 netcdf_engine = pytest.importorskip("tiledb.cf.netcdf_engine")
 
 
@@ -53,3 +54,30 @@ def test_remove_dim_creator_key_error():
     creator = netcdf_engine.NetCDF4ArrayConverter(registry, "array", ("x0", "x1", "x2"))
     with pytest.raises(KeyError):
         creator.domain_creator.remove_dim_creator("x4")
+
+
+def test_set_max_fragment_shape_error():
+    """Tests raising an error when attempting to set max_fragment_shape with a value
+    that is a bad length."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x", (0, 7), np.uint32)
+    creator = netcdf_engine.NetCDF4ArrayConverter(registry, "array", ("x"))
+    creator.add_attr_creator("y0", dtype=np.dtype("int32"))
+    with pytest.raises(ValueError):
+        creator.domain_creator.max_fragment_shape = (None, None)
+
+
+def test_array_converter_indexer_error():
+    """Tests value error when copying with an indexer of bad length."""
+    registry = DataspaceRegistry()
+    SharedDim(registry, "x", (0, 7), np.uint32)
+    creator = netcdf_engine.NetCDF4ArrayConverter(registry, "array", ("x"))
+    creator.add_attr_creator("y0", dtype=np.dtype("int32"))
+    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+        with pytest.raises(ValueError):
+            creator.domain_creator.get_query_coordinates(
+                netcdf_group=dataset,
+                sparse=False,
+                indexer=[slice(None), slice(None)],
+                assigned_dim_values={"x": 0},
+            )

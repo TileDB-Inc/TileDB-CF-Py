@@ -33,7 +33,8 @@ class NetCDF4ToAttrConverter(AttrCreator):
         self,
         netcdf_group: netCDF4.Dataset,
         sparse: bool,
-        shape: Optional[Union[int, Sequence[int]]] = None,
+        shape: Union[int, Sequence[int]],
+        indexer: Sequence[slice],
     ) -> np.ndarray:
         """Returns TileDB attribute values from a NetCDF group.
 
@@ -157,7 +158,8 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         self,
         netcdf_group: netCDF4.Dataset,
         sparse: bool,
-        shape: Optional[Union[int, Sequence[int]]] = None,
+        shape: Union[int, Sequence[int]],
+        indexer: Sequence[slice],
     ) -> np.ndarray:
         """Returns TileDB attribute values from a NetCDF group.
 
@@ -174,11 +176,9 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         """
         try:
             variable = netcdf_group.variables[self.input_var_name]
-        except KeyError as err:
+        except KeyError as err:  # pragma: no cover
             raise KeyError(
                 f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
-        if shape is not None:
-            return np.reshape(variable[...], shape)
-        return variable[...]
+        return np.reshape(variable[indexer], shape)
