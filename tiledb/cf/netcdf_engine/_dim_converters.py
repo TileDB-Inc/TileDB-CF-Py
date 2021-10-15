@@ -37,6 +37,18 @@ class NetCDF4ToDimConverter(DimCreator):
         self.filters = filters
         self.max_fragment_length = max_fragment_length
 
+    def __repr__(self):
+        filters_str = ""
+        if self.filters:
+            filters_str = ", filters=FilterList(["
+            for dim_filter in self.filters:
+                filters_str += repr(dim_filter) + ", "
+            filters_str += "])"
+        return (
+            f"DimCreator({repr(self._base)}, tile={self.tile}, "
+            f"max_fragment_length={self.max_fragment_length}{filters_str})"
+        )
+
     def get_fragment_indices(self, netcdf_group: netCDF4.Dataset) -> Iterable[slice]:
         """Returns a sequence of slices for copying chunks of the dimension data for
         each TileDB fragment.
@@ -71,6 +83,20 @@ class NetCDF4ToDimConverter(DimCreator):
         if assigned_dim_values is None or self.name not in assigned_dim_values:
             raise KeyError(f"Missing value for dimension '{self.name}'.")
         return assigned_dim_values[self.name]
+
+    def html_summary(self) -> str:
+        """Returns a string HTML summary of the :class:`NetCDF4ToDimConverter`."""
+        filters_str = ""
+        if self.filters:
+            filters_str = ", filters=FilterList(["
+            for dim_filter in self.filters:
+                filters_str += repr(dim_filter) + ", "
+            filters_str += "])"
+        return (
+            f"{self._base.html_input_summary()} &rarr; tiledb.Dim("
+            f"{self._base.html_output_summary()}, tile={self.tile}, "
+            f"max_fragment_length={self.max_fragment_length}{filters_str})"
+        )
 
     @property
     def is_from_netcdf(self) -> bool:
