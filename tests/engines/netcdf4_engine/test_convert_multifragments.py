@@ -43,7 +43,7 @@ class TestSimplyCopyChunks:
         "sparse,expected_result", ((False, attr_data), (True, np.arange(512)))
     )
     def test_convert_chunks(self, netcdf_file, tmpdir, sparse, expected_result):
-        """Test copying NetCDF file in chunks."""
+        """Test copying NetCDF file in chunks for a simple NetCDF file."""
         uri = str(tmpdir.mkdir("output").join("simple_copy_chunks"))
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         array_creator = converter.get_array_creator_by_attr("f")
@@ -68,7 +68,8 @@ class TestSimplyCopyChunks:
     def test_convert_chunks_with_injected(
         self, netcdf_file, tmpdir, sparse, expected_result
     ):
-        """Test copying NetCDF file in chunks."""
+        """Test copying NetCDF file in chunks for a simple NetCDF file with externally
+        provided dimension and attribute values."""
         uri = str(tmpdir.mkdir("output").join("simple_copy_chunks"))
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         converter.add_shared_dim("t", domain=(0, 3), dtype=np.uint64)
@@ -137,14 +138,14 @@ class TestCoordinateCopyChunks:
         return filepath
 
     def test_convert_chunks(self, netcdf_file, tmpdir):
-        """Test copying NetCDF file in chunks."""
+        """Test copying NetCDF file in chunks for a NetCDF to TileDB conversion that
+        maps NetCDF coordinates to dimensions."""
         uri = str(tmpdir.mkdir("output").join("simple_copy_chunks"))
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=True)
         converter.get_shared_dim("x").domain = (-1.0, 1.0)
         converter.get_shared_dim("y").domain = (0.0, 2.0)
         array_creator = converter.get_array_creator_by_attr("f")
         array_creator.domain_creator.max_fragment_shape = (4, 4)
-        print(converter)
         converter.convert_to_group(uri)
         with Group(uri) as group:
             with group.open_array(attr="f") as array:

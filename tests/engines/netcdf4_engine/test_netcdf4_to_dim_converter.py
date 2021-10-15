@@ -28,7 +28,7 @@ class TestSharedDimBase:
         assert dim_converter.max_fragment_length is None
 
     def test_set_max_fragment_length(self):
-        """Tests setting max_fragment_length to None."""
+        """Tests setting max_fragment_length."""
         dim_converter = NetCDF4ToDimConverter(self.shared_dim)
         dim_converter.max_fragment_length = 1
         assert dim_converter.max_fragment_length == 1
