@@ -268,7 +268,9 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     def test_inject_dim_mismatch_attr_dims_error(self, netcdf_file):
         """Tests injecting a dimension into a NetCDF4ConverterArray."""
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
-        converter.add_scalar_to_dim_converter(dim_name="dim0", dtype=np.uint32)
+        with netCDF4.Dataset("inmemory", mode="w", diskless=True) as dataset:
+            dim = dataset.createDimension("dim0", 10)
+            converter.add_dim_to_dim_converter(dim)
         array_converter = converter.get_array_creator("array0")
         with pytest.raises(ValueError):
             array_converter.domain_creator.inject_dim_creator("dim0", 0)
@@ -642,6 +644,19 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         with tiledb.cf.Group(uri) as group:
             with group.open_array(array="scalars") as array:
                 data = array[0]
+        assert np.array_equal(data["x"], self.variable_data["x"])
+        assert np.array_equal(data["y"], self.variable_data["y"])
+
+    def test_change_domain(self, netcdf_file, tmpdir):
+        uri = str(tmpdir.mkdir("output").join("scalar_assign_value_example"))
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        scalar_dim = converter.get_shared_dim("__scalars")
+        scalar_dim.name = "dim0"
+        scalar_dim.domain = (0, 10)
+        converter.convert_to_group(uri, assigned_dim_values={"dim0": 1})
+        with tiledb.cf.Group(uri) as group:
+            with group.open_array(array="array0") as array:
+                data = array[1:2]
         assert np.array_equal(data["x"], self.variable_data["x"])
         assert np.array_equal(data["y"], self.variable_data["y"])
 

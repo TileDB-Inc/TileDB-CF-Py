@@ -60,7 +60,7 @@ class NetCDF4ToDimConverter(DimCreator):
             A sequence of slices for copying chunks of the dimension data for each
             TileDB fragment.
         """
-        if not self.is_from_netcdf:
+        if not isinstance(self._base, NetCDF4ToDimBase):
             return (slice(None),)
         size = self.base.get_query_size(netcdf_group)
         if self.max_fragment_length is None:
@@ -78,11 +78,16 @@ class NetCDF4ToDimConverter(DimCreator):
         indexer: slice,
         assigned_dim_values: Optional[Dict[str, Any]],
     ):
-        if self.is_from_netcdf:
+        if assigned_dim_values is not None and self.name in assigned_dim_values:
+            if self.is_from_netcdf:
+                raise NotImplementedError(
+                    "Support for over-writing dimension coordinate values copied from "
+                    "NetCDF is not yet implemented."
+                )
+            return assigned_dim_values[self.name]
+        if isinstance(self._base, NetCDF4ToDimBase):
             return self._base.get_values(netcdf_group, sparse=sparse, indexer=indexer)
-        if assigned_dim_values is None or self.name not in assigned_dim_values:
-            raise KeyError(f"Missing value for dimension '{self.name}'.")
-        return assigned_dim_values[self.name]
+        raise KeyError(f"Missing value for dimension '{self.name}'.")
 
     def html_summary(self) -> str:
         """Returns a string HTML summary of the :class:`NetCDF4ToDimConverter`."""
@@ -100,10 +105,9 @@ class NetCDF4ToDimConverter(DimCreator):
 
     @property
     def is_from_netcdf(self) -> bool:
-        """Returns ``True`` if the base shared dimensions is a
-        :class:`NetCDF4ToDimBase` instance.
-        """
-        return isinstance(self._base, NetCDF4ToDimBase)
+        """Returns ``True`` if the dimension is converted from a NetCDF variable or
+        dimension."""
+        return hasattr(self._base, "from_netcdf")
 
     @property
     def max_fragment_length(self) -> Optional[int]:
