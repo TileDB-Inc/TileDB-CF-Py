@@ -645,6 +645,21 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         assert np.array_equal(data["x"], self.variable_data["x"])
         assert np.array_equal(data["y"], self.variable_data["y"])
 
+    def test_inject_dim(self, netcdf_file, tmpdir):
+        """Tests converting NetCDF scalar dimensions to TileDB with an extra dimension
+        added."""
+        uri = str(tmpdir.mkdir("output").join("scalar_extra_dim_example"))
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        converter.add_shared_dim(dim_name="t", domain=(1, 8), dtype=np.dtype("uint64"))
+        array_creator = converter.get_array_creator("array0")
+        array_creator.domain_creator.inject_dim_creator("t", 1)
+        converter.convert_to_group(uri, assigned_dim_values={"t": 1})
+        with tiledb.cf.Group(uri) as group:
+            with group.open_array(array="array0") as array:
+                data = array[:, 1]
+        assert np.array_equal(data["x"], self.variable_data["x"])
+        assert np.array_equal(data["y"], self.variable_data["y"])
+
 
 class TestConvertNetCDFMatchingChunks(ConvertNetCDFBase):
     """NetCDF conversion test cases for a NetCDF file with two variables over the
