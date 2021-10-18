@@ -13,7 +13,7 @@ import tiledb
 from tiledb.cf.core import DimMetadata, DType
 from tiledb.cf.creator import DataspaceRegistry, DimCreator, SharedDim
 
-from ._utils import get_ncattr, safe_set_metadata
+from ._utils import safe_set_metadata
 
 
 class NetCDF4ToDimConverter(DimCreator):
@@ -242,14 +242,6 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
             raise ValueError(
                 f"Cannot create dimension from variable '{var.name}' with shape "
                 f"{var.shape}. Coordinate variables must have only one dimension."
-            )
-        add_offset = get_ncattr(var, "add_offset")
-        scale_factor = get_ncattr(var, "scale_factor")
-        unsigned = get_ncattr(var, "_Unsigned")
-        if add_offset is not None or scale_factor is not None or unsigned is not None:
-            raise NotImplementedError(
-                f"Cannot convert variable {var.name} into a TileDB dimension. Support "
-                f"for converting scaled coordinates has not yet been implemented."
             )
         dtype = np.dtype(var.dtype)
         return cls(

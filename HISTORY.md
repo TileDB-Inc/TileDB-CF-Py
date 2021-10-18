@@ -27,7 +27,8 @@
 
 ### Improvements
 
-*  Allows `NetCDF4ScalarToDimConverter` to be removed from an array with NetCDF attributes.
+* Allows `NetCDF4ScalarToDimConverter` to be removed from an array with NetCDF attributes.
+* Removes restriction on converting a NetCDF coordinate to a TileDB dimension if it is scaled.
 
 ### Deprecation
 
