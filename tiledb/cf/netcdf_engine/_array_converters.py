@@ -35,6 +35,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
             ``dim_filters``.
         offsets_filters: Filters for the offsets for variable length attributes or
             dimensions.
+        attrs_filters: Default filters to use when adding an attribute to the array.
         allows_duplicates: Specifies if multiple values can be stored at the same
              coordinate. Only allowed for sparse arrays.
     """
@@ -121,7 +122,8 @@ class NetCDF4ArrayConverter(ArrayCreator):
             var: Specifies if the attribute is variable length (automatic for
                 byte/strings).
             nullable: Specifies if the attribute is nullable using validity tiles.
-            filters: Specifies compression filters for the attribute.
+            filters: Specifies compression filters for the attribute. If ``None``, use
+                array's ``attrs_filters`` property.
         """
         if ncvar.dimensions != self.domain_creator.netcdf_dims:
             raise ValueError(
@@ -130,6 +132,8 @@ class NetCDF4ArrayConverter(ArrayCreator):
                 f"dimensions={ncvar.dimensions}, array NetCDF dimensions="
                 f"{self.domain_creator.netcdf_dims}."
             )
+        if filters is None:
+            filters = self.attrs_filters
         NetCDF4VarToAttrConverter.from_netcdf(
             array_registry=self._registry,
             ncvar=ncvar,

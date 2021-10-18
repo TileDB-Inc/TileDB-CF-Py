@@ -406,6 +406,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         coords_filters: Optional[tiledb.FilterList] = None,
         dim_filters: Optional[Dict[str, tiledb.FilterList]] = None,
         offsets_filters: Optional[tiledb.FilterList] = None,
+        attrs_filters: Optional[tiledb.FilterList] = None,
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
@@ -434,6 +435,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 in the array. Overrides the values set in ``coords_filters``.
             offsets_filters: Filters for the offsets for variable length attributes or
                 dimensions.
+            attrs_filters: Default filters to use when adding an attribute to the array.
             allows_duplicates: Specifies if multiple values can be stored at the same
                  coordinate. Only allowed for sparse arrays.
             sparse: Specifies if the array is a sparse TileDB array (true) or dense
@@ -450,6 +452,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             coords_filters=coords_filters,
             dim_filters=dim_filters,
             offsets_filters=offsets_filters,
+            attrs_filters=attrs_filters,
             allows_duplicates=allows_duplicates,
             sparse=sparse,
         )
