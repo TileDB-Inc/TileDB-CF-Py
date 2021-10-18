@@ -32,8 +32,6 @@ class NetCDF4ToAttrConverter(AttrCreator):
     def get_values(
         self,
         netcdf_group: netCDF4.Dataset,
-        sparse: bool,
-        shape: Union[int, Sequence[int]],
         indexer: Sequence[slice],
     ) -> np.ndarray:
         """Returns TileDB attribute values from a NetCDF group.
@@ -157,17 +155,13 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
     def get_values(
         self,
         netcdf_group: netCDF4.Dataset,
-        sparse: bool,
-        shape: Union[int, Sequence[int]],
         indexer: Sequence[slice],
     ) -> np.ndarray:
         """Returns TileDB attribute values from a NetCDF group.
 
         Parameters:
             netcdf_group: NetCDF group to get the dimension values from.
-            sparse: ``True`` if copying into a sparse array and ``False`` if copying
-                into a dense array.
-            shape: If not ``None``, the shape to return the numpy array as.
+            indexer: Slice to query the NetCDF variable on.
 
         Returns:
             The values needed to set an attribute in a TileDB array. If the array
@@ -181,4 +175,4 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
                 f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
-        return np.reshape(variable[indexer], shape)
+        return variable[indexer]

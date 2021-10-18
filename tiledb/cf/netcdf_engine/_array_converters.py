@@ -64,22 +64,12 @@ class NetCDF4ArrayConverter(ArrayCreator):
             for index_slice, dim_creator in zip(indexer, self.domain_creator)
             if dim_creator.is_from_netcdf
         )
-        shape: Union[int, Tuple[int, ...]] = (
-            -1
-            if self.sparse
-            else tuple(
-                index_slice.stop - index_slice.start for index_slice in netcdf_indexer
-            )
-        )
         data = {}
         for attr_creator in self:
             attr_name = attr_creator.name
             if isinstance(attr_creator, NetCDF4ToAttrConverter):
                 data[attr_name] = attr_creator.get_values(
-                    netcdf_group=netcdf_group,
-                    sparse=self.sparse,
-                    shape=shape,
-                    indexer=netcdf_indexer,
+                    netcdf_group=netcdf_group, indexer=netcdf_indexer
                 )
             else:
                 if (
