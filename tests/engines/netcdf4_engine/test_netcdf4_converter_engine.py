@@ -647,7 +647,9 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         assert np.array_equal(data["x"], self.variable_data["x"])
         assert np.array_equal(data["y"], self.variable_data["y"])
 
-    def test_change_domain(self, netcdf_file, tmpdir):
+    def test_scalar_assigned_dim_value(self, netcdf_file, tmpdir):
+        """Tests setting the value for a scalar dimension when converting NetCDF
+        scalars to TileDB."""
         uri = str(tmpdir.mkdir("output").join("scalar_assign_value_example"))
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         scalar_dim = converter.get_shared_dim("__scalars")
