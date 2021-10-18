@@ -175,4 +175,6 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
                 f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
+        if variable.ndim == 0:
+            return variable.getValue()
         return variable[indexer]
