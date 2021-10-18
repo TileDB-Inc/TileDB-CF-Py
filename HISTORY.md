@@ -23,8 +23,11 @@
 ### New Features
 
 * Adds `NetCDF4ToDimConverter` subclass of `DimCreator` that supports setting maximum fragment size for copying NetCDF file in chunks.
+* Allows `NetCDF4ScalarToDimConverter` value to be set by user input.
 
 ### Improvements
+
+*  Allows `NetCDF4ScalarToDimConverter` to be removed from an array with NetCDF attributes.
 
 ### Deprecation
 
