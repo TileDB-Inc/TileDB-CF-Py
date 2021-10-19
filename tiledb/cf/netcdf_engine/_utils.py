@@ -41,6 +41,26 @@ def get_netcdf_metadata(netcdf_item, key: str, default: Any = None) -> Any:
     return default
 
 
+def get_unpacked_variable_dtype(variable: netCDF4.Variable) -> np.dtype:
+    """Returns the Numpy dtype of the unpacked variable."""
+    input_dtype = np.dtype(variable.dtype)
+    if not np.issubdtype(input_dtype, np.integer) and not np.issubdtype(
+        input_dtype, np.floating
+    ):
+        raise ValueError(
+            f"Unpacking only support NetCDF variables with integer or floating-point "
+            f"data. Input variable has datatype {input_dtype}."
+        )
+    test = np.array(0, dtype=input_dtype)
+    scale_factor = get_netcdf_metadata(variable, "scale_factor")
+    add_offset = get_netcdf_metadata(variable, "add_offset")
+    if scale_factor is not None:
+        test = scale_factor * test
+    if add_offset is not None:
+        test = test + add_offset
+    return test.dtype
+
+
 def get_variable_chunks(variable: netCDF4.Variable) -> Optional[Tuple[int, ...]]:
     """Returns the chunks from a NetCDF variable if chunked and ``None`` otherwise."""
     chunks = variable.chunking()
