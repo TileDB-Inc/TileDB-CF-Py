@@ -12,7 +12,7 @@ import tiledb
 from tiledb.cf.core import AttrMetadata
 from tiledb.cf.creator import ArrayRegistry, AttrCreator
 
-from ._utils import COORDINATE_SUFFIX, safe_set_metadata
+from ._utils import COORDINATE_SUFFIX, get_netcdf_metadata, safe_set_metadata
 
 
 class NetCDF4ToAttrConverter(AttrCreator):
@@ -131,8 +131,8 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
     ):
-        if fill is None and "_FillValue" in ncvar.ncattrs():
-            fill = ncvar.getncattr("_FillValue")
+        if fill is None:
+            fill = get_netcdf_metadata(ncvar, "_FillValue")
         if name is None:
             name = (
                 ncvar.name
@@ -175,6 +175,12 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
                 f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
-        if variable.ndim == 0:
-            return variable.getValue()
-        return variable[indexer]
+        values = variable.getValue() if variable.ndim == 0 else variable[indexer]
+        netcdf_fill = get_netcdf_metadata(variable, "_FillValue")
+        if (
+            self.fill is not None
+            and netcdf_fill is not None
+            and self.fill != netcdf_fill
+        ):
+            np.putmask(values, values == netcdf_fill, self.fill)
+        return values

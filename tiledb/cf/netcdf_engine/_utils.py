@@ -26,11 +26,19 @@ def copy_group_metadata(netcdf_group: netCDF4.Group, meta: tiledb.libtiledb.Meta
         safe_set_metadata(meta, key, value)
 
 
-def get_ncattr(netcdf_item, key: str) -> Any:
-    """Returns a NetCDF value from a key if it exists and ``None`` otherwise."""
+def get_netcdf_metadata(netcdf_item, key: str, default: Any = None) -> Any:
+    """Returns a NetCDF value from a key if it exists and ``None`` otherwise.
+
+    Parameters:
+        key: NetCDF attribute name to return.
+        default: Default value to return if the attribute is not found.
+
+    Returns:
+        The NetCDF attribute value, if found. Otherwise, return the default value.
+    """
     if key in netcdf_item.ncattrs():
         return netcdf_item.getncattr(key)
-    return None
+    return default
 
 
 def get_variable_chunks(variable: netCDF4.Variable) -> Optional[Tuple[int, ...]]:
