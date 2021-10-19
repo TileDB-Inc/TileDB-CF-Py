@@ -13,7 +13,7 @@ import tiledb
 from tiledb.cf.core import DimMetadata, DType
 from tiledb.cf.creator import DataspaceRegistry, DimCreator, SharedDim
 
-from ._utils import safe_set_metadata
+from ._utils import get_unpacked_dtype, get_variable_values, safe_set_metadata
 
 
 class NetCDF4ToDimConverter(DimCreator):
@@ -182,11 +182,13 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
         input_dim_name: str,
         input_var_name: str,
         input_var_dtype: np.dtype,
+        unpack: bool,
     ):
         super().__init__(dataspace_registry, name, domain, dtype)
         self.input_dim_name = input_dim_name
         self.input_var_name = input_var_name
         self.input_var_dtype = input_var_dtype
+        self.unpack = unpack
 
     def __eq__(self, other):
         return (
@@ -228,30 +230,37 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
         variable = self._get_ncvar(netcdf_group)
         dim_meta = DimMetadata(tiledb_array.meta, self.name)
         for key in variable.ncattrs():
+            if self.unpack and key in {"scale_factor", "add_offset"}:
+                continue
             safe_set_metadata(dim_meta, key, variable.getncattr(key))
 
     @classmethod
     def from_netcdf(
         cls,
         dataspace_registry: DataspaceRegistry,
-        var: netCDF4.Variable,
+        ncvar: netCDF4.Variable,
         name: Optional[str] = None,
         domain: Optional[Tuple[DType, DType]] = None,
+        dtype: Optional[np.dtype] = None,
+        unpack: bool = False,
     ):
-        if len(var.dimensions) != 1:
+        if len(ncvar.dimensions) != 1:
             raise ValueError(
-                f"Cannot create dimension from variable '{var.name}' with shape "
-                f"{var.shape}. Coordinate variables must have only one dimension."
+                f"Cannot create dimension from variable '{ncvar.name}' with shape "
+                f"{ncvar.shape}. Coordinate variables must have only one dimension."
             )
-        dtype = np.dtype(var.dtype)
+        if dtype is None:
+            dtype = get_unpacked_dtype(ncvar) if unpack else ncvar.dtype
+        dtype = np.dtype(dtype)
         return cls(
             dataspace_registry=dataspace_registry,
-            name=name if name is not None else var.name,
+            name=name if name is not None else ncvar.name,
             domain=domain,
             dtype=dtype,
-            input_dim_name=var.dimensions[0],
-            input_var_name=var.name,
+            input_dim_name=ncvar.dimensions[0],
+            input_var_name=ncvar.name,
             input_var_dtype=dtype,
+            unpack=unpack,
         )
 
     def get_query_size(self, netcdf_group: netCDF4.Dataset):
@@ -278,19 +287,19 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
         """
         if indexer.step not in {1, None}:
             raise ValueError("Dimension indexer must have step size of 1.")
-        variable = self._get_ncvar(netcdf_group)
         if not sparse:
             raise NotImplementedError(
                 "Support for copying NetCDF coordinates to dense arrays has not "
                 "been implemented."
             )
+        variable = self._get_ncvar(netcdf_group)
         if variable.get_dims()[0].size < 1:
             raise ValueError(
                 f"Cannot copy dimension data from NetCDF variable "
                 f"'{self.input_var_name}' to TileDB dimension '{self.name}'. "
                 f"There is no data to copy."
             )
-        return variable[indexer]
+        return get_variable_values(variable, indexer, fill=None, unpack=self.unpack)
 
     def html_input_summary(self):
         """Returns a HTML string summarizing the input for the dimension."""

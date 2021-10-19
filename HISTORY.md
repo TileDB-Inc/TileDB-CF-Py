@@ -17,6 +17,7 @@
 * Removes deprecated parameters `input_name` and `input_size` from the `NetCDF4DimToDimConverter` class.
 * Removes deprecated parameters `input_name` and `input_dtype` from the `NetCDF4VarToAttrConverter` class.
 * Removes deprecated module `tiledb.cf.engines.netcdf4_engine`.
+* Renames parameter `var` to `ncvar` in `NetCDF4ConverterEngine.add_coord_to_dim` for consistency.
 * Changes `copy` in `NetCDF4ArrayConverter` to use TileDB URI, context, and key instead of an open array.
 * Removes `get_dense_query_shape` from `NetCDF4DomainConverter`.
 * Adds required positional argument to `get_values` in `NetCDF4ToDimBase` classes.
@@ -30,7 +31,7 @@
 * Allows `NetCDF4ScalarToDimConverter` value to be set by user input.
 * Adds `attrs_filters` parameter in `ArrayCreator` and `NetCDF4ToArrayConverter` for setting default attribute filters.
 * Adds parameters `coords_filters`, `offsets_filters`, and `attrs_filters` to `NetCDF4ConverterEngine.from_netcdf` and `NetCDF4ConverterEngine.from_group` for setting default filters.
-
+* Adds parameter `unpack` to `NetCDF4ConverterEngine` for unpacking NetCDF variables that use `add_offset` or `scale_factor`.
 
 ### Improvements
 

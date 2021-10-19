@@ -6,7 +6,7 @@ import time
 import warnings
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Sequence, Tuple, Union
 
 import netCDF4
 import numpy as np
@@ -84,6 +84,26 @@ def get_unpacked_dtype(variable: netCDF4.Variable) -> np.dtype:
     if add_offset is not None:
         test = test + add_offset
     return test.dtype
+
+
+def get_variable_values(
+    variable: netCDF4.Variable,
+    indexer: Union[slice, Sequence[slice]],
+    fill: Optional[Union[int, float, str]],
+    unpack: bool,
+) -> np.ndarray:
+    values = variable.getValue() if variable.ndim == 0 else variable[indexer]
+    netcdf_fill = get_netcdf_metadata(variable, "_FillValue")
+    if fill is not None and netcdf_fill is not None and fill != netcdf_fill:
+        np.putmask(values, values == netcdf_fill, fill)
+    if unpack:
+        scale_factor = get_netcdf_metadata(variable, "scale_factor", is_number=True)
+        if scale_factor is not None:
+            values = scale_factor * values
+        add_offset = get_netcdf_metadata(variable, "add_offset", is_number=True)
+        if add_offset is not None:
+            values = values + add_offset
+    return values
 
 
 def get_variable_chunks(variable: netCDF4.Variable) -> Optional[Tuple[int, ...]]:
