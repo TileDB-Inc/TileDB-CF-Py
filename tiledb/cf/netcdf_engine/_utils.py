@@ -26,8 +26,15 @@ def copy_group_metadata(netcdf_group: netCDF4.Group, meta: tiledb.libtiledb.Meta
         safe_set_metadata(meta, key, value)
 
 
-def get_netcdf_metadata(netcdf_item, key: str, default: Any = None) -> Any:
-    """Returns a NetCDF value from a key if it exists and ``None`` otherwise.
+def get_netcdf_metadata(
+    netcdf_item, key: str, default: Any = None, is_number: bool = False
+) -> Any:
+    """Returns a NetCDF attribute value from a key if it exists and the default value
+    otherwise.
+
+    If ``is_number=True``, the result is only returned if it is a numpy number. If the
+    key exists but is not a numpy number, then a warning is raised. If the key exists
+    and is an array of length 1, the scalar value is returned.
 
     Parameters:
         key: NetCDF attribute name to return.
@@ -37,23 +44,41 @@ def get_netcdf_metadata(netcdf_item, key: str, default: Any = None) -> Any:
         The NetCDF attribute value, if found. Otherwise, return the default value.
     """
     if key in netcdf_item.ncattrs():
-        return netcdf_item.getncattr(key)
+        value = netcdf_item.getncattr(key)
+        if is_number:
+            if (
+                isinstance(value, str)
+                or not np.issubdtype(value.dtype, np.number)
+                or np.size(value) != 1
+            ):
+                with warnings.catch_warnings():
+                    warnings.warn(
+                        f"Attribute '{key}' has value='{value}' that not a number. "
+                        f"Using default {key}={default} instead."
+                    )
+                return default
+            if not np.isscalar(value):
+                value = value.item()
+        return value
     return default
 
 
-def get_unpacked_variable_dtype(variable: netCDF4.Variable) -> np.dtype:
-    """Returns the Numpy dtype of the unpacked variable."""
+def get_unpacked_dtype(variable: netCDF4.Variable) -> np.dtype:
+    """Returns the Numpy data type of a variable after it has been unpacked by applying
+    any scale_factor or add_offset.
+
+    Parameters:
+        variable: The NetCDF variable to get the unpacked data type of.
+    """
     input_dtype = np.dtype(variable.dtype)
-    if not np.issubdtype(input_dtype, np.integer) and not np.issubdtype(
-        input_dtype, np.floating
-    ):
+    if not np.issubdtype(input_dtype, np.number):
         raise ValueError(
             f"Unpacking only support NetCDF variables with integer or floating-point "
             f"data. Input variable has datatype {input_dtype}."
         )
     test = np.array(0, dtype=input_dtype)
-    scale_factor = get_netcdf_metadata(variable, "scale_factor")
-    add_offset = get_netcdf_metadata(variable, "add_offset")
+    scale_factor = get_netcdf_metadata(variable, "scale_factor", is_number=True)
+    add_offset = get_netcdf_metadata(variable, "add_offset", is_number=True)
     if scale_factor is not None:
         test = scale_factor * test
     if add_offset is not None:
