@@ -685,6 +685,9 @@ class TestConvertUnpackVariables(ConvertNetCDFBase):
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="x.data") as array:
                 x = array[:]
+                meta = AttrMetadata(array.meta, "x.data")
+                assert "scale_factor" not in meta
+                assert "add_offset" not in meta
         assert x.dtype == np.float64
         np.testing.assert_equal(x, np.array([1.5, 2.0, 2.5, 3.0]))
 
@@ -706,6 +709,9 @@ class TestConvertUnpackVariables(ConvertNetCDFBase):
         with tiledb.cf.Group(uri) as group:
             with group.open_array(attr="y") as array:
                 data = array[:]
+                meta = DimMetadata(array.meta, "x")
+                assert "scale_factor" not in meta
+                assert "add_offset" not in meta
         x = data["x"]
         y = data["y"]
         assert x.dtype == np.float64

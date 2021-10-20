@@ -92,6 +92,15 @@ def get_variable_values(
     fill: Optional[Union[int, float, str]],
     unpack: bool,
 ) -> np.ndarray:
+    """Returns the values for a NetCDF variable at the requested indices.
+
+    Parameters:
+        variable: NetCDF variable to get values from.
+        indexer: Sequence of slices used to index the NetCDF variable.
+        fill: If not ``None``, the fill value to use for the output data.
+        unpack: If ``True``, unpack the variable if it contains a ``scale_factor``
+            or ``add_offset``.
+    """
     values = variable.getValue() if variable.ndim == 0 else variable[indexer]
     netcdf_fill = get_netcdf_metadata(variable, "_FillValue")
     if fill is not None and netcdf_fill is not None and fill != netcdf_fill:

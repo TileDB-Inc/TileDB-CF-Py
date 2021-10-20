@@ -31,7 +31,9 @@
 * Allows `NetCDF4ScalarToDimConverter` value to be set by user input.
 * Adds `attrs_filters` parameter in `ArrayCreator` and `NetCDF4ToArrayConverter` for setting default attribute filters.
 * Adds parameters `coords_filters`, `offsets_filters`, and `attrs_filters` to `NetCDF4ConverterEngine.from_netcdf` and `NetCDF4ConverterEngine.from_group` for setting default filters.
-* Adds parameter `unpack` to `NetCDF4ConverterEngine` for unpacking NetCDF variables that use `add_offset` or `scale_factor`.
+* Adds parameter `unpack_vars` to `NetCDF4ConverterEngine.from_netcdf` and `NetCDF4ConverterEngine.from_group` for unpacking NetCDF variables that use `add_offset` or `scale_factor`.
+* Adds parameter `unpack` to `NetCDF4ConverterEngine.add_var_to_attr_converter` for unpacking NetCDF variables that use `add_offset` or `scale_factor`.
+* Adds parameter `unpack` to `NetCDF4ConverterEngine.add_coord_to_dim_converter` for unpacking NetCDF variables that use `add_offset` or `scale_factor`.
 
 ### Improvements
 

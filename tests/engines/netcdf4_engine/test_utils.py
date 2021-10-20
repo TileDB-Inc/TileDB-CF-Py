@@ -30,7 +30,7 @@ def test_unpacked_dtype(input_dtype, scale_factor, add_offset, output_dtype):
     assert dtype == output_dtype
 
 
-def test_unpacked_dtype_dtype_error():
+def test_unpacked_dtype_unsupported_dtype_error():
     """Tests attempting to unpack a NetCDF variable with a data type that does not
     support packing/unpacking."""
     with netCDF4.Dataset("tmp.nc", diskless=True, mode="w") as dataset:
@@ -56,17 +56,7 @@ def test_get_netcdf_metadata_number(value, expected_result):
         assert result == expected_result
 
 
-@pytest.mark.parametrize(
-    "value",
-    (
-        ("",),
-        (
-            np.array(
-                (1, 2),
-            )
-        ),
-    ),
-)
+@pytest.mark.parametrize("value", (("",), (1, 2)))
 def test_get_netcdf_metadata_number_with_warning(value):
     """Tests computing the unpacked data type for a NetCDF variable."""
     key = "name"
