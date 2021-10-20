@@ -105,6 +105,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
         var: bool = False,
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
+        unpack: bool = False,
     ):
         """Adds a new variable to attribute converter to the array creator.
 
@@ -124,6 +125,9 @@ class NetCDF4ArrayConverter(ArrayCreator):
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute. If ``None``, use
                 array's ``attrs_filters`` property.
+            unpack: Unpack NetCDF data that has NetCDF attributes ``scale_factor`` or
+                ``add_offset`` using the transformation ``scale_factor * value +
+                unpack``.
         """
         if ncvar.dimensions != self.domain_creator.netcdf_dims:
             raise ValueError(
@@ -143,6 +147,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
             var=var,
             nullable=nullable,
             filters=filters,
+            unpack=unpack,
         )
 
     def copy(

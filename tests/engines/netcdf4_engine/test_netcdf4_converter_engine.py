@@ -645,6 +645,80 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
                 converter.convert_to_array(uri, input_netcdf_group=netcdf_group)
 
 
+class TestConvertUnpackVariables(ConvertNetCDFBase):
+    """NetCDF conversion test cases for a packed NetCDF variable.
+
+    Dimensions:
+        x (4)
+    Variables:
+        real x (x)
+        real y (x)
+    """
+
+    name = "simple_coord_1"
+    group_metadata = {"name": name}
+    dimension_args = (("x", 4),)
+    variable_kwargs = (
+        {"varname": "x", "datatype": np.int32, "dimensions": ("x",)},
+        {"varname": "y", "datatype": np.float64, "dimensions": ("x",)},
+    )
+    variable_data = {
+        "x": np.array([1, 2, 3, 4]),
+        "y": np.array([0.0, 0.5, 1.0, 1.5]),
+    }
+    variable_metadata = {
+        "x": {"scale_factor": np.float64(0.5), "add_offset": np.float64(1.0)},
+    }
+    attr_to_var_map = {"x.data": "x", "y": "y"}
+
+    @pytest.mark.parametrize("collect_attrs", [True, False])
+    def test_unpack_to_attr(self, netcdf_file, tmpdir, collect_attrs):
+        """Tests NetCDF variable is correctly unpacked when mapping to a TileDB
+        attribute."""
+        uri = str(tmpdir.mkdir("output").join("coordinate_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            collect_attrs=collect_attrs,
+            unpack_vars=True,
+        )
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri) as group:
+            with group.open_array(attr="x.data") as array:
+                x = array[:]
+                meta = AttrMetadata(array.meta, "x.data")
+                assert "scale_factor" not in meta
+                assert "add_offset" not in meta
+        assert x.dtype == np.float64
+        np.testing.assert_equal(x, np.array([1.5, 2.0, 2.5, 3.0]))
+
+    @pytest.mark.parametrize("collect_attrs", [True, False])
+    def test_unpack_to_dim(self, netcdf_file, tmpdir, collect_attrs):
+        """Tests NetCDF variable is correctly unpacked when mapping to a TileDB
+        dimension."""
+        uri = str(tmpdir.mkdir("output").join("coordinate_example"))
+        converter = NetCDF4ConverterEngine.from_file(
+            netcdf_file,
+            coords_to_dims=True,
+            collect_attrs=collect_attrs,
+            unpack_vars=True,
+        )
+        shared_x = converter.get_shared_dim("x")
+        shared_x.domain = (-10.0, 10.0)
+        shared_x.tile = 2.0
+        converter.convert_to_group(uri)
+        with tiledb.cf.Group(uri) as group:
+            with group.open_array(attr="y") as array:
+                data = array[:]
+                meta = DimMetadata(array.meta, "x")
+                assert "scale_factor" not in meta
+                assert "add_offset" not in meta
+        x = data["x"]
+        y = data["y"]
+        assert x.dtype == np.float64
+        np.testing.assert_equal(x, np.array([1.5, 2.0, 2.5, 3.0]))
+        np.testing.assert_equal(y, np.array([0.0, 0.5, 1.0, 1.5]))
+
+
 class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
     """NetCDF conversion test cases for NetCDF with multiple scalar variables.
 

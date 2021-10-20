@@ -6,7 +6,7 @@ import time
 import warnings
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Sequence, Tuple, Union
 
 import netCDF4
 import numpy as np
@@ -26,8 +26,15 @@ def copy_group_metadata(netcdf_group: netCDF4.Group, meta: tiledb.libtiledb.Meta
         safe_set_metadata(meta, key, value)
 
 
-def get_netcdf_metadata(netcdf_item, key: str, default: Any = None) -> Any:
-    """Returns a NetCDF value from a key if it exists and ``None`` otherwise.
+def get_netcdf_metadata(
+    netcdf_item, key: str, default: Any = None, is_number: bool = False
+) -> Any:
+    """Returns a NetCDF attribute value from a key if it exists and the default value
+    otherwise.
+
+    If ``is_number=True``, the result is only returned if it is a numpy number. If the
+    key exists but is not a numpy number, then a warning is raised. If the key exists
+    and is an array of length 1, the scalar value is returned.
 
     Parameters:
         key: NetCDF attribute name to return.
@@ -37,8 +44,75 @@ def get_netcdf_metadata(netcdf_item, key: str, default: Any = None) -> Any:
         The NetCDF attribute value, if found. Otherwise, return the default value.
     """
     if key in netcdf_item.ncattrs():
-        return netcdf_item.getncattr(key)
+        value = netcdf_item.getncattr(key)
+        if is_number:
+            if (
+                isinstance(value, str)
+                or not np.issubdtype(value.dtype, np.number)
+                or np.size(value) != 1
+            ):
+                with warnings.catch_warnings():
+                    warnings.warn(
+                        f"Attribute '{key}' has value='{value}' that not a number. "
+                        f"Using default {key}={default} instead."
+                    )
+                return default
+            if not np.isscalar(value):
+                value = value.item()
+        return value
     return default
+
+
+def get_unpacked_dtype(variable: netCDF4.Variable) -> np.dtype:
+    """Returns the Numpy data type of a variable after it has been unpacked by applying
+    any scale_factor or add_offset.
+
+    Parameters:
+        variable: The NetCDF variable to get the unpacked data type of.
+    """
+    input_dtype = np.dtype(variable.dtype)
+    if not np.issubdtype(input_dtype, np.number):
+        raise ValueError(
+            f"Unpacking only support NetCDF variables with integer or floating-point "
+            f"data. Input variable has datatype {input_dtype}."
+        )
+    test = np.array(0, dtype=input_dtype)
+    scale_factor = get_netcdf_metadata(variable, "scale_factor", is_number=True)
+    add_offset = get_netcdf_metadata(variable, "add_offset", is_number=True)
+    if scale_factor is not None:
+        test = scale_factor * test
+    if add_offset is not None:
+        test = test + add_offset
+    return test.dtype
+
+
+def get_variable_values(
+    variable: netCDF4.Variable,
+    indexer: Union[slice, Sequence[slice]],
+    fill: Optional[Union[int, float, str]],
+    unpack: bool,
+) -> np.ndarray:
+    """Returns the values for a NetCDF variable at the requested indices.
+
+    Parameters:
+        variable: NetCDF variable to get values from.
+        indexer: Sequence of slices used to index the NetCDF variable.
+        fill: If not ``None``, the fill value to use for the output data.
+        unpack: If ``True``, unpack the variable if it contains a ``scale_factor``
+            or ``add_offset``.
+    """
+    values = variable.getValue() if variable.ndim == 0 else variable[indexer]
+    netcdf_fill = get_netcdf_metadata(variable, "_FillValue")
+    if fill is not None and netcdf_fill is not None and fill != netcdf_fill:
+        np.putmask(values, values == netcdf_fill, fill)
+    if unpack:
+        scale_factor = get_netcdf_metadata(variable, "scale_factor", is_number=True)
+        if scale_factor is not None:
+            values = scale_factor * values
+        add_offset = get_netcdf_metadata(variable, "add_offset", is_number=True)
+        if add_offset is not None:
+            values = values + add_offset
+    return values
 
 
 def get_variable_chunks(variable: netCDF4.Variable) -> Optional[Tuple[int, ...]]:

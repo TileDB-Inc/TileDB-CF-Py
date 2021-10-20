@@ -12,7 +12,13 @@ import tiledb
 from tiledb.cf.core import AttrMetadata
 from tiledb.cf.creator import ArrayRegistry, AttrCreator
 
-from ._utils import COORDINATE_SUFFIX, get_netcdf_metadata, safe_set_metadata
+from ._utils import (
+    COORDINATE_SUFFIX,
+    get_netcdf_metadata,
+    get_unpacked_dtype,
+    get_variable_values,
+    safe_set_metadata,
+)
 
 
 class NetCDF4ToAttrConverter(AttrCreator):
@@ -75,6 +81,7 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         filters: Optional[tiledb.FilterList],
         input_var_name: str,
         input_var_dtype: np.dtype,
+        unpack: bool,
     ):
         super().__init__(
             array_registry=array_registry,
@@ -87,6 +94,7 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         )
         self.input_var_name = input_var_name
         self.input_var_dtype = input_var_dtype
+        self.unpack = unpack
 
     def __repr__(self):
         return (
@@ -117,6 +125,8 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             ) from err
         attr_meta = AttrMetadata(tiledb_array.meta, self.name)
         for key in variable.ncattrs():
+            if self.unpack and key in {"scale_factor", "add_offset"}:
+                continue
             safe_set_metadata(attr_meta, key, variable.getncattr(key))
 
     @classmethod
@@ -130,6 +140,7 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         var: bool = False,
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
+        unpack: bool = False,
     ):
         if fill is None:
             fill = get_netcdf_metadata(ncvar, "_FillValue")
@@ -139,7 +150,9 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
                 if ncvar.name not in ncvar.dimensions
                 else ncvar.name + COORDINATE_SUFFIX
             )
-        dtype = np.dtype(dtype) if dtype is not None else np.dtype(ncvar.dtype)
+        if dtype is None:
+            dtype = get_unpacked_dtype(ncvar) if unpack else ncvar.dtype
+        dtype = np.dtype(dtype)
         return cls(
             array_registry=array_registry,
             name=name,
@@ -150,6 +163,7 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             filters=filters,
             input_var_name=ncvar.name,
             input_var_dtype=ncvar.dtype,
+            unpack=unpack,
         )
 
     def get_values(
@@ -175,12 +189,6 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
                 f"The variable '{self.input_var_name}' was not found in the provided "
                 f"NetCDF group."
             ) from err
-        values = variable.getValue() if variable.ndim == 0 else variable[indexer]
-        netcdf_fill = get_netcdf_metadata(variable, "_FillValue")
-        if (
-            self.fill is not None
-            and netcdf_fill is not None
-            and self.fill != netcdf_fill
-        ):
-            np.putmask(values, values == netcdf_fill, self.fill)
-        return values
+        return get_variable_values(
+            variable, indexer, fill=self.fill, unpack=self.unpack
+        )
