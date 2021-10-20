@@ -108,6 +108,7 @@ class DataspaceCreator:
         coords_filters: Optional[tiledb.FilterList] = None,
         dim_filters: Optional[Dict[str, tiledb.FilterList]] = None,
         offsets_filters: Optional[tiledb.FilterList] = None,
+        attrs_filters: Optional[tiledb.FilterList] = None,
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
@@ -137,6 +138,8 @@ class DataspaceCreator:
                 ``coords_filters``.
             offsets_filters: Filters for the offsets for variable length attributes or
                 dimensions.
+            attrs_filters: Default filters to use when adding an attribute to the
+                array.
             allows_duplicates: Specifies if multiple values can be stored at the same
                  coordinate. Only allowed for sparse arrays.
             sparse: Specifies if the array is a sparse TileDB array (true) or dense
@@ -153,6 +156,7 @@ class DataspaceCreator:
             coords_filters=coords_filters,
             dim_filters=dim_filters,
             offsets_filters=offsets_filters,
+            attrs_filters=attrs_filters,
             allows_duplicates=allows_duplicates,
             sparse=sparse,
         )
@@ -497,6 +501,7 @@ class ArrayCreator:
             ``dim_filters``.
         offsets_filters: Filters for the offsets for variable length attributes or
             dimensions.
+        attrs_filters: Default filters to use when adding an attribute to the array.
         allows_duplicates: Specifies if multiple values can be stored at the same
              coordinate. Only allowed for sparse arrays.
         sparse: If ``True``, creates a sparse array. Otherwise, create
@@ -514,6 +519,7 @@ class ArrayCreator:
         coords_filters: Optional[tiledb.FilterList] = None,
         dim_filters: Optional[Dict[str, tiledb.FilterList]] = None,
         offsets_filters: Optional[tiledb.FilterList] = None,
+        attrs_filters: Optional[tiledb.FilterList] = None,
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
@@ -537,6 +543,7 @@ class ArrayCreator:
             for dim_name, filters in dim_filters.items():
                 self._domain_creator.dim_creator(dim_name).filters = filters
         self.offsets_filters = offsets_filters
+        self.attrs_filters = attrs_filters
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
         self._name = name
@@ -618,8 +625,11 @@ class ArrayCreator:
             var: Specifies if the attribute is variable length (automatic for
                 byte/strings).
             nullable: Specifies if the attribute is nullable using validity tiles.
-            filters: Specifies compression filters for the attribute.
+            filters: Specifies compression filters for the attribute. If ``None``, use
+                the array's ``attrs_filters`` property.
         """
+        if filters is None:
+            filters = self.attrs_filters
         AttrCreator(self._registry, name, dtype, fill, var, nullable, filters)
 
     def create(

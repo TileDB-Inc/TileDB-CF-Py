@@ -52,6 +52,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         coords_to_dims: bool = False,
         collect_attrs: bool = True,
+        coords_filters: Optional[tiledb.FilterList] = None,
+        offsets_filters: Optional[tiledb.FilterList] = None,
+        attrs_filters: Optional[tiledb.FilterList] = None,
     ):
         """Returns a :class:`NetCDF4ConverterEngine` from a group in a NetCDF file.
 
@@ -73,6 +76,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 TileDB attribute.
             collect_attrs: If True, store all attributes with the same dimensions
                 in the same array. Otherwise, store each attribute in a scalar array.
+            coords_filters: Default filters for all dimensions.
+            offsets_filters: Default filters for all offsets for variable attributes
+                and dimensions.
+            attrs_filters: Default filters for all attributes.
         """
         with open_netcdf_group(input_file=input_file, group_path=group_path) as group:
             return cls.from_group(
@@ -85,6 +92,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 default_group_path=group_path,
                 coords_to_dims=coords_to_dims,
                 collect_attrs=collect_attrs,
+                coords_filters=coords_filters,
+                offsets_filters=offsets_filters,
+                attrs_filters=attrs_filters,
             )
 
     @classmethod
@@ -97,6 +107,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]] = None,
         coords_to_dims: bool = False,
         collect_attrs: bool = True,
+        coords_filters: Optional[tiledb.FilterList] = None,
+        offsets_filters: Optional[tiledb.FilterList] = None,
+        attrs_filters: Optional[tiledb.FilterList] = None,
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
@@ -118,6 +131,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 TileDB attribute.
             collect_attrs: If ``True``, store all attributes with the same dimensions
                 in the same array. Otherwise, store each attribute in a scalar array.
+            coords_filters: Default filters for all dimensions.
+            offsets_filters: Default filters for all offsets for variable attributes
+                and dimensions.
+            attrs_filters: Default filters for all attributes.
             default_input_file: If not ``None``, the default NetCDF input file to copy
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
@@ -131,6 +148,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 tiles_by_var=tiles_by_var,
                 tiles_by_dims=tiles_by_dims,
                 coords_to_dims=coords_to_dims,
+                coords_filters=coords_filters,
+                offsets_filters=offsets_filters,
+                attrs_filters=attrs_filters,
                 default_input_file=default_input_file,
                 default_group_path=default_group_path,
             )
@@ -142,6 +162,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             tiles_by_dims=tiles_by_dims,
             coords_to_dims=coords_to_dims,
             scalar_array_name="scalars",
+            coords_filters=coords_filters,
+            offsets_filters=offsets_filters,
+            attrs_filters=attrs_filters,
             default_input_file=default_input_file,
             default_group_path=default_group_path,
         )
@@ -156,6 +179,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]],
         coords_to_dims: bool,
         scalar_array_name: str,
+        coords_filters: Optional[tiledb.FilterList],
+        offsets_filters: Optional[tiledb.FilterList],
+        attrs_filters: Optional[tiledb.FilterList],
         default_input_file: Optional[Union[str, Path]],
         default_group_path: Optional[str],
     ):
@@ -181,6 +207,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             scalar_array_name: Name for the array the stores all NetCDF scalar
                 variables. Cannot be the same name as any of the NetCDF variables in
                 the provided NetCDF group.
+            coords_filters: Default filters for all dimensions.
+            offsets_filters: Default filters for all offsets for variable attributes
+                and dimensions.
+            attrs_filters: Default filters for all attributes.
             default_input_file: If not ``None``, the default NetCDF input file to copy
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
@@ -208,7 +238,13 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     array_creator.name for array_creator in converter.array_creators()
                 }:
                     converter.add_scalar_to_dim_converter("__scalars", dim_dtype)
-                    converter.add_array_converter(scalar_array_name, ("__scalars",))
+                    converter.add_array_converter(
+                        scalar_array_name,
+                        ("__scalars",),
+                        coords_filters=coords_filters,
+                        offsets_filters=offsets_filters,
+                        attrs_filters=attrs_filters,
+                    )
                 converter.add_var_to_attr_converter(ncvar, scalar_array_name)
             else:
                 for dim in ncvar.get_dims():
@@ -232,7 +268,13 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     ),
                 )
                 converter.add_array_converter(
-                    array_name, ncvar.dimensions, tiles=tiles, sparse=has_coord_dim
+                    array_name,
+                    ncvar.dimensions,
+                    tiles=tiles,
+                    sparse=has_coord_dim,
+                    coords_filters=coords_filters,
+                    offsets_filters=offsets_filters,
+                    attrs_filters=attrs_filters,
                 )
                 converter.add_var_to_attr_converter(ncvar, array_name)
         return converter
@@ -246,6 +288,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         tiles_by_var: Optional[Dict[str, Optional[Sequence[int]]]],
         tiles_by_dims: Optional[Dict[Sequence[str], Optional[Sequence[int]]]],
         coords_to_dims: bool,
+        coords_filters: Optional[tiledb.FilterList],
+        offsets_filters: Optional[tiledb.FilterList],
+        attrs_filters: Optional[tiledb.FilterList],
         default_input_file: Optional[Union[str, Path]],
         default_group_path: Optional[str],
     ):
@@ -268,6 +313,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 TileDB dimension for sparse arrays. Otherwise, convert the coordinate
                 dimension into a TileDB dimension and the coordinate variable into a
                 TileDB attribute.
+            coords_filters: Default filters for all dimensions.
+            offsets_filters: Default filters for all offsets for variable attributes
+                and dimensions.
+            attrs_filters: Default filters for all attributes.
             default_input_file: If not ``None``, the default NetCDF input file to copy
                 data from.
             default_group_path: If not ``None``, the default NetCDF group to copy data
@@ -321,7 +370,13 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             has_coord_dim = any(dim_name in coord_names for dim_name in dim_names)
             chunks = autotiles.get(dim_names)
             converter.add_array_converter(
-                f"array{count}", dim_names, tiles=chunks, sparse=has_coord_dim
+                f"array{count}",
+                dim_names,
+                tiles=chunks,
+                sparse=has_coord_dim,
+                coords_filters=coords_filters,
+                offsets_filters=offsets_filters,
+                attrs_filters=attrs_filters,
             )
             for var_name in dims_to_vars[dim_names]:
                 converter.add_var_to_attr_converter(
@@ -406,6 +461,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         coords_filters: Optional[tiledb.FilterList] = None,
         dim_filters: Optional[Dict[str, tiledb.FilterList]] = None,
         offsets_filters: Optional[tiledb.FilterList] = None,
+        attrs_filters: Optional[tiledb.FilterList] = None,
         allows_duplicates: bool = False,
         sparse: bool = False,
     ):
@@ -434,6 +490,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 in the array. Overrides the values set in ``coords_filters``.
             offsets_filters: Filters for the offsets for variable length attributes or
                 dimensions.
+            attrs_filters: Default filters to use when adding an attribute to the array.
             allows_duplicates: Specifies if multiple values can be stored at the same
                  coordinate. Only allowed for sparse arrays.
             sparse: Specifies if the array is a sparse TileDB array (true) or dense
@@ -450,6 +507,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             coords_filters=coords_filters,
             dim_filters=dim_filters,
             offsets_filters=offsets_filters,
+            attrs_filters=attrs_filters,
             allows_duplicates=allows_duplicates,
             sparse=sparse,
         )

@@ -3,10 +3,50 @@
 import numpy as np
 import pytest
 
+import tiledb
 from tiledb.cf.creator import DataspaceRegistry, SharedDim
 
 netCDF4 = pytest.importorskip("netCDF4")
 netcdf_engine = pytest.importorskip("tiledb.cf.netcdf_engine")
+
+
+class TestAttrsFilters:
+    """Collection of tests for setting default attribute filters."""
+
+    def test_default_filter(self):
+        """Tests new attribute filter is set to the attrs_filters value if the
+        ``filters`` parameter is not specified."""
+        attrs_filters = tiledb.FilterList([tiledb.ZstdFilter()])
+        registry = DataspaceRegistry()
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dim = dataset.createDimension("row", 64)
+            var = dataset.createVariable("x", np.float64, ("row",))
+            netcdf_engine.NetCDF4DimToDimConverter.from_netcdf(
+                registry, dim, None, np.uint64
+            )
+            converter = netcdf_engine.NetCDF4ArrayConverter(
+                registry, "array", ("row",), attrs_filters=attrs_filters
+            )
+            converter.add_var_to_attr_converter(var)
+        assert converter.attr_creator("x").filters == attrs_filters
+
+    def test_overwrite_default_filters(self):
+        """Tests new attribute filter is set to the provided ``filters`` parameter when
+        ``filters is not ``None``."""
+        attrs_filters = tiledb.FilterList([tiledb.ZstdFilter()])
+        new_filters = tiledb.FilterList([tiledb.GzipFilter(level=5)])
+        registry = DataspaceRegistry()
+        with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
+            dim = dataset.createDimension("row", 64)
+            var = dataset.createVariable("x", np.float64, ("row",))
+            netcdf_engine.NetCDF4DimToDimConverter.from_netcdf(
+                registry, dim, None, np.uint64
+            )
+            converter = netcdf_engine.NetCDF4ArrayConverter(
+                registry, "array", ("row",), attrs_filters=attrs_filters
+            )
+            converter.add_var_to_attr_converter(var, filters=new_filters)
+        assert converter.attr_creator("x").filters == new_filters
 
 
 def test_remove_dim_creator_front():

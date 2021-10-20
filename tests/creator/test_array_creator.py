@@ -91,6 +91,31 @@ class TestArrayCreatorDense1:
         assert nattr == 1
 
 
+class TestAttrsFitlers:
+    """Collection of tests for setting default attribute filters."""
+
+    def test_default_filter(self):
+        """Tests new attribute filter is set to the attrs_filters value if the
+        ``filters`` parameter is not specified."""
+        attrs_filters = tiledb.FilterList([tiledb.ZstdFilter()])
+        registry = DataspaceRegistry()
+        SharedDim(registry, "row", (0, 63), np.uint32)
+        creator = ArrayCreator(registry, "array", ("row",), attrs_filters=attrs_filters)
+        creator.add_attr_creator("x", np.dtype("float64"))
+        assert creator.attr_creator("x").filters == attrs_filters
+
+    def test_overwrite_default_filters(self):
+        """Tests new attribute filter is set to the provided ``filters`` parameter when
+        ``filters is not ``None``."""
+        attrs_filters = tiledb.FilterList([tiledb.ZstdFilter()])
+        new_filters = tiledb.FilterList([tiledb.GzipFilter(level=5)])
+        registry = DataspaceRegistry()
+        SharedDim(registry, "row", (0, 63), np.uint32)
+        creator = ArrayCreator(registry, "array", ("row",), attrs_filters=attrs_filters)
+        creator.add_attr_creator("x", np.dtype("float64"), filters=new_filters)
+        assert creator.attr_creator("x").filters == new_filters
+
+
 def test_rename_attr():
     registry = DataspaceRegistry()
     SharedDim(registry, "pressure", (0.0, 1000.0), np.float64)

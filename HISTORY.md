@@ -21,11 +21,16 @@
 * Removes `get_dense_query_shape` from `NetCDF4DomainConverter`.
 * Adds required positional argument to `get_values` in `NetCDF4ToDimBase` classes.
 * Replaces positional arguments `shape` and `sparse` with `indexer` in `NetCDF4ToAttr` classes.
+* Changes parameter order in `DataspaceCreator.add_array_creator` and `NetCDF4ConverterEngine.add_array_converter`.
+* Changes parameter order in `DataspaceCreator.from_group`.
 
 ### New Features
 
 * Adds `NetCDF4ToDimConverter` subclass of `DimCreator` that supports setting maximum fragment size for copying NetCDF file in chunks.
 * Allows `NetCDF4ScalarToDimConverter` value to be set by user input.
+* Adds `attrs_filters` parameter in `ArrayCreator` and `NetCDF4ToArrayConverter` for setting default attribute filters.
+* Adds parameters `coords_filters`, `offsets_filters`, and `attrs_filters` to `NetCDF4ConverterEngine.from_netcdf` and `NetCDF4ConverterEngine.from_group` for setting default filters.
+
 
 ### Improvements
 
