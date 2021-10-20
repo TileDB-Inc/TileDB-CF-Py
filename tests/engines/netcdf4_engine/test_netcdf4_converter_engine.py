@@ -861,6 +861,63 @@ class TestConvertNetCDFSingleVariableChunk(ConvertNetCDFBase):
         assert tiles == (4, 4)
 
 
+class TestConverterNetCDFVariabelWithFill(ConvertNetCDFBase):
+    """NetCDF conversion test cases for NetCDF variables with explicitly set fill
+    value.
+
+    Dimensions:
+        t (4)
+    Variables:
+        int64 x(t) with fill = -1
+        float64 scalar with fill = 0.0
+    """
+
+    name = "test_fill_values"
+    dimension_args = (("t", 4),)
+    variable_kwargs = (
+        {"varname": "x", "datatype": np.int64, "dimensions": ("t",), "fill_value": -1},
+        {
+            "varname": "a",
+            "datatype": np.float64,
+            "dimensions": tuple(),
+            "fill_value": 0.0,
+        },
+    )
+    variable_data = {"x": np.array((-1, 2, -1, -1)), "a": np.array([0.0])}
+    attr_to_var_map = {"x": "x", "a": "a"}
+
+    @pytest.mark.parametrize("sparse", [True, False])
+    def test_change_fill(self, netcdf_file, tmpdir, sparse):
+        """Test changing the fill value for a standard NetCDF variable."""
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        x_array = converter.get_array_creator_by_attr("x")
+        x_array.sparse = sparse
+        x_array.attr_creator("x").fill = 0
+        converter.convert_to_group(uri)
+        with Group(uri) as group:
+            with group.open_array(attr="x") as array:
+                result = array.multi_index[:]["x"]
+                expected = np.array((0, 2, 0, 0))
+                assert np.array_equal(result, expected)
+
+    @pytest.mark.parametrize("sparse", [True, False])
+    def test_change_fill_scalar(self, netcdf_file, tmpdir, sparse):
+        """Test changing the fill value for a NetCDF scalar variable."""
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        # Test change fill for standard variable
+        scalar_array = converter.get_array_creator_by_attr("a")
+        scalar_array.sparse = sparse
+        scalar_array.attr_creator("a").fill = np.nan
+        converter.convert_to_group(uri)
+        with Group(uri) as group:
+            with group.open_array(attr="a") as array:
+                result = array.multi_index[:]["a"]
+                expected = np.array([np.nan])
+                np.testing.assert_equal(result, expected)
+
+
 def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("virtual1"))
     from_netcdf(

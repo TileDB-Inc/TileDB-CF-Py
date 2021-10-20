@@ -5,6 +5,8 @@
 
 ### Bug fixes
 
+* Fixes converting NetCDF fill value to TileDB fill value when they are different.
+
 ### Breaking Behavior
 
 * Removes deprecated method `create_virtual` for the `Group` class.
