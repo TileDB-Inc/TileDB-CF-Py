@@ -27,6 +27,10 @@ def from_netcdf(
     ] = None,
     coords_to_dims: bool = False,
     collect_attrs: bool = True,
+    unpack_vars: bool = False,
+    coords_filters: Optional[tiledb.FilterList] = None,
+    offsets_filters: Optional[tiledb.FilterList] = None,
+    attrs_filters: Optional[tiledb.FilterList] = None,
     use_virtual_groups: bool = False,
 ):
     """Converts a NetCDF input file to nested TileDB CF dataspaces.
@@ -53,16 +57,23 @@ def from_netcdf(
             dimensions of the variable in the generated TileDB array.
         tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
             to the tiles of those dimensions in the generated TileDB array.
-        use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
-            as the name for the group metadata array. All other arrays will be named
-            using the convention ``{uri}_{array_name}`` where ``array_name`` is the
-            name of the array.
         coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
             TileDB dimension for sparse arrays. Otherwise, convert the coordinate
             dimension into a TileDB dimension and the coordinate variable into a
             TileDB attribute.
         collect_attrs: If ``True``, store all attributes with the same dimensions in
             the same array. Otherwise, store each attribute in a scalar array.
+        unpack_vars: Unpack NetCDF variables with NetCDF attributes ``scale_factor``
+            or ``add_offset`` using the transformation ``scale_factor * value +
+            unpack``.
+        coords_filters: Default filters for all dimensions.
+        offsets_filters: Default filters for all offsets for variable attributes
+            and dimensions.
+        attrs_filters: Default filters for all attributes.
+        use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
+            as the name for the group metadata array. All other arrays will be named
+            using the convention ``{uri}_{array_name}`` where ``array_name`` is the
+            name of the array.
     """
     from .converter import NetCDF4ConverterEngine, open_netcdf_group
 
@@ -82,6 +93,10 @@ def from_netcdf(
             tiles_by_dims.get(netcdf_group.path),
             coords_to_dims=coords_to_dims,
             collect_attrs=collect_attrs,
+            unpack_vars=unpack_vars,
+            coords_filters=coords_filters,
+            offsets_filters=offsets_filters,
+            attrs_filters=attrs_filters,
         )
         if use_virtual_groups:
             group_uri = (
