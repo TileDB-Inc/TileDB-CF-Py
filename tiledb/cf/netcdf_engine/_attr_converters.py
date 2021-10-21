@@ -125,6 +125,8 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             ) from err
         attr_meta = AttrMetadata(tiledb_array.meta, self.name)
         for key in variable.ncattrs():
+            if key == "_FillValue":
+                continue
             if self.unpack and key in {"scale_factor", "add_offset"}:
                 continue
             safe_set_metadata(attr_meta, key, variable.getncattr(key))
