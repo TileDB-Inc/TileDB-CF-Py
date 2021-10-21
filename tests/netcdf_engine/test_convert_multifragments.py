@@ -57,7 +57,7 @@ class TestSimplyCopyChunks:
                 array_uri = array.uri
                 result = array[...]
         result = result["f"] if isinstance(result, dict) else result
-        assert np.array_equal(result, expected_result)
+        np.testing.assert_equal(result, expected_result)
         fragment_info = tiledb.FragmentInfoList(array_uri)
         assert len(fragment_info) == 8
 
@@ -90,9 +90,9 @@ class TestSimplyCopyChunks:
                 array_uri = array.uri
                 result = array[0, :, :, :]
         f_result = result["f"]
-        assert np.array_equal(f_result, expected_result)
+        np.testing.assert_equal(f_result, expected_result)
         g_result = np.reshape(result["g"], (1, 8, 8, 8))
-        assert np.array_equal(g_data, g_result)
+        np.testing.assert_equal(g_data, g_result)
         fragment_info = tiledb.FragmentInfoList(array_uri)
         assert len(fragment_info) == 8
 
@@ -153,6 +153,6 @@ class TestCoordinateCopyChunks:
                 result = array[...]
         result = result["f"]
         expected_result = np.arange(64)
-        assert np.array_equal(result, expected_result)
+        np.testing.assert_equal(result, expected_result)
         fragment_info = tiledb.FragmentInfoList(array_uri)
         assert len(fragment_info) == 4

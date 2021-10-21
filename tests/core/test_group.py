@@ -120,14 +120,14 @@ class TestGroupWithArrays:
             with group.open_array(array="A1") as array:
                 assert isinstance(array, tiledb.Array)
                 assert array.mode == "r"
-                assert np.array_equal(array[:, :]["a"], self._A1_data)
+                np.testing.assert_equal(array[:, :]["a"], self._A1_data)
 
     def test_open_attr(self, group_uri):
         with Group(group_uri) as group:
             with group.open_array(attr="a") as array:
                 assert isinstance(array, tiledb.Array)
                 assert array.mode == "r"
-                assert np.array_equal(array[:, :], self._A1_data)
+                np.testing.assert_equal(array[:, :], self._A1_data)
 
     def test_no_array_with_attr_exception(self, group_uri):
         with Group(group_uri) as group:

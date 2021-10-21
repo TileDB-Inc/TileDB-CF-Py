@@ -27,7 +27,7 @@ def test_netcdf_convert_collect(tmpdir, simple1_netcdf_file):
     assert dim_names == ["row"]
     with tiledb.open(uri + "/array0", attr="x1") as array:
         x1 = array[:]
-    assert np.array_equal(x1, np.linspace(1.0, 4.0, 8))
+    np.testing.assert_equal(x1, np.linspace(1.0, 4.0, 8))
 
 
 def test_netcdf_convert_separate(tmpdir, simple1_netcdf_file):
@@ -52,4 +52,4 @@ def test_netcdf_convert_separate(tmpdir, simple1_netcdf_file):
     assert dim_names == ["row"]
     with tiledb.open(uri + "/x1", attr="x1") as array:
         x1 = array[:]
-    assert np.array_equal(x1, np.linspace(1.0, 4.0, 8))
+    np.testing.assert_equal(x1, np.linspace(1.0, 4.0, 8))

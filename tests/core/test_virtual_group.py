@@ -117,14 +117,14 @@ class TestVirtualGroupWithArrays:
             with group.open_array(array="A1") as array:
                 assert isinstance(array, tiledb.Array)
                 assert array.mode == "r"
-                assert np.array_equal(array[:, :]["a"], self._A1_data)
+                np.testing.assert_equal(array[:, :]["a"], self._A1_data)
 
     def test_open_attr(self, group_uris):
         with VirtualGroup(group_uris) as group:
             with group.open_array(attr="a") as array:
                 assert isinstance(array, tiledb.Array)
                 assert array.mode == "r"
-                assert np.array_equal(array[:, :], self._A1_data)
+                np.testing.assert_equal(array[:, :], self._A1_data)
 
     def test_attr_ambiguous_error(self, group_uris):
         with VirtualGroup(group_uris) as group:
