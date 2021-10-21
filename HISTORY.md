@@ -6,6 +6,7 @@
 ### Bug fixes
 
 * Fixes converting NetCDF fill value to TileDB fill value when they are different.
+* Fixes copying metadata from NetCDF variable to TileDB attribute to drop `_FillValue`.
 
 ### Breaking Behavior
 

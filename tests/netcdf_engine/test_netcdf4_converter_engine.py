@@ -991,6 +991,15 @@ class TestConverterNetCDFVariabelWithFill(ConvertNetCDFBase):
                 expected = np.array([np.nan])
                 np.testing.assert_equal(result, expected)
 
+    def test_fill_value_not_in_metadata(self, netcdf_file, tmpdir):
+        """Test that NetCDF attribute `_FillValue` is not copied to TileDB."""
+        uri = str(tmpdir.mkdir("output").join(self.name))
+        converter = NetCDF4ConverterEngine.from_file(netcdf_file)
+        converter.convert_to_group(uri)
+        with Group(uri) as group:
+            with group.open_array(attr="x") as array:
+                assert "_FillValue" not in array.meta
+
 
 def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
     uri = str(tmpdir.mkdir("output").join("virtual1"))
@@ -1105,7 +1114,7 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
 
 
 def test_variable_fill(tmpdir):
-    """Test converting a NetCDF variable will the _FillValue NetCDF attribute set."""
+    """Test converting a NetCDF variable with the _FillValue NetCDF attribute set."""
     filepath = str(tmpdir.mkdir("sample_netcdf").join("test_fill.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
         dataset.createDimension("row", 4)
