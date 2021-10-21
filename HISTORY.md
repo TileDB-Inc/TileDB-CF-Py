@@ -25,14 +25,15 @@
 * Replaces positional arguments `shape` and `sparse` with `indexer` in `NetCDF4ToAttr` classes.
 * Changes parameter order in `DataspaceCreator.add_array_creator` and `NetCDF4ConverterEngine.add_array_converter`.
 * Changes parameter order in `DataspaceCreator.from_group`.
+* Changes parameter order in `from_netcdf`
 
 ### New Features
 
 * Adds `NetCDF4ToDimConverter` subclass of `DimCreator` that supports setting maximum fragment size for copying NetCDF file in chunks.
 * Allows `NetCDF4ScalarToDimConverter` value to be set by user input.
 * Adds `attrs_filters` parameter in `ArrayCreator` and `NetCDF4ToArrayConverter` for setting default attribute filters.
-* Adds parameters `coords_filters`, `offsets_filters`, and `attrs_filters` to `NetCDF4ConverterEngine.from_netcdf` and `NetCDF4ConverterEngine.from_group` for setting default filters.
-* Adds parameter `unpack_vars` to `NetCDF4ConverterEngine.from_netcdf` and `NetCDF4ConverterEngine.from_group` for unpacking NetCDF variables that use `add_offset` or `scale_factor`.
+* Adds parameters `coords_filters`, `offsets_filters`, and `attrs_filters` to `from_netcdf`, `NetCDF4ConverterEngine.from_netcdf`, and `NetCDF4ConverterEngine.from_group` for setting default filters.
+* Adds parameter `unpack_vars` to `from_netcdf`, `NetCDF4ConverterEngine.from_netcdf`, and `NetCDF4ConverterEngine.from_group` for unpacking NetCDF variables that use `add_offset` or `scale_factor`.
 * Adds parameter `unpack` to `NetCDF4ConverterEngine.add_var_to_attr_converter` for unpacking NetCDF variables that use `add_offset` or `scale_factor`.
 * Adds parameter `unpack` to `NetCDF4ConverterEngine.add_coord_to_dim_converter` for unpacking NetCDF variables that use `add_offset` or `scale_factor`.
 
