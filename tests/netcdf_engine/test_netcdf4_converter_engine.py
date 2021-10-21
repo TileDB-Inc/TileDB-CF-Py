@@ -64,7 +64,7 @@ class ConvertNetCDFBase:
                 with group.open_array(attr=attr_name) as array:
                     nonempty_domain = array.nonempty_domain()
                     result = array.multi_index[nonempty_domain]
-                assert np.array_equal(
+                np.testing.assert_equal(
                     result[attr_name], self.variable_data[var_name]
                 ), f"unexpected values for attribute '{attr_name}'"
 
@@ -137,7 +137,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         assert nonempty_domain == ((0, 7), (2, 2))
         tiledb_array = data["x1"]
         original = self.variable_data["x1"]
-        assert np.array_equal(tiledb_array, original)
+        np.testing.assert_equal(tiledb_array, original)
 
     def test_append_to_group(self, netcdf_file, tmpdir):
         """Tests adding the arrays from the converter to an existing group."""
@@ -179,7 +179,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         index = np.argsort(data["row"])
         x1 = data["x1"][index]
         expected = np.linspace(1.0, 4.0, 8)
-        assert np.array_equal(x1, expected)
+        np.testing.assert_equal(x1, expected)
 
     def test_no_collect_tiles_by_var(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(
@@ -264,7 +264,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         with Group(uri) as group:
             with group.open_array(attr="a1") as array:
                 result = array[:]
-        assert np.array_equal(a1_data, result)
+        np.testing.assert_equal(a1_data, result)
 
     def test_non_netcdf_attr_missing_data_error(self, netcdf_file, tmpdir):
         """Tests error converting a NetCDF file with an external attribute when data is
@@ -374,8 +374,8 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
         index = np.argsort(data["x"])
         x = data["x"][index]
         y = data["y"][index]
-        assert np.array_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
-        assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
+        np.testing.assert_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
+        np.testing.assert_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
 
     def test_convert_to_array(self, netcdf_file, tmpdir):
         uri = str(tmpdir.mkdir("output").join("array_example"))
@@ -396,8 +396,8 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
         index = np.argsort(data["x"])
         x = data["x"][index]
         y = data["y"][index]
-        assert np.array_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
-        assert np.array_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
+        np.testing.assert_equal(x, np.array([-1.0, 2.0, 4.0, 5.0]))
+        np.testing.assert_equal(y, np.array([1.0, 4.0, 16.0, 25.0]))
 
     @pytest.mark.parametrize(
         "collect_attrs, array_name", [(True, "array0"), (False, "y")]
@@ -535,8 +535,8 @@ class TestConvertNetCDFCoordWithTiles(ConvertNetCDFBase):
         index_order = np.argsort(data["index"])
         index = data["index"][index_order]
         y = data["y"][index_order]
-        assert np.array_equal(index, self.variable_data["index"])
-        assert np.array_equal(y, self.variable_data["y"])
+        np.testing.assert_equal(index, self.variable_data["index"])
+        np.testing.assert_equal(y, self.variable_data["y"])
 
 
 class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
@@ -596,7 +596,7 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
         assert nonempty_domain == ((0, 3), (2, 2), (0, 3))
         tiledb_array = data["data"]
         original = self.variable_data["data"]
-        assert np.array_equal(tiledb_array, original)
+        np.testing.assert_equal(tiledb_array, original)
 
     def test_convert_sparse_with_non_netcdf_dims(self, netcdf_file, tmpdir):
         """Test converting the NetCDF variable 'x1' into a TileDB array with
@@ -623,7 +623,7 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
         assert nonempty_domain == ((0, 3), (2, 2), (0, 3))
         tiledb_array = data["data"]
         original = self.variable_data["data"].reshape(-1)
-        assert np.array_equal(tiledb_array, original)
+        np.testing.assert_equal(tiledb_array, original)
 
     def test_copy_missing_dim(self, netcdf_file, tmpdir):
         """Test converting the NetCDF variable 'x1' into a TileDB array with
@@ -749,8 +749,8 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         with tiledb.cf.Group(uri) as group:
             with group.open_array(array="scalars") as array:
                 data = array[0]
-        assert np.array_equal(data["x"], self.variable_data["x"])
-        assert np.array_equal(data["y"], self.variable_data["y"])
+        np.testing.assert_equal(data["x"], self.variable_data["x"])
+        np.testing.assert_equal(data["y"], self.variable_data["y"])
 
     def test_scalar_assigned_dim_value(self, netcdf_file, tmpdir):
         """Tests setting the value for a scalar dimension when converting NetCDF
@@ -764,8 +764,8 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         with tiledb.cf.Group(uri) as group:
             with group.open_array(array="array0") as array:
                 data = array[1:2]
-        assert np.array_equal(data["x"], self.variable_data["x"])
-        assert np.array_equal(data["y"], self.variable_data["y"])
+        np.testing.assert_equal(data["x"], self.variable_data["x"])
+        np.testing.assert_equal(data["y"], self.variable_data["y"])
 
     def test_inject_dim(self, netcdf_file, tmpdir):
         """Tests converting NetCDF scalar dimensions to TileDB with an extra dimension
@@ -779,8 +779,8 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         with tiledb.cf.Group(uri) as group:
             with group.open_array(array="array0") as array:
                 data = array[:, 1]
-        assert np.array_equal(data["x"], self.variable_data["x"])
-        assert np.array_equal(data["y"], self.variable_data["y"])
+        np.testing.assert_equal(data["x"], self.variable_data["x"])
+        np.testing.assert_equal(data["y"], self.variable_data["y"])
 
 
 class TestConvertNetCDFMatchingChunks(ConvertNetCDFBase):
@@ -888,11 +888,11 @@ class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
             with group.open_array(attr="x1") as array:
                 x1_result = array[:, :]["x1"]
             x1_expected = np.arange(64, dtype=np.int32)
-            assert np.array_equal(x1_result, x1_expected)
+            np.testing.assert_equal(x1_result, x1_expected)
             with group.open_array(attr="x2") as array:
                 x2_result = array[:, :]["x2"]
         x2_expected = np.arange(64, 128, dtype=np.int32)
-        assert np.array_equal(x2_result, x2_expected)
+        np.testing.assert_equal(x2_result, x2_expected)
 
 
 class TestConvertNetCDFSingleVariableChunk(ConvertNetCDFBase):
@@ -973,7 +973,7 @@ class TestConverterNetCDFVariabelWithFill(ConvertNetCDFBase):
             with group.open_array(attr="x") as array:
                 result = array.multi_index[:]["x"]
                 expected = np.array((0, 2, 0, 0))
-                assert np.array_equal(result, expected)
+                np.testing.assert_equal(result, expected)
 
     @pytest.mark.parametrize("sparse", [True, False])
     def test_change_fill_scalar(self, netcdf_file, tmpdir, sparse):
@@ -1006,7 +1006,7 @@ def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
     # Test root
     with tiledb.open(f"{uri}_x1", attr="x1") as array:
         x1 = array[:]
-    assert np.array_equal(x1, x)
+    np.testing.assert_equal(x1, x)
     # # Test group 3
     with tiledb.open(f"{uri}_group3_A1", attr="A1") as array:
         A1 = array[:, :]
@@ -1014,9 +1014,9 @@ def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
         A2 = array[:, :]
     with tiledb.open(f"{uri}_group3_A3", attr="A3") as array:
         A3 = array[:, :]
-    assert np.array_equal(A1, np.outer(y, y))
-    assert np.array_equal(A2, np.zeros((4, 4), dtype=np.float64))
-    assert np.array_equal(A3, np.identity(4, dtype=np.int32))
+    np.testing.assert_equal(A1, np.outer(y, y))
+    np.testing.assert_equal(A2, np.zeros((4, 4), dtype=np.float64))
+    np.testing.assert_equal(A3, np.identity(4, dtype=np.int32))
 
 
 def test_virtual_from_file(simple2_netcdf_file, tmpdir):
@@ -1082,26 +1082,26 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
     with Group(root_uri) as group:
         with group.open_array(attr="x1") as array:
             x1 = array[:]
-    assert np.array_equal(x1, x)
+    np.testing.assert_equal(x1, x)
     # Test group 1
     with Group(root_uri + "/group1") as group:
         with group.open_array(attr="x2") as array:
             x2 = array[:]
-    assert np.array_equal(x2, 2.0 * x)
+    np.testing.assert_equal(x2, 2.0 * x)
     # Test group 2
     with Group(root_uri + "/group1/group2") as group:
         with group.open_array(attr="y1") as array:
             y1 = array[:]
-    assert np.array_equal(y1, y)
+    np.testing.assert_equal(y1, y)
     # Test group 3
     with tiledb.open(root_uri + "/group3/array0") as array:
         array0 = array[:, :]
         A1 = array0["A1"]
         A2 = array0["A2"]
         A3 = array0["A3"]
-    assert np.array_equal(A1, np.outer(y, y))
-    assert np.array_equal(A2, np.zeros((4, 4), dtype=np.float64))
-    assert np.array_equal(A3, np.identity(4, dtype=np.int32))
+    np.testing.assert_equal(A1, np.outer(y, y))
+    np.testing.assert_equal(A2, np.zeros((4, 4), dtype=np.float64))
+    np.testing.assert_equal(A3, np.identity(4, dtype=np.int32))
 
 
 def test_variable_fill(tmpdir):
