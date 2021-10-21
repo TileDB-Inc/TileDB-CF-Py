@@ -73,7 +73,7 @@ def from_netcdf(
     if tiles_by_dims is None:
         tiles_by_dims = {}
 
-    def recursive_convert_to_virtual_group(netcdf_group):
+    def recursive_convert(netcdf_group):
         converter = NetCDF4ConverterEngine.from_group(
             netcdf_group,
             unlimited_dim_size,
@@ -83,45 +83,26 @@ def from_netcdf(
             coords_to_dims=coords_to_dims,
             collect_attrs=collect_attrs,
         )
-        group_uri = (
-            output_uri
-            if netcdf_group.path == "/"
-            else output_uri + netcdf_group.path.replace("/", "_")
-        )
-        converter.convert_to_virtual_group(
-            group_uri, output_key, output_ctx, input_netcdf_group=netcdf_group
-        )
+        if use_virtual_groups:
+            group_uri = (
+                output_uri
+                if netcdf_group.path == "/"
+                else output_uri + netcdf_group.path.replace("/", "_")
+            )
+            converter.convert_to_virtual_group(
+                group_uri, output_key, output_ctx, input_netcdf_group=netcdf_group
+            )
+        else:
+            group_uri = output_uri + netcdf_group.path
+            converter.convert_to_group(
+                group_uri, output_key, output_ctx, input_netcdf_group=netcdf_group
+            )
         if recursive:
             for subgroup in netcdf_group.groups.values():
-                recursive_convert_to_virtual_group(subgroup)
+                recursive_convert(subgroup)
 
-    def recursive_convert_to_group(netcdf_group):
-        converter = NetCDF4ConverterEngine.from_group(
-            netcdf_group,
-            unlimited_dim_size,
-            dim_dtype,
-            tiles_by_var.get(netcdf_group.path),
-            tiles_by_dims.get(netcdf_group.path),
-            coords_to_dims=coords_to_dims,
-            collect_attrs=collect_attrs,
-        )
-        group_uri = output_uri + netcdf_group.path
-        converter.convert_to_group(
-            group_uri, output_key, output_ctx, input_netcdf_group=netcdf_group
-        )
-        if recursive:
-            for subgroup in netcdf_group.groups.values():
-                recursive_convert_to_group(subgroup)
-
-    if use_virtual_groups:
-        with open_netcdf_group(
-            input_file=input_file,
-            group_path=input_group_path,
-        ) as dataset:
-            recursive_convert_to_virtual_group(dataset)
-    else:
-        with open_netcdf_group(
-            input_file=input_file,
-            group_path=input_group_path,
-        ) as dataset:
-            recursive_convert_to_group(dataset)
+    with open_netcdf_group(
+        input_file=input_file,
+        group_path=input_group_path,
+    ) as dataset:
+        recursive_convert(dataset)
