@@ -17,6 +17,3 @@ docs/_build/
 
 # pyenv
 .python-version
-
-# Example output
-examples/output/*
