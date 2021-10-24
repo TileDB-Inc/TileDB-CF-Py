@@ -1,6 +1,7 @@
 # Copyright 2021 TileDB Inc.
 # Licensed under the MIT License.
-"""Input and output routines for the TileDB-CF data model."""
+"""Classes for additional group and metadata support useful for the TileDB-CF data
+model."""
 
 from __future__ import annotations
 
@@ -189,7 +190,7 @@ class ArrayMetadata(Metadata):
     """Class for accessing array-related metadata from a TileDB metadata object.
 
     This class provides a way for accessing the TileDB array metadata that excludes
-    attribute-specific metadata.
+    attribute and dimension specific metadata.
 
     Parameters:
         metadata (tiledb.Metadata): TileDB array metadata object for the desired array.
@@ -272,9 +273,9 @@ class DimMetadata(Metadata):
 class Group:
     """Class for accessing group metadata and arrays in a TileDB group.
 
-    The group class is a context manager for accessing the arrays, group metadata
-    and attributes in a TileDB group. It can be used to open the group metadata array
-    and at most one other array at a time.
+    The group class is a context manager for accessing the arrays, group metadata,
+    and attributes in a TileDB group. It can be used to access group-level metadata and
+    open arrays inside the group.
 
     Parameters:
         uri: Uniform resource identifier for TileDB group or array.
@@ -283,8 +284,6 @@ class Group:
         key: If not ``None``, encryption key, or dictionary of encryption keys by
             array name, to decrypt arrays.
         timestamp: If not ``None``, timestamp to open the group metadata and array at.
-        array: DEPRECACTED: use group.open_array instead.
-        attr: DEPRECATED: use group.open_array instead.
         ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
     """
 
@@ -297,7 +296,7 @@ class Group:
         ctx: Optional[tiledb.Ctx] = None,
         append: bool = False,
     ):
-        """Create a TileDB group and the arrays inside the group from a group schema.
+        """Creates a TileDB group and the arrays inside the group from a group schema.
 
         This method creates a TileDB group at the provided URI and creates arrays
         inside the group with the names and array schemas from the provided group
@@ -599,7 +598,7 @@ class GroupSchema(Mapping):
     schema for an array to store group-level metadata.
 
     Parameters:
-        array_schemas: A dict of array names to array schemas.
+        array_schemas: A dict of array names to array schemas in the group.
         metadata_schema: If not ``None``, a schema for the group metadata array.
         use_default_metadata_schema: If ``True`` and ``metadata_schema=None`` a default
             schema will be created for the metadata array.
@@ -613,7 +612,7 @@ class GroupSchema(Mapping):
         ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, str], str]] = None,
     ):
-        """Load a schema for a TileDB group from a TileDB URI.
+        """Loads a schema for a TileDB group from a TileDB URI.
 
         Parameters:
             uri: uniform resource identifier for the TileDB group
@@ -651,7 +650,8 @@ class GroupSchema(Mapping):
         ctx: Optional[tiledb.Ctx] = None,
         key: Optional[Union[Dict[str, str], str]] = None,
     ):
-        """Load a schema for a TileDB group from a mapping of array names to array URIs.
+        """Loads a schema for a TileDB group from a mapping of array names to array
+        URIs.
 
         Parameters:
             array_uris: Mapping from array names to array uniform resource identifiers.

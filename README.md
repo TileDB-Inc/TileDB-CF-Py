@@ -4,12 +4,6 @@
 
 The TileDB-CF-Py library is a Python library for supporting the NetCDF data model in the [TileDB storage engine](https://github.com/TileDB-Inc/TileDB). TileDB-CF-Py provides readers and writers for viewing and manipulating TileDB arrays and groups using TileDB CF Dataspaces - a special TileDB group that follows the requirements in [tiledb-cf-spec.md](tiledb-cf-spec.md).
 
-## Documentation
-
-  * Documentation (TBD)
-  * API Documentation (TBD)
-  * [TileDB CF Dataspace Specification](tiledb-cf-spec.md)
-
 ## TileDB Quick Links
 
   * [Homepage](https://tiledb.com)
@@ -17,16 +11,37 @@ The TileDB-CF-Py library is a Python library for supporting the NetCDF data mode
   * [Forum](https://forum.tiledb.io/)
   * [Organization](https://github.com/TileDB-Inc/)
 
-## Quick Installation
+## Getting Started
+
+### Quick Installation
 
 This project is available from [PyPI](https://pypi.org/project/tiledb/) and may be installed with ``pip``:
 
 ```bash
 pip install tiledb-cf
-
 ```
 
-## Command Line Interface
+### Documentation
+
+#### API Documentation
+
+To build the API documentation do the following from this projects root directory:
+
+1. Install required packages:
+   ```bash
+   python3 -m pip install tiledb-cf[docs]
+   ```
+2. Make the HTML document:
+   ```bash
+   make -C docs/ html
+   ```
+3. Open [docs/_build/html/index.html](./docs/_build/html/index.html) in a web browser of your choice.
+
+#### Example Notebooks
+
+Example Jupyter notebooks are available in the [examples](./examples) folder.
+
+#### Command Line Interface
 
 TileDB-CF provides a command line interface. Currently, it has the following commands:
 

@@ -33,6 +33,8 @@ Metadata Wrappers
 
 .. autoclass:: tiledb.cf.AttrMetadata
 
+.. autoclass:: tiledb.cf.DimMetadata
+
 Dataspace Creator
 #################
 
