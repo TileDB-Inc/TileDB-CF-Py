@@ -13,6 +13,8 @@ The [core](./core) subdirectory includes examples on using TileDB-CF core module
 The [netcdf_engine](./netcdf_engine) subdirectory includes examples for converting NetCDF to TileDB.
 
 * [NetCDF to TileDB conversion basics](./netcdf_engine/netcdf-to-tiledb-basics.ipynb)
+* [Setting tile size for TileDB arrrays](./netcdf_engine/netcdf-to-tiledb-set-tiles.ipynb)
+* [Setting the max fragment size or max chunk size for copying data from NetCDF to TileDB](./netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.ipynb)
 
 ## Xarray Backend
 
