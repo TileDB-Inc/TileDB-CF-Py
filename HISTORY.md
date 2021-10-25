@@ -1,7 +1,18 @@
 # History
 
-
 ## Unreleased
+
+### Bug fixes
+
+### Breaking Behavior
+
+### New Features
+
+### Improvements
+
+### Deprecation
+
+## 0.5.0
 
 ### Bug fixes
 
@@ -41,8 +52,6 @@
 
 * Allows `NetCDF4ScalarToDimConverter` to be removed from an array with NetCDF attributes.
 * Removes restriction on converting a NetCDF coordinate to a TileDB dimension if it is scaled.
-
-### Deprecation
 
 ## 0.4.2
 
