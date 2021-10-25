@@ -965,6 +965,9 @@ class AttrCreator(metaclass=ABCMeta):
 
         Parameters:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+
+        Returns:
+            Returns an attribute with the set properties.
         """
         return tiledb.Attr(
             name=self.name,
@@ -1015,6 +1018,9 @@ class DomainCreator:
 
         Parameter:
             dim_id: dimension index (int) or name (str)
+
+        Returns:
+            The dimension creator with the requested key.
         """
         return self._array_registry.get_dim_creator(dim_id)
 
@@ -1032,6 +1038,7 @@ class DomainCreator:
 
     @property
     def tiles(self):
+        """Tiles for the dimension creators in the domain."""
         return tuple(dim_creator.tile for dim_creator in self)
 
     @tiles.setter
@@ -1117,6 +1124,9 @@ class DimCreator:
 
         Parameters:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+
+        Returns:
+            A tiledb dimension with the set properties.
         """
         if self.domain is None:
             raise ValueError(

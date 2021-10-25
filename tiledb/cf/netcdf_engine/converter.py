@@ -593,7 +593,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         dim_name: str = "__scalars",
         dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
     ):
-        """Adds a new NetCDF scalar dimension.
+        """Adds a new TileDB dimension for NetCDF scalar variables.
 
         Parameters:
             dim_name: Output name of the dimension.

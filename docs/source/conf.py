@@ -1,8 +1,3 @@
-import os
-import sys
-
-sys.path.append(os.path.abspath("../src/tiledb/cf"))
-
 templates_path = ["_templates"]
 source_suffix = [".rst", ".md"]
 
