@@ -14,7 +14,6 @@ The [netcdf_engine](./netcdf_engine) subdirectory includes examples for converti
 
 * [NetCDF to TileDB conversion basics](./netcdf_engine/netcdf-to-tiledb-basics.ipynb)
 * [Setting tile size for TileDB arrrays](./netcdf_engine/netcdf-to-tiledb-set-tiles.ipynb)
-* [Setting TileDB filters for data compression](./netcdf_engine/netcdf-to-tiledb-set-filters.ipynb)
 * [Setting the max fragment size or max chunk size for copying data from NetCDF to TileDB](./netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.ipynb)
 
 ## Xarray Backend
