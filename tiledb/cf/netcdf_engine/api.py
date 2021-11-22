@@ -31,6 +31,7 @@ def from_netcdf(
     coords_filters: Optional[tiledb.FilterList] = None,
     offsets_filters: Optional[tiledb.FilterList] = None,
     attrs_filters: Optional[tiledb.FilterList] = None,
+    copy_metadata: bool = True,
     use_virtual_groups: bool = False,
 ):
     """Converts a NetCDF input file to nested TileDB CF dataspaces.
@@ -70,6 +71,8 @@ def from_netcdf(
         offsets_filters: Default filters for all offsets for variable attributes
             and dimensions.
         attrs_filters: Default filters for all attributes.
+        copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
+            TileDB metadata. If ``False`` do not copy metadata.
         use_virtual_groups: If ``True``, create a virtual group using ``output_uri``
             as the name for the group metadata array. All other arrays will be named
             using the convention ``{uri}_{array_name}`` where ``array_name`` is the
@@ -105,12 +108,20 @@ def from_netcdf(
                 else output_uri + netcdf_group.path.replace("/", "_")
             )
             converter.convert_to_virtual_group(
-                group_uri, output_key, output_ctx, input_netcdf_group=netcdf_group
+                group_uri,
+                output_key,
+                output_ctx,
+                input_netcdf_group=netcdf_group,
+                copy_metadata=copy_metadata,
             )
         else:
             group_uri = output_uri + netcdf_group.path
             converter.convert_to_group(
-                group_uri, output_key, output_ctx, input_netcdf_group=netcdf_group
+                group_uri,
+                output_key,
+                output_ctx,
+                input_netcdf_group=netcdf_group,
+                copy_metadata=copy_metadata,
             )
         if recursive:
             for subgroup in netcdf_group.groups.values():

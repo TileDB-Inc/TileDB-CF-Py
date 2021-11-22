@@ -158,6 +158,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
         tiledb_ctx: Optional[str] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
+        copy_metadata: bool = True,
     ):
         """Copies data from a NetCDF group to a TileDB CF array.
 
@@ -179,13 +180,13 @@ class NetCDF4ArrayConverter(ArrayCreator):
         with tiledb.open(
             tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
         ) as tiledb_array:
-            # Copy metadata for TileDB dimensions and attributes.
-            for attr_creator in self:
-                if isinstance(attr_creator, NetCDF4ToAttrConverter):
-                    attr_creator.copy_metadata(netcdf_group, tiledb_array)
-            for dim_creator in self._domain_creator:
-                if isinstance(dim_creator.base, NetCDF4ToDimBase):
-                    dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
+            if copy_metadata:
+                for attr_creator in self:
+                    if isinstance(attr_creator, NetCDF4ToAttrConverter):
+                        attr_creator.copy_metadata(netcdf_group, tiledb_array)
+                for dim_creator in self._domain_creator:
+                    if isinstance(dim_creator.base, NetCDF4ToDimBase):
+                        dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
             # Copy array data.
             for indexer in itertools.product(*dim_slices):
                 with tiledb.open(

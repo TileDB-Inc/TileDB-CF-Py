@@ -1062,6 +1062,18 @@ def test_group_metadata(tmpdir):
         assert group.meta["array"] == (0.0, 1.0, 2.0)
 
 
+def test_group_metadata_no_copy(tmpdir):
+    filepath = str(tmpdir.mkdir("data").join("test_group_metadata.nc"))
+    with netCDF4.Dataset(filepath, mode="w") as dataset:
+        dataset.setncattr("name", "Group metadata example")
+        dataset.setncattr("array", [0.0, 1.0, 2.0])
+    uri = str(tmpdir.mkdir("output").join("test_group_metadata"))
+    from_netcdf(filepath, uri, coords_to_dims=False, copy_metadata=False)
+    with Group(uri) as group:
+        assert "name" not in group.meta
+        assert "array" not in group.meta
+
+
 def test_variable_metadata(tmpdir):
     filepath = str(tmpdir.mkdir("data").join("test_variable_metadata.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:
@@ -1080,6 +1092,26 @@ def test_variable_metadata(tmpdir):
             assert attr_meta["fullname"] == "Example variable"
             assert attr_meta["array"] == (1, 2)
             assert attr_meta["singleton"] == 1.0
+
+
+def test_variable_metadata_no_copy(tmpdir):
+    filepath = str(tmpdir.mkdir("data").join("test_variable_metadata.nc"))
+    with netCDF4.Dataset(filepath, mode="w") as dataset:
+        dataset.createDimension("row", 4)
+        variable = dataset.createVariable("x1", np.float64, ("row",))
+        variable[:] = np.array([1.0, 2.0, 3.0, 4.0])
+        variable.setncattr("fullname", "Example variable")
+        variable.setncattr("array", [1, 2])
+        variable.setncattr("singleton", [1.0])
+    uri = str(tmpdir.mkdir("output").join("test_variable_metadata"))
+    from_netcdf(filepath, uri, coords_to_dims=False, copy_metadata=False)
+    with Group(uri) as group:
+        with group.open_array(attr="x1") as array:
+            attr_meta = AttrMetadata(array.meta, "x1")
+            assert attr_meta is not None
+            assert "fullname" not in attr_meta
+            assert "array" not in attr_meta
+            assert "singleton" not in attr_meta
 
 
 def test_nested_groups(tmpdir, group1_netcdf_file):
