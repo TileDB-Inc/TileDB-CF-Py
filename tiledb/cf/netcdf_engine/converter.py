@@ -436,6 +436,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         input_group_path: Optional[str],
         assigned_dim_values: Optional[Dict[str, Any]],
         assigned_attr_values: Optional[Dict[str, np.ndarray]],
+        copy_metadata: bool,
     ):
         if input_netcdf_group is None:
             input_file = (
@@ -449,8 +450,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         with open_netcdf_group(
             input_netcdf_group, input_file, input_group_path
         ) as netcdf_group:
-            with tiledb.open(group_uri, mode="w", key=key, ctx=ctx) as group_array:
-                copy_group_metadata(netcdf_group, group_array.meta)
+            if copy_metadata:
+                with tiledb.open(group_uri, mode="w", key=key, ctx=ctx) as group_array:
+                    copy_group_metadata(netcdf_group, group_array.meta)
             for array_creator in self._registry.array_creators():
                 if isinstance(array_creator, NetCDF4ArrayConverter):
                     array_creator.copy(
@@ -460,6 +462,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         tiledb_ctx=ctx,
                         assigned_dim_values=assigned_dim_values,
                         assigned_attr_values=assigned_attr_values,
+                        copy_metadata=copy_metadata,
                     )
 
     def _repr_html_(self):
@@ -664,6 +667,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         input_group_path: Optional[str] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
+        copy_metadata: bool = True,
     ):
         """Creates a TileDB arrays for a CF dataspace with only one array and copies
         data into it using the NetCDF converter engine.
@@ -682,6 +686,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 that are not converter from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not converted from the NetCDF group.
+            copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
+                TileDB metadata. If ``False`` do not copy metadata.
         """
         self.create_array(output_uri, key, ctx)
         self.copy_to_array(
@@ -693,6 +699,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             input_group_path,
             assigned_dim_values,
             assigned_attr_values,
+            copy_metadata,
         )
 
     def convert_to_group(
@@ -705,6 +712,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         input_group_path: Optional[str] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
+        copy_metadata: bool = True,
         append: bool = False,
     ):
         """Creates a TileDB group and its arrays from the defined CF dataspace and
@@ -724,20 +732,23 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 that are not converted from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not converted from the NetCDF group.
+            copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
+                TileDB metadata. If ``False`` do not copy metadata.
             append: If ``True``, add arrays in the dataspace to an already existing
                 group. The arrays in the dataspace cannot be in the group that is being
                 append to.
         """
         self.create_group(output_uri, key, ctx, append=append)
         self.copy_to_group(
-            output_uri,
-            key,
-            ctx,
-            input_netcdf_group,
-            input_file,
-            input_group_path,
-            assigned_dim_values,
-            assigned_attr_values,
+            output_uri=output_uri,
+            key=key,
+            ctx=ctx,
+            input_netcdf_group=input_netcdf_group,
+            input_file=input_file,
+            input_group_path=input_group_path,
+            assigned_dim_values=assigned_dim_values,
+            assigned_attr_values=assigned_attr_values,
+            copy_metadata=copy_metadata,
         )
 
     def convert_to_virtual_group(
@@ -750,6 +761,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         input_group_path: Optional[str] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
+        copy_metadata: bool = True,
     ):
         """Creates a TileDB group and its arrays from the defined CF dataspace and
         copies data into them using the converter engine.
@@ -768,17 +780,20 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 that are not converted from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not converted from the NetCDF group.
+            copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
+                TileDB metadata. If ``False`` do not copy metadata.
         """
         self.create_virtual_group(output_uri, key, ctx)
         self.copy_to_virtual_group(
-            output_uri,
-            key,
-            ctx,
-            input_netcdf_group,
-            input_file,
-            input_group_path,
-            assigned_dim_values,
-            assigned_attr_values,
+            output_uri=output_uri,
+            key=key,
+            ctx=ctx,
+            input_netcdf_group=input_netcdf_group,
+            input_file=input_file,
+            input_group_path=input_group_path,
+            assigned_dim_values=assigned_dim_values,
+            assigned_attr_values=assigned_attr_values,
+            copy_metadata=copy_metadata,
         )
 
     def copy_to_array(
@@ -791,6 +806,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         input_group_path: Optional[str] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
+        copy_metadata: bool = True,
     ):
         """Copies data from a NetCDF group to a TileDB array.
 
@@ -816,6 +832,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 that are not copied from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not copied from the NetCDF group.
+            copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
+                TileDB metadata. If ``False`` do not copy metadata.
         """
         if self._registry.narray != 1:  # pragma: no cover
             raise ValueError(
@@ -834,6 +852,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             input_group_path=input_group_path,
             assigned_dim_values=assigned_dim_values,
             assigned_attr_values=assigned_attr_values,
+            copy_metadata=copy_metadata,
         )
 
     def copy_to_group(
@@ -846,6 +865,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         input_group_path: Optional[str] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
+        copy_metadata: bool = True,
     ):
         """Copies data from a NetCDF group to a TileDB CF dataspace.
 
@@ -871,6 +891,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 that are not copied from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for the attributes that are not copied from the NetCDF group.
+            copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
+                TileDB metadata. If ``False`` do not copy metadata.
         """
         group_uri = os.path.join(output_uri, METADATA_ARRAY_NAME)
         array_uris = {
@@ -887,6 +909,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             input_group_path=input_group_path,
             assigned_dim_values=assigned_dim_values,
             assigned_attr_values=assigned_attr_values,
+            copy_metadata=copy_metadata,
         )
 
     def copy_to_virtual_group(
@@ -899,6 +922,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         input_group_path: Optional[str] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
+        copy_metadata: bool = True,
     ):
         """Copies data from a NetCDF group to a TileDB CF dataspace.
 
@@ -924,6 +948,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 that are not from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
                 for attributes that are not copied from the NetCDF group.
+            copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
+                TileDB metadata. If ``False`` do not copy metadata.
         """
         array_uris = {
             array_creator.name: f"{output_uri}_{array_creator.name}"
@@ -939,4 +965,5 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             input_group_path=input_group_path,
             assigned_dim_values=assigned_dim_values,
             assigned_attr_values=assigned_attr_values,
+            copy_metadata=copy_metadata,
         )
