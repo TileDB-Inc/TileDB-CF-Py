@@ -8,11 +8,15 @@
 
 ### New Features
 
-* Adds parameter `copy_metadata` to all `NetCDF4ConverterEngine` convert/copy methods.
-
 ### Improvements
 
 ### Deprecation
+
+## 0.5.1
+
+### New Features
+
+* Adds parameter `copy_metadata` to all `NetCDF4ConverterEngine` convert/copy methods.
 
 ## 0.5.0
 
