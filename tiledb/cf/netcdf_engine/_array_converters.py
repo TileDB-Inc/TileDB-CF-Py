@@ -156,6 +156,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
         tiledb_uri: str,
         tiledb_key: Optional[str] = None,
         tiledb_ctx: Optional[str] = None,
+        tiledb_timestamp: Optional[int] = None,
         assigned_dim_values: Optional[Dict[str, Any]] = None,
         assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
         copy_metadata: bool = True,
@@ -168,6 +169,8 @@ class NetCDF4ArrayConverter(ArrayCreator):
             tiledb_key: If not ``None``, the encryption key for the TileDB array.
             tiledb_ctx: If not ``None``, the TileDB context wrapper for a TileDB
                 storage manager to use when opening the TileDB array.
+            tiledb_timestamp: If not ``None``, the timestamp to write the TileDB data
+                at.
             assigned_dim_values: Mapping from dimension name to value for dimensions
                 that are not copied from the NetCDF group.
             assigned_attr_values: Mapping from attribute name to numpy array of values
@@ -178,7 +181,11 @@ class NetCDF4ArrayConverter(ArrayCreator):
             for dim_creator in self.domain_creator
         )
         with tiledb.open(
-            tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
+            tiledb_uri,
+            mode="w",
+            key=tiledb_key,
+            ctx=tiledb_ctx,
+            timestamp=tiledb_timestamp,
         ) as tiledb_array:
             if copy_metadata:
                 for attr_creator in self:
@@ -189,16 +196,13 @@ class NetCDF4ArrayConverter(ArrayCreator):
                         dim_creator.base.copy_metadata(netcdf_group, tiledb_array)
             # Copy array data.
             for indexer in itertools.product(*dim_slices):
-                with tiledb.open(
-                    tiledb_uri, mode="w", key=tiledb_key, ctx=tiledb_ctx
-                ) as tiledb_array:
-                    self._copy_to_array(
-                        netcdf_group,
-                        tiledb_array,
-                        indexer,
-                        assigned_dim_values,
-                        assigned_attr_values,
-                    )
+                self._copy_to_array(
+                    netcdf_group,
+                    tiledb_array,
+                    indexer,
+                    assigned_dim_values,
+                    assigned_attr_values,
+                )
 
 
 class NetCDF4DomainConverter(DomainCreator):

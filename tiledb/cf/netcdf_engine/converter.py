@@ -437,6 +437,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         assigned_dim_values: Optional[Dict[str, Any]],
         assigned_attr_values: Optional[Dict[str, np.ndarray]],
         copy_metadata: bool,
+        timestamp: Optional[int],
     ):
         if input_netcdf_group is None:
             input_file = (
@@ -451,7 +452,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             input_netcdf_group, input_file, input_group_path
         ) as netcdf_group:
             if copy_metadata:
-                with tiledb.open(group_uri, mode="w", key=key, ctx=ctx) as group_array:
+                with tiledb.open(
+                    group_uri, mode="w", key=key, ctx=ctx, timestamp=timestamp
+                ) as group_array:
                     copy_group_metadata(netcdf_group, group_array.meta)
             for array_creator in self._registry.array_creators():
                 if isinstance(array_creator, NetCDF4ArrayConverter):
@@ -460,6 +463,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         tiledb_uri=array_uris[array_creator.name],
                         tiledb_key=key,
                         tiledb_ctx=ctx,
+                        tiledb_timestamp=timestamp,
                         assigned_dim_values=assigned_dim_values,
                         assigned_attr_values=assigned_attr_values,
                         copy_metadata=copy_metadata,
@@ -662,6 +666,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         output_uri: str,
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
+        timestamp: Optional[int] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
         input_file: Optional[Union[str, Path]] = None,
         input_group_path: Optional[str] = None,
@@ -676,6 +681,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             output_uri: Uniform resource identifier for the TileDB array to be created.
             key: If not ``None``, encryption key to encrypt and decrypt output arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            timestamp: If not ``None``, the TileDB timestamp to write the NetCDF data to
+                TileDB at.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
             input_file: If not ``None``, the NetCDF file to copy data from. This will
@@ -691,15 +698,16 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         """
         self.create_array(output_uri, key, ctx)
         self.copy_to_array(
-            output_uri,
-            key,
-            ctx,
-            input_netcdf_group,
-            input_file,
-            input_group_path,
-            assigned_dim_values,
-            assigned_attr_values,
-            copy_metadata,
+            output_uri=output_uri,
+            key=key,
+            ctx=ctx,
+            timestamp=timestamp,
+            input_netcdf_group=input_netcdf_group,
+            input_file=input_file,
+            input_group_path=input_group_path,
+            assigned_dim_values=assigned_dim_values,
+            assigned_attr_values=assigned_attr_values,
+            copy_metadata=copy_metadata,
         )
 
     def convert_to_group(
@@ -707,6 +715,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         output_uri: str,
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
+        timestamp: Optional[int] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
         input_file: Optional[Union[str, Path]] = None,
         input_group_path: Optional[str] = None,
@@ -722,6 +731,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             output_uri: Uniform resource identifier for the TileDB group to be created.
             key: If not ``None``, encryption key to encrypt and decrypt output arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            timestamp: If not ``None``, the TileDB timestamp to write the NetCDF data to
+                TileDB at.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
             input_file: If not ``None``, the NetCDF file to copy data from. This will
@@ -756,6 +767,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         output_uri: str,
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
+        timestamp: Optional[int] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
         input_file: Optional[Union[str, Path]] = None,
         input_group_path: Optional[str] = None,
@@ -770,6 +782,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             output_uri: Uniform resource identifier for the TileDB group to be created.
             key: If not ``None``, encryption key to encrypt and decrypt output arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            timestamp: If not ``None``, the TileDB timestamp to write the NetCDF data to
+                TileDB at.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
             input_file: If not ``None``, the NetCDF file to copy data from. This will
@@ -788,6 +802,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             output_uri=output_uri,
             key=key,
             ctx=ctx,
+            timestamp=timestamp,
             input_netcdf_group=input_netcdf_group,
             input_file=input_file,
             input_group_path=input_group_path,
@@ -801,6 +816,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         output_uri: str,
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
+        timestamp: Optional[int] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
         input_file: Optional[Union[str, Path]] = None,
         input_group_path: Optional[str] = None,
@@ -822,6 +838,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 copied to.
             key: If not ``None``, encryption key to decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            timestamp: If not ``None``, the TileDB timestamp to write the NetCDF data to
+                TileDB at.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
             input_file: If not ``None``, the NetCDF file to copy data from. This will
@@ -847,6 +865,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             array_uris={array_creator.name: output_uri},
             key=key,
             ctx=ctx,
+            timestamp=timestamp,
             input_netcdf_group=input_netcdf_group,
             input_file=input_file,
             input_group_path=input_group_path,
@@ -860,6 +879,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         output_uri: str,
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
+        timestamp: Optional[int] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
         input_file: Optional[Union[str, Path]] = None,
         input_group_path: Optional[str] = None,
@@ -881,6 +901,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 copied to.
             key: If not ``None``, encryption key to decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            timestamp: If not ``None``, the TileDB timestamp to write the NetCDF data to
+                TileDB at.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
             input_file: If not ``None``, the NetCDF file to copy data from. This will
@@ -904,6 +926,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             array_uris=array_uris,
             key=key,
             ctx=ctx,
+            timestamp=timestamp,
             input_netcdf_group=input_netcdf_group,
             input_file=input_file,
             input_group_path=input_group_path,
@@ -917,6 +940,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         output_uri: str,
         key: Optional[str] = None,
         ctx: Optional[tiledb.Ctx] = None,
+        timestamp: Optional[int] = None,
         input_netcdf_group: Optional[netCDF4.Group] = None,
         input_file: Optional[Union[str, Path]] = None,
         input_group_path: Optional[str] = None,
@@ -938,6 +962,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 copied to.
             key: If not ``None``, encryption key to decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+            timestamp: If not ``None``, the TileDB timestamp to write the NetCDF data to
+                TileDB at.
             input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
                 This will be prioritized over ``input_file`` if both are provided.
             input_file: If not ``None``, the NetCDF file to copy data from. This will
@@ -960,6 +986,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             array_uris=array_uris,
             key=key,
             ctx=ctx,
+            timestamp=timestamp,
             input_netcdf_group=input_netcdf_group,
             input_file=input_file,
             input_group_path=input_group_path,
