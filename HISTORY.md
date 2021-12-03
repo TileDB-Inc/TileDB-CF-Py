@@ -8,6 +8,8 @@
 
 ### New Features
 
+* Adds timestamp parameter for setting write timestamp to all `NetCDF4ConverterEngine` convert/copy methods.
+
 ### Improvements
 
 ### Deprecation
