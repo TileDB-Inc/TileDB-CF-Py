@@ -313,7 +313,7 @@ class Group:
                 cannot already exist in the group being append to.
         """
         if append:
-            original_group_schema = GroupSchema.load(uri)
+            original_group_schema = GroupSchema.load(uri, ctx=ctx, key=key)
             for array_name in group_schema:
                 if array_name in original_group_schema:
                     raise ValueError(

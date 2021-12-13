@@ -4,6 +4,8 @@
 
 ### Bug fixes
 
+* Fixes missing key and context in `Group.create` when `append=True`.
+
 ### Breaking Behavior
 
 ### New Features
