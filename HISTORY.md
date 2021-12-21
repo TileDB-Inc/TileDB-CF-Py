@@ -4,8 +4,6 @@
 
 ### Bug fixes
 
-* Fixes missing key and context in `Group.create` when `append=True`.
-
 ### Breaking Behavior
 
 ### New Features
@@ -13,6 +11,12 @@
 ### Improvements
 
 ### Deprecation
+
+## 0.5.3
+
+### Bug fixes
+
+* Fixes missing key and context in `Group.create` when `append=True`.
 
 ## 0.5.2
 
