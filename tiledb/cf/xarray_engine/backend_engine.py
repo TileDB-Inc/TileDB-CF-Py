@@ -234,8 +234,9 @@ class TileDBDenseArrayWrapper(BackendArray):
             local TileDB array or a URI for a remote resource.
         key : Optional[str]
             If not None, the key for accessing the TileDB array at the provided URI.
-        timestamp : Optional[int]
-            If not None, time in milliseconds to open the array at.
+        timestamp : Optional[int, tuple[int, int]]
+            If int, open the array at a given TileDB timestamp. If tuple, open at thei
+            given start and end TileDB timestamps.
         ctx : Optional[tiledb.Ctx]
             If not None, a TileDB context manager object.
         index_converters : Tuple[TileDBIndexConverter, ...]
@@ -310,8 +311,9 @@ class TileDBDataStore(AbstractDataStore):
         """
         self._uri = uri
         self._key = key
-        self._timestamp = timestamp
         self._ctx = ctx
+        with tiledb.open(uri, mode="r", key=key, timestamp=timestamp, ctx=ctx) as array:
+            self._timestamp = array.timestamp_range
 
     def get_dimensions(self):
         """Returns a dictionary of dimension names to sizes."""
@@ -325,7 +327,9 @@ class TileDBDataStore(AbstractDataStore):
         metadata returned here metadata for the dataset, but excludes encoding data for
         TileDB and attribute metadata.
         """
-        with tiledb.open(self._uri, key=self._key, mode="r", ctx=self._ctx) as array:
+        with tiledb.open(
+            self._uri, mode="r", timestamp=self._timestamp, key=self._key, ctx=self._ctx
+        ) as array:
             attrs = {
                 key: array.meta[key]
                 for key in array.meta.keys()
@@ -390,7 +394,9 @@ class TileDBDataStore(AbstractDataStore):
         dimensions.
         """
         variable_metadata = defaultdict(dict)
-        with tiledb.open(self._uri, key=self._key, mode="r", ctx=self._ctx) as array:
+        with tiledb.open(
+            self._uri, mode="r", timestamp=self._timestamp, key=self._key, ctx=self._ctx
+        ) as array:
             for key in array.meta.keys():
                 if key.startswith((_ATTR_PREFIX, _DIM_PREFIX)):
                     last_dot_ix = key.rindex(".")
