@@ -4,13 +4,18 @@
 
 ### Bug fixes
 
+* Fixes timestamp when reading xarray dataset metadata.
+
 ### Breaking Behavior
+
+* Xarray dataset will use timestamp from when array was opened.
 
 ### New Features
 
 ### Improvements
 
 ### Deprecation
+
 
 ## 0.5.3
 
