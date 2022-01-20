@@ -327,7 +327,9 @@ class TileDBDataStore(AbstractDataStore):
         metadata returned here metadata for the dataset, but excludes encoding data for
         TileDB and attribute metadata.
         """
-        with tiledb.open(self._uri, key=self._key, mode="r", ctx=self._ctx) as array:
+        with tiledb.open(
+            self._uri, mode="r", timestamp=self._timestamp, key=self._key, ctx=self._ctx
+        ) as array:
             attrs = {
                 key: array.meta[key]
                 for key in array.meta.keys()
