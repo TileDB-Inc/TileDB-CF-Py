@@ -73,16 +73,22 @@ class TileDBIndexConverter:
             )
         self.name = dim.name
         self.dtype = dim.dtype
-        self.min_value = dim.domain[0]
         if domain is None:
+            self.min_value = dim.domain[0]
             self.max_value = dim.domain[1]
             self.size = dim.size
         elif len(domain) == 0:
+            self.min_value = dim.domain[0]
             self.max_value = self.min_value
             self.size = 0
         else:
+            self.min_value = domain[0]
             self.max_value = domain[1]
-            self.size = (self.max_value - self.min_value).astype(int) + 1
+            self.size = (
+                (self.max_value - self.min_value).astype(int) + 1
+                if dtype_kind == "M"
+                else int(self.max_value - self.min_value) + 1
+            )
         if dtype_kind == "M":
             unit, count = np.datetime_data(self.dtype)
             self.delta_dtype = np.dtype(f"timedelta64[{count}{unit}]")

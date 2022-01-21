@@ -105,9 +105,8 @@ class TestBackFilledArray:
         return uri
 
     def test_open_dataset(self, tiledb_uri):
-        expected_data = np.full((8, 8), np.nan)
         result = xr.open_dataset(tiledb_uri, engine="tiledb")
-        expected = xr.Dataset({"z": xr.DataArray(expected_data, dims=("x", "y"))})
+        expected = xr.Dataset({"z": xr.DataArray(self.z_data, dims=("x", "y"))})
         xr.testing.assert_equal(result, expected)
 
     def test_open_dataset_load_all(self, tiledb_uri):
