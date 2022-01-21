@@ -1,6 +1,8 @@
 # Copyright 2021 TileDB Inc.
 # Licensed under the MIT License.
 
+from typing import Any, Dict
+
 import numpy as np
 import pytest
 
@@ -9,156 +11,69 @@ import tiledb
 xr = pytest.importorskip("xarray")
 
 
-class TestTileDB:
+class TileDBXarrayBase:
+    """Base class for TileDB-xarray backend for 1D TileDB arrays.
 
-    FLOAT_DATA_2D = np.linspace(
-        -1.0, 1.0, num=32, endpoint=True, dtype=np.float64
-    ).reshape(8, 4)
-    INT_DATA_1D = np.arange(0, 16, dtype=np.int64)
-    INT_DATA_2D = np.arange(0, 32, dtype=np.int32).reshape(8, 4)
+    Parameters:
+        name: Short descriptive name for naming NetCDF file.
+        array_schema: Schema for the TileDB Array.
+        data: Data for the TileDB attributes.
+        backend_kwards: Keyword  arguments to use xr.open_dataset.
+    """
 
-    SIMPLE_DATA_ARRAYS = {
-        "simple_example_1d": xr.DataArray(
-            data=INT_DATA_1D,
-            dims="rows",
-        ),
-        "shifted_example_1d": xr.DataArray(
-            data=INT_DATA_1D,
-            dims="rows",
-            coords={"rows": np.arange(-8, 8, dtype=np.int32)},
-        ),
-        "datetime_example_1d": xr.DataArray(
-            data=INT_DATA_1D,
-            dims="rows",
-            coords={
-                "rows": np.arange(
-                    np.datetime64("2000-01-01"), np.datetime64("2000-01-17")
+    name = "base"
+    schema = None
+    data: Dict[str, np.ndarray] = {}
+    backend_kwargs: Dict[str, Any] = {}
+
+    @pytest.fixture(scope="class")
+    def dataset(self):
+        """Returns a dataset that matches the TileDB array."""
+        return xr.Dataset()
+
+    @pytest.fixture(scope="class")
+    def tiledb_uri(self, tmpdir_factory):
+        """Creates a TileDB array and returns the uri."""
+        uri = str(tmpdir_factory.mktemp("input_array").join(f"{self.name}.nc"))
+        assert self.schema is not None, "Array schema not set for test."
+        tiledb.Array.create(uri, self.schema)
+        with tiledb.open(uri, mode="w") as array:
+            array[...] = self.data
+        return uri
+
+    def open_dataset(self, uri):
+        return xr.open_dataset(uri, engine="tiledb", **self.backend_kwargs)
+
+    def test_full_dataset(self, tiledb_uri, dataset):
+        """Checks the TileDB array can be opened with the backend."""
+        result = self.open_dataset(tiledb_uri)
+        expected = dataset
+        xr.testing.assert_equal(result, expected)
+
+
+class TileDBXarray1DBase(TileDBXarrayBase):
+    """Base case for testing the TileDB-xarray backend for 1D TileDB arrays."""
+
+    def test_basic_indexing(self, tiledb_uri, dataset):
+        tiledb_dataset = self.open_dataset(tiledb_uri)
+        for name in self.data:
+            tiledb_data_array = tiledb_dataset[name]
+            expected_data_array = dataset[name]
+            for index in range(expected_data_array.size):
+                xr.testing.assert_equal(
+                    tiledb_data_array[index], expected_data_array[index]
                 )
-            },
-        ),
-        "simple_example_2d": xr.DataArray(
-            data=INT_DATA_2D,
-            dims=["rows", "cols"],
-        ),
-        "shifted_example_2d": xr.DataArray(
-            data=FLOAT_DATA_2D,
-            dims=["rows", "cols"],
-            coords={
-                "rows": np.arange(-3, 5, dtype=np.int32),
-                "cols": np.arange(2, 6, dtype=np.int32),
-            },
-        ),
-    }
 
-    simple_examples_1d = [
-        "simple_example_1d",
-        "shifted_example_1d",
-        "datetime_example_1d",
-    ]
+    def test_negative_indexing(self, tiledb_uri, dataset):
+        tiledb_dataset = self.open_dataset(tiledb_uri)
+        for name in self.data:
+            tiledb_data_array = tiledb_dataset[name]
+            expected_data_array = dataset[name]
+            for index in range(expected_data_array.size):
+                xr.testing.assert_equal(
+                    tiledb_data_array[-1 - index], expected_data_array[-1 - index]
+                )
 
-    simple_examples_2d = ["simple_example_2d", "shifted_example_2d"]
-
-    @pytest.fixture(scope="class")
-    def test_directory(self, tmpdir_factory):
-        return str(tmpdir_factory.mktemp("test_data"))
-
-    @pytest.fixture(scope="class")
-    def create_simple_example_data(self, test_directory):
-        # zero-based dimension
-        simple_array_uri = test_directory + "/simple_example_1d"
-        schema = tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(name="rows", domain=(0, 15), tile=4, dtype=np.int32),
-            ),
-            sparse=False,
-            attrs=[tiledb.Attr(name="data", dtype=np.int64)],
-        )
-        tiledb.DenseArray.create(simple_array_uri, schema)
-        with tiledb.DenseArray(simple_array_uri, mode="w") as array:
-            array[:] = {"data": self.INT_DATA_1D}
-        # shifted dimension (with negative values)
-        simple_array_uri = test_directory + "/shifted_example_1d"
-        schema = tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(name="rows", domain=(-8, 7), tile=4, dtype=np.int32),
-            ),
-            sparse=False,
-            attrs=[tiledb.Attr(name="data", dtype=np.int64)],
-        )
-        tiledb.DenseArray.create(simple_array_uri, schema)
-        with tiledb.DenseArray(simple_array_uri, mode="w") as array:
-            array[:] = {"data": self.INT_DATA_1D}
-        # datetime dimension
-        datetime_uri = test_directory + "/datetime_example_1d"
-        schema = tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(
-                    name="rows",
-                    domain=(
-                        np.datetime64("2000-01-01", "D"),
-                        np.datetime64("2000-01-16", "D"),
-                    ),
-                    tile=np.timedelta64(4, "D"),
-                    dtype=np.datetime64("", "D"),
-                ),
-            ),
-            attrs=[tiledb.Attr(name="data", dtype=np.int64)],
-        )
-        tiledb.DenseArray.create(datetime_uri, schema)
-        with tiledb.DenseArray(datetime_uri, mode="w") as array:
-            array[:] = {"data": self.INT_DATA_1D}
-        # simple example 2d
-        array_uri = test_directory + "/simple_example_2d"
-        schema = tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(name="rows", domain=(0, 7), tile=4, dtype=np.int32),
-                tiledb.Dim(name="cols", domain=(0, 3), tile=4, dtype=np.int32),
-            ),
-            sparse=False,
-            attrs=[tiledb.Attr(name="data", dtype=np.int32)],
-        )
-        tiledb.DenseArray.create(array_uri, schema)
-        with tiledb.DenseArray(array_uri, mode="w") as array:
-            array[:, :] = {"data": self.INT_DATA_2D}
-        # shifted example 2d
-        array_uri = test_directory + "/shifted_example_2d"
-        schema = tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(name="rows", domain=(-3, 4), tile=4, dtype=np.int32),
-                tiledb.Dim(name="cols", domain=(2, 5), tile=4, dtype=np.int32),
-            ),
-            sparse=False,
-            attrs=[tiledb.Attr(name="data", dtype=np.float64)],
-        )
-        tiledb.DenseArray.create(array_uri, schema)
-        with tiledb.DenseArray(array_uri, mode="w") as array:
-            array[:, :] = {"data": self.FLOAT_DATA_2D}
-
-    @pytest.fixture(scope="function")
-    def simple_data_arrays(self, test_directory, create_simple_example_data, request):
-        name = request.param
-        array_uri = test_directory + "/" + name
-        dataset = xr.open_dataset(array_uri, engine="tiledb")
-        return dataset["data"], self.SIMPLE_DATA_ARRAYS[name]
-
-    def test_open_multidim_dataset(self, create_tiledb_example):
-        uri, expected = create_tiledb_example
-        dataset = xr.open_dataset(uri, engine="tiledb")
-        xr.testing.assert_allclose(dataset, expected)
-
-    def test_open_multidim_dataset_guess_engine(self, create_tiledb_example):
-        uri, expected = create_tiledb_example
-        dataset = xr.open_dataset(uri)
-        xr.testing.assert_allclose(dataset, expected)
-
-    @pytest.mark.parametrize("simple_data_arrays", simple_examples_1d, indirect=True)
-    def test_basic_indexing_1D(self, simple_data_arrays):
-        (result, expected) = simple_data_arrays
-        for index in range(expected.size):
-            xr.testing.assert_allclose(result[index], expected[index])
-            xr.testing.assert_allclose(result[-1 - index], expected[-1 - index])
-
-    @pytest.mark.parametrize("simple_data_arrays", simple_examples_1d, indirect=True)
     @pytest.mark.parametrize(
         "index",
         [
@@ -175,11 +90,15 @@ class TestTileDB:
             np.array([0, 0, 2, 2, 1, 3]),
         ],
     )
-    def test_indexing_array_1D(self, simple_data_arrays, index):
-        (tiledb_data_array, xarray_data_array) = simple_data_arrays
-        xr.testing.assert_allclose(tiledb_data_array[index], xarray_data_array[index])
+    def test_indexing_array(self, tiledb_uri, dataset, index):
+        tiledb_dataset = self.open_dataset(tiledb_uri)
+        for name in self.data:
+            xr.testing.assert_equal(tiledb_dataset[name][index], dataset[name][index])
 
-    @pytest.mark.parametrize("simple_data_arrays", simple_examples_2d, indirect=True)
+
+class TileDBXarray2DBase(TileDBXarrayBase):
+    """Base class for testing the TileDB-xarray backend for 2D TileDB arrays."""
+
     @pytest.mark.parametrize(
         "index1, index2",
         [
@@ -197,28 +116,178 @@ class TestTileDB:
             (1, np.array([])),
         ],
     )
-    def test_indexing_array_2D(self, simple_data_arrays, index1, index2):
-        (tiledb_data_array, xarray_data_array) = simple_data_arrays
-        xr.testing.assert_allclose(
-            tiledb_data_array[index1, index2],
-            xarray_data_array[index1, index2],
+    def test_indexing_array(self, tiledb_uri, dataset, index1, index2):
+        """Tests indexing for data arrays in the dataset."""
+        tiledb_dataset = xr.open_dataset(
+            tiledb_uri, engine="tiledb", **self.backend_kwargs
+        )
+        for name in self.data:
+            result = tiledb_dataset[name][index1, index2]
+            expected = dataset[name][index1, index2]
+            xr.testing.assert_equal(result, expected)
+
+    def test_indexing_array_nested(self, tiledb_uri, dataset):
+        """Tests nested indexing for all data arrays in the dataset."""
+        tiledb_dataset = xr.open_dataset(
+            tiledb_uri, engine="tiledb", **self.backend_kwargs
+        )
+        for name in self.data:
+            result = tiledb_dataset[name][[0, 2, 2], [1, 3]][[0, 0, 2], 1]
+            expected = dataset[name][[0, 2, 2], [1, 3]][[0, 0, 2], 1]
+            xr.testing.assert_equal(result, expected)
+
+
+class TestSimple1D(TileDBXarray1DBase):
+    """Simple 1D dataset."""
+
+    name = "simple1d"
+    schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="rows", domain=(0, 15), tile=4, dtype=np.int32),
+        ),
+        attrs=[tiledb.Attr(name="data", dtype=np.int64)],
+    )
+    data = {"data": np.arange(16, dtype=np.int64)}
+
+    @pytest.fixture(scope="class")
+    def dataset(self):
+        """Returns a dataset that matches the TileDB array."""
+        return xr.Dataset({"data": xr.DataArray(self.data["data"], dims=("rows",))})
+
+
+class TestShiftedDim1D(TileDBXarray1DBase):
+    """Simple 1D dataset with lower bound not at 0."""
+
+    name = "simple1d"
+    schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="rows", domain=(-5, 10), tile=4, dtype=np.int32),
+        ),
+        attrs=[tiledb.Attr(name="data", dtype=np.int64)],
+    )
+    data = {"data": np.arange(16, dtype=np.int64)}
+
+    @pytest.fixture(scope="class")
+    def dataset(self):
+        """Returns a dataset that matches the TileDB array."""
+        return xr.Dataset(
+            {
+                "data": xr.DataArray(
+                    self.data["data"],
+                    dims=("rows",),
+                    coords={"rows": np.arange(-5, 11)},
+                ),
+            }
         )
 
-    @pytest.mark.parametrize("simple_data_arrays", simple_examples_2d, indirect=True)
-    def test_indexing_array_nested_2D(self, simple_data_arrays):
-        (tiledb_data_array, xarray_data_array) = simple_data_arrays
-        result = tiledb_data_array[[0, 2, 2], [1, 3]][[0, 0, 2], 1]
-        expected = xarray_data_array[[0, 2, 2], [1, 3]][[0, 0, 2], 1]
-        xr.testing.assert_allclose(result, expected)
 
-    def test_open_dataset_with_ctx(self):
-        tiledb_quickstart_dense = "tiledb://TileDB-Inc/quickstart_dense"
-        config = tiledb.Config()
-        config["rest.username"] = "a"
-        config["rest.password"] = "b"
-        ctx = tiledb.Ctx(config)
-        with pytest.raises(tiledb.libtiledb.TileDBError) as err:
-            xr.open_dataset(tiledb_quickstart_dense, engine="tiledb", ctx=ctx)
-        assert err.value.message.startswith(
-            "[TileDB::REST] Error: Error in libcurl GET operation"
+class TestDatetimeDim1D(TileDBXarray1DBase):
+    """Simple 1D dataset with datetime  dimension."""
+
+    name = "simple1d"
+    schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(
+                name="rows",
+                domain=(
+                    np.datetime64("2000-01-01", "D"),
+                    np.datetime64("2000-01-16", "D"),
+                ),
+                tile=np.timedelta64(4, "D"),
+                dtype=np.datetime64("", "D"),
+            ),
+        ),
+        attrs=[tiledb.Attr(name="data", dtype=np.int64)],
+    )
+    data = {"data": np.arange(16, dtype=np.int64)}
+
+    @pytest.fixture(scope="class")
+    def dataset(self):
+        """Returns a dataset that matches the TileDB array."""
+        return xr.Dataset(
+            {
+                "data": xr.DataArray(
+                    self.data["data"],
+                    dims=("rows",),
+                    coords={
+                        "rows": np.arange(
+                            np.datetime64("2000-01-01", "D"),
+                            np.datetime64("2000-01-17", "D"),
+                        )
+                    },
+                )
+            }
         )
+
+
+class TestSimple2DExample(TileDBXarray2DBase):
+    """Runs standard dataset for simple 2D array."""
+
+    name = "simple_2d"
+    schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="rows", domain=(0, 7), tile=4, dtype=np.int32),
+            tiledb.Dim(name="cols", domain=(0, 3), tile=4, dtype=np.int32),
+        ),
+        attrs=[tiledb.Attr(name="data", dtype=np.int32)],
+    )
+    data = {"data": np.reshape(np.arange(32, dtype=np.int32), (8, 4))}
+
+    @pytest.fixture(scope="class")
+    def dataset(self):
+        """Returns a dataset that matches the TileDB array."""
+        return xr.Dataset(
+            {"data": xr.DataArray(self.data["data"], dims=("rows", "cols"))}
+        )
+
+
+class TestShifted2DExample(TileDBXarray2DBase):
+    """Runs standard dataset for simple 2D array."""
+
+    name = "simple_2d"
+    schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="rows", domain=(-3, 4), tile=4, dtype=np.int32),
+            tiledb.Dim(name="cols", domain=(2, 5), tile=4, dtype=np.int32),
+        ),
+        attrs=[tiledb.Attr(name="data", dtype=np.int32)],
+    )
+    data = {"data": np.reshape(np.arange(32, dtype=np.int32), (8, 4))}
+
+    @pytest.fixture(scope="class")
+    def dataset(self):
+        """Returns a dataset that matches the TileDB array."""
+        return xr.Dataset(
+            {
+                "data": xr.DataArray(
+                    self.data["data"],
+                    dims=("rows", "cols"),
+                    coords={"rows": np.arange(-3, 5), "cols": np.arange(2, 6)},
+                ),
+            }
+        )
+
+
+def test_open_multidim_dataset(create_tiledb_example):
+    uri, expected = create_tiledb_example
+    dataset = xr.open_dataset(uri, engine="tiledb")
+    xr.testing.assert_equal(dataset, expected)
+
+
+def test_open_multidim_dataset_guess_engine(create_tiledb_example):
+    uri, expected = create_tiledb_example
+    dataset = xr.open_dataset(uri)
+    xr.testing.assert_equal(dataset, expected)
+
+
+def test_open_dataset_with_ctx():
+    tiledb_quickstart_dense = "tiledb://TileDB-Inc/quickstart_dense"
+    config = tiledb.Config()
+    config["rest.username"] = "a"
+    config["rest.password"] = "b"
+    ctx = tiledb.Ctx(config)
+    with pytest.raises(tiledb.libtiledb.TileDBError) as err:
+        xr.open_dataset(tiledb_quickstart_dense, engine="tiledb", ctx=ctx)
+    assert err.value.message.startswith(
+        "[TileDB::REST] Error: Error in libcurl GET operation"
+    )
