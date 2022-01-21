@@ -8,9 +8,12 @@
 
 ### Breaking Behavior
 
-* Xarray dataset will use timestamp from when array was opened.
+* Changes xarray backend to use timestamp from when array was opened if no timestamp is set.
+* Changes xarray backend to not encode TileDB attribute fill value by default.
 
 ### New Features
+
+* Adds parameter `encode_fill` to xarray backend that enables encoding the fill values for TileDB attributes.
 
 ### Improvements
 
