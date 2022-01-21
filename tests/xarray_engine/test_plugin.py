@@ -278,7 +278,7 @@ class TestShiftedAddCoords(TileDBXarray2DBase):
         attrs=[tiledb.Attr(name="data", dtype=np.int32)],
     )
     data = {"data": np.reshape(np.arange(32, dtype=np.int32), (8, 4))}
-    backend_kwargs = {"dims_to_coords": {"rows", "cols"}}
+    backend_kwargs = {"coord_dims": {"rows", "cols"}}
 
     @pytest.fixture(scope="class")
     def dataset(self):

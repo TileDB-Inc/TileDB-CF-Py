@@ -298,7 +298,7 @@ class TileDBDataStore(AbstractDataStore):
         timestamp=None,
         ctx=None,
         encode_fill=False,
-        dims_to_coords=None,
+        coord_dims=None,
     ):
         """
         Parameters
@@ -316,7 +316,7 @@ class TileDBDataStore(AbstractDataStore):
         self._uri = uri
         self._key = key
         self._ctx = ctx
-        self._dims_to_coords = set() if dims_to_coords is None else set(dims_to_coords)
+        self._dims_to_coords = set() if coord_dims is None else set(coord_dims)
         with tiledb.open(uri, mode="r", key=key, timestamp=timestamp, ctx=ctx) as array:
             self._timestamp = array.timestamp_range
         self._encode_fill = encode_fill
@@ -435,10 +435,10 @@ class TileDBBackendEntrypoint(BackendEntrypoint):
         timestamp=None,
         ctx=None,
         encode_fill=False,
-        dims_to_coords=None,
+        coord_dims=None,
     ):
         datastore = TileDBDataStore(
-            filename_or_obj, key, timestamp, ctx, encode_fill, dims_to_coords
+            filename_or_obj, key, timestamp, ctx, encode_fill, coord_dims
         )
         store_entrypoint = StoreBackendEntrypoint()
         with close_on_error(datastore):
