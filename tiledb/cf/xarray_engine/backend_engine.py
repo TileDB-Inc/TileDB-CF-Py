@@ -298,6 +298,7 @@ class TileDBDataStore(AbstractDataStore):
         timestamp=None,
         ctx=None,
         encode_fill=False,
+        coord_dims=None,
     ):
         """
         Parameters
@@ -309,10 +310,13 @@ class TileDBDataStore(AbstractDataStore):
             If not None, the key for accessing the TileDB array at the provided URI.
         timestamp : Optional[int]
             If not None, time in milliseconds to open the array at.
+        dims_to_coords: Optional[Sequence[str]]
+            If not None, a sequence of names of dimensions to create coordinates for.
         """
         self._uri = uri
         self._key = key
         self._ctx = ctx
+        self._dims_to_coords = set() if coord_dims is None else set(coord_dims)
         with tiledb.open(uri, mode="r", key=key, timestamp=timestamp, ctx=ctx) as array:
             self._timestamp = array.timestamp_range
         self._encode_fill = encode_fill
@@ -354,7 +358,7 @@ class TileDBDataStore(AbstractDataStore):
         # Add TileDB dimensions as xarray variables (these are the coordinates for the
         # DataArray) for all dimensions that are not "simple" 0-based integer indexes.
         for converter in index_converters:
-            if converter.dtype.kind == "M" or converter.min_value:
+            if converter.dtype.kind == "M" or converter.name in self._dims_to_coords:
                 variables[converter.name] = Variable(
                     {converter.name: converter.size},
                     LazilyIndexedArray(TileDBCoordinateWrapper(converter)),
@@ -431,8 +435,11 @@ class TileDBBackendEntrypoint(BackendEntrypoint):
         timestamp=None,
         ctx=None,
         encode_fill=False,
+        coord_dims=None,
     ):
-        datastore = TileDBDataStore(filename_or_obj, key, timestamp, ctx, encode_fill)
+        datastore = TileDBDataStore(
+            filename_or_obj, key, timestamp, ctx, encode_fill, coord_dims
+        )
         store_entrypoint = StoreBackendEntrypoint()
         with close_on_error(datastore):
             dataset = store_entrypoint.open_dataset(

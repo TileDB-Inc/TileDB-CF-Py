@@ -10,10 +10,12 @@
 
 * Changes xarray backend to use timestamp from when array was opened if no timestamp is set.
 * Changes xarray backend to not encode TileDB attribute fill value by default.
+* Changes xarray to only automatically convert datetime dimensions to coordinates.
 
 ### New Features
 
 * Adds parameter `encode_fill` to xarray backend that enables encoding the fill values for TileDB attributes.
+* Adds parameter `coord_dims` to xarray backend that allows user to specify extra TileDB dimensions to convert to xarray dimension coordinates.
 
 ### Improvements
 
