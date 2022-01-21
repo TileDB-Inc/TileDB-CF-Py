@@ -297,6 +297,7 @@ class TileDBDataStore(AbstractDataStore):
         key=None,
         timestamp=None,
         ctx=None,
+        encode_fill=False,
     ):
         """
         Parameters
@@ -314,6 +315,7 @@ class TileDBDataStore(AbstractDataStore):
         self._ctx = ctx
         with tiledb.open(uri, mode="r", key=key, timestamp=timestamp, ctx=ctx) as array:
             self._timestamp = array.timestamp_range
+        self._encode_fill = encode_fill
 
     def get_dimensions(self):
         """Returns a dictionary of dimension names to sizes."""
@@ -377,7 +379,7 @@ class TileDBDataStore(AbstractDataStore):
                 )
             )
             metadata = variable_metadata.get(attr.name)
-            if attr.fill is not None:
+            if self._encode_fill and attr.fill is not None:
                 if metadata is None:
                     metadata = {"_FillValue": attr.fill}
                 elif metadata.get("_FillValue") is not None:
@@ -428,8 +430,9 @@ class TileDBBackendEntrypoint(BackendEntrypoint):
         key=None,
         timestamp=None,
         ctx=None,
+        encode_fill=False,
     ):
-        datastore = TileDBDataStore(filename_or_obj, key, timestamp, ctx)
+        datastore = TileDBDataStore(filename_or_obj, key, timestamp, ctx, encode_fill)
         store_entrypoint = StoreBackendEntrypoint()
         with close_on_error(datastore):
             dataset = store_entrypoint.open_dataset(
