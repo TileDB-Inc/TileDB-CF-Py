@@ -175,7 +175,6 @@ class TestShiftedDim1D(TileDBXarray1DBase):
                 "data": xr.DataArray(
                     self.data["data"],
                     dims=("rows",),
-                    coords={"rows": np.arange(-5, 11)},
                 ),
             }
         )
@@ -253,6 +252,33 @@ class TestShifted2DExample(TileDBXarray2DBase):
         attrs=[tiledb.Attr(name="data", dtype=np.int32)],
     )
     data = {"data": np.reshape(np.arange(32, dtype=np.int32), (8, 4))}
+
+    @pytest.fixture(scope="class")
+    def dataset(self):
+        """Returns a dataset that matches the TileDB array."""
+        return xr.Dataset(
+            {
+                "data": xr.DataArray(
+                    self.data["data"],
+                    dims=("rows", "cols"),
+                ),
+            }
+        )
+
+
+class TestShiftedAddCoords(TileDBXarray2DBase):
+    """Runs standard dataset for simple 2D array."""
+
+    name = "simple_2d"
+    schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="rows", domain=(-3, 4), tile=4, dtype=np.int32),
+            tiledb.Dim(name="cols", domain=(2, 5), tile=4, dtype=np.int32),
+        ),
+        attrs=[tiledb.Attr(name="data", dtype=np.int32)],
+    )
+    data = {"data": np.reshape(np.arange(32, dtype=np.int32), (8, 4))}
+    backend_kwargs = {"dims_to_coords": {"rows", "cols"}}
 
     @pytest.fixture(scope="class")
     def dataset(self):

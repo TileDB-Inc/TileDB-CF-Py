@@ -29,7 +29,6 @@ def create_tiledb_example(tmpdir):
                 attrs={"long_name": "example int data"},
             ),
         },
-        coords={"time": np.arange(1, 9), "x": np.arange(1, 5)},
         attrs={"global_1": "value1", "global_2": "value2"},
     )
     array_uri = str(tmpdir.join("tiledb_example_1"))
