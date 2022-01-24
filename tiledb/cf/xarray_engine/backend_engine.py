@@ -53,6 +53,9 @@ class TileDBIndexConverter:
     whereas, Tiledb accesses values directly from the dimension coordinates (analogous
     to looking-up values by "location" in xarray).
 
+    The max value of the index is defined by the maximum of the non-empty domain at
+    creation time.
+
     The following is assumed about xarray indices:
        * An index may be an integer, a slice, or a Numpy array of integer indices.
        * An integer index or component of an array is such that -size <= value < size.
@@ -61,7 +64,7 @@ class TileDBIndexConverter:
            of the array starting at -1.
     """
 
-    def __init__(self, dim):
+    def __init__(self, dim, domain=None):
         dtype_kind = dim.dtype.kind
         if dtype_kind not in ("i", "u", "M"):
             raise NotImplementedError(
@@ -70,10 +73,22 @@ class TileDBIndexConverter:
             )
         self.name = dim.name
         self.dtype = dim.dtype
-        self.min_value = dim.domain[0]
-        self.max_value = dim.domain[1]
-        self.size = dim.size
-        self.shape = dim.shape
+        if domain is None:
+            self.min_value = dim.domain[0]
+            self.max_value = dim.domain[1]
+            self.size = dim.size
+        elif len(domain) == 0:
+            self.min_value = dim.domain[0]
+            self.max_value = self.min_value
+            self.size = 0
+        else:
+            self.min_value = domain[0]
+            self.max_value = domain[1]
+            self.size = (
+                (self.max_value - self.min_value).astype(int) + 1
+                if dtype_kind == "M"
+                else int(self.max_value - self.min_value) + 1
+            )
         if dtype_kind == "M":
             unit, count = np.datetime_data(self.dtype)
             self.delta_dtype = np.dtype(f"timedelta64[{count}{unit}]")
@@ -108,13 +123,17 @@ class TileDBIndexConverter:
             # multi_index which includes both the staring point and ending point).
             start, stop = index.start, index.stop
             return slice(
-                self.to_coordinate(start) if start is not None else None,
-                self.to_coordinate(stop - 1) if stop is not None else None,
+                self.min_value if start is None else self.to_coordinate(start),
+                self.max_value if start is None else self.to_coordinate(stop - 1),
             )
 
         # Convert slice or array of xarray indices to list of TileDB dimension
         # coordinates
         return list(self.to_coordinates(index))
+
+    @property
+    def shape(self):
+        return (self.size,)
 
     def to_coordinate(self, index):
         """Converts an xarray index to a coordinate for the TileDB dimension.
@@ -298,6 +317,7 @@ class TileDBDataStore(AbstractDataStore):
         timestamp=None,
         ctx=None,
         encode_fill=False,
+        open_full_domain=False,
         coord_dims=None,
     ):
         """
@@ -316,10 +336,15 @@ class TileDBDataStore(AbstractDataStore):
         self._uri = uri
         self._key = key
         self._ctx = ctx
+        self._encode_fill = encode_fill
         self._dims_to_coords = set() if coord_dims is None else set(coord_dims)
         with tiledb.open(uri, mode="r", key=key, timestamp=timestamp, ctx=ctx) as array:
             self._timestamp = array.timestamp_range
-        self._encode_fill = encode_fill
+            self._max_domain = (
+                tuple(dim.domain for dim in array.schema.domain)
+                if open_full_domain
+                else array.nonempty_domain()
+            )
 
     def get_dimensions(self):
         """Returns a dictionary of dimension names to sizes."""
@@ -353,7 +378,14 @@ class TileDBDataStore(AbstractDataStore):
         """
         variable_metadata = self.get_variable_metadata()
         schema = tiledb.ArraySchema.load(self._uri, ctx=self._ctx, key=self._key)
-        index_converters = tuple(map(TileDBIndexConverter, schema.domain))
+        index_converters = (
+            tuple(TileDBIndexConverter(dim, []) for dim in schema.domain)
+            if self._max_domain is None
+            else tuple(
+                TileDBIndexConverter(dim, max_dim_domain)
+                for dim, max_dim_domain in zip(schema.domain, self._max_domain)
+            )
+        )
         variables = {}
         # Add TileDB dimensions as xarray variables (these are the coordinates for the
         # DataArray) for all dimensions that are not "simple" 0-based integer indexes.
@@ -435,10 +467,17 @@ class TileDBBackendEntrypoint(BackendEntrypoint):
         timestamp=None,
         ctx=None,
         encode_fill=False,
+        open_full_domain=False,
         coord_dims=None,
     ):
         datastore = TileDBDataStore(
-            filename_or_obj, key, timestamp, ctx, encode_fill, coord_dims
+            uri=filename_or_obj,
+            key=key,
+            timestamp=timestamp,
+            ctx=ctx,
+            encode_fill=encode_fill,
+            open_full_domain=open_full_domain,
+            coord_dims=coord_dims,
         )
         store_entrypoint = StoreBackendEntrypoint()
         with close_on_error(datastore):
