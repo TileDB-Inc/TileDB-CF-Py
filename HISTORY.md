@@ -4,6 +4,18 @@
 
 ### Bug fixes
 
+### Breaking Behavior
+
+### New Features
+
+### Improvements
+
+### Deprecation
+
+## 0.6.0
+
+### Bug fixes
+
 * Fixes timestamp when reading xarray dataset metadata.
 * Fixes bug when opening array with non-empty domain smaller than full domain.
 
@@ -19,11 +31,6 @@
 * Adds parameter `encode_fill` to xarray backend that enables encoding the fill values for TileDB attributes.
 * Adds parameter `coord_dims` to xarray backend that will add all dims listed to coords.
 * Adds parameter `open_full_domain` to xarray backend that adds the full dimensions to xarray regardless of non-empty domain.
-
-### Improvements
-
-### Deprecation
-
 
 ## 0.5.3
 

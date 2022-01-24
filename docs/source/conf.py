@@ -6,8 +6,8 @@ master_doc = "index"
 project = "TileDB-CF-Py"
 copyright = "2021, TileDB, Inc"
 author = "TileDB, Inc"
-release = "0.5.3"
-version = "0.5.3"
+release = "0.6.0"
+version = "0.6.0"
 
 extensions = [
     "sphinx.ext.autodoc",
