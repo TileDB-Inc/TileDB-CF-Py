@@ -12,6 +12,13 @@
 
 ### Deprecation
 
+## 0.6.1
+
+### Bug fixes
+
+* Fixes xarray backend regression where query indices were converted to floats for arrays with uint64 dimensions.
+* Fixes slicing with a negative step size of TileDB arrays with unsigned integers for dimensions.
+
 ## 0.6.0
 
 ### Bug fixes
