@@ -42,7 +42,7 @@ class TileDBXarrayBase:
         return uri
 
     def open_dataset(self, uri):
-        return xr.open_dataset(uri, engine="tiledb", **self.backend_kwargs)
+        return xr.open_dataset(uri, engine="tiledb", cache=False, **self.backend_kwargs)
 
     def test_full_dataset(self, tiledb_uri, dataset):
         """Checks the TileDB array can be opened with the backend."""
@@ -60,9 +60,10 @@ class TileDBXarray1DBase(TileDBXarrayBase):
             tiledb_data_array = tiledb_dataset[name]
             expected_data_array = dataset[name]
             for index in range(expected_data_array.size):
-                xr.testing.assert_equal(
-                    tiledb_data_array[index], expected_data_array[index]
-                )
+                result_array = tiledb_data_array[index]
+                result = result_array.data
+                expected = expected_data_array[index].data
+                np.testing.assert_equal(result, expected)
 
     def test_negative_indexing(self, tiledb_uri, dataset):
         tiledb_dataset = self.open_dataset(tiledb_uri)
@@ -70,30 +71,41 @@ class TileDBXarray1DBase(TileDBXarrayBase):
             tiledb_data_array = tiledb_dataset[name]
             expected_data_array = dataset[name]
             for index in range(expected_data_array.size):
-                xr.testing.assert_equal(
-                    tiledb_data_array[-1 - index], expected_data_array[-1 - index]
-                )
+                result_array = tiledb_data_array[-1 - index]
+                result = result_array.data
+                expected = expected_data_array[-1 - index].data
+                np.testing.assert_equal(result, expected)
 
     @pytest.mark.parametrize(
         "index",
         [
-            -5,
-            slice(None),
-            slice(0, 5),
-            slice(0, 5, 1),
-            slice(None, 5, 1),
-            slice(5, None, 1),
-            slice(5, 0, -2),
-            slice(1, 1),
-            np.array([0, 5, 3, 2, 1]),
-            np.array([-1, -5, -3, -2, -15]),
-            np.array([0, 0, 2, 2, 1, 3]),
+            pytest.param(-5, id="-5"),
+            pytest.param(slice(None), id=":"),
+            pytest.param(slice(0, 5), id="0:5"),
+            pytest.param(slice(0, 5, 1), id="slice(0, 5, 1)"),
+            pytest.param(slice(None, 5), id=": 5"),
+            pytest.param(slice(None, 5, 1), id="slice(None, 5, 1)"),
+            pytest.param(slice(5, None), id="5:"),
+            pytest.param(slice(None, 0), id=":0"),
+            pytest.param(slice(5, 0, -2), id="slice(5, 0, -2)"),
+            pytest.param(slice(1, 1), id="1:1"),
+            pytest.param(np.array([0, 5, 3, 2, 1]), id="np.array([0, 5, 3, 2, 1])"),
+            pytest.param(
+                np.array([-1, -5, -3, -2, -15]), id="np.array([-1, -5, -3, -2, -15])"
+            ),
+            pytest.param(
+                np.array([0, 0, 2, 2, 1, 3]), id="np.array([0, 0, 2, 2, 1, 3])"
+            ),
         ],
     )
     def test_indexing_array(self, tiledb_uri, dataset, index):
         tiledb_dataset = self.open_dataset(tiledb_uri)
         for name in self.data:
-            xr.testing.assert_equal(tiledb_dataset[name][index], dataset[name][index])
+            result_data_array = tiledb_dataset[name]
+            result_data_array = result_data_array[index]
+            result = result_data_array.data
+            expected = dataset[name][index].data
+            np.testing.assert_equal(result, expected)
 
 
 class TileDBXarray2DBase(TileDBXarrayBase):
@@ -122,9 +134,11 @@ class TileDBXarray2DBase(TileDBXarrayBase):
             tiledb_uri, engine="tiledb", **self.backend_kwargs
         )
         for name in self.data:
-            result = tiledb_dataset[name][index1, index2]
-            expected = dataset[name][index1, index2]
-            xr.testing.assert_equal(result, expected)
+            result_data_array = tiledb_dataset[name]
+            result_data_array = result_data_array[index1, index2]
+            result = result_data_array.data
+            expected = dataset[name][index1, index2].data
+            np.testing.assert_equal(result, expected)
 
     def test_indexing_array_nested(self, tiledb_uri, dataset):
         """Tests nested indexing for all data arrays in the dataset."""
@@ -143,16 +157,50 @@ class TestSimple1D(TileDBXarray1DBase):
     name = "simple1d"
     schema = tiledb.ArraySchema(
         domain=tiledb.Domain(
-            tiledb.Dim(name="rows", domain=(0, 15), tile=4, dtype=np.int32),
+            tiledb.Dim(name="rows", domain=(0, 15), tile=4, dtype=np.int64),
         ),
-        attrs=[tiledb.Attr(name="data", dtype=np.int64)],
+        attrs=[
+            tiledb.Attr(name="data", dtype=np.float64),
+            tiledb.Attr(name="index", dtype=np.int64),
+        ],
     )
-    data = {"data": np.arange(16, dtype=np.int64)}
+    data = {"data": np.linspace(-1.0, 1.0, 16), "index": np.arange(16, dtype=np.int64)}
 
     @pytest.fixture(scope="class")
     def dataset(self):
         """Returns a dataset that matches the TileDB array."""
-        return xr.Dataset({"data": xr.DataArray(self.data["data"], dims=("rows",))})
+        return xr.Dataset(
+            {
+                "data": xr.DataArray(self.data["data"], dims=("rows",)),
+                "index": xr.DataArray(self.data["index"], dims=("rows",)),
+            }
+        )
+
+
+class TestSimple1DUnsignedIntDim(TileDBXarray1DBase):
+    """Simple 1D dataset."""
+
+    name = "simple1d"
+    schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="rows", domain=(0, 15), tile=4, dtype=np.uint64),
+        ),
+        attrs=[
+            tiledb.Attr(name="data", dtype=np.float64),
+            tiledb.Attr(name="index", dtype=np.int64),
+        ],
+    )
+    data = {"data": np.linspace(-1.0, 1.0, 16), "index": np.arange(16, dtype=np.int64)}
+
+    @pytest.fixture(scope="class")
+    def dataset(self):
+        """Returns a dataset that matches the TileDB array."""
+        return xr.Dataset(
+            {
+                "data": xr.DataArray(self.data["data"], dims=("rows",)),
+                "index": xr.DataArray(self.data["index"], dims=("rows",)),
+            }
+        )
 
 
 class TestShiftedDim1D(TileDBXarray1DBase):
@@ -228,15 +276,54 @@ class TestSimple2DExample(TileDBXarray2DBase):
             tiledb.Dim(name="rows", domain=(0, 7), tile=4, dtype=np.int32),
             tiledb.Dim(name="cols", domain=(0, 3), tile=4, dtype=np.int32),
         ),
-        attrs=[tiledb.Attr(name="data", dtype=np.int32)],
+        attrs=[
+            tiledb.Attr(name="a", dtype=np.float64),
+            tiledb.Attr(name="b", dtype=np.uint32),
+        ],
     )
-    data = {"data": np.reshape(np.arange(32, dtype=np.int32), (8, 4))}
+    data = {
+        "a": np.reshape(np.random.rand(32), (8, 4)),
+        "b": np.reshape(np.arange(32, dtype=np.int32), (8, 4)),
+    }
 
     @pytest.fixture(scope="class")
     def dataset(self):
         """Returns a dataset that matches the TileDB array."""
         return xr.Dataset(
-            {"data": xr.DataArray(self.data["data"], dims=("rows", "cols"))}
+            {
+                "a": xr.DataArray(self.data["a"], dims=("rows", "cols")),
+                "b": xr.DataArray(self.data["b"], dims=("rows", "cols")),
+            }
+        )
+
+
+class TestSimple2DExampleUnsignedDims(TileDBXarray2DBase):
+    """Runs standard dataset for simple 2D array."""
+
+    name = "simple_2d"
+    schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="rows", domain=(0, 7), tile=4, dtype=np.uint64),
+            tiledb.Dim(name="cols", domain=(0, 3), tile=4, dtype=np.uint64),
+        ),
+        attrs=[
+            tiledb.Attr(name="a", dtype=np.float64),
+            tiledb.Attr(name="b", dtype=np.uint32),
+        ],
+    )
+    data = {
+        "a": np.reshape(np.random.rand(32), (8, 4)),
+        "b": np.reshape(np.arange(32, dtype=np.int32), (8, 4)),
+    }
+
+    @pytest.fixture(scope="class")
+    def dataset(self):
+        """Returns a dataset that matches the TileDB array."""
+        return xr.Dataset(
+            {
+                "a": xr.DataArray(self.data["a"], dims=("rows", "cols")),
+                "b": xr.DataArray(self.data["b"], dims=("rows", "cols")),
+            }
         )
 
 
