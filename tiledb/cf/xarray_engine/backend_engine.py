@@ -166,6 +166,12 @@ class TileDBIndexConverter:
         if isinstance(index, slice):
             # Using range handles negative start/stop, out-of-bounds, and None values.
             index = range(self.size)[index]
+            if self.dtype.kind == "u" and index.step < 0:
+                # Flip the indexing (remembering off-by-one of numpy indexing)
+                start = self.to_coordinate(index.stop + 1)
+                stop = self.to_coordinate(index.start + 1)
+                step = self._to_delta(abs(index.step))
+                return np.flip(np.arange(start, stop, step, dtype=self.dtype))
             start = self.to_coordinate(index.start)
             stop = self.to_coordinate(index.stop)
             step = self._to_delta(index.step)
