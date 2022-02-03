@@ -14,6 +14,12 @@
 
 ## 0.6.1
 
+## Bug fixes
+
+* Fixes context being passed to `overwrite` when creating arrays with TileDB-Py version 0.10.3 or greater.
+
+## 0.6.1
+
 ### Bug fixes
 
 * Fixes xarray backend regression where query indices were converted to floats for arrays with uint64 dimensions.
