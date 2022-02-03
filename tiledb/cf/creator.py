@@ -642,7 +642,7 @@ class ArrayCreator:
             key: If not ``None``, encryption key to decrypt arrays.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        tiledb.Array.create(uri, self.to_schema(ctx), key, ctx)
+        tiledb.Array.create(uri=uri, schema=self.to_schema(ctx), key=key, ctx=ctx)
 
     @property
     def domain_creator(self) -> DomainCreator:
