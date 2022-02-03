@@ -328,17 +328,17 @@ class Group:
             create_metadata_group = group_schema.metadata_schema is not None
         if create_metadata_group:
             tiledb.Array.create(
-                _get_metadata_array_uri(uri, is_virtual=False),
-                group_schema.metadata_schema,
-                _get_array_key(key, METADATA_ARRAY_NAME),
-                ctx,
+                uri=_get_metadata_array_uri(uri, is_virtual=False),
+                schema=group_schema.metadata_schema,
+                key=_get_array_key(key, METADATA_ARRAY_NAME),
+                ctx=ctx,
             )
         for array_name, array_schema in group_schema.items():
             tiledb.Array.create(
-                _get_array_uri(uri, array_name, is_virtual=False),
-                array_schema,
-                _get_array_key(key, array_name),
-                ctx,
+                uri=_get_array_uri(uri, array_name, is_virtual=False),
+                schema=array_schema,
+                key=_get_array_key(key, array_name),
+                ctx=ctx,
             )
 
     def __init__(
@@ -547,17 +547,17 @@ class VirtualGroup(Group):
                 )
         if group_schema.metadata_schema is not None:
             tiledb.Array.create(
-                _get_metadata_array_uri(uri, is_virtual=True),
-                group_schema.metadata_schema,
-                _get_array_key(key, METADATA_ARRAY_NAME),
-                ctx,
+                uri=_get_metadata_array_uri(uri, is_virtual=True),
+                schema=group_schema.metadata_schema,
+                key=_get_array_key(key, METADATA_ARRAY_NAME),
+                ctx=ctx,
             )
         for array_name, array_schema in group_schema.items():
             tiledb.Array.create(
-                _get_array_uri(uri, array_name, is_virtual=True),
-                array_schema,
-                _get_array_key(key, array_name),
-                ctx,
+                uri=_get_array_uri(uri, array_name, is_virtual=True),
+                schema=array_schema,
+                key=_get_array_key(key, array_name),
+                ctx=ctx,
             )
 
     def __init__(
