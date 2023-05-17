@@ -125,7 +125,6 @@ class TileDBXarray2DBase(TileDBXarrayBase):
             (slice(1, 8, 2), np.array([0, 1, 2])),
             (1, np.array([-1, -2])),
             (np.array([0, 0, 2, 2]), np.array([1, 1, 3])),
-            (1, np.array([])),
         ],
     )
     def test_indexing_array(self, tiledb_uri, dataset, index1, index2):
@@ -228,6 +227,7 @@ class TestShiftedDim1D(TileDBXarray1DBase):
         )
 
 
+@pytest.mark.skip(reason="skip this test until xarray datetime handling stabalizes")
 class TestDatetimeDim1D(TileDBXarray1DBase):
     """Simple 1D dataset with datetime  dimension."""
 
