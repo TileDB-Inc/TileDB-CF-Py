@@ -112,8 +112,8 @@ class TestCoordinateCopyChunks:
         f (x, y) = [[0, 1, ...],...,[...,62,63]]
     """
 
-    x_data = np.linspace(-1.0, 1.0, 8)
-    y_data = np.linspace(0.0, 2.0, 8)
+    x_data = np.arange(-4, 4)
+    y_data = np.arange(10, 81, 10)
     attr_data = np.reshape(np.arange(64), (8, 8))
 
     @pytest.fixture(scope="class")
@@ -128,11 +128,11 @@ class TestCoordinateCopyChunks:
             )
             var[:, :] = self.attr_data
             var = dataset.createVariable(
-                varname="x", datatype=np.float64, dimensions=("x")
+                varname="x", datatype=np.int64, dimensions=("x")
             )
             var[:] = self.x_data
             var = dataset.createVariable(
-                varname="y", datatype=np.float64, dimensions=("y")
+                varname="y", datatype=np.int64, dimensions=("y")
             )
             var[:] = self.y_data
         return filepath
@@ -142,8 +142,8 @@ class TestCoordinateCopyChunks:
         maps NetCDF coordinates to dimensions."""
         uri = str(tmpdir.mkdir("output").join("simple_copy_chunks"))
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=True)
-        converter.get_shared_dim("x").domain = (-1.0, 1.0)
-        converter.get_shared_dim("y").domain = (0.0, 2.0)
+        converter.get_shared_dim("x").domain = (-4, 3)
+        converter.get_shared_dim("y").domain = (10, 80)
         array_creator = converter.get_array_creator_by_attr("f")
         array_creator.domain_creator.max_fragment_shape = (4, 4)
         converter.convert_to_group(uri)
@@ -151,8 +151,14 @@ class TestCoordinateCopyChunks:
             with group.open_array(attr="f") as array:
                 array_uri = array.uri
                 result = array[...]
-        result = result["f"]
-        expected_result = np.arange(64)
-        np.testing.assert_equal(result, expected_result)
+        for x_value, y_value, f_value in zip(result["x"], result["y"], result["f"]):
+            ix = np.argwhere(self.x_data == x_value)
+            assert len(ix) == 1
+            assert 0 <= ix[0] <= 7
+            iy = np.argwhere(self.y_data == y_value)
+            assert len(iy) == 1
+            assert 0 <= iy[0] <= 7
+            f_expected = self.attr_data[ix[0], iy[0]]
+            assert f_value == f_expected
         fragment_info = tiledb.FragmentInfoList(array_uri)
         assert len(fragment_info) == 4
