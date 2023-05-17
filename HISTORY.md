@@ -6,6 +6,8 @@
 
 ### Breaking Behavior
 
+* Removes deprecated `coords_filters` array property.
+
 ### New Features
 
 ### Improvements

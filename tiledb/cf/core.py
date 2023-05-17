@@ -59,10 +59,6 @@ def _array_schema_html(schema: tiledb.ArraySchema) -> str:
             f'<tr><td style="text-align: left;">allows_duplicates'
             f"={schema.allows_duplicates}</td></tr>\n"
         )
-    output.write(
-        f'<tr><td style="text-align: left">coords_filters={schema.coords_filters}'
-        f"</td>\n"
-    )
     output.write("</table>\n")
     output.write("</li>\n")
     output.write("</ul>\n")

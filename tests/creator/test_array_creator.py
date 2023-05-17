@@ -18,7 +18,6 @@ class TestArrayCreatorSparseExample1:
             "array",
             ("row", "col"),
             sparse=True,
-            coords_filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)]),
             offsets_filters=tiledb.FilterList([tiledb.Bzip2Filter()]),
             tiles=(32, 16),
             dim_filters={
