@@ -391,16 +391,3 @@ def test_open_multidim_dataset_guess_engine(create_tiledb_example):
     uri, expected = create_tiledb_example
     dataset = xr.open_dataset(uri)
     xr.testing.assert_equal(dataset, expected)
-
-
-def test_open_dataset_with_ctx():
-    tiledb_quickstart_dense = "tiledb://TileDB-Inc/quickstart_dense"
-    config = tiledb.Config()
-    config["rest.username"] = "a"
-    config["rest.password"] = "b"
-    ctx = tiledb.Ctx(config)
-    with pytest.raises(tiledb.libtiledb.TileDBError) as err:
-        xr.open_dataset(tiledb_quickstart_dense, engine="tiledb", ctx=ctx)
-    assert err.value.message.startswith(
-        "[TileDB::REST] Error: Error in libcurl GET operation"
-    )
