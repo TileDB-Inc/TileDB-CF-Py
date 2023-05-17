@@ -696,7 +696,7 @@ class GroupSchema(Mapping):
         else:
             self._array_schema_table = dict(array_schemas)
         self._attr_to_arrays: Dict[str, List[str]] = defaultdict(list)
-        for (schema_name, schema) in self._array_schema_table.items():
+        for schema_name, schema in self._array_schema_table.items():
             for attr in schema:
                 attr_name = attr.name
                 self._attr_to_arrays[attr_name].append(schema_name)

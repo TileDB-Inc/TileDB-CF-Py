@@ -29,7 +29,6 @@ _array_schema_3 = tiledb.ArraySchema(
 
 
 class TestCreateGroup:
-
     _metadata_schema = _array_schema_1
     _array_schemas = [
         ("A1", _array_schema_1),
@@ -66,7 +65,6 @@ class TestNotTileDBURI:
 
 
 class TestSimpleGroup:
-
     _metadata_schema = tiledb.ArraySchema(
         domain=tiledb.Domain(
             tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.uint64)
@@ -89,7 +87,6 @@ class TestSimpleGroup:
 
 
 class TestGroupWithArrays:
-
     _metadata_schema = tiledb.ArraySchema(
         domain=tiledb.Domain(
             tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.uint64)
