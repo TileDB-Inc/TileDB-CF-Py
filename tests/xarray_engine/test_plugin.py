@@ -387,6 +387,7 @@ def test_open_multidim_dataset(create_tiledb_example):
     xr.testing.assert_equal(dataset, expected)
 
 
+@pytest.mark.filterwarnings("ignore:'netcdf4' fails while guessing")
 def test_open_multidim_dataset_guess_engine(create_tiledb_example):
     uri, expected = create_tiledb_example
     dataset = xr.open_dataset(uri)
