@@ -329,6 +329,7 @@ class DataspaceCreator:
             except tiledb.libtiledb.TileDBError as err:
                 raise RuntimeError(
                     f"Failed to create an ArraySchema for array '{array_creator.name}'."
+                    f" {str(err)}"
                 ) from err
         group_schema = GroupSchema(array_schemas)
         return group_schema

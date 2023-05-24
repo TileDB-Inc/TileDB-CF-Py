@@ -115,10 +115,25 @@ def get_variable_values(
     return values
 
 
-def get_variable_chunks(variable: netCDF4.Variable) -> Optional[Tuple[int, ...]]:
-    """Returns the chunks from a NetCDF variable if chunked and ``None`` otherwise."""
+def get_variable_chunks(
+    variable: netCDF4.Variable, unlimited_dim_size
+) -> Optional[Tuple[int, ...]]:
+    """
+    Returns the chunks from a NetCDF variable if chunked and ``None`` otherwise.
+
+
+    If one of the dimensions has a unlimited dimension, the chunk size will be
+    reduced to the unlimited_dim_size.
+    """
     chunks = variable.chunking()
-    return None if chunks is None or chunks == "contiguous" else tuple(chunks)
+    if chunks is None or chunks == "contiguous":
+        return None
+    return tuple(
+        min(ck, dim.size if unlimited_dim_size is None else unlimited_dim_size)
+        if dim.isunlimited()
+        else ck
+        for ck, dim in zip(chunks, variable.get_dims())
+    )
 
 
 @contextmanager

@@ -269,7 +269,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     ncvar.name,
                     tiles_by_dims.get(
                         ncvar.dimensions,
-                        None if has_coord_dim else get_variable_chunks(ncvar),
+                        None
+                        if has_coord_dim
+                        else get_variable_chunks(ncvar, unlimited_dim_size),
                     ),
                 )
                 converter.add_array_converter(
@@ -353,7 +355,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     ncvar.name,
                     None
                     if any(dim_name in coord_names for dim_name in ncvar.dimensions)
-                    else get_variable_chunks(ncvar),
+                    else get_variable_chunks(ncvar, unlimited_dim_size),
                 )
                 if chunks is not None:
                     autotiles[dim_names] = (
