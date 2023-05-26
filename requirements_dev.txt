@@ -1,2 +1,7 @@
+black
+isort
+flake8
+mypy
+flake8-bugbear
 pytest
-setuptools
+pytidylib
