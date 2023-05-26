@@ -482,7 +482,8 @@ class Group:
             with warnings.catch_warnings():
                 warnings.warn(
                     f"Closing more than one array reference with name: {array}."
-                    f"If you are using another reference it is now closed."
+                    f"If you are using another reference it is now closed.",
+                    stacklevel=3,
                 )
         for tdb_array in tiledb_arrays:
             tdb_array.close()
@@ -539,7 +540,8 @@ class VirtualGroup(Group):
         if append:
             with warnings.catch_warnings():
                 warnings.warn(
-                    "Ignoring parameter append. Cannot append to a virtual group."
+                    "Ignoring parameter append. Cannot append to a virtual group.",
+                    stacklevel=3,
                 )
         if group_schema.metadata_schema is not None:
             tiledb.Array.create(

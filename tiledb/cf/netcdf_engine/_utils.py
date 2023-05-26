@@ -54,7 +54,8 @@ def get_netcdf_metadata(
                 with warnings.catch_warnings():
                     warnings.warn(
                         f"Attribute '{key}' has value='{value}' that not a number. "
-                        f"Using default {key}={default} instead."
+                        f"Using default {key}={default} instead.",
+                        stacklevel=3,
                     )
                 return default
             if not np.isscalar(value):
@@ -192,4 +193,7 @@ def safe_set_metadata(meta, key, value):
         meta[key] = value
     except ValueError as err:  # pragma: no cover
         with warnings.catch_warnings():
-            warnings.warn(f"Failed to set metadata `{key}={value}` with error: {err}")
+            warnings.warn(
+                f"Failed to set metadata `{key}={value}` with error: {err}",
+                stacklevel=3,
+            )
