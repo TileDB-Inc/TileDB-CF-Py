@@ -64,7 +64,6 @@ _multi_array_group: Dict[str, Any] = {
 
 
 class TestGroupSchema:
-
     _scenarios = [_empty_group, _single_array_group, _multi_array_group]
 
     @pytest.mark.parametrize("scenario", _scenarios)
@@ -129,7 +128,6 @@ class TestLoadEmptyGroup:
 
 
 class TestLoadGroup:
-
     _array_schemas = {
         "A1": _array_schema_1,
         "A2": _array_schema_2,

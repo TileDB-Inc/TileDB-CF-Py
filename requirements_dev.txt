@@ -1,7 +1,7 @@
-black==20.8b1
-isort==5.8.0
-flake8==3.9.0
-mypy==0.812
-flake8-bugbear==21.3.2
-pytest==6.2.2
-pytidylib==0.3.2
+black
+isort
+flake8
+mypy
+flake8-bugbear
+pytest
+pytidylib

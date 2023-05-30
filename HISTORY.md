@@ -4,7 +4,11 @@
 
 ### Bug fixes
 
+* Fixes default tile sizes for chunked data on unlimited dimensions.
+
 ### Breaking Behavior
+
+* Removes deprecated `coords_filters` array property.
 
 ### New Features
 

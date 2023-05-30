@@ -29,7 +29,6 @@ _array_schema_3 = tiledb.ArraySchema(
 
 
 class TestCreateVirtualGroup:
-
     _metadata_schema = _array_schema_1
     _array_schemas = [
         ("A1", _array_schema_1),
@@ -55,7 +54,6 @@ class TestCreateVirtualGroup:
 
 
 class TestMetadataOnlyGroup:
-
     _metadata_schema = tiledb.ArraySchema(
         domain=tiledb.Domain(
             tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.uint64)
@@ -83,7 +81,6 @@ class TestMetadataOnlyGroup:
 
 
 class TestVirtualGroupWithArrays:
-
     _metadata_schema = tiledb.ArraySchema(
         domain=tiledb.Domain(
             tiledb.Dim(name="rows", domain=(1, 4), tile=2, dtype=np.uint64)

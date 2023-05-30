@@ -59,10 +59,6 @@ def _array_schema_html(schema: tiledb.ArraySchema) -> str:
             f'<tr><td style="text-align: left;">allows_duplicates'
             f"={schema.allows_duplicates}</td></tr>\n"
         )
-    output.write(
-        f'<tr><td style="text-align: left">coords_filters={schema.coords_filters}'
-        f"</td>\n"
-    )
     output.write("</table>\n")
     output.write("</li>\n")
     output.write("</ul>\n")
@@ -486,7 +482,8 @@ class Group:
             with warnings.catch_warnings():
                 warnings.warn(
                     f"Closing more than one array reference with name: {array}."
-                    f"If you are using another reference it is now closed."
+                    f"If you are using another reference it is now closed.",
+                    stacklevel=3,
                 )
         for tdb_array in tiledb_arrays:
             tdb_array.close()
@@ -543,7 +540,8 @@ class VirtualGroup(Group):
         if append:
             with warnings.catch_warnings():
                 warnings.warn(
-                    "Ignoring parameter append. Cannot append to a virtual group."
+                    "Ignoring parameter append. Cannot append to a virtual group.",
+                    stacklevel=3,
                 )
         if group_schema.metadata_schema is not None:
             tiledb.Array.create(
@@ -696,7 +694,7 @@ class GroupSchema(Mapping):
         else:
             self._array_schema_table = dict(array_schemas)
         self._attr_to_arrays: Dict[str, List[str]] = defaultdict(list)
-        for (schema_name, schema) in self._array_schema_table.items():
+        for schema_name, schema in self._array_schema_table.items():
             for attr in schema:
                 attr_name = attr.name
                 self._attr_to_arrays[attr_name].append(schema_name)

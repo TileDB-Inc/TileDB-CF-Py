@@ -204,18 +204,8 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         assert tiles == (2,)
 
     @pytest.mark.parametrize("collect_attrs", (True, False))
-    def test_coords_filter(self, netcdf_file, collect_attrs):
-        """Tests all arrays have coords_filters set to desired value."""
-        filters = tiledb.FilterList([tiledb.ZstdFilter(7)])
-        converter = NetCDF4ConverterEngine.from_file(
-            netcdf_file, collect_attrs=collect_attrs, coords_filters=filters
-        )
-        for array_creator in converter.array_creators():
-            assert array_creator.coords_filters == filters
-
-    @pytest.mark.parametrize("collect_attrs", (True, False))
     def test_offsets_filter(self, netcdf_file, collect_attrs):
-        """Tests all arrays have coords_filters set to desired value."""
+        """Tests all arrays have offsets_filters set to desired value."""
         filters = tiledb.FilterList([tiledb.ZstdFilter(7)])
         converter = NetCDF4ConverterEngine.from_file(
             netcdf_file, collect_attrs=collect_attrs, offsets_filters=filters
@@ -225,7 +215,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
 
     @pytest.mark.parametrize("collect_attrs", (True, False))
     def test_attrs_filter(self, netcdf_file, collect_attrs):
-        """Tests all arrays have coords_filters set to desired value."""
+        """Tests all arrays have attrs_filters set to desired value."""
         filters = tiledb.FilterList([tiledb.ZstdFilter(7)])
         converter = NetCDF4ConverterEngine.from_file(
             netcdf_file, collect_attrs=collect_attrs, attrs_filters=filters

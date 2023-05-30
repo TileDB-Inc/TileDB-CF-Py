@@ -8,7 +8,7 @@ dask = pytest.importorskip("dask")  # isort:skip
 distributed = pytest.importorskip("distributed")  # isort:skip
 
 from dask.distributed import Client
-from distributed.utils_test import cluster, loop
+from distributed.utils_test import cleanup, cluster, loop, loop_in_thread  # noqa: F401
 from xarray.tests import assert_allclose
 
 da = pytest.importorskip("dask.array")

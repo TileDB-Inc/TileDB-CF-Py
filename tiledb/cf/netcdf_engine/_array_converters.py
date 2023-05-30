@@ -31,8 +31,6 @@ class NetCDF4ArrayConverter(ArrayCreator):
             are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
             ``F`` for column major.
         capacity: The number of cells in a data tile of a sparse fragment.
-        coords_filters: Filters for all dimensions that are not specified explicitly by
-            ``dim_filters``.
         offsets_filters: Filters for the offsets for variable length attributes or
             dimensions.
         attrs_filters: Default filters to use when adding an attribute to the array.

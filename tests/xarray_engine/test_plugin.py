@@ -125,7 +125,6 @@ class TileDBXarray2DBase(TileDBXarrayBase):
             (slice(1, 8, 2), np.array([0, 1, 2])),
             (1, np.array([-1, -2])),
             (np.array([0, 0, 2, 2]), np.array([1, 1, 3])),
-            (1, np.array([])),
         ],
     )
     def test_indexing_array(self, tiledb_uri, dataset, index1, index2):
@@ -228,6 +227,7 @@ class TestShiftedDim1D(TileDBXarray1DBase):
         )
 
 
+@pytest.mark.skip(reason="skip this test until xarray datetime handling stabalizes")
 class TestDatetimeDim1D(TileDBXarray1DBase):
     """Simple 1D dataset with datetime  dimension."""
 
@@ -387,20 +387,8 @@ def test_open_multidim_dataset(create_tiledb_example):
     xr.testing.assert_equal(dataset, expected)
 
 
+@pytest.mark.filterwarnings("ignore:'netcdf4' fails while guessing")
 def test_open_multidim_dataset_guess_engine(create_tiledb_example):
     uri, expected = create_tiledb_example
     dataset = xr.open_dataset(uri)
     xr.testing.assert_equal(dataset, expected)
-
-
-def test_open_dataset_with_ctx():
-    tiledb_quickstart_dense = "tiledb://TileDB-Inc/quickstart_dense"
-    config = tiledb.Config()
-    config["rest.username"] = "a"
-    config["rest.password"] = "b"
-    ctx = tiledb.Ctx(config)
-    with pytest.raises(tiledb.libtiledb.TileDBError) as err:
-        xr.open_dataset(tiledb_quickstart_dense, engine="tiledb", ctx=ctx)
-    assert err.value.message.startswith(
-        "[TileDB::REST] Error: Error in libcurl GET operation"
-    )

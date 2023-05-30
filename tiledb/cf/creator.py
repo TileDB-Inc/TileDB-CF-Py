@@ -105,7 +105,6 @@ class DataspaceCreator:
         tile_order: str = "row-major",
         capacity: int = 0,
         tiles: Optional[Sequence[int]] = None,
-        coords_filters: Optional[tiledb.FilterList] = None,
         dim_filters: Optional[Dict[str, tiledb.FilterList]] = None,
         offsets_filters: Optional[tiledb.FilterList] = None,
         attrs_filters: Optional[tiledb.FilterList] = None,
@@ -131,11 +130,8 @@ class DataspaceCreator:
             capacity: The number of cells in a data tile of a sparse fragment.
             tiles: An optional ordered list of tile sizes for the dimensions of the
                 array. The length must match the number of dimensions in the array.
-            coords_filters: Filters for all dimensions that are not otherwise set by
-                ``dim_filters.``
             dim_filters: A dict from dimension name to a :class:`tiledb.FilterList`
-                for dimensions in the array. Overrides the values set in
-                ``coords_filters``.
+                for dimensions in the array.
             offsets_filters: Filters for the offsets for variable length attributes or
                 dimensions.
             attrs_filters: Default filters to use when adding an attribute to the
@@ -153,7 +149,6 @@ class DataspaceCreator:
             tile_order=tile_order,
             capacity=capacity,
             tiles=tiles,
-            coords_filters=coords_filters,
             dim_filters=dim_filters,
             offsets_filters=offsets_filters,
             attrs_filters=attrs_filters,
@@ -334,6 +329,7 @@ class DataspaceCreator:
             except tiledb.libtiledb.TileDBError as err:
                 raise RuntimeError(
                     f"Failed to create an ArraySchema for array '{array_creator.name}'."
+                    f" {str(err)}"
                 ) from err
         group_schema = GroupSchema(array_schemas)
         return group_schema
@@ -497,8 +493,6 @@ class ArrayCreator:
             are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
             ``F`` for column major.
         capacity: The number of cells in a data tile of a sparse fragment.
-        coords_filters: Filters for all dimensions that are not specified explicitly by
-            ``dim_filters``.
         offsets_filters: Filters for the offsets for variable length attributes or
             dimensions.
         attrs_filters: Default filters to use when adding an attribute to the array.
@@ -516,7 +510,6 @@ class ArrayCreator:
         tile_order: str = "row-major",
         capacity: int = 0,
         tiles: Optional[Sequence[int]] = None,
-        coords_filters: Optional[tiledb.FilterList] = None,
         dim_filters: Optional[Dict[str, tiledb.FilterList]] = None,
         offsets_filters: Optional[tiledb.FilterList] = None,
         attrs_filters: Optional[tiledb.FilterList] = None,
@@ -538,7 +531,6 @@ class ArrayCreator:
         self.capacity = capacity
         if tiles is not None:
             self._domain_creator.tiles = tiles
-        self.coords_filters = coords_filters
         if dim_filters is not None:
             for dim_name, filters in dim_filters.items():
                 self._domain_creator.dim_creator(dim_name).filters = filters
@@ -572,13 +564,6 @@ class ArrayCreator:
         output.write(f"     sparse={self.sparse},\n")
         if self.sparse:
             output.write(f"     allows_duplicates={self.allows_duplicates},\n")
-        if self.coords_filters is not None:
-            output.write("     coords_filters=FilterList([")
-            for index, coord_filter in enumerate(self.coords_filters):
-                output.write(f"{repr(coord_filter)}")
-                if index < len(self.coords_filters):
-                    output.write(", ")
-            output.write("])\n")
         output.write("  )")
         return output.getvalue()
 
@@ -705,9 +690,6 @@ class ArrayCreator:
                 f"<tr><td {cell_style}>allows_duplicates"
                 f"={self.allows_duplicates}</td></tr>\n"
             )
-        output.write(
-            f"<tr><td {cell_style}>coords_filters={self.coords_filters}</td></tr>\n"
-        )
         output.write("</table>\n")
         output.write("</li>\n")
         output.write("</ul>\n")
@@ -737,7 +719,6 @@ class ArrayCreator:
             cell_order=self.cell_order,
             tile_order=self.tile_order,
             capacity=self.capacity,
-            coords_filters=self.coords_filters,
             offsets_filters=self.offsets_filters,
             allows_duplicates=self.allows_duplicates,
             sparse=self.sparse,

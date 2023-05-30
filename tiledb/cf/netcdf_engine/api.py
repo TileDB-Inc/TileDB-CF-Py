@@ -28,7 +28,6 @@ def from_netcdf(
     coords_to_dims: bool = False,
     collect_attrs: bool = True,
     unpack_vars: bool = False,
-    coords_filters: Optional[tiledb.FilterList] = None,
     offsets_filters: Optional[tiledb.FilterList] = None,
     attrs_filters: Optional[tiledb.FilterList] = None,
     copy_metadata: bool = True,
@@ -67,7 +66,6 @@ def from_netcdf(
         unpack_vars: Unpack NetCDF variables with NetCDF attributes ``scale_factor``
             or ``add_offset`` using the transformation ``scale_factor * value +
             unpack``.
-        coords_filters: Default filters for all dimensions.
         offsets_filters: Default filters for all offsets for variable attributes
             and dimensions.
         attrs_filters: Default filters for all attributes.
@@ -97,7 +95,6 @@ def from_netcdf(
             coords_to_dims=coords_to_dims,
             collect_attrs=collect_attrs,
             unpack_vars=unpack_vars,
-            coords_filters=coords_filters,
             offsets_filters=offsets_filters,
             attrs_filters=attrs_filters,
         )
