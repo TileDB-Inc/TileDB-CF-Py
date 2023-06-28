@@ -13,7 +13,7 @@ import numpy as np
 
 import tiledb
 
-from .core import METADATA_ARRAY_NAME, Group, GroupSchema, VirtualGroup
+from .core import METADATA_ARRAY_NAME, Group, GroupSchema
 
 DType = Union[int, float, str, None]
 DATA_SUFFIX = ".data"
@@ -242,23 +242,6 @@ class DataspaceCreator:
         """
         schema = self.to_schema(ctx)
         Group.create(uri, schema, key, ctx, append=append)
-
-    def create_virtual_group(
-        self,
-        uri: str,
-        key: Optional[Union[Dict[str, str], str]] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        """Creates TileDB arrays for the CF dataspace.
-
-        Parameters:
-            uri: Prefix for the uniform resource identifier for the TileDB arrays that
-                will be created.
-            key: If not ``None``, encryption key, or dictionary of encryption keys, to
-                decrypt arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-        """
-        VirtualGroup.create(uri, self.to_schema(ctx), key, ctx)
 
     def get_array_creator(self, array_name: str):
         """Returns the array creator with the requested name.

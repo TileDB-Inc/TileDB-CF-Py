@@ -6,6 +6,8 @@
 
 ### Deprecation
 
+* Removes virtual groups.
+
 ### Bug Fixes
 
 ### New Features

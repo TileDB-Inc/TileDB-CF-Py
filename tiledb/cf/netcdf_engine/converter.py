@@ -746,55 +746,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             copy_metadata=copy_metadata,
         )
 
-    def convert_to_virtual_group(
-        self,
-        output_uri: str,
-        key: Optional[str] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-        timestamp: Optional[int] = None,
-        input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
-        input_group_path: Optional[str] = None,
-        assigned_dim_values: Optional[Dict[str, Any]] = None,
-        assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
-        copy_metadata: bool = True,
-    ):
-        """Creates a TileDB group and its arrays from the defined CF dataspace and
-        copies data into them using the converter engine.
-
-        Parameters:
-            output_uri: Uniform resource identifier for the TileDB group to be created.
-            key: If not ``None``, encryption key to encrypt and decrypt output arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            timestamp: If not ``None``, the TileDB timestamp to write the NetCDF data to
-                TileDB at.
-            input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
-                This will be prioritized over ``input_file`` if both are provided.
-            input_file: If not ``None``, the NetCDF file to copy data from. This will
-                not be used if ``netcdf_group`` is not ``None``.
-            input_group_path: If not ``None``, the path to the NetCDF group to copy data
-                from.
-            assigned_dim_values: Mapping from dimension name to value for dimensions
-                that are not converted from the NetCDF group.
-            assigned_attr_values: Mapping from attribute name to numpy array of values
-                for attributes that are not converted from the NetCDF group.
-            copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
-                TileDB metadata. If ``False`` do not copy metadata.
-        """
-        self.create_virtual_group(output_uri, key, ctx)
-        self.copy_to_virtual_group(
-            output_uri=output_uri,
-            key=key,
-            ctx=ctx,
-            timestamp=timestamp,
-            input_netcdf_group=input_netcdf_group,
-            input_file=input_file,
-            input_group_path=input_group_path,
-            assigned_dim_values=assigned_dim_values,
-            assigned_attr_values=assigned_attr_values,
-            copy_metadata=copy_metadata,
-        )
-
     def copy_to_array(
         self,
         output_uri: str,
@@ -907,66 +858,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         }
         self._copy_data(
             group_uri=group_uri,
-            array_uris=array_uris,
-            key=key,
-            ctx=ctx,
-            timestamp=timestamp,
-            input_netcdf_group=input_netcdf_group,
-            input_file=input_file,
-            input_group_path=input_group_path,
-            assigned_dim_values=assigned_dim_values,
-            assigned_attr_values=assigned_attr_values,
-            copy_metadata=copy_metadata,
-        )
-
-    def copy_to_virtual_group(
-        self,
-        output_uri: str,
-        key: Optional[str] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-        timestamp: Optional[int] = None,
-        input_netcdf_group: Optional[netCDF4.Group] = None,
-        input_file: Optional[Union[str, Path]] = None,
-        input_group_path: Optional[str] = None,
-        assigned_dim_values: Optional[Dict[str, Any]] = None,
-        assigned_attr_values: Optional[Dict[str, np.ndarray]] = None,
-        copy_metadata: bool = True,
-    ):
-        """Copies data from a NetCDF group to a TileDB CF dataspace.
-
-        This will copy data from a NetCDF group that is defined either by a
-        :class:`netCDF4.Group` or by an input_file and group path. If neither the
-        ``netcdf_group`` or ``input_file`` is specified, this will copy data from the
-        input file ``self.default_input_file``.  If both ``netcdf_group`` and
-        ``input_file`` are set, this method will prioritize using the NetCDF group set
-        by ``netcdf_group``.
-
-        Parameters:
-            output_uri: Uniform resource identifier for the TileDB group data is being
-                copied to.
-            key: If not ``None``, encryption key to decrypt arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            timestamp: If not ``None``, the TileDB timestamp to write the NetCDF data to
-                TileDB at.
-            input_netcdf_group: If not ``None``, the NetCDF group to copy data from.
-                This will be prioritized over ``input_file`` if both are provided.
-            input_file: If not ``None``, the NetCDF file to copy data from. This will
-                not be used if ``netcdf_group`` is not ``None``.
-            input_group_path: If not ``None``, the path to the NetCDF group to copy data
-                from.
-            assigned_dim_values: Mapping from dimension name to value for dimensions
-                that are not from the NetCDF group.
-            assigned_attr_values: Mapping from attribute name to numpy array of values
-                for attributes that are not copied from the NetCDF group.
-            copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
-                TileDB metadata. If ``False`` do not copy metadata.
-        """
-        array_uris = {
-            array_creator.name: f"{output_uri}_{array_creator.name}"
-            for array_creator in self._registry.array_creators()
-        }
-        self._copy_data(
-            group_uri=output_uri,
             array_uris=array_uris,
             key=key,
             ctx=ctx,
