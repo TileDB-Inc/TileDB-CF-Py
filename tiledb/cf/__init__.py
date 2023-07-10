@@ -15,7 +15,6 @@ from .cli import cli
 from .core import (
     ATTR_METADATA_FLAG,
     DIM_METADATA_FLAG,
-    METADATA_ARRAY_NAME,
     ArrayMetadata,
     AttrMetadata,
     DimMetadata,

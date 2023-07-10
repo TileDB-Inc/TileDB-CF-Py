@@ -16,11 +16,6 @@ _attr_a = tiledb.Attr(name="a", dtype=np.uint64)
 _attr_b = tiledb.Attr(name="b", dtype=np.float64)
 _attr_c = tiledb.Attr(name="c", dtype=np.bytes_)
 _attr_d = tiledb.Attr(name="d", dtype=np.uint64)
-_empty_array_schema = tiledb.ArraySchema(
-    domain=tiledb.Domain(_dim0),
-    attrs=[_attr0],
-    sparse=False,
-)
 _array_schema_1 = tiledb.ArraySchema(
     domain=tiledb.Domain(_row, _col),
     attrs=[_attr_a, _attr_b, _attr_c],
@@ -33,15 +28,8 @@ _array_schema_4 = tiledb.ArraySchema(
     domain=tiledb.Domain(_col), attrs=[_attr_b, _attr_d]
 )
 
-_empty_group: Dict[str, Any] = {
-    "array_schemas": None,
-    "metadata_schema": None,
-    "attr_map": {},
-    "num_schemas": 0,
-}
 _single_array_group: Dict[str, Any] = {
     "array_schemas": {"A1": _array_schema_1},
-    "metadata_schema": _empty_array_schema,
     "attr_map": {"a": ("A1",), "b": ("A1",), "c": ("A1",)},
     "num_schemas": 1,
 }
@@ -52,7 +40,6 @@ _multi_array_group: Dict[str, Any] = {
         "A3": _array_schema_3,
         "A4": _array_schema_4,
     },
-    "metadata_schema": None,
     "attr_map": {
         "a": ("A1", "A2"),
         "b": ("A1", "A3", "A4"),
@@ -64,17 +51,15 @@ _multi_array_group: Dict[str, Any] = {
 
 
 class TestGroupSchema:
-    _scenarios = [_empty_group, _single_array_group, _multi_array_group]
+    _scenarios = [_single_array_group, _multi_array_group]
 
     @pytest.mark.parametrize("scenario", _scenarios)
     def test_initialize_group_schema(self, scenario):
         array_schemas = scenario["array_schemas"]
-        metadata_schema = scenario["metadata_schema"]
         attr_map = scenario["attr_map"]
-        group_schema = GroupSchema(array_schemas, metadata_schema, False)
+        group_schema = GroupSchema(array_schemas)
         group_schema.check()
         assert group_schema == group_schema
-        assert group_schema.metadata_schema == metadata_schema
         assert repr(group_schema) is not None
         assert len(group_schema) == scenario["num_schemas"]
         for attr_name, arrays in attr_map.items():
@@ -90,8 +75,6 @@ class TestGroupSchema:
             tidylib = pytest.importorskip("tidylib")
             group_schema = GroupSchema(
                 array_schemas=scenario["array_schemas"],
-                metadata_schema=scenario["metadata_schema"],
-                use_default_metadata_schema=False,
             )
             html_summary = group_schema._repr_html_()
             _, errors = tidylib.tidy_fragment(html_summary)
@@ -100,16 +83,13 @@ class TestGroupSchema:
         assert not bool(errors), str(errors)
 
     def test_not_equal(self):
-        schema1 = GroupSchema({"A1": _array_schema_1}, None, False)
-        schema2 = GroupSchema({"A1": _array_schema_1}, _empty_array_schema)
-        schema3 = GroupSchema({"A2": _array_schema_1}, None, False)
-        schema4 = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
+        schema1 = GroupSchema({"A1": _array_schema_1})
+        schema2 = GroupSchema({"A2": _array_schema_1})
+        schema3 = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
         assert schema1 != schema2
         assert schema2 != schema1
         assert schema1 != schema3
         assert schema3 != schema1
-        assert schema1 != schema4
-        assert schema4 != schema1
         assert schema1 != "not a group schema"
 
 
@@ -123,7 +103,6 @@ class TestLoadEmptyGroup:
     def test_group_schema(self, create_group):
         uri = create_group
         schema = GroupSchema.load(uri, key=None, ctx=None)
-        assert schema.metadata_schema is None
         assert len(schema) == 0
 
 
@@ -134,7 +113,6 @@ class TestLoadGroup:
         "A3": _array_schema_3,
         "A4": _array_schema_4,
     }
-    _metadata_array = _empty_array_schema
 
     @pytest.fixture(scope="class")
     def group_uri(self, tmpdir_factory):
@@ -144,12 +122,16 @@ class TestLoadGroup:
         tiledb.Array.create(uri + "/A2", _array_schema_2)
         tiledb.Array.create(uri + "/A3", _array_schema_3)
         tiledb.Array.create(uri + "/A4", _array_schema_4)
-        tiledb.Array.create(uri + "/__tiledb_group", _empty_array_schema)
+        with tiledb.Group(uri, mode="w") as group:
+            group.add(uri="A1", name="A1", relative=True)
+            group.add(uri="A2", name="A2", relative=True)
+            group.add(uri="A3", name="A3", relative=True)
+            group.add(uri="A4", name="A4", relative=True)
         return uri
 
     def test_group_schema(self, group_uri):
         schema = GroupSchema.load(group_uri, key=None, ctx=None)
-        assert schema == GroupSchema(self._array_schemas, self._metadata_array)
+        assert schema == GroupSchema(self._array_schemas)
 
     def test_not_group_exception(self, group_uri):
         with pytest.raises(ValueError):

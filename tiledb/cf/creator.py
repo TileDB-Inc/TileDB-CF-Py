@@ -13,7 +13,7 @@ import numpy as np
 
 import tiledb
 
-from .core import METADATA_ARRAY_NAME, Group, GroupSchema
+from .core import Group, GroupSchema
 
 DType = Union[int, float, str, None]
 DATA_SUFFIX = ".data"
@@ -331,8 +331,6 @@ class DataspaceRegistry:
     def check_new_array_name(self, array_name: str):
         if array_name in self._array_creators:
             raise ValueError(f"An array with name '{array_name}' already exists.")
-        if array_name == METADATA_ARRAY_NAME:
-            raise ValueError(f"The array name '{METADATA_ARRAY_NAME}' is reserved.")
 
     def check_new_attr_name(self, attr_name: str):
         if attr_name in self._attr_to_array:

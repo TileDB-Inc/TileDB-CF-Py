@@ -17,7 +17,6 @@ import numpy as np
 import tiledb
 
 DType = TypeVar("DType", covariant=True)
-METADATA_ARRAY_NAME = "__tiledb_group"
 ATTR_METADATA_FLAG = "__tiledb_attr."
 DIM_METADATA_FLAG = "__tiledb_dim."
 
@@ -78,21 +77,6 @@ def _get_array_uri(group_uri: str, array_name: str) -> str:
             ``group_uri``.
     """
     return os.path.join(group_uri, array_name)
-
-
-def _get_metadata_array_uri(group_uri: str) -> str:
-    """Returns a URI for an array with name ``array_name`` inside a group at URI
-        ``group_uri``.
-
-    Parameters:
-        group_uri: URI of the group containing the array
-        array_name: name of the array
-
-    Returns:
-        Array URI of an array with name ``array_name`` inside a group at URI
-            ``group_uri``.
-    """
-    return os.path.join(group_uri, METADATA_ARRAY_NAME)
 
 
 def _get_array_key(
@@ -307,27 +291,17 @@ class Group:
                     raise ValueError(
                         f"Cannot append to group. Array `{array_name}` already exists."
                     )
-            create_metadata_group = (
-                original_group_schema.metadata_schema is None
-                and group_schema.metadata_schema is not None
-            )
         else:
             tiledb.group_create(uri, ctx)
-            create_metadata_group = group_schema.metadata_schema is not None
-        if create_metadata_group:
-            tiledb.Array.create(
-                uri=_get_metadata_array_uri(uri),
-                schema=group_schema.metadata_schema,
-                key=_get_array_key(key, METADATA_ARRAY_NAME),
-                ctx=ctx,
-            )
-        for array_name, array_schema in group_schema.items():
-            tiledb.Array.create(
-                uri=_get_array_uri(uri, array_name),
-                schema=array_schema,
-                key=_get_array_key(key, array_name),
-                ctx=ctx,
-            )
+        with tiledb.Group(uri, mode="w", ctx=ctx) as group:
+            for array_name, array_schema in group_schema.items():
+                tiledb.Array.create(
+                    uri=_get_array_uri(uri, array_name),
+                    schema=array_schema,
+                    key=_get_array_key(key, array_name),
+                    ctx=ctx,
+                )
+                group.add(uri=array_name, name=array_name, relative=True)
 
     def __init__(
         self,
@@ -339,21 +313,11 @@ class Group:
     ):
         """Constructs a new :class:`Group`."""
         self._group_schema = GroupSchema.load(uri, ctx, key)
+        self._group = tiledb.Group(uri=uri, mode=mode, ctx=ctx)
         self._array_uris = {
             array_name: _get_array_uri(uri, array_name)
             for array_name in self._group_schema.keys()
         }
-        self._metadata_array = (
-            None
-            if self._group_schema.metadata_schema is None
-            else tiledb.open(
-                uri=_get_metadata_array_uri(uri),
-                mode=mode,
-                key=_get_array_key(key, METADATA_ARRAY_NAME),
-                timestamp=timestamp,
-                ctx=ctx,
-            )
-        )
         self._mode = mode
         self._key = key
         self._timestamp = timestamp
@@ -370,25 +334,17 @@ class Group:
 
     def close(self):
         """Closes this Group, flushing all buffered data."""
-        if self._metadata_array is not None:
-            self._metadata_array.close()
+        self._group.close()
         for array_list in self._open_arrays.values():
             for array in array_list:
                 array.close()
         self._open_arrays.clear()
 
     @property
-    def has_metadata_array(self) -> bool:
-        """Flag that is true if there a metadata array for storing group metadata."""
-        return self._metadata_array is not None
-
-    @property
     def meta(self) -> Optional[tiledb.Metadata]:
         """Metadata object for the group, or ``None`` if no array to store group
         metadata exists."""
-        if self._metadata_array is None:
-            return None
-        return self._metadata_array.meta
+        return self._group.meta
 
     def open_array(
         self,
@@ -490,9 +446,6 @@ class GroupSchema(Mapping):
 
     Parameters:
         array_schemas: A dict of array names to array schemas in the group.
-        metadata_schema: If not ``None``, a schema for the group metadata array.
-        use_default_metadata_schema: If ``True`` and ``metadata_schema=None`` a default
-            schema will be created for the metadata array.
         ctx: TileDB Context used for generating default metadata schema.
     """
 
@@ -511,46 +464,34 @@ class GroupSchema(Mapping):
             key: If not ``None``, encryption key, or dictionary of encryption keys, to
                 decrypt arrays.
         """
-        metadata_schema = None
         if tiledb.object_type(uri, ctx) != "group":
             raise ValueError(
                 f"Failed to load the group schema. Provided uri '{uri}' is not a "
                 f"valid TileDB group."
             )
-        vfs = tiledb.VFS(ctx=ctx)
-        array_schemas = {}
-        for item_uri in vfs.ls(uri):
-            if not tiledb.object_type(item_uri, ctx) == "array":
-                continue
-            array_name = item_uri.split("/")[-1]
-            local_key = _get_array_key(key, array_name)
-            if array_name == METADATA_ARRAY_NAME:
-                metadata_schema = tiledb.ArraySchema.load(item_uri, ctx, local_key)
-            else:
+        with tiledb.Group(uri, ctx=ctx) as group:
+            array_schemas = {}
+            for item in group:
+                if item.type != tiledb.libtiledb.Array:
+                    continue
+                if item.name is None:
+                    with warnings.catch_warnings:
+                        warnings.warn(
+                            f"Skipping unnamed array at URI: {item.uri}", stacklevel=3
+                        )
+                    continue
+                array_name = item.name
+                local_key = _get_array_key(key, array_name)
                 array_schemas[array_name] = tiledb.ArraySchema.load(
-                    item_uri,
-                    ctx,
-                    local_key,
+                    item.uri, ctx, local_key
                 )
-        return cls(array_schemas, metadata_schema, False)
+        return cls(array_schemas)
 
     def __init__(
         self,
         array_schemas: Optional[Dict[str, tiledb.ArraySchema]] = None,
-        metadata_schema: Optional[tiledb.ArraySchema] = None,
-        use_default_metadata_schema: bool = True,
         ctx: Optional[tiledb.Ctx] = None,
     ):
-        if metadata_schema is None and use_default_metadata_schema:
-            self._metadata_schema = tiledb.ArraySchema(
-                domain=tiledb.Domain(
-                    tiledb.Dim(name="dim", domain=(0, 0), dtype=np.int32, ctx=ctx)
-                ),
-                attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
-                sparse=False,
-            )
-        else:
-            self._metadata_schema = metadata_schema
         if array_schemas is None:
             self._array_schema_table = {}
         else:
@@ -569,8 +510,6 @@ class GroupSchema(Mapping):
         for name, schema in self._array_schema_table.items():
             if schema != other.get(name):
                 return False
-        if self._metadata_schema != other.metadata_schema:
-            return False
         return True
 
     def __getitem__(self, schema_name: str) -> tiledb.ArraySchema:
@@ -596,8 +535,6 @@ class GroupSchema(Mapping):
         """Returns the object representation of this GroupSchema in string form."""
         output = StringIO()
         output.write("GroupSchema:\n")
-        if self._metadata_schema is not None:
-            output.write(f"Group metadata schema: {repr(self._metadata_schema)}")
         for name, schema in self.items():
             output.write(f"'{name}': {repr(schema)}")
         return output.getvalue()
@@ -607,11 +544,6 @@ class GroupSchema(Mapping):
         output = StringIO()
         output.write("<section>\n")
         output.write(f"<h3>{self.__class__.__name__}</h3>\n")
-        if self._metadata_schema is not None:
-            output.write("<details>\n")
-            output.write("<summary>ArraySchema for Group Metadata Array</summary>\n")
-            output.write(_array_schema_html(self._metadata_schema))
-            output.write("</details>\n")
         for name, schema in self.items():
             output.write("<details>\n")
             output.write(f"<summary>ArraySchema <em>{name}</em></summary>\n")
@@ -624,8 +556,6 @@ class GroupSchema(Mapping):
         """Checks the correctness of each array in the GroupSchema."""
         for schema in self._array_schema_table.values():
             schema.check()
-        if self._metadata_schema is not None:
-            self._metadata_schema.check()
 
     def arrays_with_attr(self, attr_name: str) -> Optional[List[str]]:
         """Returns a tuple of the names of all arrays with a matching attribute.
@@ -641,8 +571,3 @@ class GroupSchema(Mapping):
 
     def has_attr(self, attr_name: str) -> bool:
         return attr_name in self._attr_to_arrays
-
-    @property
-    def metadata_schema(self) -> Optional[tiledb.ArraySchema]:
-        """ArraySchema for the group-level metadata."""
-        return self._metadata_schema

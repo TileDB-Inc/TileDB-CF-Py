@@ -148,6 +148,8 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
             attrs=[tiledb.Attr("a2", dtype=np.float64)],
         )
         tiledb.Array.create(f"{uri}/original_array", schema)
+        with tiledb.Group(uri, mode="w") as group:
+            group.add(uri="original_array", name="original_array", relative=True)
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         converter.convert_to_group(uri, append=True)
         group_schema = GroupSchema.load(uri)
@@ -163,6 +165,8 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
             attrs=[tiledb.Attr("a2", dtype=np.float64)],
         )
         tiledb.Array.create(f"{uri}/array0", schema)
+        with tiledb.Group(uri, mode="w") as group:
+            group.add(uri="array0", name="array0", relative=True)
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         with pytest.raises(ValueError):
             converter.convert_to_group(uri, append=True)
@@ -361,6 +365,7 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
                 assert (
                     dim_meta["description"] == "x array"
                 ), "dim metadata not correctly copied."
+                assert group.meta["name"] == self.name
         index = np.argsort(data["x"])
         x = data["x"][index]
         y = data["y"][index]
