@@ -3,6 +3,8 @@
 
 """Module for using TileDB as an xarray backend plugin.
 
+This plugin can be used to open a generic TileDB array.
+
 Example:
   Open a dense TileDB array with the xarray engine::
 
