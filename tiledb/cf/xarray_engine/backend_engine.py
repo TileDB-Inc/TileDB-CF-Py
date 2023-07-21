@@ -504,4 +504,4 @@ class TileDBBackendEntrypoint(BackendEntrypoint):
             return False
 
 
-BACKEND_ENTRYPOINTS["tiledb"] = TileDBBackendEntrypoint
+BACKEND_ENTRYPOINTS["tiledb"] = ("tiledb", TileDBBackendEntrypoint)

@@ -21,7 +21,7 @@ import os
 from typing import Iterable, ClassVar
 
 import tiledb
-
+import numpy as np
 from xarray.backends.common import (
     BACKEND_ENTRYPOINTS,
     AbstractWritableDataStore,
@@ -37,6 +37,7 @@ from xarray.core.utils import (
 )
 from xarray.core.variable import Variable
 from xarray.core.dataset import Dataset
+from xarray.core.pycompat import integer_types
 
 
 UNLIMITED_DIMENSION_KEY = "__xr_unlimited"
@@ -45,25 +46,143 @@ RESERVED_GROUP_KEYS = {UNLIMITED_DIMENSION_KEY}
 RESERVED_PREFIXES = {DIMENSION_KEY_PREFIX}
 
 
+class TileDBIndexConverter:
+    """Converter from xarray-style indices to TileDB-style coordinates.
+
+    This class converts the values contained in an xarray ExplicitIndexer tuple to
+    values usable for indexing a TileDB Dimension. The xarray ExplicitIndexer uses
+    standard 0-based integer indices to look-up values in DataArrays and variables;
+    whereas, Tiledb accesses values directly from the dimension coordinates (analogous
+    to looking-up values by "location" in xarray).
+
+    The max value of the index is defined by the maximum of the non-empty domain at
+    creation time.
+
+    The following is assumed about xarray indices:
+       * An index may be an integer, a slice, or a Numpy array of integer indices.
+       * An integer index or component of an array is such that -size <= value < size.
+         * Non-negative values are a standard zero-based index.
+         * Negative values count backwards from the end of the array with the last value
+           of the array starting at -1.
+    """
+
+    def __init__(self, dim, domain):
+        if dim.dtype.kind not in ("i", "u"):
+            raise NotImplementedError(
+                f"support for reading TileDB arrays with a dimension of type "
+                f"{dim.dtype} is not implemented"
+            )
+
+        if dim.domain[0] != 0:
+            raise ValueError(
+                f"Not a valid TileDB-Xarray group. All dimensions must have "
+                f"a domain with lower bound=0, but dimension '{dim.name}' in "
+                f"array '{self.variable_name}' has lower bound={dim.domain[0]}."
+            )
+
+        self.dtype = dim.dtype
+        self.size = int(dim.domain[1]) + 1
+
+    def __getitem__(self, index):
+        """Converts an xarray integer, array, or slice to an index object usable by the
+            TileDB multi_index function.
+
+        Parameters
+        ----------
+        index : Union[int, np.array, slice]
+            An integer index, array of integer indices, or a slice for indexing an
+            xarray dimension.
+
+        Returns
+        -------
+        new_index : Union[self.dtype, List[self.dtype], slice]
+            A value of type `self.dtype`, a list of values, or a slice for indexing a
+            TileDB dimension using mulit_index.
+        """
+        if isinstance(index, integer_types):
+            # Convert xarray index to TileDB dimension coordinate
+            if not -self.size <= index < self.size:
+                raise IndexError(f"index {index} out of bounds for {type(self)}")
+            return self.to_coordinate(index)
+
+        if isinstance(index, slice) and index.step in (1, None):
+            # Convert from index slice to coordinate slice (note that xarray
+            # includes the starting point and excludes the ending point vs. TileDB
+            # multi_index which includes both the staring point and ending point).
+            index = range(self.size)[index]
+            if index.step in (1, None):
+                return slice(index.start, index.stop - 1)
+
+        # Convert slice or array of xarray indices to list of TileDB dimension
+        # coordinates
+        return list(self.to_coordinates(index))
+
+    def to_coordinate(self, index):
+        """Converts an xarray index to a coordinate for the TileDB dimension.
+
+        Parameters
+        ----------
+        index : int
+            An integer index for indexing an xarray dimension.
+
+        Returns
+        -------
+        new_index : self.dtype
+            A `self.dtype` coordinate for indexing a TileDB dimension.
+        """
+        return index if index >= 0 else index + self.size - 1
+
+    def to_coordinates(self, index):
+        """
+        Converts an xarray-style slice or Numpy array of indices to an array of
+        coordinates for the TileDB dimension.
+
+        Parameters
+        ----------
+        index : Union[slice, np.ndarray]
+            A slice or an array of integer indices for indexing an xarray dimension.
+
+        Returns
+        -------
+        new_index : Union[np.ndarray]
+            An array of `self.dtype` coordinates for indexing a TileDB dimension.
+        """
+        if isinstance(index, slice):
+            # Using range handles negative start/stop, out-of-bounds, and None values.
+            index = range(self.size)[index]
+            return np.arange(index.start, index.stop, index.step)
+
+        if isinstance(index, np.ndarray):
+            if np.isscalar(index):
+                return index if index >= 0 else index + self.size - 1
+            if index.ndim != 1:
+                raise TypeError(
+                    f"invalid indexer array for {type(self)}; input array index must "
+                    f"have exactly 1 dimension"
+                )
+            # vectorized version of self.to_coordinate
+            if not ((-self.size <= index).all() and (index < self.size).all()):
+                raise IndexError(f"index {index} out of bounds for {type(self)}")
+            return index + np.where(index >= 0, 0, self.size - 1)
+
+        raise TypeError(f"unexpected indexer type for {type(self)}")
+
+
 class TileDBArrayWrapper(BackendArray):
     # TODO: Make sure slots are okay.
     __slots__ = (
         "dtype",
         "shape",
         "variable_name",
-        "_attr_name",
-        "_config",
-        "_ctx",
+        "_array_kwargs",
+        "_index_converters",
         "_schema",
-        "_uri",
     )
 
     def __init__(self, variable_name, uri, config, ctx, unlimited_dimensions):
         self.variable_name = variable_name
-        self._uri = uri
-        self._config = config
-        self._ctx = ctx
-        self._schema = tiledb.ArraySchema.load(self._uri, ctx=ctx)
+        self._array_kwargs = {"uri": uri, "config": config, "ctx": ctx}
+        self._schema = tiledb.ArraySchema.load(uri, ctx=ctx)
 
         if self._schema.sparse:
             raise ValueError(
@@ -80,7 +199,7 @@ class TileDBArrayWrapper(BackendArray):
                 f"{self._schema.nattr} attributes."
             )
         attr = self._schema.attr(0)
-        self._attr_name = attr.name
+        self._array_kwargs["attr"] = attr.name
         self.dtype = attr.dtype
 
         # Check dimensions and get the array shape.
@@ -91,36 +210,41 @@ class TileDBArrayWrapper(BackendArray):
                     f"a domain with lower bound=0, but dimension '{dim.name}' in "
                     f"array '{self.variable_name}' has lower bound={dim.domain[0]}."
                 )
-        self.shape = tuple(
-            unlimited_dimensions.get(dim.name, dim.domain[1])
+        self._index_converters = tuple(
+            TileDBIndexConverter(
+                dim, [0, unlimited_dimensions.get(dim.name, dim.domain[1])]
+            )
             for dim in self._schema.domain
         )
+        self.shape = tuple(converter.size for converter in self._index_converters)
 
-    def __getitem__(self, key):
-        # TODO: Test the following indexing types.
-        with tiledb.open(
-            self.datastore.tiledb_group[self.variable_name],
-            mode="r",
-            confix=self.datastore.config,
-            ctx=self.datastore.ctx,
-        ) as array:
-            if isinstance(key, indexing.BasicIndexer):
-                return array[key.tuple]
-            elif isinstance(key, indexing.VectorizedIndexer):
-                # TODO: Fix this to return the correct type
-                return array.multi_index[
-                    indexing._arrayize_vectorized_indexer(key, self.shape).tuple
-                ][self._attr_name]
-            elif isinstance(key, indexing.OuterIndexer):
-                # TODO: Fix this to return the correct type
-                return array.multi_index[
-                    indexing._arrayize_vectorized_indexer(key, self.shape).tuple
-                ][self._attr_name]
-            else:
-                raise NotImplementedError(
-                    f"TileDBArrayWrapper received an unexpected indexer of type "
-                    f"{type(key)}"
-                )
+    def __getitem__(self, indexer):
+        xarray_indices = indexer.tuple
+        if len(xarray_indices) != len(self._index_converters):
+            raise ValueError(
+                f"key of length {len(xarray_indices)} cannot be used for a TileDB array"
+                f" of length {len(self._index_converters)}"
+            )
+        # Compute the shape, collapsing any dimensions with integer input.
+        shape = tuple(
+            len(range(converter.size)[index] if isinstance(index, slice) else index)
+            for index, converter in zip(xarray_indices, self._index_converters)
+            if not isinstance(index, integer_types)
+        )
+        # TileDB multi_index does not except empty arrays/slices. If a dimension is
+        # length zero, return an empty numpy array of the correct length.
+        if 0 in shape:
+            return np.zeros(shape)
+        tiledb_indices = tuple(
+            converter[index]
+            for index, converter in zip(xarray_indices, self._index_converters)
+        )
+        with tiledb.open(**self._array_kwargs) as array:
+            result = array.multi_index[tiledb_indices][self._array_kwargs["attr"]]
+        # Note: TileDB multi_index returns the same number of dimensions as the initial
+        # array. To match the expected xarray output, we need to reshape the result to
+        # remove any dimensions corresponding to scalar-valued input.
+        return result.reshape(shape)
 
 
 class TileDBXarrayStore(AbstractWritableDataStore):
@@ -143,6 +267,11 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         self._group_uri = group_uri
         self._config = config
         self._ctx = ctx
+        if tiledb.object_type(self._group_uri, ctx=self._ctx) != "group":
+            raise ValueError(
+                f"Failed to open dataset using `tiledb-xr` engine. There is not a "
+                f"valid TileDB Group at provided location '{self._group_uri}'."
+            )
 
     def __enter__(self):
         return self
@@ -350,8 +479,12 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
         """ """
         if isinstance(filename_or_obj, (str, os.PathLike)):
             _, ext = os.path.splitext(filename_or_obj)
-            return ext in {".tiledb-xr"}
-        return False
+            if ext in {".tiledb-xr"}:
+                return True
+        try:
+            return tiledb.object_type(filename_or_obj) == "group"
+        except tiledb.TileDBError:
+            return False
 
 
-BACKEND_ENTRYPOINTS["tiledb-xr"] = ("tiledb", TileDBXarrayBackendEntrypoint)
+BACKEND_ENTRYPOINTS["tiledb-xr"] = ("tiledb-xr", TileDBXarrayBackendEntrypoint)
