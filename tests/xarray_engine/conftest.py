@@ -8,6 +8,66 @@ import tiledb
 
 
 @pytest.fixture
+def create_tiledb_group_example(tmpdir):
+    xr = pytest.importorskip("xarray")
+    # Define data
+    data = {
+        "pressure": np.linspace(
+            -1.0, 1.0, num=32, endpoint=True, dtype=np.float64
+        ).reshape(8, 4),
+        "count": np.arange(0, 32, dtype=np.int32).reshape(8, 4),
+    }
+    # Create expected dataset
+    expected = xr.Dataset(
+        data_vars={
+            "pressure": xr.DataArray(
+                data=data["pressure"],
+                dims=["time", "x"],
+                # attrs={"long_name": "example float data"},
+            ),
+            "count": xr.DataArray(
+                data=data["count"],
+                dims=["time", "x"],
+                # attrs={"long_name": "example int data"},
+            ),
+        },
+        # attrs={"global_1": "value1", "global_2": "value2"},
+    )
+    group_uri = str(tmpdir.join("tiledb_group_example_1"))
+    schemas = {
+        "count": tiledb.ArraySchema(
+            domain=tiledb.Domain(
+                tiledb.Dim(name="time", domain=(0, 7), tile=4, dtype=np.int32),
+                tiledb.Dim(name="x", domain=(0, 3), tile=4, dtype=np.int32),
+            ),
+            sparse=False,
+            attrs=[
+                tiledb.Attr(name="count", dtype=np.int32),
+            ],
+        ),
+        "pressure": tiledb.ArraySchema(
+            domain=tiledb.Domain(
+                tiledb.Dim(name="time", domain=(0, 7), tile=4, dtype=np.int32),
+                tiledb.Dim(name="x", domain=(0, 3), tile=4, dtype=np.int32),
+            ),
+            sparse=False,
+            attrs=[
+                tiledb.Attr(name="pressure", dtype=np.float64),
+            ],
+        ),
+    }
+    tiledb.Group.create(group_uri)
+    with tiledb.Group(group_uri, mode="w") as group:
+        for name, schema in schemas.items():
+            array_uri = f"{group_uri}/{name}"
+            tiledb.Array.create(array_uri, schema)
+            with tiledb.open(array_uri, mode="w") as array:
+                array[:, :] = {name: data[name]}
+            group.add(uri=name, name=name, relative=True)
+    return group_uri, expected
+
+
+@pytest.fixture
 def create_tiledb_example(tmpdir):
     xr = pytest.importorskip("xarray")
     # Define data
