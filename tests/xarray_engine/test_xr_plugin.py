@@ -34,7 +34,7 @@ class TileDBXarrayBase:
     @pytest.fixture(scope="class")
     def tiledb_uri(self, tmpdir_factory):
         """Creates a TileDB array and returns the uri."""
-        uri = str(tmpdir_factory.mktemp("input_array").join(f"{self.name}.tiledb-xr"))
+        uri = str(tmpdir_factory.mktemp("input_array").join(f"{self.name}.tiledb"))
         tiledb.Group.create(uri)
         with tiledb.Group(uri, mode="w") as group:
             for name, schema in self.schemas.items():
@@ -46,9 +46,7 @@ class TileDBXarrayBase:
         return uri
 
     def open_dataset(self, uri):
-        return xr.open_dataset(
-            uri, engine="tiledb-xr", cache=False, **self.backend_kwargs
-        )
+        return xr.open_dataset(uri, engine="tiledb", cache=False, **self.backend_kwargs)
 
     def test_full_dataset(self, tiledb_uri, dataset):
         """Checks the TileDB array can be opened with the backend."""
@@ -146,7 +144,7 @@ class TileDBXarray2DBase(TileDBXarrayBase):
     def test_indexing_array(self, tiledb_uri, dataset, index1, index2):
         """Tests indexing for data arrays in the dataset."""
         tiledb_dataset = xr.open_dataset(
-            tiledb_uri, engine="tiledb-xr", **self.backend_kwargs
+            tiledb_uri, engine="tiledb", **self.backend_kwargs
         )
         for name in self.data:
             result_data_array = tiledb_dataset[name]
@@ -158,7 +156,7 @@ class TileDBXarray2DBase(TileDBXarrayBase):
     def test_indexing_array_nested(self, tiledb_uri, dataset):
         """Tests nested indexing for all data arrays in the dataset."""
         tiledb_dataset = xr.open_dataset(
-            tiledb_uri, engine="tiledb-xr", **self.backend_kwargs
+            tiledb_uri, engine="tiledb", **self.backend_kwargs
         )
         for name in self.data:
             result = tiledb_dataset[name][[0, 2, 2], [1, 3]][[0, 0, 2], 1]
@@ -306,7 +304,7 @@ class TestSimple2DExampleUnsignedDims(TileDBXarray2DBase):
 
 def test_open_multidim_dataset(create_tiledb_group_example):
     uri, expected = create_tiledb_group_example
-    dataset = xr.open_dataset(uri, engine="tiledb-xr")
+    dataset = xr.open_dataset(uri, engine="tiledb")
     xr.testing.assert_equal(dataset, expected)
 
 
