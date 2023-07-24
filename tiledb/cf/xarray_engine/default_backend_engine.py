@@ -218,19 +218,121 @@ class TileDBXarrayStore(AbstractWritableDataStore):
 
     def __init__(
         self,
-        group_uri,
+        uri,
         config=None,
         ctx=None,
     ):
         # Set input properties
-        self._group_uri = group_uri
+        self._uri = uri
         self._config = config
         self._ctx = ctx
-        if tiledb.object_type(self._group_uri, ctx=self._ctx) != "group":
+        object_type = tiledb.object_type(self._uri, ctx=self._ctx)
+        if object_type == "group":
+            self._is_group = True
+        elif object_type == "array":
+            self._is_group = False
+        else:
             raise ValueError(
                 f"Failed to open dataset using `tiledb-xr` engine. There is not a "
-                f"valid TileDB Group at provided location '{self._group_uri}'."
+                f"valid TileDB Group at provided location '{self._uri}'."
             )
+
+    def _load_array(self):
+        """This is the method used to load the dataset."""
+        with tiledb.open(
+            self._uri,
+            mode="r",
+            config=self._config,
+            ctx=self._ctx,
+        ) as array:
+            # Get group level metadata
+            group_metadata = {key: val for key, val in array.meta}
+
+            # Get unlimited dimensions.
+            # -- This also removes unlimited dimension encoding data.
+            unlimited_dimensions = {}
+            if UNLIMITED_DIMENSION_KEY in group_metadata:
+                unlim_dim_names = group_metadata.pop(UNLIMITED_DIMENSION_KEY)
+                for dim_name in unlim_dim_names:
+                    key = f"{DIMENSION_KEY_PREFIX}{dim_name}"
+                    if key not in group_metadata:
+                        raise KeyError(
+                            f"Invalid TileDB-Xarray group. Missing size for unlimited "
+                            f"dimension '{dim_name}'."
+                        )
+                    unlimited_dimensions[dim_name] = group_metadata.pop(key)
+
+            # Get one variable from each TileDB array.
+            variables = {}
+            var_dims = (dim.name for dim in array.schema.domain)
+            for attr in array.schema():
+                # TODO: Pop variable metadata
+                var_meta = {}
+                var_data = indexing.LazilyIndexedArray(
+                    TileDBArrayWrapper(
+                        variable_name=attr.name,
+                        uri=self._uri,
+                        config=self._config,
+                        ctx=self._ctx,
+                        dimension_sizes=unlimited_dimensions,
+                        attr_name=attr.name,
+                    )
+                )
+                variables[attr.name] = Variable(
+                    dims=var_dims, data=var_data, attrs=var_meta
+                )
+        return FrozenDict(variables), FrozenDict(group_metadata)
+
+    def _load_group(self):
+        """This is the method used to load the dataset."""
+        with tiledb.Group(
+            self._uri,
+            mode="r",
+            config=self._config,
+            ctx=self._ctx,
+        ) as group:
+            # Get group level metadata
+            group_metadata = {key: val for key, val in group.meta}
+
+            # Get unlimited dimensions.
+            # -- This also removes unlimited dimension encoding data.
+            unlimited_dimensions = {}
+            if UNLIMITED_DIMENSION_KEY in group_metadata:
+                unlim_dim_names = group_metadata.pop(UNLIMITED_DIMENSION_KEY)
+                for dim_name in unlim_dim_names:
+                    key = f"{DIMENSION_KEY_PREFIX}{dim_name}"
+                    if key not in group_metadata:
+                        raise KeyError(
+                            f"Invalid TileDB-Xarray group. Missing size for unlimited "
+                            f"dimension '{dim_name}'."
+                        )
+                    unlimited_dimensions[dim_name] = group_metadata.pop(key)
+
+            # Get one variable from each TileDB array.
+            variables = {}
+            for item in group:
+                if item.name is None:
+                    continue
+                if item.type is not tiledb.libtiledb.Array:
+                    continue
+                with tiledb.open(
+                    item.uri, mode="r", config=self._config, ctx=self._ctx
+                ) as array:
+                    var_meta = {key: val for key, val in array.meta}
+                    var_dims = (dim.name for dim in array.schema.domain)
+                var_data = indexing.LazilyIndexedArray(
+                    TileDBArrayWrapper(
+                        variable_name=item.name,
+                        uri=item.uri,
+                        config=self._config,
+                        ctx=self._ctx,
+                        dimension_sizes=unlimited_dimensions,
+                    )
+                )
+                variables[item.name] = Variable(
+                    dims=var_dims, data=var_data, attrs=var_meta
+                )
+        return FrozenDict(variables), FrozenDict(group_metadata)
 
     def __enter__(self):
         return self
@@ -263,54 +365,9 @@ class TileDBXarrayStore(AbstractWritableDataStore):
 
     def load(self):
         """This is the method used to load the dataset."""
-        with tiledb.Group(
-            self._group_uri,
-            mode="r",
-            config=self._config,
-            ctx=self._ctx,
-        ) as group:
-            # Get group level metadata
-            group_metadata = {key: val for key, val in group.meta}
-
-            # Get unlimited dimensions.
-            # -- This also removes unlimited dimension encoding data.
-            unlimited_dimensions = {}
-            if UNLIMITED_DIMENSION_KEY in group_metadata:
-                unlim_dim_names = group_metadata.pop(UNLIMITED_DIMENSION_KEY)
-                for dim_name in unlim_dim_names:
-                    key = f"{DIMENSION_KEY_PREFIX}{dim_name}"
-                    if key not in group.meta:
-                        raise KeyError(
-                            f"Invalid TileDB-Xarray group. Missing size for unlimited "
-                            f"dimension '{dim_name}'."
-                        )
-                    unlimited_dimensions[dim_name] = group_metadata.pop(key)
-
-            # Get one variable from each TileDB array.
-            variables = {}
-            for item in group:
-                if item.name is None:
-                    continue
-                if item.type is not tiledb.libtiledb.Array:
-                    continue
-                with tiledb.open(
-                    item.uri, mode="r", config=self._config, ctx=self._ctx
-                ) as array:
-                    var_meta = {key: val for key, val in array.meta}
-                    var_dims = (dim.name for dim in array.schema.domain)
-                var_data = indexing.LazilyIndexedArray(
-                    TileDBArrayWrapper(
-                        variable_name=item.name,
-                        uri=item.uri,
-                        config=self._config,
-                        ctx=self._ctx,
-                        dimension_sizes=unlimited_dimensions,
-                    )
-                )
-                variables[item.name] = Variable(
-                    dims=var_dims, data=var_data, attrs=var_meta
-                )
-        return FrozenDict(variables), FrozenDict(group_metadata)
+        if self._is_group:
+            return self._load_group()
+        return self._load_array()
 
     def encode_variable(self, v):
         """encode one variable"""
@@ -441,7 +498,7 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
             if ext in {".tiledb-xr"}:
                 return True
         try:
-            return tiledb.object_type(filename_or_obj) == "group"
+            return tiledb.object_type(filename_or_obj) in {"array", "group"}
         except tiledb.TileDBError:
             return False
 
