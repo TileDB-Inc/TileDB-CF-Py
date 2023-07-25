@@ -10,14 +10,15 @@ Example:
     import xarray as xr
     dataset = xr.open_dataset(
         "dataset.tiledb-xr",
-        backend_kwargs={"key": key, "timestamp": timestamp},
-        engine="tiledb-xr"
+        backend_kwargs={"Ctx": ctx},
+        engine="tiledb"
     )
 
 
 """
 
 import os
+import warnings
 from typing import Iterable, ClassVar
 
 import tiledb
@@ -128,9 +129,26 @@ class TileDBArrayWrapper(BackendArray):
         "_schema",
     )
 
-    def __init__(self, variable_name, attr_key, uri, config, ctx, dimension_sizes):
+    def __init__(
+        self,
+        variable_name,
+        attr_key,
+        uri,
+        *,
+        config=None,
+        ctx=None,
+        timestamp=None,
+        dimension_sizes=None,
+    ):
+        if dimension_sizes is None:
+            dimension_sizes = {}
         self.variable_name = variable_name
-        self._array_kwargs = {"uri": uri, "config": config, "ctx": ctx}
+        self._array_kwargs = {
+            "uri": uri,
+            "config": config,
+            "ctx": ctx,
+            "timestamp": timestamp,
+        }
         self._schema = tiledb.ArraySchema.load(uri, ctx=ctx)
 
         if self._schema.sparse:
@@ -211,6 +229,7 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         uri,
         config=None,
         ctx=None,
+        timestamp=None,
     ):
         # Set input properties
         self._uri = uri
@@ -219,8 +238,16 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         object_type = tiledb.object_type(self._uri, ctx=self._ctx)
         if object_type == "group":
             self._is_group = True
+            self._timestamp = None
+            if timestamp is not None:
+                warnings.warn(
+                    "Ignoring keyword `timestamp`. Time traveling is not supported "
+                    "for the xarray backend on groups.",
+                    stacklevel=1,
+                )
         elif object_type == "array":
             self._is_group = False
+            self._timestamp = timestamp
         else:
             raise ValueError(
                 f"Failed to open dataset using `tiledb-xr` engine. There is not a "
@@ -234,9 +261,10 @@ class TileDBXarrayStore(AbstractWritableDataStore):
             mode="r",
             config=self._config,
             ctx=self._ctx,
+            timestamp=self._timestamp,
         ) as array:
             # Get group level metadata
-            group_metadata = {key: val for key, val in array.meta}
+            group_metadata = {key: val for key, val in array.meta.items()}
             unlimited_dimensions = self._pop_unlimited_dimensions(group_metadata)
 
             # Get unlimited dimensions.
@@ -266,6 +294,7 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                         uri=self._uri,
                         config=self._config,
                         ctx=self._ctx,
+                        timestamp=self._timestamp,
                         dimension_sizes=unlimited_dimensions,
                         attr_key=attr.name,
                     )
@@ -315,6 +344,7 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                             variable_name=item.name,
                             uri=item.uri,
                             attr_key=attr_key,
+                            timestamp=self._timestamp,
                             config=self._config,
                             ctx=self._ctx,
                             dimension_sizes=unlimited_dimensions,
@@ -466,7 +496,12 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
         *,
         config=None,
         ctx=None,
+        timestamp=None,
+        open_full_domain=False,
         use_deprecated_engine=False,
+        key=None,
+        encode_fill=False,
+        coord_dims=None,
         mask_and_scale=True,
         decode_times=True,
         concat_characters=True,
@@ -474,52 +509,110 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
         drop_variables: str | Iterable[str] | None = None,
         use_cftime=None,
         decode_timedelta=None,
-        key=None,
-        timestamp=None,
-        encode_fill=False,
-        open_full_domain=False,
-        coord_dims=None,
     ) -> Dataset:
         """
-        TODO: Document open_dataset method in TileDBXarrayBackendEntrypoint
+        Open a TileDB group or array as an xarray dataset.
 
+
+        TODO: Full description of usage.
+
+        Parameters
+        ----------
+        filename_or_obj: TileDB URI for the group or array to open in xarray.
+        config: TileDB config object to pass to TileDB objects.
+        ctx: TileDB context to use for TileDB operations.
+        timestamp: Timestamp to use opening a TileDB array. Not supported on groups.
+        open_full_domain: If ``True``, use the full dimension to define the size of
+            dimensions that aren't otherwise specified. If ``False``, use the non-empty
+            domain of the array (computed when the dataset is first loaded).
+        key: [Deprecated] Encryption key to use for the backend array.
+        encode_fill: [Deprecated] Encode the TileDB fill using `_FillValue` if ``True``.
+        coord_dims: [Deprecated] Interpret the following dimension as coordinates.
         """
 
-        # TODO: Add in xarray encodings as is appropriate.
         if use_deprecated_engine:
+            warnings.warn(
+                "Using deprecated TileDB-Xarray plugin",
+                DeprecationWarning,
+                stacklevel=1,
+            )
             datastore = TileDBDataStore(
                 uri=filename_or_obj,
                 key=key,
-                timestamp=None,
+                timestamp=timestamp,
                 ctx=ctx,
-                encode_fill=False,
-                open_full_domain=False,
-                coord_dims=None,
+                encode_fill=encode_fill,
+                open_full_domain=open_full_domain,
+                coord_dims=coord_dims,
             )
-        else:
-            # TODO: Add warningis for deprecated keywords
-            datastore = TileDBXarrayStore(filename_or_obj, config=config, ctx=ctx)
+            # Xarray indirection to open dataset defined in a plugin.
+            store_entrypoint = StoreBackendEntrypoint()
+            with close_on_error(datastore):
+                dataset = store_entrypoint.open_dataset(
+                    datastore,
+                    mask_and_scale=mask_and_scale,
+                    decode_times=decode_times,
+                    concat_characters=concat_characters,
+                    decode_coords=decode_coords,
+                    drop_variables=drop_variables,
+                    use_cftime=use_cftime,
+                    decode_timedelta=decode_timedelta,
+                )
+            return dataset
 
-        # Xarray indirection to open dataset defined in a plugin.
-        store_entrypoint = StoreBackendEntrypoint()
-        with close_on_error(datastore):
-            dataset = store_entrypoint.open_dataset(
-                datastore,
-                mask_and_scale=mask_and_scale,
-                decode_times=decode_times,
-                concat_characters=concat_characters,
-                decode_coords=decode_coords,
-                drop_variables=drop_variables,
-                use_cftime=use_cftime,
-                decode_timedelta=decode_timedelta,
+        # Warn if a deprecated keyword was used.
+        if key is not None:
+            warnings.warn(
+                "Deprecated keyword 'key' provided. To use the deprecated backend "
+                "engine set `use_deprecated_engine=True`",
+                DeprecationWarning,
+                stacklevel=1,
             )
-        return dataset
+        if encode_fill:
+            warnings.warn(
+                "Deprecated keyword 'encode_fill' provided. To use the deprecated "
+                "backend engine set `use_deprecated_engine=True`",
+                DeprecationWarning,
+                stacklevel=1,
+            )
+        if coord_dims is not None:
+            warnings.warn(
+                "Deprecated keyword 'coord_dims' provided. To use the deprecated  "
+                "backend engine set `use_deprecated_engine=True`",
+                DeprecationWarning,
+                stacklevel=1,
+            )
+
+        try:
+            datastore = TileDBXarrayStore(
+                filename_or_obj, config=config, ctx=ctx, timestamp=timestamp
+            )
+
+            # Xarray indirection to open dataset defined in a plugin.
+            store_entrypoint = StoreBackendEntrypoint()
+            with close_on_error(datastore):
+                dataset = store_entrypoint.open_dataset(
+                    datastore,
+                    mask_and_scale=mask_and_scale,
+                    decode_times=decode_times,
+                    concat_characters=concat_characters,
+                    decode_coords=decode_coords,
+                    drop_variables=drop_variables,
+                    use_cftime=use_cftime,
+                    decode_timedelta=decode_timedelta,
+                )
+            return dataset
+        except ValueError as err:
+            raise ValueError(
+                "Failed to open with current TileDB-xarray backend. To use the "
+                "old TileDB-xarray backend set `use_deprecated_engine=True`"
+            ) from err
 
     def guess_can_open(self, filename_or_obj) -> bool:
-        """ """
+        """Check for datasets that can be opened with this backend."""
         if isinstance(filename_or_obj, (str, os.PathLike)):
             _, ext = os.path.splitext(filename_or_obj)
-            if ext in {".tiledb-xr"}:
+            if ext in {".tiledb", ".tdb", ".tdb-xr"}:
                 return True
         try:
             return tiledb.object_type(filename_or_obj) in {"array", "group"}
@@ -527,4 +620,4 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
             return False
 
 
-BACKEND_ENTRYPOINTS["tiledb-xr"] = ("tiledb-xr", TileDBXarrayBackendEntrypoint)
+BACKEND_ENTRYPOINTS["tiledb"] = ("tiledb", TileDBXarrayBackendEntrypoint)
