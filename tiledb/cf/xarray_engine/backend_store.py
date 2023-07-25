@@ -27,11 +27,10 @@ from xarray.core.utils import FrozenDict
 from xarray.core.variable import Variable
 from xarray.core.dataset import Dataset
 
-
-UNLIMITED_DIMENSION_KEY = "__xr_unlimited"
-DIMENSION_KEY_PREFIX = "__xr_dim."  # TODO: Make this more specific
-VARIABLE_KEY_PREFIX = "__xr_variable_attribute_name"
-RESERVED_GROUP_KEYS = {UNLIMITED_DIMENSION_KEY}
+FIXED_DIMENSIONS_KEY = "__xr_fixed_sized_dimensions"
+DIMENSION_KEY_PREFIX = "__xr_dimension_size."  # TODO: Make this more specific
+VARIABLE_KEY_PREFIX = "__xr_variable_attribute_name."
+RESERVED_GROUP_KEYS = {FIXED_DIMENSIONS_KEY}
 RESERVED_PREFIXES = {DIMENSION_KEY_PREFIX}
 
 
@@ -252,26 +251,11 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         ) as array:
             # Get group level metadata
             group_metadata = {key: val for key, val in array.meta.items()}
-            unlimited_dimensions = self._pop_unlimited_dimensions(group_metadata)
-
-            # Get unlimited dimensions.
-            # -- This also removes unlimited dimension encoding data.
-            unlimited_dimensions = {}
-            if UNLIMITED_DIMENSION_KEY in group_metadata:
-                unlim_dim_names = group_metadata.pop(UNLIMITED_DIMENSION_KEY)
-                for dim_name in unlim_dim_names:
-                    key = f"{DIMENSION_KEY_PREFIX}{dim_name}"
-                    if key not in group_metadata:
-                        raise KeyError(
-                            f"Invalid TileDB-Xarray group. Missing size for unlimited "
-                            f"dimension '{dim_name}'."
-                        )
-                    unlimited_dimensions[dim_name] = group_metadata.pop(key)
+            dimension_sizes = self._pop_dimension_encodings(group_metadata)
 
             # Get one variable from each TileDB array.
             variables = {}
             var_dims = tuple(dim.name for dim in array.schema.domain)
-            print(f"DIMS: {var_dims}")
             for attr in array.schema:
                 # TODO: Pop variable metadata
                 var_meta = {}
@@ -282,7 +266,7 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                         config=self._config,
                         ctx=self._ctx,
                         timestamp=self._timestamp,
-                        dimension_sizes=unlimited_dimensions,
+                        dimension_sizes=dimension_sizes,
                         attr_key=attr.name,
                     )
                 )
@@ -301,8 +285,7 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         ) as group:
             # Get group level metadata
             group_metadata = {key: val for key, val in group.meta}
-            unlimited_dimensions = self._pop_unlimited_dimensions(group_metadata)
-            # TODO: Add decoder for attribute names
+            dimension_sizes = self._pop_dimension_encodings(group_metadata)
 
             # Get one variable from each TileDB array.
             variables = {}
@@ -334,7 +317,7 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                             timestamp=self._timestamp,
                             config=self._config,
                             ctx=self._ctx,
-                            dimension_sizes=unlimited_dimensions,
+                            dimension_sizes=dimension_sizes,
                         )
                     )
                     variables[item.name] = Variable(
@@ -342,11 +325,11 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                     )
         return FrozenDict(variables), FrozenDict(group_metadata)
 
-    def _pop_unlimited_dimensions(self, meta):
+    def _pop_dimension_encodings(self, meta):
         """Separate unlimited dimension encodings from general metadata.."""
-        unlimited_dimensions = {}
-        if UNLIMITED_DIMENSION_KEY in meta:
-            unlim_dim_names = meta.pop(UNLIMITED_DIMENSION_KEY)
+        dimension_sizes = {}
+        if FIXED_DIMENSIONS_KEY in meta:
+            unlim_dim_names = meta.pop(FIXED_DIMENSIONS_KEY)
             for dim_name in unlim_dim_names:
                 key = f"{DIMENSION_KEY_PREFIX}{dim_name}"
                 if key not in meta:
@@ -354,8 +337,8 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                         f"Invalid TileDB-Xarray group. Missing size for unlimited "
                         f"dimension '{dim_name}'."
                     )
-                unlimited_dimensions[dim_name] = meta.pop(key)
-        return unlimited_dimensions
+                dimension_sizes[dim_name] = meta.pop(key)
+        return dimension_sizes
 
     def __enter__(self):
         return self
