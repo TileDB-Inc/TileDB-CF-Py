@@ -20,16 +20,10 @@ from collections import defaultdict
 from typing import Tuple
 
 import numpy as np
-from xarray.backends.common import (
-    BACKEND_ENTRYPOINTS,
-    AbstractDataStore,
-    BackendArray,
-    BackendEntrypoint,
-)
-from xarray.backends.store import StoreBackendEntrypoint
+from xarray.backends.common import AbstractDataStore, BackendArray
 from xarray.core.indexing import ExplicitIndexer, LazilyIndexedArray
 from xarray.core.pycompat import integer_types
-from xarray.core.utils import FrozenDict, close_on_error
+from xarray.core.utils import FrozenDict
 from xarray.core.variable import Variable
 
 try:
