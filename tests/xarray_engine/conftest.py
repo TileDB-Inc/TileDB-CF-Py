@@ -94,8 +94,8 @@ def create_tiledb_example(tmpdir):
     array_uri = str(tmpdir.join("tiledb_example_1"))
     schema = tiledb.ArraySchema(
         domain=tiledb.Domain(
-            tiledb.Dim(name="time", domain=(1, 8), tile=4, dtype=np.int32),
-            tiledb.Dim(name="x", domain=(1, 4), tile=4, dtype=np.int32),
+            tiledb.Dim(name="time", domain=(0, 7), tile=4, dtype=np.int32),
+            tiledb.Dim(name="x", domain=(0, 3), tile=4, dtype=np.int32),
         ),
         sparse=False,
         attrs=[
