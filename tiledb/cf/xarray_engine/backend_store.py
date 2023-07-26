@@ -26,9 +26,8 @@ from xarray.core import indexing
 from xarray.core.utils import FrozenDict
 from xarray.core.variable import Variable
 
-_FIXED_DIMENSIONS_KEY = "__xr_fixed_sized_dimensions"
-_DIMENSION_KEY_PREFIX = "__xr_dimension_size."
-_VARIABLE_KEY_PREFIX = "__xr_variable_attribute_name."
+_UNLIMITED_DIMENSIONS_KEY = "__xr_unlimited_dimensions"
+_VARIABLE_ATTR_NAME_PREFIX = "__xr_variable_attribute_name."
 _ATTR_PREFIX = "__tiledb_attr."
 
 
@@ -111,20 +110,19 @@ class TileDBArrayWrapper(BackendArray):
         "_attr",
         "_dim_names",
         "_index_converters",
-        "_schema",
     )
 
     def __init__(
         self,
-        variable_name,
-        attr_key,
-        uri,
         *,
-        config=None,
-        ctx=None,
-        timestamp=None,
-        dimension_sizes=None,
-        preloaded_schema=None,
+        variable_name,
+        uri,
+        attr_key,
+        config,
+        ctx,
+        timestamp,
+        dimension_sizes,
+        preloaded_schema,
     ):
         if dimension_sizes is None:
             dimension_sizes = {}
@@ -135,40 +133,22 @@ class TileDBArrayWrapper(BackendArray):
             "ctx": ctx,
             "timestamp": timestamp,
         }
-        self._schema = (
+        schema = (
             tiledb.ArraySchema.load(uri, ctx=ctx)
             if preloaded_schema is None
             else preloaded_schema
         )
 
-        if self._schema.sparse:
-            raise ValueError(
-                f"Cannot load variable '{self.variable_name}'; sparse arrays are not "
-                f"supported."
-            )
-
         # Set TileDB attribute properties.
-        self._attr = self._schema.attr(attr_key)
+        self._attr = schema.attr(attr_key)
         self._array_kwargs["attr"] = self._attr.name
         self.dtype = self._attr.dtype
 
-        # Check dimensions and get the array shape.
-        for dim in self._schema.domain:
-            if dim.domain[0] != 0:
-                raise ValueError(
-                    f"Cannot load variable '{self.variable_name}'; dimension "
-                    f"'{dim.name}' does not have a domain with lower bound of 0."
-                )
-            if dim.dtype.kind not in ("i", "u"):
-                raise ValueError(
-                    f"Cannot load variable '{self.variable_name}'. Dimension "
-                    f"'{dim.name}' has unsupported dtype={dim.dtype}."
-                )
         self.shape = tuple(
             dimension_sizes.get(dim.name, int(dim.domain[1]) + 1)
-            for dim in self._schema.domain
+            for dim in schema.domain
         )
-        self._dim_names = tuple(dim.name for dim in self._schema.domain)
+        self._dim_names = tuple(dim.name for dim in schema.domain)
 
     def __getitem__(self, indexer):
         # Check the length of the input.
@@ -241,13 +221,13 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         object_type = tiledb.object_type(self._uri, ctx=self._ctx)
         if object_type == "group":
             self._is_group = True
-            self._timestamp = None
             if timestamp is not None:
                 warnings.warn(
                     "Ignoring keyword `timestamp`. Time traveling is not supported "
-                    "for the xarray backend on groups.",
+                    "on groups for the TileDB-xarray backend engine.",
                     stacklevel=1,
                 )
+            self._timestamp = None
         elif object_type == "array":
             self._is_group = False
             self._timestamp = timestamp
@@ -256,6 +236,25 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                 f"Failed to open dataset using `tiledb-xr` engine. There is not a "
                 f"valid TileDB Group at provided location '{self._uri}'."
             )
+
+    def _check_array_schema(self, schema):
+        if schema.sparse:
+            raise ValueError(
+                f"Cannot load variable '{self.variable_name}'; sparse arrays are not "
+                f"supported."
+            )
+        # Check dimensions and get the array shape.
+        for dim in schema.domain:
+            if dim.domain[0] != 0:
+                raise ValueError(
+                    f"Cannot load variable '{self.variable_name}'; dimension "
+                    f"'{dim.name}' does not have a domain with lower bound of 0."
+                )
+            if dim.dtype.kind not in ("i", "u"):
+                raise ValueError(
+                    f"Cannot load variable '{self.variable_name}'. Dimension "
+                    f"'{dim.name}' has unsupported dtype={dim.dtype}."
+                )
 
     def _load_array(self):
         """This is the method used to load the dataset."""
@@ -266,13 +265,31 @@ class TileDBXarrayStore(AbstractWritableDataStore):
             ctx=self._ctx,
             timestamp=self._timestamp,
         ) as array:
+            # Check the array schema.
+            self._check_array_schema(array.schema)
+
             # Get group level metadata
             group_metadata = {
                 key: val
                 for key, val in array.meta.items()
                 if not key.startswith(_ATTR_PREFIX)
             }
-            dimension_sizes = self._pop_dimension_encodings(group_metadata)
+            unlimited_dimensions = self._pop_dimension_encodings(group_metadata)
+
+            # Get special dimension sizes.
+            dimension_sizes = {}
+            if any(
+                array.schema.domain.has_dim(dim_name)
+                for dim_name in unlimited_dimensions
+            ):
+                nonempty_domain = array.nonempty_domain()
+                for index, dim in enumerate(array.schema.domain):
+                    if dim.name in unlimited_dimensions:
+                        dimension_sizes[dim.name] = (
+                            0
+                            if nonempty_domain is None
+                            else int(nonempty_domain[index][1]) + 1
+                        )
 
             # Get one variable from each TileDB attribute.
             variables = {}
@@ -283,9 +300,9 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                     attr_key=attr.name,
                     config=self._config,
                     ctx=self._ctx,
-                    timestamp=self._timestamp,
                     dimension_sizes=dimension_sizes,
                     preloaded_schema=array.schema,
+                    timestamp=self._timestamp,
                 )
                 variables[attr.name] = Variable(
                     dims=array_wrapper.dim_names,
@@ -304,23 +321,55 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         ) as group:
             # Get group level metadata
             group_metadata = {key: val for key, val in group.meta}
-            dimension_sizes = self._pop_dimension_encodings(group_metadata)
+            unlimited_dimensions = self._pop_dimension_encodings(group_metadata)
+            dimension_sizes = {}
 
-            # Get one variable from each TileDB array in the grup.
-            variables = {}
+            wrapper_kwargs = {}
             for item in group:
                 # Skip group items that are unnamed or not arrays.
                 if item.name is None or item.type is not tiledb.libtiledb.Array:
                     continue
 
+                # Get the schema and dimension sizes.
+                with tiledb.open(
+                    item.uri,
+                    config=self._config,
+                    ctx=self._ctx,
+                    timestamp=self._timestamp,
+                ) as array:
+                    schema = array.schema
+                    self._check_array_schema(array.schema)
+                    if any(
+                        schema.domain.has_dim(dim_name)
+                        for dim_name in unlimited_dimensions
+                    ):
+                        nonempty_domain = array.nonempty_domain()
+                        for index, dim in enumerate(schema.domain):
+                            if dim.name in unlimited_dimensions:
+                                dim_size = (
+                                    0
+                                    if nonempty_domain is None
+                                    else int(nonempty_domain[index][1]) + 1
+                                )
+                                dimension_sizes[dim.name] = max(
+                                    dim_size, dimension_sizes.get(dim.name, dim_size)
+                                )
+
                 # Get name/index of the TileDB attribute to load.
-                key = f"__xr_variable_attribute_name.{item.name}"
+                key = f"{_VARIABLE_ATTR_NAME_PREFIX}.{item.name}"
                 if key in group_metadata:
-                    attr_key = group_metadata.pop(key)
-                    preloaded_schema = None
+                    _attr_key = group_metadata.pop(key)
+                    try:
+                        attr = schema.attr(_attr_key)
+                        attr_key = attr.name
+                    except KeyError as err:
+                        raise KeyError(
+                            f"Unable to load variable '{item.name}'. No attribute "
+                            f"matching the key '{_attr_key}' provided in the group "
+                            f"metadata."
+                        ) from err
                 else:
-                    preloaded_schema = tiledb.ArraySchema.load(item.uri, ctx=self._ctx)
-                    if preloaded_schema.nattr != 1:
+                    if schema.nattr != 1:
                         raise ValueError(
                             f"Cannot load variable '{item.name}'. Missing group "
                             f"metadata '{key}' for the attribute key."
@@ -328,17 +377,23 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                     attr_key = 0
 
                 # Add the xarray variable.
+                wrapper_kwargs[item.name] = {
+                    "variable_name": item.name,
+                    "uri": item.uri,
+                    "attr_key": attr_key,
+                    "config": self._config,
+                    "ctx": self._ctx,
+                    "timestamp": self._timestamp,
+                    "preloaded_schema": schema,
+                }
+
+            # Create the xarray variables.
+            variables = {}
+            for name, kwargs in wrapper_kwargs.items():
                 array_wrapper = TileDBArrayWrapper(
-                    variable_name=item.name,
-                    uri=item.uri,
-                    attr_key=attr_key,
-                    timestamp=self._timestamp,
-                    config=self._config,
-                    ctx=self._ctx,
-                    dimension_sizes=dimension_sizes,
-                    preloaded_schema=preloaded_schema,
+                    **kwargs, dimension_sizes=dimension_sizes
                 )
-                variables[item.name] = Variable(
+                variables[name] = Variable(
                     dims=array_wrapper.dim_names,
                     data=indexing.LazilyIndexedArray(array_wrapper),
                     attrs=array_wrapper.variable_metadata(),
@@ -347,18 +402,9 @@ class TileDBXarrayStore(AbstractWritableDataStore):
 
     def _pop_dimension_encodings(self, meta):
         """Separate unlimited dimension encodings from general metadata.."""
-        dimension_sizes = {}
-        if _FIXED_DIMENSIONS_KEY in meta:
-            unlim_dim_names = meta.pop(_FIXED_DIMENSIONS_KEY)
-            for dim_name in unlim_dim_names:
-                key = f"{_DIMENSION_KEY_PREFIX}{dim_name}"
-                if key not in meta:
-                    raise KeyError(
-                        f"Invalid TileDB-Xarray group. Missing size for unlimited "
-                        f"dimension '{dim_name}'."
-                    )
-                dimension_sizes[dim_name] = meta.pop(key)
-        return dimension_sizes
+        if _UNLIMITED_DIMENSIONS_KEY in meta:
+            return set(meta[_UNLIMITED_DIMENSIONS_KEY].split(";"))
+        return set()
 
     def __enter__(self):
         return self
