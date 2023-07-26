@@ -38,9 +38,9 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
 
     open_dataset_parameters: ClassVar[tuple | None] = [
         "filename_or_obj",
-        "drop_variables",
         "config",
         "ctx",
+        "timestamp",
     ]
     description: ClassVar[
         str
@@ -53,12 +53,12 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
         *,
         config=None,
         ctx=None,
-        timestamp=None,
-        open_full_domain=False,
         use_deprecated_engine=False,
         key=None,
-        encode_fill=False,
+        encode_fill=None,
         coord_dims=None,
+        timestamp=None,
+        open_full_domain=None,
         mask_and_scale=True,
         decode_times=True,
         concat_characters=True,
@@ -78,21 +78,38 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
         filename_or_obj: TileDB URI for the group or array to open in xarray.
         config: TileDB config object to pass to TileDB objects.
         ctx: TileDB context to use for TileDB operations.
-        timestamp: Timestamp to use opening a TileDB array. Not supported on groups.
-        open_full_domain: If ``True``, use the full dimension to define the size of
-            dimensions that aren't otherwise specified. If ``False``, use the non-empty
-            domain of the array (computed when the dataset is first loaded).
         key: [Deprecated] Encryption key to use for the backend array.
-        encode_fill: [Deprecated] Encode the TileDB fill using `_FillValue` if ``True``.
-        coord_dims: [Deprecated] Interpret the following dimension as coordinates.
+        timest
         """
+        # Warn if a deprecated keyword was used.
+        if not use_deprecated_engine:
 
-        if use_deprecated_engine:
+            def check_use_deprecated(key_name, key_value):
+                if key_value is not None:
+                    warnings.warn(
+                        f"Deprecated keyword '{key_name}' provided; deprecated engine "
+                        f"is enabled.",
+                        DeprecationWarning,
+                        stacklevel=1,
+                    )
+                    return True
+
+            use_deprecated_engine = (
+                check_use_deprecated("key", key)
+                or check_use_deprecated("encode_fill", encode_fill)
+                or check_use_deprecated("open_full_domain", open_full_domain)
+            )
+        else:
             warnings.warn(
                 "Using deprecated TileDB-Xarray plugin",
                 DeprecationWarning,
                 stacklevel=1,
             )
+
+        if use_deprecated_engine:
+            encode_fill = False if encode_fill is None else encode_fill
+            open_full_domain = False if open_full_domain is None else open_full_domain
+
             datastore = TileDBDataStore(
                 uri=filename_or_obj,
                 key=key,
@@ -116,29 +133,6 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
                     decode_timedelta=decode_timedelta,
                 )
             return dataset
-
-        # Warn if a deprecated keyword was used.
-        if key is not None:
-            warnings.warn(
-                "Deprecated keyword 'key' provided. To use the deprecated backend "
-                "engine set `use_deprecated_engine=True`",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if encode_fill:
-            warnings.warn(
-                "Deprecated keyword 'encode_fill' provided. To use the deprecated "
-                "backend engine set `use_deprecated_engine=True`",
-                DeprecationWarning,
-                stacklevel=1,
-            )
-        if coord_dims is not None:
-            warnings.warn(
-                "Deprecated keyword 'coord_dims' provided. To use the deprecated  "
-                "backend engine set `use_deprecated_engine=True`",
-                DeprecationWarning,
-                stacklevel=1,
-            )
 
         try:
             datastore = TileDBXarrayStore(
