@@ -26,6 +26,8 @@ class TestEmptyArray:
                 attrs=[tiledb.Attr("z", dtype=np.float64)],
             ),
         )
+        with tiledb.open(uri, mode="w") as array:
+            array["__xr_unlimited_dimensions"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
@@ -65,6 +67,7 @@ class TestFrontFilledArray:
         )
         with tiledb.open(uri, mode="w") as array:
             array[0:4, 0:4] = self.z_data
+            array["__xr_unlimited_dimensions"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
@@ -105,15 +108,17 @@ class TestBackFilledArray:
         return uri
 
     def test_open_dataset(self, tiledb_uri):
+        expected_data = np.full((8, 8), np.nan)
+        expected_data[4:, 4:] = self.z_data
+        expected = xr.Dataset({"z": xr.DataArray(expected_data, dims=("x", "y"))})
         result = xr.open_dataset(tiledb_uri, engine="tiledb")
-        expected = xr.Dataset({"z": xr.DataArray(self.z_data, dims=("x", "y"))})
         xr.testing.assert_equal(result, expected)
 
     def test_open_dataset_load_all(self, tiledb_uri):
         expected_data = np.full((8, 8), np.nan)
         expected_data[4:, 4:] = self.z_data
-        result = xr.open_dataset(tiledb_uri, engine="tiledb", open_full_domain=True)
         expected = xr.Dataset({"z": xr.DataArray(expected_data, dims=("x", "y"))})
+        result = xr.open_dataset(tiledb_uri, engine="tiledb", open_full_domain=True)
         xr.testing.assert_equal(result, expected)
 
 
@@ -139,16 +144,19 @@ class TestMiddleFilledArray:
         )
         with tiledb.open(uri, mode="w") as array:
             array[2:6, 2:6] = self.z_data
+            array["__xr_unlimited_dimensions"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
+        expected_data = np.full((6, 6), np.nan)
+        expected_data[2:6, 2:6] = self.z_data
+        expected = xr.Dataset({"z": xr.DataArray(expected_data, dims=("x", "y"))})
         result = xr.open_dataset(tiledb_uri, engine="tiledb")
-        expected = xr.Dataset({"z": xr.DataArray(self.z_data, dims=("x", "y"))})
         xr.testing.assert_equal(result, expected)
 
     def test_open_dataset_load_all(self, tiledb_uri):
         expected_data = np.full((8, 8), np.nan)
         expected_data[2:6, 2:6] = self.z_data
-        result = xr.open_dataset(tiledb_uri, engine="tiledb", open_full_domain=True)
         expected = xr.Dataset({"z": xr.DataArray(expected_data, dims=("x", "y"))})
+        result = xr.open_dataset(tiledb_uri, engine="tiledb", open_full_domain=True)
         xr.testing.assert_equal(result, expected)
