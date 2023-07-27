@@ -219,24 +219,7 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         self._uri = uri
         self._config = config
         self._ctx = ctx
-        object_type = tiledb.object_type(self._uri, ctx=self._ctx)
-        if object_type == "group":
-            self._is_group = True
-            if timestamp is not None:
-                warnings.warn(
-                    "Ignoring keyword `timestamp`. Time traveling is not supported "
-                    "on groups for the TileDB-xarray backend engine.",
-                    stacklevel=1,
-                )
-            self._timestamp = None
-        elif object_type == "array":
-            self._is_group = False
-            self._timestamp = timestamp
-        else:
-            raise ValueError(
-                f"Failed to open dataset using `tiledb-xr` engine. There is not a "
-                f"valid TileDB Group at provided location '{self._uri}'."
-            )
+        self._timestamp = timestamp
 
     def _check_array_schema(self, schema):
         if schema.sparse:
@@ -438,9 +421,23 @@ class TileDBXarrayStore(AbstractWritableDataStore):
 
     def load(self):
         """This is the method used to load the dataset."""
-        if self._is_group:
+        object_type = tiledb.object_type(self._uri, ctx=self._ctx)
+        if object_type == "group":
+            if self._timestamp is not None:
+                warnings.warn(
+                    "Setting `timestamp=None`. Time traveling is not supported "
+                    "on groups for the TileDB-xarray backend engine.",
+                    stacklevel=1,
+                )
+            self._timestamp = None
             return self._load_group()
-        return self._load_array()
+        elif object_type == "array":
+            return self._load_array()
+        else:
+            raise ValueError(
+                f"Failed to open dataset using `tiledb-xr` engine. There is not a "
+                f"valid TileDB Group at provided location '{self._uri}'."
+            )
 
     def encode_variable(self, v):
         """encode one variable"""
