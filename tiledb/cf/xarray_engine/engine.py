@@ -19,16 +19,17 @@ Example:
 
 import os
 import warnings
-from typing import Iterable, ClassVar
+from typing import ClassVar, Iterable
 
-import tiledb
 from xarray.backends.common import BACKEND_ENTRYPOINTS, BackendEntrypoint
 from xarray.backends.store import StoreBackendEntrypoint
-from xarray.core.utils import close_on_error
 from xarray.core.dataset import Dataset
+from xarray.core.utils import close_on_error
 
-from .deprecated_backend_store import TileDBDataStore
+import tiledb
+
 from .backend_store import TileDBXarrayStore
+from .deprecated_backend_store import TileDBDataStore
 
 
 class TileDBXarrayBackendEntrypoint(BackendEntrypoint):

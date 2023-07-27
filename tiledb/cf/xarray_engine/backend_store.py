@@ -19,12 +19,13 @@ Example:
 
 import warnings
 
-import tiledb
 import numpy as np
-from xarray.backends.common import AbstractWritableDataStore, BackendArray, ArrayWriter
+from xarray.backends.common import AbstractWritableDataStore, ArrayWriter, BackendArray
 from xarray.core import indexing
 from xarray.core.utils import FrozenDict
 from xarray.core.variable import Variable
+
+import tiledb
 
 _UNLIMITED_DIMENSIONS_KEY = "__xr_unlimited_dimensions"
 _VARIABLE_ATTR_NAME_PREFIX = "__xr_variable_attribute_name."
