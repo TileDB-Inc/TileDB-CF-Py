@@ -277,20 +277,9 @@ class TileDBXarrayStore(AbstractWritableDataStore):
             }
             unlimited_dimensions = self._pop_dimension_encodings(group_metadata)
 
-            # Get special dimension sizes.
+            # Get dimension sizes for the unlimited dimensions.
             dimension_sizes = {}
-            if any(
-                array.schema.domain.has_dim(dim_name)
-                for dim_name in unlimited_dimensions
-            ):
-                nonempty_domain = array.nonempty_domain()
-                for index, dim in enumerate(array.schema.domain):
-                    if dim.name in unlimited_dimensions:
-                        dimension_sizes[dim.name] = (
-                            0
-                            if nonempty_domain is None
-                            else int(nonempty_domain[index][1]) + 1
-                        )
+            self._update_dimensions(array, unlimited_dimensions, dimension_sizes)
 
             # Get one variable from each TileDB attribute.
             variables = {}
@@ -322,9 +311,12 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         ) as group:
             # Get group level metadata
             group_metadata = {key: val for key, val in group.meta}
-            unlimited_dimensions = self._pop_dimension_encodings(group_metadata)
-            dimension_sizes = {}
 
+            # Pop out encoding used for dimensions.
+            unlimited_dimensions = self._pop_dimension_encodings(group_metadata)
+
+            # Pre-process information for creating variales.
+            dimension_sizes = {}
             wrapper_kwargs = {}
             for item in group:
                 # Skip group items that are unnamed or not arrays.
@@ -338,45 +330,16 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                     ctx=self._ctx,
                     timestamp=self._timestamp,
                 ) as array:
-                    schema = array.schema
                     self._check_array_schema(array.schema)
-                    if any(
-                        schema.domain.has_dim(dim_name)
-                        for dim_name in unlimited_dimensions
-                    ):
-                        nonempty_domain = array.nonempty_domain()
-                        for index, dim in enumerate(schema.domain):
-                            if dim.name in unlimited_dimensions:
-                                dim_size = (
-                                    0
-                                    if nonempty_domain is None
-                                    else int(nonempty_domain[index][1]) + 1
-                                )
-                                dimension_sizes[dim.name] = max(
-                                    dim_size, dimension_sizes.get(dim.name, dim_size)
-                                )
+                    self._update_dimensions(
+                        array, unlimited_dimensions, dimension_sizes
+                    )
+                    attr_key = self._pop_variable_encodings(
+                        group_metadata, array, item.name
+                    )
+                    schema = array.schema
 
                 # Get name/index of the TileDB attribute to load.
-                key = f"{_VARIABLE_ATTR_NAME_PREFIX}.{item.name}"
-                if key in group_metadata:
-                    _attr_key = group_metadata.pop(key)
-                    try:
-                        attr = schema.attr(_attr_key)
-                        attr_key = attr.name
-                    except KeyError as err:
-                        raise KeyError(
-                            f"Unable to load variable '{item.name}'. No attribute "
-                            f"matching the key '{_attr_key}' provided in the group "
-                            f"metadata."
-                        ) from err
-                else:
-                    if schema.nattr != 1:
-                        raise ValueError(
-                            f"Cannot load variable '{item.name}'. Missing group "
-                            f"metadata '{key}' for the attribute key."
-                        )
-                    attr_key = 0
-
                 # Add the xarray variable.
                 wrapper_kwargs[item.name] = {
                     "variable_name": item.name,
@@ -400,6 +363,43 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                     attrs=array_wrapper.variable_metadata(),
                 )
         return FrozenDict(variables), FrozenDict(group_metadata)
+
+    def _update_dimensions(self, array, unlimited_dimensions, dimension_sizes):
+        if any(
+            array.schema.domain.has_dim(dim_name) for dim_name in unlimited_dimensions
+        ):
+            nonempty_domain = array.nonempty_domain()
+            for index, dim in enumerate(array.schema.domain):
+                if dim.name in unlimited_dimensions:
+                    dim_size = (
+                        0
+                        if nonempty_domain is None
+                        else int(nonempty_domain[index][1]) + 1
+                    )
+                    dimension_sizes[dim.name] = max(
+                        dim_size, dimension_sizes.get(dim.name, dim_size)
+                    )
+
+    def _pop_variable_encodings(self, group_metadata, array, variable_name):
+        key = f"{_VARIABLE_ATTR_NAME_PREFIX}.{variable_name}"
+        if key in group_metadata:
+            _attr_key = group_metadata.pop(key)
+            try:
+                attr_key = array.schema.attr(_attr_key).name
+            except KeyError as err:
+                raise KeyError(
+                    f"Unable to load variable '{variable_name}'. No attribute "
+                    f"matching the key '{_attr_key}' provided in the group "
+                    f"metadata."
+                ) from err
+        else:
+            if array.schema.nattr != 1:
+                raise ValueError(
+                    f"Cannot load variable '{variable_name}'. Missing group "
+                    f"metadata '{key}' for the attribute key."
+                )
+            attr_key = 0
+        return attr_key
 
     def _pop_dimension_encodings(self, meta):
         """Separate unlimited dimension encodings from general metadata.."""
