@@ -20,16 +20,14 @@ Example:
 import warnings
 
 import numpy as np
-from xarray.backends.common import AbstractWritableDataStore, ArrayWriter, BackendArray
+from xarray.backends.common import AbstractDataStore, ArrayWriter, BackendArray
 from xarray.core import indexing
 from xarray.core.utils import FrozenDict
 from xarray.core.variable import Variable
 
 import tiledb
 
-_UNLIMITED_DIMENSIONS_KEY = "__xr_unlimited_dimensions"
-_VARIABLE_ATTR_NAME_PREFIX = "__xr_variable_attribute_name."
-_ATTR_PREFIX = "__tiledb_attr."
+from ._common import _UNLIMITED_DIMENSIONS_KEY, _VARIABLE_ATTR_NAME_PREFIX, _ATTR_PREFIX
 
 
 def _to_zero_based_tiledb_index(dim_name, dim_size, index):
@@ -198,19 +196,19 @@ class TileDBArrayWrapper(BackendArray):
             return variable_metadata
 
 
-class TileDBXarrayStore(AbstractWritableDataStore):
+class TileDBXarrayStore(AbstractDataStore):
     """Store for reading and writing data via TileDB using the TileDB-xarray
     specification.
 
     TODO: document parameters
     """
 
-    # TODO: Set slots
-    # __slots__ = ()
+    __slots__ = ("_config", "_ctx", "_timestamp", "_uri")
 
     def __init__(
         self,
         uri,
+        *,
         config=None,
         ctx=None,
         timestamp=None,
@@ -220,6 +218,12 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         self._config = config
         self._ctx = ctx
         self._timestamp = timestamp
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, exception_value, traceback):
+        self.close()
 
     def _check_array_schema(self, schema):
         if schema.sparse:
@@ -347,22 +351,6 @@ class TileDBXarrayStore(AbstractWritableDataStore):
                 )
         return FrozenDict(variables), FrozenDict(group_metadata)
 
-    def _update_dimensions(self, array, unlimited_dimensions, dimension_sizes):
-        if any(
-            array.schema.domain.has_dim(dim_name) for dim_name in unlimited_dimensions
-        ):
-            nonempty_domain = array.nonempty_domain()
-            for index, dim in enumerate(array.schema.domain):
-                if dim.name in unlimited_dimensions:
-                    dim_size = (
-                        0
-                        if nonempty_domain is None
-                        else int(nonempty_domain[index][1]) + 1
-                    )
-                    dimension_sizes[dim.name] = max(
-                        dim_size, dimension_sizes.get(dim.name, dim_size)
-                    )
-
     def _pop_variable_encodings(self, group_metadata, array, variable_name):
         key = f"{_VARIABLE_ATTR_NAME_PREFIX}.{variable_name}"
         if key in group_metadata:
@@ -390,11 +378,21 @@ class TileDBXarrayStore(AbstractWritableDataStore):
             return set(meta[_UNLIMITED_DIMENSIONS_KEY].split(";"))
         return set()
 
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, traceback):
-        self.close()
+    def _update_dimensions(self, array, unlimited_dimensions, dimension_sizes):
+        if any(
+            array.schema.domain.has_dim(dim_name) for dim_name in unlimited_dimensions
+        ):
+            nonempty_domain = array.nonempty_domain()
+            for index, dim in enumerate(array.schema.domain):
+                if dim.name in unlimited_dimensions:
+                    dim_size = (
+                        0
+                        if nonempty_domain is None
+                        else int(nonempty_domain[index][1]) + 1
+                    )
+                    dimension_sizes[dim.name] = max(
+                        dim_size, dimension_sizes.get(dim.name, dim_size)
+                    )
 
     def close(self):
         pass
@@ -436,73 +434,5 @@ class TileDBXarrayStore(AbstractWritableDataStore):
         else:
             raise ValueError(
                 f"Failed to open dataset using `tiledb-xr` engine. There is not a "
-                f"valid TileDB Group at provided location '{self._uri}'."
+                f"valid TileDB group or array at provided location '{self._uri}'."
             )
-
-    def encode_variable(self, v):
-        """encode one variable"""
-        return v
-
-    def encode_attribute(self, a):
-        """encode one attribute"""
-        return a
-
-    def store(
-        self,
-        variables,
-        attributes,
-        check_encoding_set=frozenset(),
-        writer=None,
-        unlimited_dims=None,
-    ):
-        """
-        Top level method for putting data on this store, this method:
-          - encodes variables/attributes
-          - sets dimensions
-          - sets variables
-
-        Parameters
-        ----------
-        variables : dict-like
-            Dictionary of key/value (variable name / xr.Variable) pairs
-        attributes : dict-like
-            Dictionary of key/value (attribute name / attribute) pairs
-        check_encoding_set : list-like
-            List of variables that should be checked for invalid encoding
-            values
-        writer : ArrayWriter
-        unlimited_dims : list-like
-            List of dimension names that should be treated as unlimited
-            dimensions.
-        """
-        if writer is None:
-            writer = ArrayWriter()
-
-        # TODO: Write to TileDB Group
-        raise NotImplementedError()
-
-    def set_dimension(self, dim, length):  # pragma: no cover
-        """Disabled function from the parent class"""
-        raise NotImplementedError()
-
-    def set_attribute(self, k, v):  # pragma: no cover
-        """Disabled function from the parent class"""
-        raise NotImplementedError()
-
-    def set_variable(self, k, v):  # pragma: no cover
-        """Disabled function from the parent class"""
-        raise NotImplementedError()
-
-    def set_attributes(self, attributes):  # pragma: no cover
-        """Disabled function from the parent class"""
-        raise NotImplementedError()
-
-    def set_variables(
-        self, variables, check_encoding_set, writer, unlimited_dims=None
-    ):  # pragma: no cover
-        """Disabled function from the parent class"""
-        raise NotImplementedError()
-
-    def set_dimensions(self, variables, unlimited_dims=None):  # pragma: no cover
-        """Disabled function from the parent class"""
-        raise NotImplementedError()
