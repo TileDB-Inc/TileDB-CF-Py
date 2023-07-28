@@ -50,7 +50,7 @@ jobs:
         run: python -m pip install ".[netCDF4,xarray,parallel]"
       - name: Test with coverage
         run: |
-          pytest --cov-report term-missing --cov-report=html:coverage --cov-report=xml:coverage/coverage.xml --cov="tiledb/cf"
+          python -m pytest --cov-report term-missing --cov-report=html:coverage --cov-report=xml:coverage/coverage.xml --cov="tiledb/cf"
       - name: Archive code coverage results
         uses: actions/upload-artifact@v2
         with:
