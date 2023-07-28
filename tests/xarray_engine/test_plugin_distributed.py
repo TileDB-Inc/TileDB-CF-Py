@@ -33,7 +33,13 @@ def test_dask_distributed_tiledb_datetime_integration_test(
     array_uri, expected = create_tiledb_datetime_example
     with cluster() as (s, [a, b]):
         with Client(s["address"], loop=loop):
-            ds = xr.open_dataset(array_uri, chunks={"date": 1}, engine="tiledb")
+            with pytest.deprecated_call():
+                ds = xr.open_dataset(
+                    array_uri,
+                    chunks={"date": 1},
+                    use_deprecated_engine=True,
+                    engine="tiledb",
+                )
             assert isinstance(ds["temperature"].data, da.Array)
             actual = ds.compute()
             assert_allclose(actual, expected)

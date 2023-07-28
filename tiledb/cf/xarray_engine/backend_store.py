@@ -27,7 +27,7 @@ from xarray.core.variable import Variable
 
 import tiledb
 
-from ._common import _UNLIMITED_DIMENSIONS_KEY, _VARIABLE_ATTR_NAME_PREFIX, _ATTR_PREFIX
+from ._common import _ATTR_PREFIX, _UNLIMITED_DIMENSIONS_KEY, _VARIABLE_ATTR_NAME_PREFIX
 
 
 def _to_zero_based_tiledb_index(dim_name, dim_size, index):
@@ -106,8 +106,8 @@ class TileDBArrayWrapper(BackendArray):
         "shape",
         "variable_name",
         "_array_kwargs",
-        "_attr",
         "_dim_names",
+        "_fill",
         "_index_converters",
     )
 
@@ -139,9 +139,10 @@ class TileDBArrayWrapper(BackendArray):
         )
 
         # Set TileDB attribute properties.
-        self._attr = schema.attr(attr_key)
-        self._array_kwargs["attr"] = self._attr.name
-        self.dtype = self._attr.dtype
+        _attr = schema.attr(attr_key)
+        self._array_kwargs["attr"] = _attr.name
+        self.dtype = _attr.dtype
+        self._fill = _attr.fill
 
         self.shape = tuple(
             dimension_sizes.get(dim.name, int(dim.domain[1]) + 1)
@@ -189,7 +190,7 @@ class TileDBArrayWrapper(BackendArray):
     def variable_metadata(self):
         key_prefix = f"{_ATTR_PREFIX}{self._array_kwargs['attr']}."
         with tiledb.open(**self._array_kwargs) as array:
-            variable_metadata = {"_FillValue": self._attr.fill}
+            variable_metadata = {"_FillValue": self._fill}
             for key in array.meta:
                 if key.startswith(key_prefix) and not len(key) == len(key_prefix):
                     variable_metadata[key[len(key_prefix) :]] = array.meta[key]
