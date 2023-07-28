@@ -111,8 +111,8 @@ def create_tiledb_example(tmpdir):
         }
         array.meta["global_1"] = "value1"
         array.meta["global_2"] = "value2"
-        array.meta["__tiledb_attr.float_data.long_name"] = "example float data"
-        array.meta["__tiledb_attr.int_data.long_name"] = "example int data"
+        array.meta["__tiledb_attr.pressure.long_name"] = "example float data"
+        array.meta["__tiledb_attr.count.long_name"] = "example int data"
     return array_uri, expected
 
 
