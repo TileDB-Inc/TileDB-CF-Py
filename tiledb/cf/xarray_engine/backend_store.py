@@ -20,14 +20,19 @@ Example:
 import warnings
 
 import numpy as np
-from xarray.backends.common import AbstractDataStore, ArrayWriter, BackendArray
+from xarray.backends.common import AbstractDataStore, BackendArray
 from xarray.core import indexing
 from xarray.core.utils import FrozenDict
 from xarray.core.variable import Variable
 
 import tiledb
 
-from ._common import _ATTR_PREFIX, _UNLIMITED_DIMENSIONS_KEY, _VARIABLE_ATTR_NAME_PREFIX
+from ._common import (
+    _ATTR_PREFIX,
+    _UNLIMITED_DIMENSIONS_KEY,
+    _VARIABLE_ATTR_NAME_PREFIX,
+    _VARIABLE_UNLIMITED_DIMS_PREFIX,
+)
 
 
 def _to_zero_based_tiledb_index(dim_name, dim_size, index):
@@ -322,7 +327,7 @@ class TileDBXarrayStore(AbstractDataStore):
                     self._update_dimensions(
                         array, unlimited_dimensions, dimension_sizes
                     )
-                    attr_key = self._pop_variable_encodings(
+                    attr_key, unlimited_dims = self._pop_variable_encodings(
                         group_metadata, array, item.name
                     )
                     schema = array.schema
@@ -353,7 +358,8 @@ class TileDBXarrayStore(AbstractDataStore):
         return FrozenDict(variables), FrozenDict(group_metadata)
 
     def _pop_variable_encodings(self, group_metadata, array, variable_name):
-        key = f"{_VARIABLE_ATTR_NAME_PREFIX}.{variable_name}"
+        # Get attribute name or index.
+        key = f"{_VARIABLE_ATTR_NAME_PREFIX}{variable_name}"
         if key in group_metadata:
             _attr_key = group_metadata.pop(key)
             try:
@@ -371,7 +377,10 @@ class TileDBXarrayStore(AbstractDataStore):
                     f"metadata '{key}' for the attribute key."
                 )
             attr_key = 0
-        return attr_key
+        # Get unlimited dimensions for this variable.
+        key = f"{_VARIABLE_UNLIMITED_DIMS_PREFIX}{variable_name}"
+        unlimited_dims = group_metadata.pop(key, set())
+        return attr_key, unlimited_dims
 
     def _pop_dimension_encodings(self, meta):
         """Separate unlimited dimension encodings from general metadata.."""
