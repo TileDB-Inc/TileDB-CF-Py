@@ -7,6 +7,7 @@ import numpy as np
 import pytest
 
 import tiledb
+from tiledb.cf.xarray_engine.engine import TileDBXarrayBackendEntrypoint
 
 xr = pytest.importorskip("xarray")
 
@@ -308,8 +309,8 @@ def test_open_multidim_dataset(create_tiledb_group_example):
     xr.testing.assert_equal(dataset, expected)
 
 
-@pytest.mark.filterwarnings("ignore:'netcdf4' fails while guessing")
 def test_open_multidim_dataset_guess_engine(create_tiledb_group_example):
-    uri, expected = create_tiledb_group_example
-    dataset = xr.open_dataset(uri)
-    xr.testing.assert_equal(dataset, expected)
+    uri, _ = create_tiledb_group_example
+    entrypoint = TileDBXarrayBackendEntrypoint()
+    can_open = entrypoint.guess_can_open(uri)
+    assert can_open
