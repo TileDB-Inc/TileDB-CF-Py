@@ -29,7 +29,6 @@ import tiledb
 
 from ._common import (
     _ATTR_PREFIX,
-    _UNLIMITED_DIMENSIONS_KEY,
     _VARIABLE_ATTR_NAME_PREFIX,
     _VARIABLE_UNLIMITED_DIMS_PREFIX,
 )
@@ -268,11 +267,10 @@ class TileDBXarrayStore(AbstractDataStore):
                 for key, val in array.meta.items()
                 if not key.startswith(_ATTR_PREFIX)
             }
-            unlimited_dimensions = self._pop_dimension_encodings(group_metadata)
 
             # Get dimension sizes for the unlimited dimensions.
             dimension_sizes = {}
-            self._update_dimensions(array, unlimited_dimensions, dimension_sizes)
+            self._update_dimensions(array, set(), dimension_sizes)
 
             # Get one variable from each TileDB attribute.
             variables = {}
@@ -303,10 +301,7 @@ class TileDBXarrayStore(AbstractDataStore):
             ctx=self._ctx,
         ) as group:
             # Get group level metadata
-            group_metadata = {key: val for key, val in group.meta}
-
-            # Pop out encoding used for dimensions.
-            unlimited_dimensions = self._pop_dimension_encodings(group_metadata)
+            group_metadata = {key: val for key, val in group.meta.items()}
 
             # Pre-process information for creating variales.
             dimension_sizes = {}
@@ -324,12 +319,10 @@ class TileDBXarrayStore(AbstractDataStore):
                     timestamp=self._timestamp,
                 ) as array:
                     self._check_array_schema(array.schema)
-                    self._update_dimensions(
-                        array, unlimited_dimensions, dimension_sizes
-                    )
                     attr_key, unlimited_dims = self._pop_variable_encodings(
                         group_metadata, array, item.name
                     )
+                    self._update_dimensions(array, unlimited_dims, dimension_sizes)
                     schema = array.schema
 
                 # Get name/index of the TileDB attribute to load.
@@ -381,12 +374,6 @@ class TileDBXarrayStore(AbstractDataStore):
         key = f"{_VARIABLE_UNLIMITED_DIMS_PREFIX}{variable_name}"
         unlimited_dims = group_metadata.pop(key, set())
         return attr_key, unlimited_dims
-
-    def _pop_dimension_encodings(self, meta):
-        """Separate unlimited dimension encodings from general metadata.."""
-        if _UNLIMITED_DIMENSIONS_KEY in meta:
-            return set(meta[_UNLIMITED_DIMENSIONS_KEY].split(";"))
-        return set()
 
     def _update_dimensions(self, array, unlimited_dimensions, dimension_sizes):
         if any(

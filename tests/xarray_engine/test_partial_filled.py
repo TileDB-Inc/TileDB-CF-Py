@@ -15,9 +15,11 @@ class TestEmptyArray:
     @pytest.fixture(scope="class")
     def tiledb_uri(self, tmpdir_factory):
         """Creates a TileDB array and returns the URI."""
-        uri = str(tmpdir_factory.mktemp("output").join("empty_array"))
+        uri = str(tmpdir_factory.mktemp("output").join("empty_array.tiledb"))
+        tiledb.Group.create(uri)
+        array_uri = f"{uri}/z"
         tiledb.Array.create(
-            uri,
+            array_uri,
             tiledb.ArraySchema(
                 domain=tiledb.Domain(
                     tiledb.Dim("x", domain=(0, 7), dtype=np.uint64),
@@ -26,8 +28,9 @@ class TestEmptyArray:
                 attrs=[tiledb.Attr("z", dtype=np.float64)],
             ),
         )
-        with tiledb.open(uri, mode="w") as array:
-            array.meta["__xr_unlimited_dimensions"] = "x;y"
+        with tiledb.Group(uri, mode="w") as group:
+            group.add(name="z", uri="z", relative=True)
+            group.meta["__xr_variable_unlimited_dimensions.z"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
@@ -48,8 +51,10 @@ class TestFrontFilledArray:
     def tiledb_uri(self, tmpdir_factory):
         """Creates a TileDB array and returns the URI."""
         uri = str(tmpdir_factory.mktemp("output").join("front_half_filled"))
+        tiledb.Group.create(uri)
+        array_uri = f"{uri}/z"
         tiledb.Array.create(
-            uri,
+            array_uri,
             tiledb.ArraySchema(
                 domain=tiledb.Domain(
                     tiledb.Dim("x", domain=(0, 7), dtype=np.uint64),
@@ -58,9 +63,11 @@ class TestFrontFilledArray:
                 attrs=[tiledb.Attr("z", np.float64)],
             ),
         )
-        with tiledb.open(uri, mode="w") as array:
+        with tiledb.open(array_uri, mode="w") as array:
             array[0:4, 0:4] = self.z_data
-            array.meta["__xr_unlimited_dimensions"] = "x;y"
+        with tiledb.Group(uri, mode="w") as group:
+            group.add(name="z", uri="z", relative=True)
+            group.meta["__xr_variable_unlimited_dimensions.z"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
@@ -79,8 +86,10 @@ class TestBackFilledArray:
     def tiledb_uri(self, tmpdir_factory):
         """Creates a TileDB array and returns the URI."""
         uri = str(tmpdir_factory.mktemp("output").join("back_half_filled"))
+        tiledb.Group.create(uri)
+        array_uri = f"{uri}/z"
         tiledb.Array.create(
-            uri,
+            array_uri,
             tiledb.ArraySchema(
                 domain=tiledb.Domain(
                     tiledb.Dim("x", domain=(0, 7), dtype=np.uint64),
@@ -89,9 +98,11 @@ class TestBackFilledArray:
                 attrs=[tiledb.Attr("z", np.float64)],
             ),
         )
-        with tiledb.open(uri, mode="w") as array:
+        with tiledb.open(array_uri, mode="w") as array:
             array[4:, 4:] = self.z_data
-            array.meta["__xr_unlimited_dimensions"] = "x;y"
+        with tiledb.Group(uri, mode="w") as group:
+            group.add(name="z", uri="z", relative=True)
+            group.meta["__xr_variable_unlimited_dimensions.z"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
@@ -112,8 +123,10 @@ class TestMiddleFilledArray:
     def tiledb_uri(self, tmpdir_factory):
         """Creates a TileDB array and returns the URI."""
         uri = str(tmpdir_factory.mktemp("output").join("middle_filled"))
+        tiledb.Group.create(uri)
+        array_uri = f"{uri}/z"
         tiledb.Array.create(
-            uri,
+            array_uri,
             tiledb.ArraySchema(
                 domain=tiledb.Domain(
                     tiledb.Dim("x", domain=(0, 7), dtype=np.uint64),
@@ -122,9 +135,11 @@ class TestMiddleFilledArray:
                 attrs=[tiledb.Attr("z", np.float64)],
             ),
         )
-        with tiledb.open(uri, mode="w") as array:
+        with tiledb.open(array_uri, mode="w") as array:
             array[2:6, 2:6] = self.z_data
-            array.meta["__xr_unlimited_dimensions"] = "x;y"
+        with tiledb.Group(uri, mode="w") as group:
+            group.add(name="z", uri="z", relative=True)
+            group.meta["__xr_variable_unlimited_dimensions.z"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
