@@ -1,6 +1,4 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
-
+import sys
 from typing import Any, Dict
 
 import numpy as np
@@ -10,6 +8,10 @@ import tiledb
 from tiledb.cf.xarray_engine.engine import TileDBXarrayBackendEntrypoint
 
 xr = pytest.importorskip("xarray")
+
+pytestmark = pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="xarray requires python3.9 or higher"
+)
 
 
 class TileDBXarrayBase:
