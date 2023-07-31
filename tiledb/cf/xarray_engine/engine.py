@@ -136,30 +136,24 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
                 )
             return dataset
 
-        try:
-            datastore = TileDBXarrayStore(
-                filename_or_obj, config=config, ctx=ctx, timestamp=timestamp
-            )
+        datastore = TileDBXarrayStore(
+            filename_or_obj, config=config, ctx=ctx, timestamp=timestamp
+        )
 
-            # Xarray indirection to open dataset defined in a plugin.
-            store_entrypoint = StoreBackendEntrypoint()
-            with close_on_error(datastore):
-                dataset = store_entrypoint.open_dataset(
-                    datastore,
-                    mask_and_scale=mask_and_scale,
-                    decode_times=decode_times,
-                    concat_characters=concat_characters,
-                    decode_coords=decode_coords,
-                    drop_variables=drop_variables,
-                    use_cftime=use_cftime,
-                    decode_timedelta=decode_timedelta,
-                )
-            return dataset
-        except ValueError as err:
-            raise ValueError(
-                "Failed to open with current TileDB-xarray backend. To use the "
-                "old TileDB-xarray backend set `use_deprecated_engine=True`"
-            ) from err
+        # Xarray indirection to open dataset defined in a plugin.
+        store_entrypoint = StoreBackendEntrypoint()
+        with close_on_error(datastore):
+            dataset = store_entrypoint.open_dataset(
+                datastore,
+                mask_and_scale=mask_and_scale,
+                decode_times=decode_times,
+                concat_characters=concat_characters,
+                decode_coords=decode_coords,
+                drop_variables=drop_variables,
+                use_cftime=use_cftime,
+                decode_timedelta=decode_timedelta,
+            )
+        return dataset
 
     def guess_can_open(self, filename_or_obj) -> bool:
         """Check for datasets that can be opened with this backend."""
