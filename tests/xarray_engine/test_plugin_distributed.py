@@ -1,5 +1,4 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
+import sys
 
 import pytest
 
@@ -11,8 +10,11 @@ from dask.distributed import Client
 from distributed.utils_test import cleanup, cluster, loop, loop_in_thread  # noqa: F401
 from xarray.tests import assert_allclose
 
-da = pytest.importorskip("dask.array")
+pytestmark = pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="xarray requires python3.9 or higher"
+)
 
+da = pytest.importorskip("dask.array")
 loop = loop  # loop is an imported fixture, which flake8 has issues ack-ing
 
 

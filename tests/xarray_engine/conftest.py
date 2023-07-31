@@ -1,6 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
-
 import numpy as np
 import pytest
 
