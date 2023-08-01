@@ -372,7 +372,10 @@ class TileDBXarrayStore(AbstractDataStore):
             attr_key = 0
         # Get unlimited dimensions for this variable.
         key = f"{_VARIABLE_UNLIMITED_DIMS_PREFIX}{variable_name}"
-        unlimited_dims = group_metadata.pop(key, set())
+        if key in group_metadata:
+            unlimited_dims = set(group_metadata.pop(key).split(";"))
+        else:
+            unlimited_dims = set()
         return attr_key, unlimited_dims
 
     def _update_dimensions(self, array, unlimited_dimensions, dimension_sizes):
