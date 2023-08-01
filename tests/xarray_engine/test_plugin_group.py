@@ -69,17 +69,10 @@ class TileDBXarray1DBase(TileDBXarrayBase):
             for index in range(expected_data_array.size):
                 result_array = tiledb_data_array[index]
                 isinstance(result_array, xr.DataArray)
-                print(result_array)
-                for attr in dir(type(result_array)):
-                    if not callable(
-                        getattr(xr.DataArray, attr)
-                    ) and not attr.startswith("__"):
-                        print(attr)
                 result = result_array.data
                 if True:
                     return
                 expected = expected_data_array[index].data
-                print(expected)
                 np.testing.assert_equal(result, expected)
 
     def test_negative_indexing(self, tiledb_uri, dataset):
