@@ -103,7 +103,7 @@ class TileDBXarrayStore(AbstractDataStore):
                 variables[attr.name] = Variable(
                     dims=array_wrapper.dim_names,
                     data=indexing.LazilyIndexedArray(array_wrapper),
-                    attrs=array_wrapper.variable_metadata(),
+                    attrs=array_wrapper.get_metadata(),
                 )
         return FrozenDict(variables), FrozenDict(group_metadata)
 
@@ -160,7 +160,7 @@ class TileDBXarrayStore(AbstractDataStore):
                 variables[name] = Variable(
                     dims=array_wrapper.dim_names,
                     data=indexing.LazilyIndexedArray(array_wrapper),
-                    attrs=array_wrapper.variable_metadata(),
+                    attrs=array_wrapper.get_metadata(),
                 )
         return FrozenDict(variables), FrozenDict(group_metadata)
 

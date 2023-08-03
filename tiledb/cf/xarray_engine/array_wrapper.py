@@ -83,6 +83,7 @@ class TileDBArrayWrapper(BackendArray):
         "shape",
         "variable_name",
         "_array_kwargs",
+        "_attr_name",
         "_dim_names",
         "_fill",
         "_index_converters",
@@ -132,7 +133,7 @@ class TileDBArrayWrapper(BackendArray):
 
         # Set TileDB attribute properties.
         _attr = schema.attr(attr_key)
-        self._array_kwargs["attr"] = _attr.name
+        self._attr_name = _attr.name
         self.dtype = _attr.dtype
         self._fill = _attr.fill
 
@@ -142,9 +143,9 @@ class TileDBArrayWrapper(BackendArray):
         )
         self._dim_names = tuple(dim.name for dim in schema.domain)
 
-    def __getitem__(self, indexer):
+    def __getitem__(self, key):
         # Check the length of the input.
-        indices = indexer.tuple
+        indices = key.tuple
         if len(indices) != len(self.shape):
             ndim = len(self.shape)
             raise ValueError(
@@ -167,23 +168,33 @@ class TileDBArrayWrapper(BackendArray):
             _to_zero_based_tiledb_index(self._dim_names[idim], dim_size, index)
             for idim, (dim_size, index) in enumerate(zip(self.shape, indices))
         )
-        with tiledb.open(**self._array_kwargs) as array:
-            result = array.multi_index[tiledb_indices][self._array_kwargs["attr"]]
+        with tiledb.open(**self._array_kwargs, attr=self._attr_name) as array:
+            result = array.multi_index[tiledb_indices][self._attr_name]
 
         # TileDB multi_index returns the same number of dimensions as the initial array.
         # To match the expected xarray output, we need to reshape the result to remove
         # any dimensions corresponding to scalar-valued input.
         return result.reshape(shape)
 
+    def __setitem__(self, key, value):
+        with tiledb.open(**self._array_kwargs, mode="w") as array:
+            array[key] = value.astype(dtype=self.dtype)
+
     @property
     def dim_names(self):
         return self._dim_names
 
-    def variable_metadata(self):
-        key_prefix = f"{_ATTR_PREFIX}{self._array_kwargs['attr']}."
+    def get_metadata(self):
+        key_prefix = f"{_ATTR_PREFIX}{self._attr_name}."
         with tiledb.open(**self._array_kwargs) as array:
             variable_metadata = {"_FillValue": self._fill}
             for key in array.meta:
                 if key.startswith(key_prefix) and not len(key) == len(key_prefix):
                     variable_metadata[key[len(key_prefix) :]] = array.meta[key]
             return variable_metadata
+
+    def set_metadata(self, input_meta):
+        key_prefix = f"{_ATTR_PREFIX}{self._attr_name}."
+        with tiledb.open(**self._array_kwargs, mode="w") as array:
+            for key, value in input_meta.items():
+                array.meta[f"{key_prefix}{key}"] = value
