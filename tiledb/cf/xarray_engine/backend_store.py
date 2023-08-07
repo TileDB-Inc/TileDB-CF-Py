@@ -26,7 +26,7 @@ from xarray.core.variable import Variable
 
 import tiledb
 
-from ._common import _ATTR_PREFIX, _VARIABLE_UNLIMITED_DIMS_PREFIX
+from ._common import _ARRAY_FLEXIBLE_DIMS_PREFIX, _ATTR_PREFIX
 from .array_wrapper import TileDBArrayWrapper
 
 
@@ -79,11 +79,7 @@ class TileDBXarrayStore(AbstractDataStore):
                 if not key.startswith(_ATTR_PREFIX)
             }
 
-            # Get dimension sizes for the unlimited dimensions.
-            dimension_sizes = {}
-            self._update_dimensions(array, set(), dimension_sizes)
-
-            # Get one variable from each TileDB attribute.
+            # Get the variables.
             variables = {}
             for attr in array.schema:
                 array_wrapper = TileDBArrayWrapper(
@@ -92,7 +88,7 @@ class TileDBXarrayStore(AbstractDataStore):
                     attr_key=attr.name,
                     config=self._config,
                     ctx=self._ctx,
-                    fixed_dimension_sizes=dimension_sizes,
+                    fixed_dimension_sizes={},
                     schema=array.schema,
                     timestamp=self._timestamp,
                 )
@@ -115,7 +111,8 @@ class TileDBXarrayStore(AbstractDataStore):
             group_metadata = {key: val for key, val in group.meta.items()}
 
             # Pre-process information for creating variales.
-            dimension_sizes = {}
+            max_dim_sizes = {}
+            dim_sizes = {}
             wrapper_kwargs = {}
             for item in group:
                 # Skip group items that are unnamed or not arrays.
@@ -130,12 +127,12 @@ class TileDBXarrayStore(AbstractDataStore):
                     timestamp=self._timestamp,
                 ) as array:
                     if item.name is not None:
-                        unlimited_dims = self._pop_variable_encodings(
+                        flex_dims = self._pop_variable_encodings(
                             group_metadata, item.name
                         )
                     else:
-                        unlimited_dims = set()
-                    self._update_dimensions(array, unlimited_dims, dimension_sizes)
+                        flex_dims = set()
+                    self._update_dimensions(array, flex_dims, max_dim_sizes, dim_sizes)
                     schema = array.schema
 
                 # Get name/index of the TileDB attribute to load.
@@ -164,7 +161,7 @@ class TileDBXarrayStore(AbstractDataStore):
             variables = {}
             for name, kwargs in wrapper_kwargs.items():
                 array_wrapper = TileDBArrayWrapper(
-                    variable_name=name, fixed_dimension_sizes=dimension_sizes, **kwargs
+                    variable_name=name, fixed_dimension_sizes=dim_sizes, **kwargs
                 )
                 variables[name] = Variable(
                     dims=array_wrapper.dim_names,
@@ -174,18 +171,16 @@ class TileDBXarrayStore(AbstractDataStore):
         return FrozenDict(variables), FrozenDict(group_metadata)
 
     def _pop_variable_encodings(self, group_metadata, array_name):
-        # Get unlimited dimensions for this variable.
-        key = f"{_VARIABLE_UNLIMITED_DIMS_PREFIX}{array_name}"
+        # Get flexible dimensions for this array.
+        key = f"{_ARRAY_FLEXIBLE_DIMS_PREFIX}{array_name}"
         if key in group_metadata:
-            unlimited_dims = set(group_metadata.pop(key).split(";"))
+            flex_dims = set(group_metadata.pop(key).split(";"))
         else:
-            unlimited_dims = set()
-        return unlimited_dims
+            flex_dims = set()
+        return flex_dims
 
-    def _update_dimensions(self, array, unlimited_dimensions, dimension_sizes):
-        if any(
-            array.schema.domain.has_dim(dim_name) for dim_name in unlimited_dimensions
-        ):
+    def _update_dimensions(self, array, flex_dims, max_dim_sizes, dim_sizes):
+        if any(array.schema.domain.has_dim(dim_name) for dim_name in flex_dims):
             nonempty_domain = array.nonempty_domain()
             for index, dim in enumerate(array.schema.domain):
                 if dim.domain[0] != 0:
@@ -198,14 +193,26 @@ class TileDBXarrayStore(AbstractDataStore):
                         f"Cannot load variable '{self.variable_name}'. Dimension "
                         f"'{dim.name}' has unsupported dtype={dim.dtype}."
                     )
-                if dim.name in unlimited_dimensions:
-                    dim_size = (
+                if dim.name in flex_dims:
+                    # Get the size of the full domain and the nonempty domain.
+                    domain_size = int(dim.domain[1]) + 1
+                    nonempty_size = (
                         0
                         if nonempty_domain is None
                         else int(nonempty_domain[index][1]) + 1
                     )
-                    dimension_sizes[dim.name] = max(
-                        dim_size, dimension_sizes.get(dim.name, dim_size)
+
+                    # Cap flexible dimension size at the max size of this dimensions
+                    # size.
+                    max_dim_sizes[dim.name] = min(
+                        domain_size, max_dim_sizes.get(dim.name, domain_size)
+                    )
+
+                    # Set the dimension size to be the largest possible non-empty
+                    # domain.
+                    dim_sizes[dim.name] = min(
+                        max_dim_sizes[dim.name],
+                        max(nonempty_size, dim_sizes.get(dim.name, nonempty_size)),
                     )
 
     def close(self):

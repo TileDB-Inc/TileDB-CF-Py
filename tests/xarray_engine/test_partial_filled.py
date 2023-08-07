@@ -36,7 +36,7 @@ class TestEmptyArray:
         )
         with tiledb.Group(uri, mode="w") as group:
             group.add(name="z", uri="z", relative=True)
-            group.meta["__xr_variable_unlimited_dimensions.z"] = "x;y"
+            group.meta["__tiledb_array_flexible_dimensions.z"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
@@ -73,7 +73,7 @@ class TestFrontFilledArray:
             array[0:4, 0:4] = self.z_data
         with tiledb.Group(uri, mode="w") as group:
             group.add(name="z", uri="z", relative=True)
-            group.meta["__xr_variable_unlimited_dimensions.z"] = "x;y"
+            group.meta["__tiledb_array_flexible_dimensions.z"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
@@ -108,7 +108,7 @@ class TestBackFilledArray:
             array[4:, 4:] = self.z_data
         with tiledb.Group(uri, mode="w") as group:
             group.add(name="z", uri="z", relative=True)
-            group.meta["__xr_variable_unlimited_dimensions.z"] = "x;y"
+            group.meta["__tiledb_array_flexible_dimensions.z"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
@@ -145,7 +145,7 @@ class TestMiddleFilledArray:
             array[2:6, 2:6] = self.z_data
         with tiledb.Group(uri, mode="w") as group:
             group.add(name="z", uri="z", relative=True)
-            group.meta["__xr_variable_unlimited_dimensions.z"] = "x;y"
+            group.meta["__tiledb_array_flexible_dimensions.z"] = "x;y"
         return uri
 
     def test_open_dataset(self, tiledb_uri):
