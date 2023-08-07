@@ -101,6 +101,16 @@ class TileDBArrayWrapper(BackendArray):
         timestamp,
         fixed_dimension_sizes,
     ):
+        # Set basic properties.
+        self.variable_name = variable_name
+        self._array_kwargs = {
+            "uri": uri,
+            "config": config,
+            "ctx": ctx,
+            "timestamp": timestamp,
+        }
+        self._dim_names = tuple(dim.name for dim in schema.domain)
+
         # Check the array.
         if schema.sparse:
             raise ValueError(
@@ -121,27 +131,20 @@ class TileDBArrayWrapper(BackendArray):
                     f"'{dim.name}' has unsupported dtype={dim.dtype}."
                 )
 
-        if fixed_dimension_sizes is None:
-            fixed_dimension_sizes = {}
-        self.variable_name = variable_name
-        self._array_kwargs = {
-            "uri": uri,
-            "config": config,
-            "ctx": ctx,
-            "timestamp": timestamp,
-        }
-
         # Set TileDB attribute properties.
         _attr = schema.attr(attr_key)
         self._attr_name = _attr.name
         self.dtype = _attr.dtype
         self._fill = _attr.fill
 
-        self.shape = tuple(
-            fixed_dimension_sizes.get(dim.name, int(dim.domain[1]) + 1)
-            for dim in schema.domain
-        )
-        self._dim_names = tuple(dim.name for dim in schema.domain)
+        # Get the shape.
+        if fixed_dimension_sizes is None:
+            self.shape = schema.shape
+        else:
+            self.shape = tuple(
+                fixed_dimension_sizes.get(dim.name, int(dim.domain[1]) + 1)
+                for dim in schema.domain
+            )
 
     def __getitem__(self, key):
         # Check the length of the input.
