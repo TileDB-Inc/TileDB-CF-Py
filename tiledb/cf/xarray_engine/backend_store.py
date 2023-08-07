@@ -26,11 +26,7 @@ from xarray.core.variable import Variable
 
 import tiledb
 
-from ._common import (
-    _ATTR_PREFIX,
-    _VARIABLE_ATTR_NAME_PREFIX,
-    _VARIABLE_UNLIMITED_DIMS_PREFIX,
-)
+from ._common import _ATTR_PREFIX, _VARIABLE_UNLIMITED_DIMS_PREFIX
 from .array_wrapper import TileDBArrayWrapper
 
 
@@ -123,7 +119,7 @@ class TileDBXarrayStore(AbstractDataStore):
             wrapper_kwargs = {}
             for item in group:
                 # Skip group items that are unnamed or not arrays.
-                if item.name is None or item.type is not tiledb.libtiledb.Array:
+                if item.type is not tiledb.libtiledb.Array:
                     continue
 
                 # Get the schema and dimension sizes.
@@ -133,29 +129,42 @@ class TileDBXarrayStore(AbstractDataStore):
                     ctx=self._ctx,
                     timestamp=self._timestamp,
                 ) as array:
-                    attr_key, unlimited_dims = self._pop_variable_encodings(
-                        group_metadata, array, item.name
-                    )
+                    if item.name is not None:
+                        unlimited_dims = self._pop_variable_encodings(
+                            group_metadata, item.name
+                        )
+                    else:
+                        unlimited_dims = set()
                     self._update_dimensions(array, unlimited_dims, dimension_sizes)
                     schema = array.schema
 
                 # Get name/index of the TileDB attribute to load.
                 # Add the xarray variable.
-                wrapper_kwargs[item.name] = {
-                    "variable_name": item.name,
-                    "uri": item.uri,
-                    "attr_key": attr_key,
-                    "config": self._config,
-                    "ctx": self._ctx,
-                    "timestamp": self._timestamp,
-                    "schema": schema,
-                }
+                if item.name is not None and schema.nattr == 1:
+                    array_variables = {item.name: 0}
+                else:
+                    array_variables = {attr.name: attr.name for attr in schema}
+
+                for var_name, attr_key in array_variables.items():
+                    if var_name in wrapper_kwargs:
+                        raise ValueError(
+                            f"Cannot load group. It contains multiple variables with "
+                            f"the name {var_name}."
+                        )
+                    wrapper_kwargs[var_name] = {
+                        "uri": item.uri,
+                        "schema": schema,
+                        "attr_key": attr_key,
+                        "config": self._config,
+                        "ctx": self._ctx,
+                        "timestamp": self._timestamp,
+                    }
 
             # Create the xarray variables.
             variables = {}
             for name, kwargs in wrapper_kwargs.items():
                 array_wrapper = TileDBArrayWrapper(
-                    **kwargs, fixed_dimension_sizes=dimension_sizes
+                    variable_name=name, fixed_dimension_sizes=dimension_sizes, **kwargs
                 )
                 variables[name] = Variable(
                     dims=array_wrapper.dim_names,
@@ -164,33 +173,14 @@ class TileDBXarrayStore(AbstractDataStore):
                 )
         return FrozenDict(variables), FrozenDict(group_metadata)
 
-    def _pop_variable_encodings(self, group_metadata, array, variable_name):
-        # Get attribute name or index.
-        key = f"{_VARIABLE_ATTR_NAME_PREFIX}{variable_name}"
-        if key in group_metadata:
-            _attr_key = group_metadata.pop(key)
-            try:
-                attr_key = array.schema.attr(_attr_key).name
-            except KeyError as err:
-                raise KeyError(
-                    f"Unable to load variable '{variable_name}'. No attribute "
-                    f"matching the key '{_attr_key}' provided in the group "
-                    f"metadata."
-                ) from err
-        else:
-            if array.schema.nattr != 1:
-                raise ValueError(
-                    f"Cannot load variable '{variable_name}'. Missing group "
-                    f"metadata '{key}' for the attribute key."
-                )
-            attr_key = 0
+    def _pop_variable_encodings(self, group_metadata, array_name):
         # Get unlimited dimensions for this variable.
-        key = f"{_VARIABLE_UNLIMITED_DIMS_PREFIX}{variable_name}"
+        key = f"{_VARIABLE_UNLIMITED_DIMS_PREFIX}{array_name}"
         if key in group_metadata:
             unlimited_dims = set(group_metadata.pop(key).split(";"))
         else:
             unlimited_dims = set()
-        return attr_key, unlimited_dims
+        return unlimited_dims
 
     def _update_dimensions(self, array, unlimited_dimensions, dimension_sizes):
         if any(
