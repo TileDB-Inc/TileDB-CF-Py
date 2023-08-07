@@ -26,7 +26,7 @@ from xarray.core.variable import Variable
 
 import tiledb
 
-from ._common import _ARRAY_FLEXIBLE_DIMS_PREFIX, _ATTR_PREFIX
+from ._common import _ARRAY_FIXED_DIMS_PREFIX, _ATTR_PREFIX
 from .array_wrapper import TileDBArrayWrapper
 
 
@@ -79,6 +79,10 @@ class TileDBXarrayStore(AbstractDataStore):
                 if not key.startswith(_ATTR_PREFIX)
             }
 
+            max_dim_sizes = {}
+            dim_sizes = {}
+            self._update_dimensions(array, set(), max_dim_sizes, dim_sizes)
+
             # Get the variables.
             variables = {}
             for attr in array.schema:
@@ -88,7 +92,8 @@ class TileDBXarrayStore(AbstractDataStore):
                     attr_key=attr.name,
                     config=self._config,
                     ctx=self._ctx,
-                    fixed_dimension_sizes={},
+                    dimension_sizes=dim_sizes,
+                    fixed_dimensions=set(),
                     schema=array.schema,
                     timestamp=self._timestamp,
                 )
@@ -127,12 +132,12 @@ class TileDBXarrayStore(AbstractDataStore):
                     timestamp=self._timestamp,
                 ) as array:
                     if item.name is not None:
-                        flex_dims = self._pop_variable_encodings(
+                        fixed_dims = self._pop_variable_encodings(
                             group_metadata, item.name
                         )
                     else:
-                        flex_dims = set()
-                    self._update_dimensions(array, flex_dims, max_dim_sizes, dim_sizes)
+                        fixed_dims = set()
+                    self._update_dimensions(array, fixed_dims, max_dim_sizes, dim_sizes)
                     schema = array.schema
 
                 # Get name/index of the TileDB attribute to load.
@@ -155,13 +160,14 @@ class TileDBXarrayStore(AbstractDataStore):
                         "config": self._config,
                         "ctx": self._ctx,
                         "timestamp": self._timestamp,
+                        "fixed_dimensions": fixed_dims,
                     }
 
             # Create the xarray variables.
             variables = {}
             for name, kwargs in wrapper_kwargs.items():
                 array_wrapper = TileDBArrayWrapper(
-                    variable_name=name, fixed_dimension_sizes=dim_sizes, **kwargs
+                    variable_name=name, dimension_sizes=dim_sizes, **kwargs
                 )
                 variables[name] = Variable(
                     dims=array_wrapper.dim_names,
@@ -171,49 +177,50 @@ class TileDBXarrayStore(AbstractDataStore):
         return FrozenDict(variables), FrozenDict(group_metadata)
 
     def _pop_variable_encodings(self, group_metadata, array_name):
-        # Get flexible dimensions for this array.
-        key = f"{_ARRAY_FLEXIBLE_DIMS_PREFIX}{array_name}"
+        # Get fixed dimensions for this array.
+        key = f"{_ARRAY_FIXED_DIMS_PREFIX}{array_name}"
         if key in group_metadata:
-            flex_dims = set(group_metadata.pop(key).split(";"))
+            fixed_dims = set(group_metadata.pop(key).split(";"))
         else:
-            flex_dims = set()
-        return flex_dims
+            fixed_dims = set()
+        return fixed_dims
 
-    def _update_dimensions(self, array, flex_dims, max_dim_sizes, dim_sizes):
-        if any(array.schema.domain.has_dim(dim_name) for dim_name in flex_dims):
-            nonempty_domain = array.nonempty_domain()
-            for index, dim in enumerate(array.schema.domain):
-                if dim.domain[0] != 0:
-                    raise ValueError(
-                        f"Cannot load  variable '{self.variable_name}'; dimension "
-                        f"'{dim.name}' does not have a domain with lower bound of 0."
-                    )
-                if dim.dtype.kind not in ("i", "u"):
-                    raise ValueError(
-                        f"Cannot load variable '{self.variable_name}'. Dimension "
-                        f"'{dim.name}' has unsupported dtype={dim.dtype}."
-                    )
-                if dim.name in flex_dims:
-                    # Get the size of the full domain and the nonempty domain.
-                    domain_size = int(dim.domain[1]) + 1
-                    nonempty_size = (
-                        0
-                        if nonempty_domain is None
-                        else int(nonempty_domain[index][1]) + 1
-                    )
+    def _update_dimensions(self, array, fixed_dims, max_dim_sizes, dim_sizes):
+        # Skip update if all dimensions are fixed.
+        if all(dim.name in fixed_dims for dim in array.domain):
+            return
 
-                    # Cap flexible dimension size at the max size of this dimensions
-                    # size.
-                    max_dim_sizes[dim.name] = min(
-                        domain_size, max_dim_sizes.get(dim.name, domain_size)
-                    )
+        nonempty_domain = array.nonempty_domain()
+        for index, dim in enumerate(array.schema.domain):
+            if dim.domain[0] != 0:
+                raise ValueError(
+                    f"Cannot load  variable '{self.variable_name}'; dimension "
+                    f"'{dim.name}' does not have a domain with lower bound of 0."
+                )
+            if dim.dtype.kind not in ("i", "u"):
+                raise ValueError(
+                    f"Cannot load variable '{self.variable_name}'. Dimension "
+                    f"'{dim.name}' has unsupported dtype={dim.dtype}."
+                )
+            if dim.name not in fixed_dims:
+                # Get the size of the full domain and the nonempty domain.
+                domain_size = int(dim.domain[1]) + 1
+                nonempty_size = (
+                    0 if nonempty_domain is None else int(nonempty_domain[index][1]) + 1
+                )
 
-                    # Set the dimension size to be the largest possible non-empty
-                    # domain.
-                    dim_sizes[dim.name] = min(
-                        max_dim_sizes[dim.name],
-                        max(nonempty_size, dim_sizes.get(dim.name, nonempty_size)),
-                    )
+                # Cap flexible dimension size at the max size of this dimensions
+                # size.
+                max_dim_sizes[dim.name] = min(
+                    domain_size, max_dim_sizes.get(dim.name, domain_size)
+                )
+
+                # Set the dimension size to be the largest possible non-empty
+                # domain.
+                dim_sizes[dim.name] = min(
+                    max_dim_sizes[dim.name],
+                    max(nonempty_size, dim_sizes.get(dim.name, nonempty_size)),
+                )
 
     def close(self):
         pass

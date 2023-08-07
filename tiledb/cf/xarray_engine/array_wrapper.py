@@ -99,7 +99,8 @@ class TileDBArrayWrapper(BackendArray):
         config,
         ctx,
         timestamp,
-        fixed_dimension_sizes,
+        fixed_dimensions,
+        dimension_sizes,
     ):
         # Set basic properties.
         self.variable_name = variable_name
@@ -138,11 +139,13 @@ class TileDBArrayWrapper(BackendArray):
         self._fill = _attr.fill
 
         # Get the shape.
-        if fixed_dimension_sizes is None:
+        if dimension_sizes is None:
             self.shape = schema.shape
         else:
             self.shape = tuple(
-                fixed_dimension_sizes.get(dim.name, int(dim.domain[1]) + 1)
+                int(dim.domain[1]) + 1
+                if dim.name in fixed_dimensions
+                else dimension_sizes.get(dim.name, int(dim.domain[1]) + 1)
                 for dim in schema.domain
             )
 
