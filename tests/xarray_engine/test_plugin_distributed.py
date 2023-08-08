@@ -1,5 +1,4 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
+import sys
 
 import pytest
 
@@ -11,8 +10,11 @@ from dask.distributed import Client
 from distributed.utils_test import cleanup, cluster, loop, loop_in_thread  # noqa: F401
 from xarray.tests import assert_allclose
 
-da = pytest.importorskip("dask.array")
+pytestmark = pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="xarray requires python3.9 or higher"
+)
 
+da = pytest.importorskip("dask.array")
 loop = loop  # loop is an imported fixture, which flake8 has issues ack-ing
 
 
@@ -33,7 +35,13 @@ def test_dask_distributed_tiledb_datetime_integration_test(
     array_uri, expected = create_tiledb_datetime_example
     with cluster() as (s, [a, b]):
         with Client(s["address"], loop=loop):
-            ds = xr.open_dataset(array_uri, chunks={"date": 1}, engine="tiledb")
+            with pytest.deprecated_call():
+                ds = xr.open_dataset(
+                    array_uri,
+                    chunks={"date": 1},
+                    use_deprecated_engine=True,
+                    engine="tiledb",
+                )
             assert isinstance(ds["temperature"].data, da.Array)
             actual = ds.compute()
             assert_allclose(actual, expected)

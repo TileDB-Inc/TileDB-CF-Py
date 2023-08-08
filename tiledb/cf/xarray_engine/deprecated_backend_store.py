@@ -3,6 +3,8 @@
 
 """Module for using TileDB as an xarray backend plugin.
 
+This plugin can be used to open a generic TileDB array.
+
 Example:
   Open a dense TileDB array with the xarray engine::
 
@@ -18,16 +20,10 @@ from collections import defaultdict
 from typing import Tuple
 
 import numpy as np
-from xarray.backends.common import (
-    BACKEND_ENTRYPOINTS,
-    AbstractDataStore,
-    BackendArray,
-    BackendEntrypoint,
-)
-from xarray.backends.store import StoreBackendEntrypoint
+from xarray.backends.common import AbstractDataStore, BackendArray
 from xarray.core.indexing import ExplicitIndexer, LazilyIndexedArray
 from xarray.core.pycompat import integer_types
-from xarray.core.utils import FrozenDict, close_on_error
+from xarray.core.utils import FrozenDict
 from xarray.core.variable import Variable
 
 try:
@@ -449,57 +445,3 @@ class TileDBDataStore(AbstractDataStore):
                     attr_key = key[last_dot_ix + 1 :]
                     variable_metadata[attr_name][attr_key] = array.meta[key]
         return variable_metadata
-
-
-class TileDBBackendEntrypoint(BackendEntrypoint):
-    available = has_tiledb
-
-    def open_dataset(
-        self,
-        filename_or_obj,
-        *,
-        mask_and_scale=True,
-        decode_times=True,
-        concat_characters=None,
-        decode_coords=None,
-        drop_variables=None,
-        use_cftime=None,
-        decode_timedelta=None,
-        key=None,
-        timestamp=None,
-        ctx=None,
-        encode_fill=False,
-        open_full_domain=False,
-        coord_dims=None,
-    ):
-        datastore = TileDBDataStore(
-            uri=filename_or_obj,
-            key=key,
-            timestamp=timestamp,
-            ctx=ctx,
-            encode_fill=encode_fill,
-            open_full_domain=open_full_domain,
-            coord_dims=coord_dims,
-        )
-        store_entrypoint = StoreBackendEntrypoint()
-        with close_on_error(datastore):
-            dataset = store_entrypoint.open_dataset(
-                datastore,
-                mask_and_scale=mask_and_scale,
-                decode_times=decode_times,
-                concat_characters=concat_characters,
-                decode_coords=decode_coords,
-                drop_variables=drop_variables,
-                use_cftime=use_cftime,
-                decode_timedelta=decode_timedelta,
-            )
-        return dataset
-
-    def guess_can_open(self, filename_or_obj):
-        try:
-            return tiledb.object_type(filename_or_obj) == "array"
-        except tiledb.TileDBError:
-            return False
-
-
-BACKEND_ENTRYPOINTS["tiledb"] = TileDBBackendEntrypoint

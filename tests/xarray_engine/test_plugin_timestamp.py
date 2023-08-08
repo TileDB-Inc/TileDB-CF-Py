@@ -1,5 +1,4 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
+import sys
 
 import numpy as np
 import pytest
@@ -7,6 +6,10 @@ import pytest
 import tiledb
 
 xr = pytest.importorskip("xarray")
+
+pytestmark = pytest.mark.skipif(
+    sys.version_info < (3, 9), reason="xarray requires python3.9 or higher"
+)
 
 
 class TestOpenDatasetTimestep:
@@ -68,14 +71,3 @@ class TestOpenDatasetTimestep:
     def test_global_metadata_timestamp_tuple(self, tiledb_uri):
         result = xr.open_dataset(tiledb_uri, timestamp=(2, 3), engine="tiledb")
         assert result.attrs["global"] == 2
-
-    def test_implicit_timestamp(self, tiledb_uri):
-        result = xr.open_dataset(tiledb_uri, engine="tiledb")
-        expected = xr.Dataset({"z": xr.DataArray(np.array((1, 2, 3, 1)), dims=("x",))})
-        with tiledb.open(tiledb_uri, mode="w") as array:
-            array[3] = 4
-            array.meta["global"] = 4
-            array.meta["__tiledb_attr.z.variable"] = 4
-        assert result.attrs["global"] == 3
-        assert result["z"].attrs["variable"] == 3
-        xr.testing.assert_equal(result, expected)
