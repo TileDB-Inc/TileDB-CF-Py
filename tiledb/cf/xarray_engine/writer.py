@@ -245,16 +245,28 @@ class TileDBVariableEncoder:
         return self._variable_name
 
 
-def extra_encoded_data(dataset):
+def extract_encoded_data(dataset):
     """Returns encoded xarray variables and attribtues (metadata) from an
     input xarray dataset.
     """
+
+    # Get variables and apply xarray encoders.
     variables, attributes = encode_dataset_coordinates(dataset)
     variables = {
         var_name: times.CFDatetimeCoder().encode(times.CFTimedeltaCoder().encode(var))
         for var_name, var in variables.items()
     }
-    return variables, attributes
+
+    # Check the input dataset is supported in TileDB.
+    for var_name, var in variables.items():
+        if var.dims == tuple():
+            raise NotImplementedError(
+                f"Failed to write variable '{var_name}'. Support for writing scalar "
+                f"functions to TileDB is not implemented. Consider converting any "
+                f"scalar variables to metadata or 1D variables."
+            )
+
+    return variables, attributes, dataset.encoding
 
 
 def create_group_from_xarray(
@@ -265,14 +277,14 @@ def create_group_from_xarray(
     unlimited_dims,
     config,
     ctx,
-    create_group,
+    append,
     create_arrays,
 ):
     # Either create a new TileDB group or check that a group already exists.
-    if create_group:
-        tiledb.Group.create(group_uri, ctx=ctx)
-    else:
+    if append:
         check_valid_group(group_uri, ctx)
+    else:
+        tiledb.Group.create(group_uri, ctx=ctx)
 
     # Create new TileDB arrays to store variable data in.
     if create_arrays:
@@ -294,7 +306,7 @@ def create_group_from_xarray(
                     group.meta[key] = value
 
 
-def copy_data_from_xarray(  # noqa: C901
+def copy_from_xarray(  # noqa: C901
     group_uri,
     variables,
     attributes,
@@ -365,8 +377,7 @@ def from_xarray(
     config: Optional[tiledb.Config] = None,
     ctx: Optional[tiledb.Ctx] = None,
     encoding: Optional[Mapping] = None,
-    compute: bool = True,
-    create_group: bool = True,
+    append: bool = False,
     create_arrays: bool = True,
     copy_group_metadata: bool = True,
     copy_variable_data: bool = True,
@@ -374,51 +385,15 @@ def from_xarray(
     region: Optional[Mapping[str, slice]] = None,
     unlimited_dims: Optional[Iterable[str]] = None,
 ):
-    """Writes an xarray dataset to a TileDB group.
-
-    dataset: The xarray Dataset to write.
-    group_uri: The URI to the TileDB group to create or append to.
-    config: A TileDB config object to use for TileDB objects.
-    ctx: A TileDB context object to use for TileDB operations.
-    encoding: A nested diction with variable names as keys and dictionaries
-        of specific encodings as values. For variables that do not have an
-        encoding set here, any encodings already set on the variable will
-        be used.
-    compute: If ``True`` write array data immediately, otherwise return a
-        ``dask.delated.Delayed`` object that can be computed to write
-        array data later.
-
-    TODO: Add additional parameters
-
-    region: Optional mapping from dimension names to integer slices along the
-        dataset dimensions to indicate the region to write thhis dataset's data in.
-        TODO: Fill in details about how region works.
-    chunkmanager_store_kwargs: Additional arguments passed on to the
-        `ChunkManager.store`.
-    unlimited_dims: Optional set of dimensions to treat as unlimited.
-    dim_dtype: Type to use for the dimension of new TileDB arrays.
-    """
-
     # Check the region is valid for this datasets.
     region = dict() if region is None else region
     encoding = dict() if encoding is None else encoding
 
-    # TODO: Check region and encoding are valied.
-
     # Splits dataset into variables and attributes (metadata) using the CF Convention
     # where possible.
-    variables, attributes = extra_encoded_data(dataset)
+    variables, attributes, dataset_encoding = extract_encoded_data(dataset)
 
-    # Check the input dataset is supported in TileDB.
-    for var_name, var in variables.items():
-        if var.dims == tuple():
-            raise NotImplementedError(
-                f"Failed to write variable '{var_name}'. Support for writing scalar "
-                f"functions to TileDB is not implemented. Consider converting any "
-                f"scalar variables to metadata or 1D variables."
-            )
-
-    if create_group or create_arrays:
+    if create_arrays:
         # Get encoding for unlimited dimensions.
         if unlimited_dims is None:
             unlimited_dims = dataset.encoding.get("unlimited_dims", set())
@@ -428,20 +403,20 @@ def from_xarray(
 
         # Create the group and group arrays.
         create_group_from_xarray(
-            group_uri,
-            variables,
-            attributes,
-            encoding,
-            unlimited_dims,
-            config,
-            ctx,
-            create_group,
-            create_arrays,
+            group_uri=group_uri,
+            variables=variables,
+            attributes=attributes,
+            encoding=encoding,
+            unlimited_dims=unlimited_dims,
+            config=config,
+            ctx=ctx,
+            append=append,
+            create_arrays=create_arrays,
         )
 
     if copy_group_metadata or copy_variable_data or copy_variable_metadata:
         # Copy data and metadata to TileDB.
-        copy_data_from_xarray(
+        copy_from_xarray(
             group_uri,
             variables,
             attributes,

@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf.xarray_engine import from_xarray
+from tiledb.cf.xarray_engine import copy_data_from_xarray, from_xarray
+
 
 xr = pytest.importorskip("xarray")
 
@@ -94,7 +95,7 @@ class TileDBXarrayMultiWriterBase:
         xr.testing.assert_equal(result, expected_dataset1)
 
         # Do the second write and check reloaded dataset.
-        from_xarray(input_dataset2, group_uri, **self.kwargs2)
+        copy_data_from_xarray(input_dataset2, group_uri, **self.kwargs2)
         result = xr.open_dataset(group_uri, engine="tiledb")
         xr.testing.assert_equal(result, expected_dataset2)
 
@@ -433,7 +434,7 @@ class TestMultWriteSimple1D(TileDBXarrayMultiWriterBase):
         }
     }
 
-    kwargs2 = {"create_group": False, "create_arrays": False}
+    kwargs2 = {}
 
     @pytest.fixture(scope="class")
     def input_dataset1(self):
@@ -472,11 +473,7 @@ class TestMultRegionWriteSimple1D(TileDBXarrayMultiWriterBase):
         "region": {"x": slice(0, 8)},
     }
 
-    kwargs2 = {
-        "create_group": False,
-        "create_arrays": False,
-        "region": {"x": slice(8, 16)},
-    }
+    kwargs2 = {"region": {"x": slice(8, 16)}}
 
     @pytest.fixture(scope="class")
     def input_dataset1(self):
