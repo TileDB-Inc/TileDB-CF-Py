@@ -1,15 +1,11 @@
 """Module for xarray backend plugin using the TileDB-Xarray Convention.
 
-This plugin will only open groups using the TileDB-Xarray Convention. It has
-stricter requirements for the TileDB group and array structures than standard
-TileDB. See spec `tiledb-xr-spec.md` in project root.
-
 Example:
   Open a TileDB group with the xarray engine::
 
     import xarray as xr
     dataset = xr.open_dataset(
-        "dataset.tiledb-xr",
+        "dataset.tiledb",
         backend_kwargs={"Ctx": ctx},
         engine="tiledb"
     )
@@ -34,9 +30,7 @@ from .deprecated_backend_store import TileDBDataStore
 
 
 class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
-    """
-    TODO: Add docs for TileDBXarrayBackendEntrypoint
-    """
+    """TileDB backend for xarray."""
 
     open_dataset_parameters: ClassVar[tuple | None] = [
         "filename_or_obj",
@@ -46,7 +40,7 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
     ]
     description: ClassVar[
         str
-    ] = "TileDB backend for xarray using the TileDB-Xarray specification"
+    ] = "TileDB backend for xarray for opening TileDB arrays and groups"
     url: ClassVar[str] = "https://github.com/TileDB-Inc/TileDB-CF-Py"
 
     def open_dataset(
@@ -55,11 +49,11 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
         *,
         config=None,
         ctx=None,
+        timestamp=None,
         use_deprecated_engine=False,
         key=None,
         encode_fill=None,
         coord_dims=None,
-        timestamp=None,
         open_full_domain=None,
         mask_and_scale=True,
         decode_times=True,
@@ -72,16 +66,17 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
         """
         Open a TileDB group or array as an xarray dataset.
 
-
-        TODO: Full description of usage.
-
         Parameters
         ----------
         filename_or_obj: TileDB URI for the group or array to open in xarray.
         config: TileDB config object to pass to TileDB objects.
         ctx: TileDB context to use for TileDB operations.
+        timestamp: Timestamp to open the TileDB array at. Not valid for groups.
         key: [Deprecated] Encryption key to use for the backend array.
-        timest
+        encode_fill: [Deprecated] Encode the TileDB fill value.
+        coord_dims: [Deprecated] List of dimensions to convert to coordinates.
+        open_full_domain: [Deprecated] Open the full TileDB domain instead of the
+            non-empty domain.
         """
         # Warn if a deprecated keyword was used.
         if not use_deprecated_engine:
@@ -159,7 +154,7 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
         """Check for datasets that can be opened with this backend."""
         if isinstance(filename_or_obj, (str, os.PathLike)):
             _, ext = os.path.splitext(filename_or_obj)
-            if ext in {".tiledb", ".tdb", ".tdb-xr"}:
+            if ext in {".tiledb", ".tdb"}:
                 return True
         try:
             return tiledb.object_type(filename_or_obj) in {"array", "group"}
