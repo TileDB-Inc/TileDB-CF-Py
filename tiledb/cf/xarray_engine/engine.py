@@ -50,7 +50,7 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
         config=None,
         ctx=None,
         timestamp=None,
-        use_deprecated_engine=False,
+        use_deprecated_engine=None,
         key=None,
         encode_fill=None,
         coord_dims=None,
@@ -91,8 +91,15 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
             to a numpy.timedelta64 datatype.
 
         """
-        # Warn if a deprecated keyword was used.
-        if not use_deprecated_engine:
+
+        deprecated_kwargs = {
+            "key": key,
+            "encode_fill": encode_fill,
+            "open_full_domain": open_full_domain,
+        }
+
+        # If deprecated keyword aguments were set, then switch to the deprecated engine.
+        if use_deprecated_engine is None:
 
             def check_use_deprecated(key_name, key_value):
                 if key_value is not None:
@@ -104,22 +111,22 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
                     )
                     return True
 
-            use_deprecated_engine = (
-                check_use_deprecated("key", key)
-                or check_use_deprecated("encode_fill", encode_fill)
-                or check_use_deprecated("open_full_domain", open_full_domain)
+            use_deprecated_engine = any(
+                check_use_deprecated(key, val)
+                for (key, val) in deprecated_kwargs.items()
             )
-        else:
+
+        # Use the deprecated xarray engine for opening the array.
+        if use_deprecated_engine:
             warnings.warn(
                 "Using deprecated TileDB-Xarray plugin",
                 DeprecationWarning,
                 stacklevel=1,
             )
 
-        if use_deprecated_engine:
+            # Create the deprecated store.
             encode_fill = False if encode_fill is None else encode_fill
             open_full_domain = False if open_full_domain is None else open_full_domain
-
             datastore = TileDBDataStore(
                 uri=filename_or_obj,
                 key=key,
@@ -129,7 +136,8 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
                 open_full_domain=open_full_domain,
                 coord_dims=coord_dims,
             )
-            # Xarray indirection to open dataset defined in a plugin.
+
+            # Use xarray indirection to open dataset defined in a plugin.
             store_entrypoint = StoreBackendEntrypoint()
             with close_on_error(datastore):
                 dataset = store_entrypoint.open_dataset(
@@ -144,11 +152,22 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
                 )
             return dataset
 
+        # Using new engine: warn if any deprecated keyword arguments were set.
+        for arg_name, arg_value in deprecated_kwargs.items():
+            if arg_value is not None:
+                warnings.warn(
+                    f"Skipping deprecated keyword '{arg_name}' used when "
+                    f"`use_deprecated_engine=False`.",
+                    DeprecationWarning,
+                    stacklevel=1,
+                )
+
+        # Create the TileDB backend store.
         datastore = TileDBXarrayStore(
             filename_or_obj, config=config, ctx=ctx, timestamp=timestamp
         )
 
-        # Xarray indirection to open dataset defined in a plugin.
+        # Use xarray indirection to open dataset defined in a plugin.
         store_entrypoint = StoreBackendEntrypoint()
         with close_on_error(datastore):
             dataset = store_entrypoint.open_dataset(

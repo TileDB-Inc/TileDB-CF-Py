@@ -1,15 +1,11 @@
 """Module for xarray backend store.
 
-This plugin will only open groups using the TileDB-Xarray Convention. It has
-stricter requirements for the TileDB group and array structures than standard
-TileDB. See spec `tiledb-xr-spec.md` in project root.
-
 Example:
   Open a TileDB group with the xarray engine::
 
     import xarray as xr
     dataset = xr.open_dataset(
-        "dataset.tiledb-xr",
+        "dataset.tiledb",
         backend_kwargs={"Ctx": ctx},
         engine="tiledb"
     )
