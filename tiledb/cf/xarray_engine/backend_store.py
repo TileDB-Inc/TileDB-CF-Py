@@ -79,9 +79,8 @@ class TileDBXarrayStore(AbstractDataStore):
                 if not key.startswith(_ATTR_PREFIX)
             }
 
-            max_dim_sizes = {}
             dim_sizes = {}
-            self._update_dimensions(array, set(), max_dim_sizes, dim_sizes)
+            self._update_dimension_sizes(array, set(), dim_sizes)
 
             # Get the variables.
             variables = {}
@@ -116,7 +115,6 @@ class TileDBXarrayStore(AbstractDataStore):
             group_metadata = {key: val for key, val in group.meta.items()}
 
             # Pre-process information for creating variales.
-            max_dim_sizes = {}
             dim_sizes = {}
             wrapper_kwargs = {}
             for item in group:
@@ -137,7 +135,7 @@ class TileDBXarrayStore(AbstractDataStore):
                         )
                     else:
                         fixed_dims = set()
-                    self._update_dimensions(array, fixed_dims, max_dim_sizes, dim_sizes)
+                    self._update_dimension_sizes(array, fixed_dims, dim_sizes)
                     schema = array.schema
 
                 # Get name/index of the TileDB attribute to load.
@@ -185,41 +183,25 @@ class TileDBXarrayStore(AbstractDataStore):
             fixed_dims = set()
         return fixed_dims
 
-    def _update_dimensions(self, array, fixed_dims, max_dim_sizes, dim_sizes):
-        # Skip update if all dimensions are fixed.
-        if all(dim.name in fixed_dims for dim in array.domain):
-            return
-
+    def _update_dimension_sizes(self, array, fixed_dims, dim_sizes):
+        """Updates the map of dimension sizes to be the size of the smallest non-empty
+        domain for all dimensions in the array that are not fixed dimesions.
+        """
         nonempty_domain = array.nonempty_domain()
         for index, dim in enumerate(array.schema.domain):
-            if dim.domain[0] != 0:
-                raise ValueError(
-                    f"Cannot load  variable '{self.variable_name}'; dimension "
-                    f"'{dim.name}' does not have a domain with lower bound of 0."
-                )
-            if dim.dtype.kind not in ("i", "u"):
-                raise ValueError(
-                    f"Cannot load variable '{self.variable_name}'. Dimension "
-                    f"'{dim.name}' has unsupported dtype={dim.dtype}."
-                )
+            if dim.domain[0] != 0 or dim.dtype.kind not in ("i", "u"):
+                # Skip update. Error messages will be thrown later with more
+                # specific information for the user when attempting to load
+                # attributes from this array.
+                return
+
             if dim.name not in fixed_dims:
-                # Get the size of the full domain and the nonempty domain.
-                domain_size = int(dim.domain[1]) + 1
+                # Set the dimension size to be the smallest non-empty domain.
                 nonempty_size = (
                     0 if nonempty_domain is None else int(nonempty_domain[index][1]) + 1
                 )
-
-                # Cap flexible dimension size at the max size of this dimensions
-                # size.
-                max_dim_sizes[dim.name] = min(
-                    domain_size, max_dim_sizes.get(dim.name, domain_size)
-                )
-
-                # Set the dimension size to be the largest possible non-empty
-                # domain.
                 dim_sizes[dim.name] = min(
-                    max_dim_sizes[dim.name],
-                    max(nonempty_size, dim_sizes.get(dim.name, nonempty_size)),
+                    nonempty_size, dim_sizes.get(dim.name, nonempty_size)
                 )
 
     def close(self):

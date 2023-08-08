@@ -201,9 +201,8 @@ class TestMixedFill:
         return uri
 
     def test_open_dataset(self, tiledb_uri):
-        expected_z_data = self.z_data
-        expected_w_data = np.full((4, 4), np.nan)
-        expected_w_data[0:2, 0:2] = self.w_data
+        expected_z_data = self.z_data[0:2, 0:2]
+        expected_w_data = self.w_data
         expected = xr.Dataset(
             {
                 "z": xr.DataArray(expected_z_data, dims=("x", "y")),
@@ -264,9 +263,8 @@ class TestMixedFillCappedByDomain:
         return uri
 
     def test_open_dataset(self, tiledb_uri):
-        expected_z_data = self.z_data[0:4, 0:6]
-        expected_w_data = np.full((4), np.nan)
-        expected_w_data[0:2] = self.w_data
+        expected_z_data = self.z_data[0:2, 0:6]
+        expected_w_data = self.w_data
         expected = xr.Dataset(
             {
                 "z": xr.DataArray(expected_z_data, dims=("x", "y")),
