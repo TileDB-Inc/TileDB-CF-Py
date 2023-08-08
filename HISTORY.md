@@ -2,15 +2,23 @@
 
 ## Unreleased
 
-### Bug Fixes
-
 ### Breaking Behavior
+
+* Changes TileDB backend to default to new xarray backend
+
+### Deprecation
+
+* Deprecates `key` argument from xarray engine
+* Deprecates `encode_fill` argument from xarray engine
+* Deprecaste `use_full_domain argument from xarray engine
+
+### Bug Fixes
 
 ### New Features
 
 ### Improvements
 
-### Deprecation
+* New xarray backend engine that handles both TileDB arrays and groups directly
 
 ## 0.7.0
 
