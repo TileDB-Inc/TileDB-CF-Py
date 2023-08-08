@@ -10,7 +10,7 @@
 
 * Deprecates `key` argument from xarray engine
 * Deprecates `encode_fill` argument from xarray engine
-* Deprecaste `use_full_domain argument from xarray engine
+* Deprecates `use_full_domain` argument from xarray engine
 
 ### Bug Fixes
 

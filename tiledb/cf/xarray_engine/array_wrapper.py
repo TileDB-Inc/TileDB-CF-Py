@@ -188,19 +188,25 @@ class TileDBArrayWrapper(BackendArray):
 
     @property
     def dim_names(self):
+        """A tuple of the dimension names."""
         return self._dim_names
 
     def get_metadata(self):
-        key_prefix = f"{_ATTR_PREFIX}{self._attr_name}."
+        """Returns a dictionary of the variable metadata including xarray specific
+        encodings.
+        """
+        full_key_prefix = f"{_ATTR_PREFIX}{self._attr_name}."
         with tiledb.open(**self._array_kwargs) as array:
             variable_metadata = {"_FillValue": self._fill}
             for key in array.meta:
-                if key.startswith(key_prefix) and not len(key) == len(key_prefix):
-                    variable_metadata[key[len(key_prefix) :]] = array.meta[key]
+                if key.startswith(full_key_prefix) and not len(key) == len(
+                    full_key_prefix
+                ):
+                    variable_metadata[key[len(full_key_prefix) :]] = array.meta[key]
             return variable_metadata
 
     def set_metadata(self, input_meta):
-        key_prefix = f"{_ATTR_PREFIX}{self._attr_name}."
+        key_prefix = f"{_ATTR_PREFIX}{self._attr_name}"
         with tiledb.open(**self._array_kwargs, mode="w") as array:
             for key, value in input_meta.items():
-                array.meta[f"{key_prefix}{key}"] = value
+                array.meta[f"{key_prefix}.{key}"] = value
