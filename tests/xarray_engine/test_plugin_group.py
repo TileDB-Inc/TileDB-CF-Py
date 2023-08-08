@@ -297,7 +297,6 @@ class TestSimple2DExampleUnsignedDims(TileDBXarray2DBase):
             }
         )
 
-
 def test_open_multidim_dataset(create_tiledb_group_example):
     uri, expected = create_tiledb_group_example
     dataset = xr.open_dataset(uri, engine="tiledb")

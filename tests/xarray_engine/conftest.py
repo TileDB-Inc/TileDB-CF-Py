@@ -7,6 +7,7 @@ import tiledb
 @pytest.fixture
 def create_tiledb_group_example(tmpdir):
     xr = pytest.importorskip("xarray")
+
     # Define data
     data = {
         "pressure": np.linspace(
@@ -14,53 +15,63 @@ def create_tiledb_group_example(tmpdir):
         ).reshape(8, 4),
         "count": np.arange(0, 32, dtype=np.int32).reshape(8, 4),
     }
+
     # Create expected dataset
     expected = xr.Dataset(
         data_vars={
             "pressure": xr.DataArray(
                 data=data["pressure"],
                 dims=["time", "x"],
-                # attrs={"long_name": "example float data"},
+                attrs={"long_name": "example float data"},
             ),
             "count": xr.DataArray(
                 data=data["count"],
                 dims=["time", "x"],
-                # attrs={"long_name": "example int data"},
+                attrs={"long_name": "example int data"},
             ),
         },
-        # attrs={"global_1": "value1", "global_2": "value2"},
+        attrs={"global_1": "value1", "global_2": "value2"},
     )
+
+    # Create the TileDB group
     group_uri = str(tmpdir.join("tiledb_group_example_1"))
-    schemas = {
-        "count": tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(name="time", domain=(0, 7), tile=4, dtype=np.int32),
-                tiledb.Dim(name="x", domain=(0, 3), tile=4, dtype=np.int32),
-            ),
-            sparse=False,
-            attrs=[
-                tiledb.Attr(name="count", dtype=np.int32),
-            ],
+    count_uri = str(tmpdir.join("count_array"))
+    pressure_uri = str(tmpdir.join("pressure_array"))
+    count_schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="time", domain=(0, 7), tile=4, dtype=np.int32),
+            tiledb.Dim(name="x", domain=(0, 3), tile=4, dtype=np.int32),
         ),
-        "pressure": tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(name="time", domain=(0, 7), tile=4, dtype=np.int32),
-                tiledb.Dim(name="x", domain=(0, 3), tile=4, dtype=np.int32),
-            ),
-            sparse=False,
-            attrs=[
-                tiledb.Attr(name="pressure", dtype=np.float64),
-            ],
+        sparse=False,
+        attrs=[tiledb.Attr(name="count", dtype=np.int32)],
+    )
+
+    pressure_schema = tiledb.ArraySchema(
+        domain=tiledb.Domain(
+            tiledb.Dim(name="time", domain=(0, 7), tile=4, dtype=np.int32),
+            tiledb.Dim(name="x", domain=(0, 3), tile=4, dtype=np.int32),
         ),
-    }
+        sparse=False,
+        attrs=[tiledb.Attr(name="pressure", dtype=np.float64)],
+    )
+
+    # Create and write to arrays.
+    tiledb.Array.create(count_uri, count_schema)
+    with tiledb.open(count_uri, mode="w") as array:
+        array[:, :] = data["count"]
+        array.meta["__tiledb_attr.count.long_name"] = "example int data"
+    tiledb.Array.create(pressure_uri, pressure_schema)
+    with tiledb.open(pressure_uri, mode="w") as array:
+        array[:, :] = data["pressure"]
+        array.meta["__tiledb_attr.pressure.long_name"] = "example float data"
+
+    # Create group and add arrays and metadata.
     tiledb.Group.create(group_uri)
     with tiledb.Group(group_uri, mode="w") as group:
-        for name, schema in schemas.items():
-            array_uri = f"{group_uri}/{name}"
-            tiledb.Array.create(array_uri, schema)
-            with tiledb.open(array_uri, mode="w") as array:
-                array[:, :] = {name: data[name]}
-            group.add(uri=name, name=name, relative=True)
+        group.add(pressure_uri)
+        group.add(count_uri)
+        group.meta["global_1"] = "value1"
+        group.meta["global_2"] = "value2"
     return group_uri, expected
 
 
@@ -100,7 +111,7 @@ def create_tiledb_example(tmpdir):
             tiledb.Attr(name="pressure", dtype=np.float64),
         ],
     )
-    tiledb.DenseArray.create(array_uri, schema)
+    tiledb.Array.create(array_uri, schema)
     with tiledb.open(array_uri, mode="w") as array:
         array[:, :] = {
             "pressure": float_data,
