@@ -1,11 +1,15 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf.xarray_engine import copy_data_from_xarray, from_xarray
-
+from tiledb.cf.xarray_engine import (
+    copy_data_from_xarray,
+    copy_metadata_from_xarray,
+    create_group_from_xarray,
+    from_xarray,
+)
 
 xr = pytest.importorskip("xarray")
 
@@ -53,27 +57,15 @@ class TileDBXarrayMultiWriterBase:
 
     name = "base"
 
-    kwargs1: Dict[str, Any] = {}
-    kwargs2: Dict[str, Any] = {}
+    create_kwargs: Dict[str, Any] = {}
+    copy_kwargs: List[Dict[str, Any]] = []
 
     @pytest.fixture(scope="class")
-    def group_uri(self, tmpdir_factory):
-        return str(tmpdir_factory.mktemp("output").join(f"{self.name}.tiledb"))
+    def input_datasets(self):
+        return [xr.Dataset()]
 
     @pytest.fixture(scope="class")
-    def dataset1(self):
-        return xr.Dataset()
-
-    @pytest.fixture(scope="class")
-    def dataset2(self):
-        return xr.Dataset()
-
-    @pytest.fixture(scope="class")
-    def expected_dataset1(self):
-        return xr.Dataset()
-
-    @pytest.fixture(scope="class")
-    def expected_dataset2(self):
+    def expected_datasets(self):
         return xr.Dataset()
 
     @pytest.fixture(scope="class")
@@ -82,22 +74,14 @@ class TileDBXarrayMultiWriterBase:
 
     def test_create_datasets(
         self,
-        group_uri,
-        input_dataset1,
-        input_dataset2,
-        expected_dataset1,
-        expected_dataset2,
+        tmpdir,
+        input_datasets,
+        expected_datasets,
         expected_schemas,
     ):
-        # Do the first write and check reloaded dataset.
-        from_xarray(input_dataset1, group_uri, **self.kwargs1)
-        result = xr.open_dataset(group_uri, engine="tiledb")
-        xr.testing.assert_equal(result, expected_dataset1)
-
-        # Do the second write and check reloaded dataset.
-        copy_data_from_xarray(input_dataset2, group_uri, **self.kwargs2)
-        result = xr.open_dataset(group_uri, engine="tiledb")
-        xr.testing.assert_equal(result, expected_dataset2)
+        # Create the initial group.
+        group_uri = str(tmpdir.mkdir("output1").join(self.name))
+        create_group_from_xarray(input_datasets[0], group_uri, **self.create_kwargs)
 
         # Check the array schemas are as expected.
         with tiledb.Group(group_uri) as group:
@@ -105,6 +89,49 @@ class TileDBXarrayMultiWriterBase:
                 array_uri = group[name].uri
                 schema = tiledb.ArraySchema.load(array_uri)
                 assert schema == expected_schema
+
+        num_input = len(input_datasets)
+        assert len(self.copy_kwargs) == num_input
+        assert len(expected_datasets) == num_input
+
+        for index, ds in enumerate(input_datasets):
+            copy_data_from_xarray(ds, group_uri, **self.copy_kwargs[index])
+            result = xr.open_dataset(group_uri, engine="tiledb")
+            xr.testing.assert_equal(result, expected_datasets[index])
+
+    def test_create_datasets_separate_copy_metadata(
+        self,
+        tmpdir,
+        input_datasets,
+        expected_datasets,
+        expected_schemas,
+    ):
+        # Create the initial group.
+        group_uri = str(tmpdir.mkdir("output2").join(self.name))
+        create_group_from_xarray(
+            input_datasets[0],
+            group_uri,
+            copy_group_metadata=False,
+            copy_variable_metadata=False,
+            **self.create_kwargs,
+        )
+        copy_metadata_from_xarray(input_datasets[0], group_uri)
+
+        # Check the array schemas are as expected.
+        with tiledb.Group(group_uri) as group:
+            for name, expected_schema in expected_schemas.items():
+                array_uri = group[name].uri
+                schema = tiledb.ArraySchema.load(array_uri)
+                assert schema == expected_schema
+
+        num_input = len(input_datasets)
+        assert len(self.copy_kwargs) == num_input
+        assert len(expected_datasets) == num_input
+
+        for index, ds in enumerate(input_datasets):
+            copy_data_from_xarray(ds, group_uri, **self.copy_kwargs[index])
+            result = xr.open_dataset(group_uri, engine="tiledb")
+            xr.testing.assert_equal(result, expected_datasets[index])
 
 
 class TestWriteEmpty(TileDBXarrayWriterBase):
@@ -428,29 +455,16 @@ class TestMultWriteSimple1D(TileDBXarrayMultiWriterBase):
         {"example": xr.DataArray(np.arange(-16, 0, dtype=np.int32), dims="x")}
     )
 
-    kwargs1 = {
-        "encoding": {
-            "example": {"tiles": (8,)},
-        }
-    }
-
-    kwargs2 = {}
+    create_kwargs = {"encoding": {"example": {"tiles": (8,)}}}
+    copy_kwargs = [{}, {}]
 
     @pytest.fixture(scope="class")
-    def input_dataset1(self):
-        return self.ds1
+    def input_datasets(self):
+        return [self.ds1, self.ds2]
 
     @pytest.fixture(scope="class")
-    def input_dataset2(self):
-        return self.ds2
-
-    @pytest.fixture(scope="class")
-    def expected_dataset1(self):
-        return self.ds1
-
-    @pytest.fixture(scope="class")
-    def expected_dataset2(self):
-        return self.ds2
+    def expected_datasets(self):
+        return [self.ds1, self.ds2]
 
     @pytest.fixture(scope="class")
     def expected_schemas(self):
@@ -466,38 +480,31 @@ class TestMultWriteSimple1D(TileDBXarrayMultiWriterBase):
 class TestMultRegionWriteSimple1D(TileDBXarrayMultiWriterBase):
     name = "multi_region_write_simple_1d"
 
-    kwargs1 = {
-        "encoding": {
-            "example": {"tiles": (8,), "max_shape": (16,)},
-        },
-        "region": {"x": slice(0, 8)},
+    create_kwargs = {
+        "encoding": {"example": {"tiles": (8,), "max_shape": (16,)}},
     }
 
-    kwargs2 = {"region": {"x": slice(8, 16)}}
+    copy_kwargs = [{"region": {"x": slice(0, 8)}}, {"region": {"x": slice(8, 16)}}]
 
     @pytest.fixture(scope="class")
-    def input_dataset1(self):
-        return xr.Dataset(
-            {"example": xr.DataArray(np.arange(0, 8, dtype=np.int32), dims="x")}
-        )
+    def input_datasets(self):
+        return [
+            xr.Dataset(
+                {"example": xr.DataArray(np.arange(0, 8, dtype=np.int32), dims="x")}
+            ),
+            xr.Dataset(
+                {"example": xr.DataArray(np.arange(0, 8, dtype=np.int32), dims="x")}
+            ),
+        ]
 
     @pytest.fixture(scope="class")
-    def input_dataset2(self):
-        return xr.Dataset(
-            {"example": xr.DataArray(np.arange(0, 8, dtype=np.int32), dims="x")}
-        )
-
-    @pytest.fixture(scope="class")
-    def expected_dataset1(self):
-        return xr.Dataset(
-            {"example": xr.DataArray(np.arange(0, 8, dtype=np.int32), dims="x")}
-        )
-
-    @pytest.fixture(scope="class")
-    def expected_dataset2(self):
+    def expected_datasets(self):
         data = np.arange(0, 16, dtype=np.int32)
         data[8:16] = np.arange(0, 8, dtype=np.int32)
-        return xr.Dataset({"example": xr.DataArray(data, dims="x")})
+        return [
+            xr.Dataset({"example": xr.DataArray(data[0:8], dims="x")}),
+            xr.Dataset({"example": xr.DataArray(data, dims="x")}),
+        ]
 
     @pytest.fixture(scope="class")
     def expected_schemas(self):

@@ -36,7 +36,7 @@ def create_group_from_xarray(
 
     """
 
-    from .writer import create_from_xarray, copy_from_xarray, extract_encoded_data
+    from .writer import copy_from_xarray, create_from_xarray, extract_encoded_data
 
     # Splits dataset into variables and attributes (metadata) using the CF Convention
     # where possible.
@@ -186,7 +186,7 @@ def from_xarray(
     unlimited_dims: Set of dimensions to use the maximum dimension size for. Only used
         for variables in the dataset that do not have `max_size` encoding provided.
     """
-    from .writer import create_from_xarray, copy_from_xarray, extract_encoded_data
+    from .writer import copy_from_xarray, create_from_xarray, extract_encoded_data
 
     # Splits dataset into variables and attributes (metadata) using the CF Convention
     # where possible.

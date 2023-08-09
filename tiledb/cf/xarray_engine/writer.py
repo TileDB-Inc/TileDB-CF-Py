@@ -1,8 +1,6 @@
-import warnings
 from itertools import product
 from typing import Iterable, Mapping, Optional
 
-import numpy as np
 from xarray.coding import times
 from xarray.conventions import encode_dataset_coordinates
 from xarray.core.dataset import Dataset
@@ -10,189 +8,8 @@ from xarray.core.dataset import Dataset
 import tiledb
 
 from .._utils import check_valid_group
-from ._common import (
-    _ATTR_FILTERS_ENCODING,
-    _ATTR_NAME_ENCODING,
-    _DIM_DTYPE_ENCODING,
-    _MAX_SHAPE_ENCODING,
-    _TILE_SIZES_ENCODING,
-)
+from ._encoding import TileDBVariableEncoder
 from .array_wrapper import TileDBArrayWrapper
-
-
-class TileDBVariableEncoder:
-    def __init__(self, name, variable, encoding, unlimited_dims, ctx):
-        self._ctx = ctx
-        self._name = name
-        self._variable = variable
-        self._encoding = {}
-
-        # Get variable specific unlimited dimensions.
-        self._unlimited_dims = {
-            dim_name for dim_name in unlimited_dims if dim_name in variable.dims
-        }
-
-        # Set default encodings.
-        self.dim_dtype = encoding.pop(_DIM_DTYPE_ENCODING, np.dtype(np.uint32))
-        self.attr_filters = encoding.pop(
-            _ATTR_FILTERS_ENCODING,
-            tiledb.FilterList(
-                (tiledb.ZstdFilter(level=5, ctx=self._ctx),), ctx=self._ctx
-            ),
-        )
-        self.attr_name = encoding.pop(
-            _ATTR_NAME_ENCODING,
-            f"{self._name}.data" if self._name in variable.dims else self._name,
-        )
-
-        # Set the maximum shape.
-        if _MAX_SHAPE_ENCODING in encoding:
-            self.max_shape = encoding.pop(_MAX_SHAPE_ENCODING)
-        else:
-            if unlimited_dims == set():
-                self.max_shape = variable.shape
-            else:
-                unlim = np.iinfo(self.dim_dtype).max
-                self.max_shape = tuple(
-                    max(unlim, dim_size) if dim_name in unlimited_dims else dim_size
-                    for dim_name, dim_size in zip(variable.dims, variable.shape)
-                )
-
-        self.tiles = encoding.pop(_TILE_SIZES_ENCODING, None)
-
-        if encoding:
-            warnings.warn(
-                f"Unused encoding provided for variable '{self._name}'. Unused "
-                f"keys: {encoding.keys()}",
-                stacklevel=1,
-            )
-
-    @property
-    def attr_dtype(self):
-        return self._variable.dtype
-
-    @property
-    def attr_name(self):
-        return self._encoding.get(_ATTR_NAME_ENCODING, self._name)
-
-    @attr_name.setter
-    def attr_name(self, name):
-        if name in self._variable.dims:
-            raise ValueError(
-                f"Cannot create variable '{self._name}' with TileBD attribute named "
-                f"'{name}'. This is already a dimension name. Set a different name "
-                f"using the '{_ATTR_NAME_ENCODING}' encoding key."
-            )
-        self._encoding[_ATTR_NAME_ENCODING] = name
-
-    @property
-    def attr_filters(self):
-        return self._encoding[_ATTR_FILTERS_ENCODING]
-
-    @attr_filters.setter
-    def attr_filters(self, filters):
-        self._encoding[_ATTR_FILTERS_ENCODING] = filters
-
-    @property
-    def dim_dtype(self):
-        return self._encoding[_DIM_DTYPE_ENCODING]
-
-    @dim_dtype.setter
-    def dim_dtype(self, dim_dtype):
-        if dim_dtype.kind not in ("i", "u"):
-            raise ValueError(
-                f"Cannot set the dimension dtype to {dim_dtype} on variable."
-                f"Provide a signed of unsigned integer dtype instead."
-            )
-        self._encoding[_DIM_DTYPE_ENCODING] = dim_dtype
-
-    def create_array_schema(self):
-        """Returns a TileDB attribute from the provided variable and encodings."""
-        attr = tiledb.Attr(
-            name=self.attr_name,
-            dtype=self.attr_dtype,
-            fill=self.fill,
-            filters=self.attr_filters,
-            ctx=self._ctx,
-        )
-        tiles = self.tiles
-        max_shape = self.max_shape
-        dims = tuple(
-            tiledb.Dim(
-                name=dim_name,
-                dtype=self.dim_dtype,
-                domain=(0, max_shape[index] - 1),
-                tile=None if tiles is None else tiles[index],
-                ctx=self._ctx,
-            )
-            for index, dim_name in enumerate(self._variable.dims)
-        )
-        return tiledb.ArraySchema(
-            domain=tiledb.Domain(*dims, ctx=self._ctx),
-            attrs=(attr,),
-            ctx=self._ctx,
-        )
-
-    def get_encoding_metadata(self):
-        meta = dict()
-        return meta
-
-    @property
-    def fill(self):
-        return self._encoding.get("_FillValue", None)
-
-    @fill.setter
-    def fill(self, fill):
-        if fill is np.nan:
-            self._encoding["_FILL_VALUE_ENCODING"] = None
-        self._encoding["_FILL_VALUE_ENCODING"] = fill
-
-    @property
-    def max_shape(self):
-        return self._encoding[_MAX_SHAPE_ENCODING]
-
-    @max_shape.setter
-    def max_shape(self, max_shape):
-        if len(max_shape) != self._variable.ndim:
-            raise ValueError(
-                f"Encoding error for variable '{self._name}'. Incompatible "
-                f"shape {max_shape} for variable with {self._variable.ndim} "
-                f"dimensions. "
-            )
-        for dim_size, var_size in zip(max_shape, self._variable.shape):
-            if dim_size < var_size:
-                raise ValueError(
-                    f"Encoding error for variable '{self._name}'. The max shape "
-                    f"from the encoding is {(max_shape)} which has a dimension "
-                    f"less than the variable shape {self._variable.shape}."
-                )
-        self._encoding[_MAX_SHAPE_ENCODING] = max_shape
-
-    @property
-    def encoding(self):
-        return self._encoding
-
-    @property
-    def tiles(self):
-        return self._encoding[_TILE_SIZES_ENCODING]
-
-    @tiles.setter
-    def tiles(self, tiles):
-        if tiles is not None and len(tiles) != self._variable.ndim:
-            raise ValueError(
-                f"Encoding error for variable '{self._name}'. {len(tiles)} provided "
-                f"for a variable with {self._variable.ndim} dimensions. There must be "
-                f"exactly one tile per dimension."
-            )
-        self._encoding[_TILE_SIZES_ENCODING] = tiles
-
-    @property
-    def unlimited_dims(self):
-        return self._unlimited_dims
-
-    @property
-    def variable_name(self):
-        return self._variable_name
 
 
 def copy_from_xarray(  # noqa: C901
@@ -333,7 +150,7 @@ def create_from_xarray(
 
             # Create the array and add it to the group
             encoder = TileDBVariableEncoder(
-                var_name, var, encoding.pop(var_name, dict()), unlimited_dims, ctx
+                var_name, var, encoding.get(var_name, dict()), unlimited_dims, ctx
             )
             schema = encoder.create_array_schema()
             tiledb.Array.create(array_uri, schema)
