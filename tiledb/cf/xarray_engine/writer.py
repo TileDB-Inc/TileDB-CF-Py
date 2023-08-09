@@ -1,5 +1,5 @@
 from itertools import product
-from typing import Any, Iterable, Mapping, Optional
+from typing import Any, Iterable, Mapping, Optional, Tuple
 
 from xarray.coding import times
 from xarray.conventions import encode_dataset_coordinates
@@ -106,14 +106,44 @@ def copy_from_xarray(  # noqa: C901
             if copy_variable_metadata:
                 array_wrapper.set_metadata(var.attrs)
             if copy_variable_data:
-                for target_region, source_region in get_chunk_regions(
-                    target_shape=array_wrapper.shape,
-                    source_shape=var.shape,
-                    dimensions=var.dims,
-                    region=region,
-                    chunks=var.chunks,
-                ):
-                    array_wrapper[target_region] = var[source_region].compute().data
+                copy_variable(var_name, var, array_wrapper, region)
+
+
+def copy_variable(name, variable, array_wrapper, region):
+    if len(array_wrapper.shape) != variable.ndim:
+        raise ValueError(
+            f"Cannot write variable '{variable.name}' with {variable.ndim} "
+            f"dimensions to an array with {len(array_wrapper.shape)} dimensions."
+        )
+
+    # Use the dictionary of region slices to compute the indices of the
+    # full region that is being set in the TileDB array (the target).
+    def get_dimension_slice(dim_name, dim_size):
+        indices = region.get(dim_name, slice(None)).indices(dim_size)
+        return slice(indices[0], indices[1], None)
+
+    target_region = tuple(
+        get_dimension_slice(dim_name, dim_size)
+        for dim_name, dim_size in zip(variable.dims, array_wrapper.shape)
+    )
+
+    # Check the shape of the region is valid.
+    region_shape = tuple(
+        dim_slice.stop - dim_slice.start for dim_slice in target_region
+    )
+    if region_shape != variable.shape:
+        raise RuntimeError(
+            f"Cannot add variable with shape {variable.shape} to region "
+            f"{target_region} with mismatched shape {region_shape}."
+        )
+
+    # Iterate over all chunks.
+    for target_chunk, source_chunk in get_chunk_regions(
+        target_region=target_region,
+        source_shape=variable.shape,
+        chunks=variable.chunks,
+    ):
+        array_wrapper[target_chunk] = variable[source_chunk].compute().data
 
 
 def create_from_xarray(
@@ -221,51 +251,50 @@ def extract_encoded_data(dataset):
     return variables, group_metadata
 
 
-def get_chunk_regions(region, dimensions, target_shape, source_shape, chunks):
+def get_chunk_regions(
+    target_region: Tuple[slice, ...],
+    source_shape: Tuple[int, ...],
+    chunks: Optional[Tuple[Tuple[int, ...], ...]],
+):
     """Returns a generator of (target_region, source_region) for writing the
     input source by chunks.
-    """
-    # Use the dictionary of region slices to compute the indices of the
-    # full region that is being set.
-    region_indices = tuple(
-        region.get(dim_name, slice(None)).indices(target_shape[index])
-        for index, dim_name in enumerate(dimensions)
-    )
 
-    # Check the shape of the region is valid.
-    region_shape = tuple(_range[1] - _range[0] for _range in region_indices)
-    if region_shape != source_shape:
-        raise RuntimeError(
-            f"Cannot add variable with shape {source_shape} to region "
-            f"{region_indices} with mismatched shape {region_shape}."
-        )
+    Parameters:
+    ----------
+    target_region: Slices that correspond to the target region to query using
+        numpy-style indexing.
+    source_shape: Shape of the input data.
+    chunks: A tuple or tuples containing the fully explicit size of chunks along each
+        dimension.
+
+    Yields tuples of (target_chunk, source_chunk) pairs that cover the entire target
+    and source regions.
+    """
 
     # Return a single (target region, source region ) pair for a non-chunked array.
     if chunks is None:
-        target_region = tuple(slice(_range[0], _range[1]) for _range in region_indices)
         source_region = tuple(len(source_shape) * [slice(None)])
-        return ((target_region, source_region) for _ in range(1))
+        yield (target_region, source_region)
 
-    # Convert tuple of dimension sizes to slices per chunk.
-    chunks = list(list(dim_chunks) for dim_chunks in chunks)
-    for dim_chunks in chunks:
-        for index in range(len(dim_chunks)):
-            start = 0 if index == 0 else dim_chunks[index - 1].stop
-            dim_chunks[index] = slice(start, start + dim_chunks[index])
+    else:
+        # The input chunks is a tuple of a tuple of chunk sizes for each dimension.
+        # This step converts that to a list of a list of slices for the region each
+        # chunk is located at.
+        chunk_regions = list(list(dim_chunks) for dim_chunks in chunks)
+        for dim_chunks in chunk_regions:
+            for index in range(len(dim_chunks)):
+                start = 0 if index == 0 else dim_chunks[index - 1].stop
+                dim_chunks[index] = slice(start, start + dim_chunks[index])
 
-    # Return (target region, source region) pairs for each chunk region.
-    return (
-        tuple(
-            (
-                tuple(
-                    slice(
-                        global_index[0] + local_slice.start,
-                        global_index[0] + local_slice.stop,
-                    )
-                    for global_index, local_slice in zip(region_indices, chunk_region)
-                ),
-                tuple(chunk_region),
+        # Return (target region, source region) pairs for each chunk region by
+        # taking the outer product of chunk regions and shifting them to the target
+        # location.
+        for source_chunk in product(*chunk_regions):
+            target_chunk = tuple(
+                slice(
+                    global_slice.start + local_slice.start,
+                    global_slice.start + local_slice.stop,
+                )
+                for global_slice, local_slice in zip(target_region, source_chunk)
             )
-        )
-        for chunk_region in product(*chunks)
-    )
+            yield tuple((target_chunk, tuple(source_chunk)))
