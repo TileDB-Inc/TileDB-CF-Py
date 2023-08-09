@@ -1,9 +1,9 @@
 from itertools import product
-from typing import Iterable, Mapping, Optional
+from typing import Any, Iterable, Mapping, Optional
 
 from xarray.coding import times
 from xarray.conventions import encode_dataset_coordinates
-from xarray.core.dataset import Dataset
+from xarray.core.dataset import Dataset, Variable
 
 import tiledb
 
@@ -13,18 +13,37 @@ from .array_wrapper import TileDBArrayWrapper
 
 
 def copy_from_xarray(  # noqa: C901
-    group_uri,
-    dataset,
-    variables,
-    attributes,
+    group_uri: str,
+    dataset: Dataset,
+    variables: Mapping[str, Variable],
+    group_metadata: Mapping[str, Any],
     *,
-    region,
-    config,
-    ctx,
-    copy_group_metadata,
-    copy_variable_metadata,
-    copy_variable_data,
+    config: Optional[tiledb.Config],
+    ctx: Optional[tiledb.Ctx],
+    region: Optional[Mapping[str, slice]],
+    copy_group_metadata: bool,
+    copy_variable_metadata: bool,
+    copy_variable_data: bool,
 ):
+    """Copies data and metadata from an xarray dataset to a TileDB group corresponding
+    to the dataset.
+
+    Optionally copies metadata as well as variable data.
+
+    group_uri: The URI to the TileDB group to create or append to.
+    dataset: The xarray Dataset to write.
+    variables: A mapping of encoded xarray variables.
+    group_metadata: A mapping of key-value pairs correspoding to dataset metadata.
+    config: A TileDB config object to use for TileDB objects.
+    ctx: A TileDB context object to use for TileDB operations.
+    region: A mapping from dimension names to integer slices along the
+        dataset dimensions to indicate the region to write this dataset's data in.
+    copy_group_metadata: If true, copy xarray dataset metadata to the TileDB group.
+    copy_variable_metadata: If true, copy xarray variable metadata to the TileDB
+        arrays as TileDB attribute metadata.
+    copy_variable_data: If true
+    """
+
     # Check that there is a group at the location.
     check_valid_group(group_uri, ctx)
 
@@ -50,7 +69,7 @@ def copy_from_xarray(  # noqa: C901
     # Copy group metadata
     if copy_group_metadata:
         with tiledb.Group(group_uri, mode="w", config=config, ctx=ctx) as group:
-            for key, val in attributes:
+            for key, val in group_metadata:
                 group.meta[key] = val
 
     # Skip iterating over full variable list if only writing group metadata.
@@ -98,22 +117,39 @@ def copy_from_xarray(  # noqa: C901
 
 
 def create_from_xarray(
-    group_uri,
-    dataset,
-    variables,
-    attributes,
+    group_uri: str,
+    dataset: Dataset,
+    variables: Mapping[str, Variable],
     *,
-    append,
-    encoding,
-    unlimited_dims,
-    config,
-    ctx,
+    config: Optional[tiledb.Config],
+    ctx: Optional[tiledb.Ctx],
+    append: bool,
+    encoding: Optional[Mapping[str, Any]],
+    unlimited_dims: Optional[Iterable[str]],
 ):
+    """Creates a TileDB group and arrays from a xarray dataset and optionally copies
+    metadata over.
+
+    Parameters:
+    ----------
+    dataset: The xarray Dataset to write.
+    group_uri: The URI to the TileDB group to create or append to.
+    variables: A mapping of encoded xarray variables.
+    config: A TileDB config object to use for TileDB objects.
+    ctx: A TileDB context object to use for TileDB operations.
+    encoding: A nested dictionary with variable names as keys and dictionaries
+        of TileDB specific encoding.
+    unlimited_dims: Set of dimensions to use the maximum dimension size for. Only used
+        for variables in the dataset that do not have `max_size` encoding provided.
+    config: TileDB configuration to use for writing metadata to groups and arrays.
+    ctx: Context object to use for TileDB operations.
+    """
+
     # Check the TileDB encoding is for valid variables.
     encoding = dict() if encoding is None else encoding
     for var_name in encoding:
         if var_name not in variables:
-            raise ValueError(
+            raise KeyError(
                 f"``encoding`` contains variable `{var_name}` not in the dataset."
             )
 
@@ -137,7 +173,7 @@ def create_from_xarray(
         unlimited_dims = set(dim_name for dim_name in unlimited_dims)
         for dim_name in unlimited_dims:
             if dim_name not in dataset.dims:
-                raise ValueError(
+                raise KeyError(
                     f"``unlimited_dims`` contains dimension '{dim_name}' not in"
                     f"the dataset."
                 )
@@ -167,7 +203,7 @@ def extract_encoded_data(dataset):
     """
 
     # Get variables and apply xarray encoders.
-    variables, attributes = encode_dataset_coordinates(dataset)
+    variables, group_metadata = encode_dataset_coordinates(dataset)
     variables = {
         var_name: times.CFDatetimeCoder().encode(times.CFTimedeltaCoder().encode(var))
         for var_name, var in variables.items()
@@ -182,7 +218,7 @@ def extract_encoded_data(dataset):
                 f"scalar variables to metadata or 1D variables."
             )
 
-    return variables, attributes
+    return variables, group_metadata
 
 
 def get_chunk_regions(region, dimensions, target_shape, source_shape, chunks):

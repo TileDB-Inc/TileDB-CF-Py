@@ -1,6 +1,5 @@
-""" TODO: Add module documentation
-"""
-from typing import Iterable, Mapping, Optional
+"""This module contains API for working with TileDB and xarray."""
+from typing import Any, Iterable, Mapping, Optional
 
 import tiledb
 
@@ -12,7 +11,7 @@ def create_group_from_xarray(
     config: Optional[tiledb.Config] = None,
     ctx: Optional[tiledb.Ctx] = None,
     append: bool = False,
-    encoding: Optional[Mapping] = None,
+    encoding: Optional[Mapping[str, Any]] = None,
     unlimited_dims: Optional[Iterable[str]] = None,
     copy_group_metadata: bool = True,
     copy_variable_metadata: bool = True,
@@ -20,6 +19,8 @@ def create_group_from_xarray(
     """Creates a TileDB group and arrays from a xarray dataset and optionally copies
     metadata over.
 
+    Parameters:
+    ----------
     dataset: The xarray Dataset to write.
     group_uri: The URI to the TileDB group to create or append to.
     config: A TileDB config object to use for TileDB objects.
@@ -38,7 +39,7 @@ def create_group_from_xarray(
 
     from .writer import copy_from_xarray, create_from_xarray, extract_encoded_data
 
-    # Splits dataset into variables and attributes (metadata) using the CF Convention
+    # Splits dataset into variables and group-level metadata using the CF Convention
     # where possible.
     variables, group_metadata = extract_encoded_data(dataset)
 
@@ -47,7 +48,6 @@ def create_group_from_xarray(
         group_uri=group_uri,
         dataset=dataset,
         variables=variables,
-        attributes=group_metadata,
         append=append,
         encoding=encoding,
         unlimited_dims=unlimited_dims,
@@ -61,7 +61,7 @@ def create_group_from_xarray(
             group_uri=group_uri,
             dataset=dataset,
             variables=variables,
-            attributes=group_metadata,
+            group_metadata=group_metadata,
             region=None,
             config=config,
             ctx=ctx,
@@ -101,16 +101,16 @@ def copy_data_from_xarray(
 
     from .writer import copy_from_xarray, extract_encoded_data
 
-    # Splits dataset into variables and attributes (metadata) using the CF Convention
+    # Splits dataset into variables and group-level metadata using the CF Convention
     # where possible.
-    variables, attributes = extract_encoded_data(dataset)
+    variables, group_metadata = extract_encoded_data(dataset)
 
     # Copy data and metadata to TileDB.
     copy_from_xarray(
         group_uri=group_uri,
         dataset=dataset,
         variables=variables,
-        attributes=attributes,
+        group_metadata=group_metadata,
         region=region,
         config=config,
         ctx=ctx,
@@ -143,16 +143,16 @@ def copy_metadata_from_xarray(
 
     from .writer import copy_from_xarray, extract_encoded_data
 
-    # Splits dataset into variables and attributes (metadata) using the CF Convention
+    # Splits dataset into variables and group-level metadata using the CF Convention
     # where possible.
-    variables, attributes = extract_encoded_data(dataset)
+    variables, group_metadata = extract_encoded_data(dataset)
 
     # Copy data to TileDB.
     copy_from_xarray(
         group_uri=group_uri,
         dataset=dataset,
         variables=variables,
-        attributes=attributes,
+        group_metadata=group_metadata,
         region=None,
         config=config,
         ctx=ctx,
@@ -168,7 +168,7 @@ def from_xarray(
     *,
     config: Optional[tiledb.Config] = None,
     ctx: Optional[tiledb.Ctx] = None,
-    encoding: Optional[Mapping] = None,
+    encoding: Optional[Mapping[str, Any]] = None,
     region: Optional[Mapping[str, slice]] = None,
     unlimited_dims: Optional[Iterable[str]] = None,
 ):
@@ -188,16 +188,15 @@ def from_xarray(
     """
     from .writer import copy_from_xarray, create_from_xarray, extract_encoded_data
 
-    # Splits dataset into variables and attributes (metadata) using the CF Convention
+    # Splits dataset into variables and group-level metadata using the CF Convention
     # where possible.
-    variables, attributes = extract_encoded_data(dataset)
+    variables, group_metadata = extract_encoded_data(dataset)
 
     # Create the group and group arrays.
     create_from_xarray(
         group_uri=group_uri,
         dataset=dataset,
         variables=variables,
-        attributes=attributes,
         encoding=encoding,
         unlimited_dims=unlimited_dims,
         config=config,
@@ -210,7 +209,7 @@ def from_xarray(
         group_uri=group_uri,
         dataset=dataset,
         variables=variables,
-        attributes=attributes,
+        group_metadata=group_metadata,
         region=region,
         config=config,
         ctx=ctx,
