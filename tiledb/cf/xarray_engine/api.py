@@ -1,3 +1,5 @@
+""" TODO: Add module documentation
+"""
 from typing import Iterable, Mapping, Optional
 
 import tiledb
@@ -9,29 +11,64 @@ def create_group_from_xarray(
     *,
     config: Optional[tiledb.Config] = None,
     ctx: Optional[tiledb.Ctx] = None,
-    encoding: Optional[Mapping] = None,
     append: bool = False,
+    encoding: Optional[Mapping] = None,
+    unlimited_dims: Optional[Iterable[str]] = None,
     copy_group_metadata: bool = True,
     copy_variable_metadata: bool = True,
-    unlimited_dims: Optional[Iterable[str]] = None,
 ):
-    """TODO: add create_group_from_xarray docstring"""
-    from .writer import from_xarray as from_xarray_impl
+    """Creates a TileDB group and arrays from a xarray dataset and optionally copies
+    metadata over.
 
-    return from_xarray_impl(
-        dataset,
-        group_uri,
+    dataset: The xarray Dataset to write.
+    group_uri: The URI to the TileDB group to create or append to.
+    config: A TileDB config object to use for TileDB objects.
+    ctx: A TileDB context object to use for TileDB operations.
+    encoding: A nested dictionary with variable names as keys and dictionaries
+        of TileDB specific encoding.
+    unlimited_dims: Set of dimensions to use the maximum dimension size for. Only used
+        for variables in the dataset that do not have `max_size` encoding provided.
+    config: TileDB configuration to use for writing metadata to groups and arrays.
+    ctx: Context object to use for TileDB operations.
+    copy_group_metadata: If true, copy xarray dataset metadata to the TileDB group.
+    copy_variable_metadata: If true, copy xarray variable metadata to the TileDB
+        arrays as TileDB attribute metadata.
+
+    """
+
+    from .writer import create_from_xarray, copy_from_xarray, extract_encoded_data
+
+    # Splits dataset into variables and attributes (metadata) using the CF Convention
+    # where possible.
+    variables, group_metadata = extract_encoded_data(dataset)
+
+    # Create the group and arrays in the group.
+    create_from_xarray(
+        group_uri=group_uri,
+        dataset=dataset,
+        variables=variables,
+        attributes=group_metadata,
+        append=append,
+        encoding=encoding,
+        unlimited_dims=unlimited_dims,
         config=config,
         ctx=ctx,
-        encoding=encoding,
-        append=append,
-        create_arrays=True,
-        copy_group_metadata=copy_group_metadata,
-        copy_variable_data=False,
-        copy_variable_metadata=copy_variable_metadata,
-        region=None,
-        unlimited_dims=unlimited_dims,
     )
+
+    # Copy metadata to TileDB.
+    if copy_group_metadata or copy_variable_metadata:
+        copy_from_xarray(
+            group_uri=group_uri,
+            dataset=dataset,
+            variables=variables,
+            attributes=group_metadata,
+            region=None,
+            config=config,
+            ctx=ctx,
+            copy_group_metadata=copy_group_metadata,
+            copy_variable_metadata=copy_variable_metadata,
+            copy_variable_data=False,
+        )
 
 
 def copy_data_from_xarray(
@@ -44,22 +81,42 @@ def copy_data_from_xarray(
     copy_group_metadata=False,
     copy_variable_metadata=False,
 ):
-    """TODO: add copy_data_from_xarray docstring"""
-    from .writer import from_xarray as from_xarray_impl
+    """Copies data from an xarray dataset to a TileDB group corresponding to the
+    dataset.
 
-    return from_xarray_impl(
-        dataset,
-        group_uri,
+    Optionally copies metadata as well as variable data.
+
+    dataset: The xarray Dataset to write.
+    group_uri: The URI to the TileDB group to create or append to.
+    config: A TileDB config object to use for TileDB objects.
+    ctx: A TileDB context object to use for TileDB operations.
+    config: TileDB configuration to use for writing metadata to groups and arrays.
+    region: A mapping from dimension names to integer slices along the
+        dataset dimensions to indicate the region to write this dataset's data in.
+    copy_group_metadata: If true, copy xarray dataset metadata to the TileDB group.
+    copy_variable_metadata: If true, copy xarray variable metadata to the TileDB
+        arrays as TileDB attribute metadata.
+
+    """
+
+    from .writer import copy_from_xarray, extract_encoded_data
+
+    # Splits dataset into variables and attributes (metadata) using the CF Convention
+    # where possible.
+    variables, attributes = extract_encoded_data(dataset)
+
+    # Copy data and metadata to TileDB.
+    copy_from_xarray(
+        group_uri=group_uri,
+        dataset=dataset,
+        variables=variables,
+        attributes=attributes,
+        region=region,
         config=config,
         ctx=ctx,
-        encoding=None,
-        append=True,
-        create_arrays=False,
-        copy_group_metadata=copy_group_metadata,
         copy_variable_data=True,
+        copy_group_metadata=copy_group_metadata,
         copy_variable_metadata=copy_variable_metadata,
-        region=region,
-        unlimited_dims=None,
     )
 
 
@@ -69,26 +126,39 @@ def copy_metadata_from_xarray(
     *,
     config: Optional[tiledb.Config] = None,
     ctx: Optional[tiledb.Ctx] = None,
-    encoding: Optional[Mapping] = None,
     copy_group_metadata: bool = True,
     copy_variable_metadata: bool = True,
 ):
-    """TODO: add copy_data_from_xarray docstring"""
-    from .writer import from_xarray as from_xarray_impl
+    """Copies metadata from an xarray dataset to a TileDB group corresponding
+    to the dataset.
 
-    return from_xarray_impl(
-        dataset,
-        group_uri,
+    dataset: The xarray Dataset to write.
+    group_uri: The URI to the TileDB group to create or append to.
+    config: A TileDB config object to use for TileDB objects.
+    ctx: A TileDB context object to use for TileDB operations.
+    copy_group_metadata: If true, copy xarray dataset metadata to the TileDB group.
+    copy_variable_metadata: If true, copy xarray variable metadata to the TileDB
+        arrays as TileDB attribute metadata.
+    """
+
+    from .writer import copy_from_xarray, extract_encoded_data
+
+    # Splits dataset into variables and attributes (metadata) using the CF Convention
+    # where possible.
+    variables, attributes = extract_encoded_data(dataset)
+
+    # Copy data to TileDB.
+    copy_from_xarray(
+        group_uri=group_uri,
+        dataset=dataset,
+        variables=variables,
+        attributes=attributes,
+        region=None,
         config=config,
         ctx=ctx,
-        encoding=encoding,
-        append=True,
-        create_arrays=False,
-        copy_group_metadata=True,
+        copy_group_metadata=copy_group_metadata,
+        copy_variable_metadata=copy_variable_metadata,
         copy_variable_data=False,
-        copy_variable_metadata=True,
-        region=None,
-        unlimited_dims=None,
     )
 
 
@@ -116,19 +186,35 @@ def from_xarray(
     unlimited_dims: Set of dimensions to use the maximum dimension size for. Only used
         for variables in the dataset that do not have `max_size` encoding provided.
     """
-    from .writer import from_xarray as from_xarray_impl
+    from .writer import create_from_xarray, copy_from_xarray, extract_encoded_data
 
-    return from_xarray_impl(
-        dataset,
-        group_uri,
+    # Splits dataset into variables and attributes (metadata) using the CF Convention
+    # where possible.
+    variables, attributes = extract_encoded_data(dataset)
+
+    # Create the group and group arrays.
+    create_from_xarray(
+        group_uri=group_uri,
+        dataset=dataset,
+        variables=variables,
+        attributes=attributes,
+        encoding=encoding,
+        unlimited_dims=unlimited_dims,
         config=config,
         ctx=ctx,
-        encoding=encoding,
         append=False,
-        create_arrays=True,
-        copy_group_metadata=True,
-        copy_variable_data=True,
-        copy_variable_metadata=True,
+    )
+
+    # Copy data and metadata to TileDB.
+    copy_from_xarray(
+        group_uri=group_uri,
+        dataset=dataset,
+        variables=variables,
+        attributes=attributes,
         region=region,
-        unlimited_dims=unlimited_dims,
+        config=config,
+        ctx=ctx,
+        copy_group_metadata=True,
+        copy_variable_metadata=True,
+        copy_variable_data=True,
     )
