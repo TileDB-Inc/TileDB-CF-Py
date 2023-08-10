@@ -8,8 +8,8 @@ from xarray.core.dataset import Dataset, Variable
 import tiledb
 
 from .._utils import check_valid_group
+from ._array_wrapper import TileDBArrayWrapper
 from ._encoding import TileDBVariableEncoder
-from .array_wrapper import TileDBArrayWrapper
 
 
 def copy_from_xarray(  # noqa: C901

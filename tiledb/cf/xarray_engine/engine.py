@@ -25,8 +25,8 @@ from xarray.core.utils import close_on_error
 
 import tiledb
 
-from .backend_store import TileDBXarrayStore
-from .deprecated_backend_store import TileDBDataStore
+from ._backend_store import TileDBXarrayStore
+from ._deprecated_backend_store import TileDBDataStore
 
 
 class TileDBXarrayBackendEntrypoint(BackendEntrypoint):

@@ -1,6 +1,4 @@
 """Helper functions for internal use only."""
-import warnings
-
 import numpy as np
 
 import tiledb

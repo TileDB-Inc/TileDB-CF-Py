@@ -37,7 +37,7 @@ def create_group_from_xarray(
 
     """
 
-    from .writer import copy_from_xarray, create_from_xarray, extract_encoded_data
+    from ._writer import copy_from_xarray, create_from_xarray, extract_encoded_data
 
     # Splits dataset into variables and group-level metadata using the CF Convention
     # where possible.
@@ -99,7 +99,7 @@ def copy_data_from_xarray(
 
     """
 
-    from .writer import copy_from_xarray, extract_encoded_data
+    from ._writer import copy_from_xarray, extract_encoded_data
 
     # Splits dataset into variables and group-level metadata using the CF Convention
     # where possible.
@@ -141,7 +141,7 @@ def copy_metadata_from_xarray(
         arrays as TileDB attribute metadata.
     """
 
-    from .writer import copy_from_xarray, extract_encoded_data
+    from ._writer import copy_from_xarray, extract_encoded_data
 
     # Splits dataset into variables and group-level metadata using the CF Convention
     # where possible.
@@ -186,7 +186,7 @@ def from_xarray(
     unlimited_dims: Set of dimensions to use the maximum dimension size for. Only used
         for variables in the dataset that do not have `max_size` encoding provided.
     """
-    from .writer import copy_from_xarray, create_from_xarray, extract_encoded_data
+    from ._writer import copy_from_xarray, create_from_xarray, extract_encoded_data
 
     # Splits dataset into variables and group-level metadata using the CF Convention
     # where possible.
