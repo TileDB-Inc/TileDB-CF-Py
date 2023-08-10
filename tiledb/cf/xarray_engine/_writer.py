@@ -28,8 +28,9 @@ def copy_from_xarray(  # noqa: C901
     """Copies data and metadata from an xarray dataset to a TileDB group corresponding
     to the dataset.
 
-    Optionally copies metadata as well as variable data.
 
+    Parameters:
+    -----------
     group_uri: The URI to the TileDB group to create or append to.
     dataset: The xarray Dataset to write.
     variables: A mapping of encoded xarray variables.
@@ -41,7 +42,7 @@ def copy_from_xarray(  # noqa: C901
     copy_group_metadata: If true, copy xarray dataset metadata to the TileDB group.
     copy_variable_metadata: If true, copy xarray variable metadata to the TileDB
         arrays as TileDB attribute metadata.
-    copy_variable_data: If true
+    copy_variable_data: If true, copy variable data to the TileDB arrays.
     """
 
     # Check that there is a group at the location.

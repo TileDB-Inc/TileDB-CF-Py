@@ -99,9 +99,8 @@ class TileDBVariableEncoder:
     def attr_name(self, name):
         if name in self._variable.dims:
             raise ValueError(
-                f"Encoding error for variable '{self._name}'. Attribute name "
-                f"'{name}' is already a dimension name. Set a different attribute "
-                f"name using the ``{_ATTR_NAME_ENCODING}`` encoding key."
+                f"Attribute name '{name}' is already a dimension name. Attribute names "
+                f"must be unique."
             )
         self._encoding[_ATTR_NAME_ENCODING] = name
 
