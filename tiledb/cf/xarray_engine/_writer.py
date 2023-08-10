@@ -7,7 +7,7 @@ from xarray.core.dataset import Dataset, Variable
 
 import tiledb
 
-from .._utils import check_valid_group
+from .._utils import check_valid_group, safe_set_metadata
 from ._array_wrapper import TileDBArrayWrapper
 from ._encoding import TileDBVariableEncoder
 
@@ -70,7 +70,7 @@ def copy_from_xarray(  # noqa: C901
     if copy_group_metadata:
         with tiledb.Group(group_uri, mode="w", config=config, ctx=ctx) as group:
             for key, val in group_metadata:
-                group.meta[key] = val
+                safe_set_metadata(group.meta, key, val)
 
     # Skip iterating over full variable list if only writing group metadata.
     if not copy_variable_data and not copy_variable_metadata:
