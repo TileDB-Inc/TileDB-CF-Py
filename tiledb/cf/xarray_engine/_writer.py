@@ -1,5 +1,5 @@
 from itertools import product
-from typing import Any, Iterable, Mapping, Optional, Tuple
+from typing import Any, Generator, Iterable, Mapping, Optional, Tuple
 
 from xarray.coding import times
 from xarray.conventions import encode_dataset_coordinates
@@ -255,7 +255,7 @@ def get_chunk_regions(
     target_region: Tuple[slice, ...],
     source_shape: Tuple[int, ...],
     chunks: Optional[Tuple[Tuple[int, ...], ...]],
-):
+) -> Generator[Tuple[Tuple[slice, ...], Tuple[slice, ...]], None, None]:
     """Returns a generator of (target_region, source_region) for writing the
     input source by chunks.
 
