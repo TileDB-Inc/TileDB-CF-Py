@@ -22,8 +22,8 @@ from xarray.core.variable import Variable
 
 import tiledb
 
+from ._array_wrapper import TileDBArrayWrapper
 from ._common import _ARRAY_FIXED_DIMS_PREFIX, _ATTR_PREFIX
-from .array_wrapper import TileDBArrayWrapper
 
 
 class TileDBXarrayStore(AbstractDataStore):

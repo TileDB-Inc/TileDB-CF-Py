@@ -3,6 +3,7 @@ from xarray.backends.common import BackendArray
 
 import tiledb
 
+from .._utils import safe_set_metadata
 from ._common import _ATTR_PREFIX
 
 
@@ -209,4 +210,4 @@ class TileDBArrayWrapper(BackendArray):
         key_prefix = f"{_ATTR_PREFIX}{self._attr_name}"
         with tiledb.open(**self._array_kwargs, mode="w") as array:
             for key, value in input_meta.items():
-                array.meta[f"{key_prefix}.{key}"] = value
+                safe_set_metadata(array.meta, f"{key_prefix}.{key}", value)

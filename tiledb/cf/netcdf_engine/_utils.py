@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 """Class for helper functions for NetCDF to TileDB conversion."""
 
 import time
@@ -12,6 +10,8 @@ import netCDF4
 import numpy as np
 
 import tiledb
+
+from .._utils import safe_set_metadata
 
 _DEFAULT_INDEX_DTYPE = np.dtype("uint64")
 COORDINATE_SUFFIX = ".data"
@@ -181,19 +181,3 @@ def open_netcdf_group(
             yield netcdf_group
         finally:
             root_group.close()
-
-
-def safe_set_metadata(meta, key, value):
-    """Copy a metadata item to a TileDB array catching any errors as warnings."""
-    if isinstance(value, np.ndarray):
-        value = tuple(value.tolist())
-    elif isinstance(value, np.generic):
-        value = (value.tolist(),)
-    try:
-        meta[key] = value
-    except ValueError as err:  # pragma: no cover
-        with warnings.catch_warnings():
-            warnings.warn(
-                f"Failed to set metadata `{key}={value}` with error: {err}",
-                stacklevel=3,
-            )
