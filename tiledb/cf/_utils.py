@@ -22,11 +22,4 @@ def safe_set_metadata(meta, key, value):
         value = tuple(value.tolist())
     elif isinstance(value, np.generic):
         value = (value.tolist(),)
-    try:
-        meta[key] = value
-    except ValueError as err:  # pragma: no cover
-        with warnings.catch_warnings():
-            warnings.warn(
-                f"Failed to set metadata `{key}={value}` with error: {err}",
-                stacklevel=3,
-            )
+    meta[key] = value
