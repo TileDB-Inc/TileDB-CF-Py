@@ -16,6 +16,8 @@
 
 ### New Features
 
+* Adds `from_xarray`, `copy_data_from_xarray`, `copy_metadata_from_xarray` and `create_group_from_xarray` methods to generate TileDB groups from xarray data.
+
 ### Improvements
 
 * New xarray backend engine that handles both TileDB arrays and groups directly
