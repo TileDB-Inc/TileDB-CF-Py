@@ -19,7 +19,6 @@ class TileDBVariableEncoder:
         _ATTR_FILTERS_ENCODING,
         _ATTR_NAME_ENCODING,
         _DIM_DTYPE_ENCODING,
-        _FILL_VALUE_ENCODING,
         _MAX_SHAPE_ENCODING,
         _TILE_SIZES_ENCODING,
     }
@@ -52,20 +51,16 @@ class TileDBVariableEncoder:
 
         # Initialize encoding values.
         try:
-            # Set attribute encodings: attr_name, attr_filters, and attr_fill.
+            # Set attribute encodings: attr_name and attr_filters.
             self.attr_name = encoding.get(
                 _ATTR_NAME_ENCODING,
                 f"{self._name}_" if self._name in variable.dims else self._name,
             )
-            self.attr_filters = encoding.get(
+            self.filters = encoding.get(
                 _ATTR_FILTERS_ENCODING,
                 tiledb.FilterList(
                     (tiledb.ZstdFilter(level=5, ctx=self._ctx),), ctx=self._ctx
                 ),
-            )
-            self.attr_fill = encoding.get(
-                _FILL_VALUE_ENCODING,
-                self._variable.encoding.get(_FILL_VALUE_ENCODING, None),
             )
 
             # Set domain encodings: dim_dtype, tiles, and max_shape.
@@ -88,10 +83,6 @@ class TileDBVariableEncoder:
             raise ValueError(f"Encoding error for variable '{self._name}'.") from err
 
     @property
-    def attr_dtype(self):
-        return self._variable.dtype
-
-    @property
     def attr_name(self):
         return self._encoding.get(_ATTR_NAME_ENCODING, self._name)
 
@@ -103,24 +94,6 @@ class TileDBVariableEncoder:
                 f"must be unique."
             )
         self._encoding[_ATTR_NAME_ENCODING] = name
-
-    @property
-    def attr_fill(self):
-        return self._encoding[_FILL_VALUE_ENCODING]
-
-    @attr_fill.setter
-    def attr_fill(self, fill):
-        if fill is np.nan:
-            self._encoding[_FILL_VALUE_ENCODING] = None
-        self._encoding[_FILL_VALUE_ENCODING] = fill
-
-    @property
-    def attr_filters(self):
-        return self._encoding[_ATTR_FILTERS_ENCODING]
-
-    @attr_filters.setter
-    def attr_filters(self, filters):
-        self._encoding[_ATTR_FILTERS_ENCODING] = filters
 
     @property
     def dim_dtype(self):
@@ -135,13 +108,32 @@ class TileDBVariableEncoder:
             )
         self._encoding[_DIM_DTYPE_ENCODING] = dim_dtype
 
+    @property
+    def dtype(self):
+        return self._variable.dtype
+
+    @property
+    def fill(self):
+        fill = self._variable.encoding.get(_FILL_VALUE_ENCODING, None)
+        if fill is np.nan:
+            return None
+        return fill
+
+    @property
+    def filters(self):
+        return self._encoding[_ATTR_FILTERS_ENCODING]
+
+    @filters.setter
+    def filters(self, filters):
+        self._encoding[_ATTR_FILTERS_ENCODING] = filters
+
     def create_array_schema(self):
         """Returns a TileDB attribute from the provided variable and encodings."""
         attr = tiledb.Attr(
             name=self.attr_name,
-            dtype=self.attr_dtype,
-            fill=self.attr_fill,
-            filters=self.attr_filters,
+            dtype=self.dtype,
+            fill=self.fill,
+            filters=self.filters,
             ctx=self._ctx,
         )
         tiles = self.tiles
