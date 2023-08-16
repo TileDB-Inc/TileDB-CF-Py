@@ -58,13 +58,30 @@ def copy_from_xarray(  # noqa: C901
             )
         if not isinstance(dim_slice, slice):
             raise TypeError(
-                f"``region`` contains a value {dim_slice} for dimension '{dim_name}'"
+                f"``region`` contains a value {dim_slice} for dimension '{dim_name}' "
                 f"with type {type(dim_slice)}. All values must be slices."
             )
         if dim_slice.step not in {1, None}:
             raise ValueError(
                 f"``region`` contains a slice with step={dim_slice.step} on dimension "
-                f"'{dim_name}. All slices must have step size 1 or None."
+                f"'{dim_name}'. All slices must have step size 1 or None."
+            )
+        if (dim_slice.start is not None and dim_slice.start < 0) or (
+            dim_slice.stop is not None and dim_slice.stop < 0
+        ):
+            raise ValueError(
+                f"``region`` contains a slice {dim_slice} with a negative value on "
+                f"dimension '{dim_name}'. All slice values must be non-negative."
+            )
+        if (
+            dim_slice.start is not None
+            and dim_slice.stop is not None
+            and dim_slice.stop <= dim_slice.start
+        ):
+            raise ValueError(
+                f"``region`` contains a slice {dim_slice} slice end value greater "
+                f"than or equal to the starting value. Slice must be for a non-zero "
+                f"range."
             )
 
     # Copy group metadata
@@ -111,39 +128,55 @@ def copy_from_xarray(  # noqa: C901
 
 
 def copy_variable(name, variable, array_wrapper, region):
+    # Check the number of dimensions match.
     if len(array_wrapper.shape) != variable.ndim:
         raise ValueError(
             f"Cannot write variable '{name}' with {variable.ndim} dimensions "
             f"to an array with {len(array_wrapper.shape)} dimensions."
         )
 
-    # Use the dictionary of region slices to compute the indices of the
-    # full region that is being set in the TileDB array (the target).
-    def get_dimension_slice(dim_name, dim_size):
-        # If not explicitly set, return a slice for the full dimension.
-        if dim_name not in region:
-            return slice(0, dim_size, None)
+    # Get the target region to write the data into.
+    def get_dimension_slice(dim_name, var_dim_size, array_dim_size):
+        """Returns target dimension slice for xarray write.
 
-        # Check out-of-bounds errors.
-        dim_slice = region[dim_name]
-        if (
-            dim_slice.start is not None and not -dim_size <= dim_slice.start < dim_size
-        ) or (
-            dim_slice.stop is not None
-            and not -dim_size <= dim_slice.stop - 1 < dim_size
-        ):
-            raise IndexError(
-                f"Index error for dimension '{dim_name}' on variable '{name}'. "
-                f"Slice {dim_slice} is out of bounds."
+        Raises a value error if the size of the target slice does not match the
+        size of the source dimension.
+
+        dim_name: Name of the dimension to return the slice for.
+        var_dim_size: Size of the dimension in the source xarray variable.
+        array_dim_size: Size of the domain of the dimension in the target TileDB array.
+        """
+        if var_dim_size > array_dim_size:
+            raise ValueError(
+                f"Cannot write variable '{name}' with shape {variable.shape} on a "
+                f"TileDB array with maximum shape {array_wrapper.shape}."
             )
-
-        # Use range to resolve `None` and negative values and return the new slice.
-        dim_range = range(dim_size)[dim_slice]
-        return slice(dim_range.start, dim_range.stop)
+        if dim_name not in region:
+            if var_dim_size != array_dim_size:
+                raise ValueError(
+                    f"Failed to  write variable '{name}' with shape {variable.shape} "
+                    f"on a TileDB array with shape {array_wrapper.shape}. Missing "
+                    f"``region`` value for dimension '{dim_name}' with mismatched "
+                    f"sizes."
+                )
+            return slice(0, array_dim_size, None)
+        else:
+            dim_slice = region[dim_name]
+            start = 0 if dim_slice.start is None else dim_slice.start
+            stop = array_dim_size if dim_slice.stop is None else dim_slice.stop
+            if stop > array_dim_size:
+                raise ValueError(
+                    f"Provided region {dim_slice} for dimension '{dim_name}' is out of "
+                    f"bounds on variable '{name}'. The maximum dimension "
+                    f"size={array_dim_size}."
+                )
+            return slice(start, stop, None)
 
     target_region = tuple(
-        get_dimension_slice(dim_name, dim_size)
-        for dim_name, dim_size in zip(variable.dims, array_wrapper.shape)
+        get_dimension_slice(dim_name, var_dim_size, array_dim_size)
+        for dim_name, var_dim_size, array_dim_size in zip(
+            variable.dims, variable.shape, array_wrapper.shape
+        )
     )
 
     # Check the shape of the region is valid.
@@ -151,10 +184,12 @@ def copy_variable(name, variable, array_wrapper, region):
         dim_slice.stop - dim_slice.start for dim_slice in target_region
     )
     if region_shape != variable.shape:
-        raise RuntimeError(
-            f"Cannot write variable '{name}'. Mismatch in variable shape "
-            f"{variable.shape} and target region shape {region_shape} for region "
-            f"{target_region}."
+        local_region = {
+            dim_name: region.get(dim_name, slice(None)) for dim_name in variable.dims
+        }
+        raise ValueError(
+            f"Cannot add variable '{name}' with shape {variable.shape} to region "
+            f"{local_region} with mismatched shape {region_shape}."
         )
 
     # Iterate over all chunks.
