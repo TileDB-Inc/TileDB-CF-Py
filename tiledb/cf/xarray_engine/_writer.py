@@ -113,15 +113,33 @@ def copy_from_xarray(  # noqa: C901
 def copy_variable(name, variable, array_wrapper, region):
     if len(array_wrapper.shape) != variable.ndim:
         raise ValueError(
-            f"Cannot write variable '{variable.name}' with {variable.ndim} "
-            f"dimensions to an array with {len(array_wrapper.shape)} dimensions."
+            f"Cannot write variable '{name}' with {variable.ndim} dimensions "
+            f"to an array with {len(array_wrapper.shape)} dimensions."
         )
 
     # Use the dictionary of region slices to compute the indices of the
     # full region that is being set in the TileDB array (the target).
     def get_dimension_slice(dim_name, dim_size):
-        indices = region.get(dim_name, slice(None)).indices(dim_size)
-        return slice(indices[0], indices[1], None)
+        # If not explicitly set, return a slice for the full dimension.
+        if dim_name not in region:
+            return slice(0, dim_size, None)
+
+        # Check out-of-bounds errors.
+        dim_slice = region[dim_name]
+        if (
+            dim_slice.start is not None and not -dim_size <= dim_slice.start < dim_size
+        ) or (
+            dim_slice.stop is not None
+            and not -dim_size <= dim_slice.stop - 1 < dim_size
+        ):
+            raise IndexError(
+                f"Index error for dimension '{dim_name}' on variable '{name}'. "
+                f"Slice {dim_slice} is out of bounds."
+            )
+
+        # Use range to resolve `None` and negative values and return the new slice.
+        dim_range = range(dim_size)[dim_slice]
+        return slice(dim_range.start, dim_range.stop)
 
     target_region = tuple(
         get_dimension_slice(dim_name, dim_size)
@@ -134,8 +152,9 @@ def copy_variable(name, variable, array_wrapper, region):
     )
     if region_shape != variable.shape:
         raise RuntimeError(
-            f"Cannot add variable with shape {variable.shape} to region "
-            f"{target_region} with mismatched shape {region_shape}."
+            f"Cannot write variable '{name}'. Mismatch in variable shape "
+            f"{variable.shape} and target region shape {region_shape} for region "
+            f"{target_region}."
         )
 
     # Iterate over all chunks.
