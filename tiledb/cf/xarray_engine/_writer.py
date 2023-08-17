@@ -54,7 +54,7 @@ def copy_from_xarray(  # noqa: C901
         if dim_name not in dataset.dims:
             raise ValueError(
                 f"``region`` contains key '{dim_name}' that is not a valid "
-                f"dimension in the dataset."
+                f"dimension in the provided dataset."
             )
         if not isinstance(dim_slice, slice):
             raise TypeError(
@@ -70,7 +70,7 @@ def copy_from_xarray(  # noqa: C901
             dim_slice.stop is not None and dim_slice.stop < 0
         ):
             raise ValueError(
-                f"``region`` contains a slice {dim_slice} with a negative value on "
+                f"``region`` contains a value {dim_slice} with a negative value on "
                 f"dimension '{dim_name}'. All slice values must be non-negative."
             )
         if (
@@ -79,9 +79,9 @@ def copy_from_xarray(  # noqa: C901
             and dim_slice.stop <= dim_slice.start
         ):
             raise ValueError(
-                f"``region`` contains a slice {dim_slice} slice end value greater "
-                f"than or equal to the starting value. Slice must be for a non-zero "
-                f"range."
+                f"``region`` contains a value {dim_slice} with end value greater "
+                f"than or equal to the starting value. All slice values must be for a "
+                f"non-zero range."
             )
 
     # Copy group metadata
@@ -167,8 +167,8 @@ def copy_variable(name, variable, array_wrapper, region):
             if stop > array_dim_size:
                 raise ValueError(
                     f"Provided region {dim_slice} for dimension '{dim_name}' is out of "
-                    f"bounds on variable '{name}'. The maximum dimension "
-                    f"size={array_dim_size}."
+                    f"bounds on variable '{name}'. The maximum size of dimension "
+                    f"'{dim_name}' on variable '{name}' is {array_dim_size}."
                 )
             return slice(start, stop, None)
 
