@@ -18,14 +18,14 @@ extensions = [
 ]
 
 
-language = None
+language = "en"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 pygments_style = "sphinx"
 todo_include_todos = False
 
 
 # -- Options for HTML output -------------------------------------------
-html_theme = "sphinx_rtd_theme"
+html_theme = "traditional"
 html_static_path = ["_static"]
 
 # -- Options for HTMLHelp output ---------------------------------------
