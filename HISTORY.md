@@ -4,6 +4,8 @@
 
 ### Breaking Behavior
 
+* Negative values no longer supported in `region`  in xarray `from_xarray` and `copy_data_from_xarray`.
+
 ### Deprecation
 
 ### Bug Fixes
@@ -16,13 +18,13 @@
 
 ### Breaking Behavior
 
-* Changes TileDB backend to default to new xarray backend
+* Changes TileDB backend to default to new xarray backend.
 
 ### Deprecation
 
-* Deprecates `key` argument from xarray engine
-* Deprecates `encode_fill` argument from xarray engine
-* Deprecates `use_full_domain` argument from xarray engine
+* Deprecates `key` argument from xarray engine.
+* Deprecates `encode_fill` argument from xarray engine.
+* Deprecates `use_full_domain` argument from xarray engine.
 
 ### New Features
 
@@ -30,7 +32,7 @@
 
 ### Improvements
 
-* New xarray backend engine that handles both TileDB arrays and groups directly
+* New xarray backend engine that handles both TileDB arrays and groups directly.
 
 ## 0.7.0
 
