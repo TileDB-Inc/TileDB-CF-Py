@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import Group, GroupSchema, create_group
+from tiledb.cf import GroupSchema, create_group, open_group_array
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
@@ -52,17 +52,6 @@ class TestCreateGroup:
             assert tiledb.ArraySchema.load(array_uri, key=self._key) == schema
 
 
-class TestNotTileDBURI:
-    @pytest.fixture(scope="class")
-    def empty_uri(self, tmpdir_factory):
-        """Create an empty directory and return URI."""
-        return str(tmpdir_factory.mktemp("empty"))
-
-    def test_not_group_exception(self, empty_uri):
-        with pytest.raises(ValueError):
-            Group(empty_uri)
-
-
 class TestGroupWithArrays:
     _A1_data = np.array(
         ([1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12], [13, 14, 15, 16]), dtype=np.uint64
@@ -86,60 +75,33 @@ class TestGroupWithArrays:
         return uri
 
     def test_open_array_from_group(self, group_uri):
-        with Group(group_uri) as group:
-            with group.open_array(array="A1") as array:
+        with tiledb.Group(group_uri) as group:
+            with open_group_array(group, array="A1") as array:
                 assert isinstance(array, tiledb.Array)
                 assert array.mode == "r"
                 np.testing.assert_equal(array[:, :]["a"], self._A1_data)
 
     def test_open_attr(self, group_uri):
-        with Group(group_uri) as group:
-            with group.open_array(attr="a") as array:
+        with tiledb.Group(group_uri) as group:
+            with open_group_array(group, attr="a") as array:
                 assert isinstance(array, tiledb.Array)
                 assert array.mode == "r"
                 np.testing.assert_equal(array[:, :], self._A1_data)
 
     def test_no_array_with_attr_exception(self, group_uri):
-        with Group(group_uri) as group:
+        with tiledb.Group(group_uri) as group:
             with pytest.raises(KeyError):
-                group.open_array(attr="bad_name")
+                open_group_array(group, attr="bad_name")
 
     def test_ambiguous_array_exception(self, group_uri):
-        with Group(group_uri) as group:
+        with tiledb.Group(group_uri) as group:
             with pytest.raises(ValueError):
-                group.open_array(attr="c")
+                open_group_array(group, attr="c")
 
     def test_no_values_error(self, group_uri):
-        with Group(group_uri) as group:
+        with tiledb.Group(group_uri) as group:
             with pytest.raises(ValueError):
-                group.open_array()
-
-    def test_close_array_with_array_name(self, group_uri):
-        with Group(group_uri) as group:
-            with group.open_array(array="A1") as array:
-                group.close_array(array="A1")
-                assert not array.isopen
-
-    def test_close_array_with_attr_name(self, group_uri):
-        with Group(group_uri) as group:
-            with group.open_array(attr="a") as array:
-                group.close_array(attr="a")
-                assert not array.isopen
-
-    def test_close_array_no_values_error(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(ValueError):
-                group.close_array()
-
-    def test_close_no_array_with_attr_exception(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(KeyError):
-                group.close_array(attr="bad_name")
-
-    def test_close_ambiguous_array_exception(self, group_uri):
-        with Group(group_uri) as group:
-            with pytest.raises(ValueError):
-                group.close_array(attr="c")
+                open_group_array(group)
 
 
 def test_append_group(tmpdir):

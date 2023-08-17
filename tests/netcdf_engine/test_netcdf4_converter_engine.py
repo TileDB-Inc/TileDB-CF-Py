@@ -6,7 +6,13 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import AttrMetadata, DimMetadata, Group, GroupSchema, from_netcdf
+from tiledb.cf import (
+    AttrMetadata,
+    DimMetadata,
+    GroupSchema,
+    from_netcdf,
+    open_group_array,
+)
 from tiledb.cf.netcdf_engine import NetCDF4ConverterEngine
 
 netCDF4 = pytest.importorskip("netCDF4")
@@ -59,9 +65,9 @@ class ConvertNetCDFBase:
         """Checks the values in each attribute match the values from the NetCDF
         variable it was copied from.
         """
-        with Group(group_uri) as group:
+        with tiledb.Group(group_uri) as group:
             for attr_name, var_name in self.attr_to_var_map.items():
-                with group.open_array(attr=attr_name) as array:
+                with open_group_array(group, attr=attr_name) as array:
                     nonempty_domain = array.nonempty_domain()
                     result = array.multi_index[nonempty_domain]
                 np.testing.assert_equal(
@@ -177,8 +183,8 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         for array_creator in converter.array_creators():
             array_creator.sparse = True
         converter.convert_to_group(uri)
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(attr="x1") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="x1") as array:
                 data = array[:]
         index = np.argsort(data["row"])
         x1 = data["x1"][index]
@@ -255,8 +261,8 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         a1_data = np.linspace(-1.0, 1.0, 8, dtype=np.float64)
         uri = str(tmpdir.mkdir("non-netcdf-attr-test"))
         converter.convert_to_group(uri, assigned_attr_values={"a1": a1_data})
-        with Group(uri) as group:
-            with group.open_array(attr="a1") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="a1") as array:
                 result = array[:]
         np.testing.assert_equal(a1_data, result)
 
@@ -352,8 +358,8 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
         shared_x = converter.get_shared_dim("x")
         shared_x.domain = (None, None)
         converter.convert_to_group(uri)
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(attr="y") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="y") as array:
                 schema = array.schema
                 assert schema.sparse
                 data = array[:]
@@ -465,8 +471,8 @@ class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
         shared_y = converter.get_shared_dim("y")
         shared_y.domain = (None, None)
         converter.convert_to_group(uri)
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(attr="z") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="z") as array:
                 schema = array.schema
                 assert schema.sparse
                 data = array[:]
@@ -522,8 +528,8 @@ class TestConvertNetCDFCoordWithTiles(ConvertNetCDFBase):
         index_dim = converter.get_shared_dim("index")
         index_dim.domain = (1, 4)
         converter.convert_to_group(uri)
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(attr="y") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="y") as array:
                 schema = array.schema
                 assert schema.sparse
                 data = array[:]
@@ -677,8 +683,8 @@ class TestConvertUnpackVariables(ConvertNetCDFBase):
             unpack_vars=True,
         )
         converter.convert_to_group(uri)
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(attr="x.data") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="x.data") as array:
                 x = array[:]
                 meta = AttrMetadata(array.meta, "x.data")
                 assert "scale_factor" not in meta
@@ -701,8 +707,8 @@ class TestConvertUnpackVariables(ConvertNetCDFBase):
         shared_x.domain = (-10.0, 10.0)
         shared_x.tile = 2.0
         converter.convert_to_group(uri)
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(attr="y") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="y") as array:
                 data = array[:]
                 meta = DimMetadata(array.meta, "x")
                 assert "scale_factor" not in meta
@@ -741,8 +747,8 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         for array_creator in converter.array_creators():
             array_creator.sparse = True
         converter.convert_to_group(uri)
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(array="scalars") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, array="scalars") as array:
                 data = array[0]
         np.testing.assert_equal(data["x"], self.variable_data["x"])
         np.testing.assert_equal(data["y"], self.variable_data["y"])
@@ -756,8 +762,8 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         scalar_dim.name = "dim0"
         scalar_dim.domain = (0, 10)
         converter.convert_to_group(uri, assigned_dim_values={"dim0": 1})
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(array="array0") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, array="array0") as array:
                 data = array[1:2]
         np.testing.assert_equal(data["x"], self.variable_data["x"])
         np.testing.assert_equal(data["y"], self.variable_data["y"])
@@ -771,8 +777,8 @@ class TestConvertNetCDFMultipleScalarVariables(ConvertNetCDFBase):
         array_creator = converter.get_array_creator("array0")
         array_creator.domain_creator.inject_dim_creator("t", 1)
         converter.convert_to_group(uri, assigned_dim_values={"t": 1})
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(array="array0") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, array="array0") as array:
                 data = array[:, 1]
         np.testing.assert_equal(data["x"], self.variable_data["x"])
         np.testing.assert_equal(data["y"], self.variable_data["y"])
@@ -879,12 +885,12 @@ class TestConvertNetCDFMismatchingChunks(ConvertNetCDFBase):
         for array_creator in converter.array_creators():
             array_creator.sparse = True
         converter.convert_to_group(uri)
-        with tiledb.cf.Group(uri) as group:
-            with group.open_array(attr="x1") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="x1") as array:
                 x1_result = array[:, :]["x1"]
             x1_expected = np.arange(64, dtype=np.int32)
             np.testing.assert_equal(x1_result, x1_expected)
-            with group.open_array(attr="x2") as array:
+            with open_group_array(group, attr="x2") as array:
                 x2_result = array[:, :]["x2"]
         x2_expected = np.arange(64, 128, dtype=np.int32)
         np.testing.assert_equal(x2_result, x2_expected)
@@ -964,8 +970,8 @@ class TestConverterNetCDFVariabelWithFill(ConvertNetCDFBase):
         x_array.sparse = sparse
         x_array.attr_creator("x").fill = 0
         converter.convert_to_group(uri)
-        with Group(uri) as group:
-            with group.open_array(attr="x") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="x") as array:
                 result = array.multi_index[:]["x"]
                 expected = np.array((0, 2, 0, 0))
                 np.testing.assert_equal(result, expected)
@@ -980,8 +986,8 @@ class TestConverterNetCDFVariabelWithFill(ConvertNetCDFBase):
         scalar_array.sparse = sparse
         scalar_array.attr_creator("a").fill = np.nan
         converter.convert_to_group(uri)
-        with Group(uri) as group:
-            with group.open_array(attr="a") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="a") as array:
                 result = array.multi_index[:]["a"]
                 expected = np.array([np.nan])
                 np.testing.assert_equal(result, expected)
@@ -991,8 +997,8 @@ class TestConverterNetCDFVariabelWithFill(ConvertNetCDFBase):
         uri = str(tmpdir.mkdir("output").join(self.name))
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         converter.convert_to_group(uri)
-        with Group(uri) as group:
-            with group.open_array(attr="x") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="x") as array:
                 assert "_FillValue" not in array.meta
 
 
@@ -1003,7 +1009,7 @@ def test_group_metadata(tmpdir):
         dataset.setncattr("array", [0.0, 1.0, 2.0])
     uri = str(tmpdir.mkdir("output").join("test_group_metadata"))
     from_netcdf(filepath, uri, coords_to_dims=False)
-    with Group(uri) as group:
+    with tiledb.Group(uri) as group:
         assert group.meta["name"] == "Group metadata example"
         assert group.meta["array"] == (0.0, 1.0, 2.0)
 
@@ -1015,7 +1021,7 @@ def test_group_metadata_no_copy(tmpdir):
         dataset.setncattr("array", [0.0, 1.0, 2.0])
     uri = str(tmpdir.mkdir("output").join("test_group_metadata"))
     from_netcdf(filepath, uri, coords_to_dims=False, copy_metadata=False)
-    with Group(uri) as group:
+    with tiledb.Group(uri) as group:
         assert "name" not in group.meta
         assert "array" not in group.meta
 
@@ -1031,8 +1037,8 @@ def test_variable_metadata(tmpdir):
         variable.setncattr("singleton", [1.0])
     uri = str(tmpdir.mkdir("output").join("test_variable_metadata"))
     from_netcdf(filepath, uri, coords_to_dims=False)
-    with Group(uri) as group:
-        with group.open_array(attr="x1") as array:
+    with tiledb.Group(uri) as group:
+        with open_group_array(group, attr="x1") as array:
             attr_meta = AttrMetadata(array.meta, "x1")
             assert attr_meta is not None
             assert attr_meta["fullname"] == "Example variable"
@@ -1051,8 +1057,8 @@ def test_variable_metadata_no_copy(tmpdir):
         variable.setncattr("singleton", [1.0])
     uri = str(tmpdir.mkdir("output").join("test_variable_metadata"))
     from_netcdf(filepath, uri, coords_to_dims=False, copy_metadata=False)
-    with Group(uri) as group:
-        with group.open_array(attr="x1") as array:
+    with tiledb.Group(uri) as group:
+        with open_group_array(group, attr="x1") as array:
             attr_meta = AttrMetadata(array.meta, "x1")
             assert attr_meta is not None
             assert "fullname" not in attr_meta
@@ -1066,18 +1072,18 @@ def test_nested_groups(tmpdir, group1_netcdf_file):
     x = np.linspace(-1.0, 1.0, 8)
     y = np.linspace(-1.0, 1.0, 4)
     # Test root
-    with Group(root_uri) as group:
-        with group.open_array(attr="x1") as array:
+    with tiledb.Group(root_uri) as group:
+        with open_group_array(group, attr="x1") as array:
             x1 = array[:]
     np.testing.assert_equal(x1, x)
     # Test group 1
-    with Group(root_uri + "/group1") as group:
-        with group.open_array(attr="x2") as array:
+    with tiledb.Group(root_uri + "/group1") as group:
+        with open_group_array(group, attr="x2") as array:
             x2 = array[:]
     np.testing.assert_equal(x2, 2.0 * x)
     # Test group 2
-    with Group(root_uri + "/group1/group2") as group:
-        with group.open_array(attr="y1") as array:
+    with tiledb.Group(root_uri + "/group1/group2") as group:
+        with open_group_array(group, attr="y1") as array:
             y1 = array[:]
     np.testing.assert_equal(y1, y)
     # Test group 3

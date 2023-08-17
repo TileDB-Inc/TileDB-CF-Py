@@ -282,6 +282,55 @@ def create_group(
             group.add(uri=array_name, name=array_name, relative=True)
 
 
+def open_group_array(
+    group: tiledb.Group,
+    *,
+    array: Optional[str] = None,
+    attr: Optional[str] = None,
+    **kwargs,
+) -> tiledb.Array:
+    """
+    Opens one of the arrays in the group, chosen by providing
+    array name or attr name, with an optional setting for a mode
+     different from the default group mode.
+
+    Parameters:
+        array: If not ``None``, the name of the array to open. Overrides attr if
+            both are provided.
+        attr: If not ``None``, open the array that contains this attr. Attr must be in
+            only one of the group arrays.
+        **kwargs: Keyword arguments to pass to the ``tiledb.open`` method.
+
+        Returns:
+            tiledb.Array opened in the specified mode
+    """
+    # Get the item in the group that either has the requested array name or
+    # requested attribute.
+    if array is not None:
+        item = group[array]
+    elif attr is not None:
+        arrays = tuple(
+            item
+            for item in group
+            if item.type == tiledb.libtiledb.Array
+            and tiledb.ArraySchema.load(item.uri).has_attr(attr)
+        )
+        if not arrays:
+            raise KeyError(f"No attribute with name '{attr}' found.")
+        if len(arrays) > 1:
+            raise ValueError(
+                f"The array must be specified when opening an attribute that "
+                f"exists in multiple arrays in a group. Arrays with attribute "
+                f"'{attr}' include: {item.name for item in group}."
+            )
+        item = arrays[0]
+    else:
+        raise ValueError(
+            "Cannot open array. Either an array or attribute must be specified."
+        )
+    return tiledb.open(item.uri, attr=attr, **kwargs)
+
+
 class Group:
     """Class for accessing group metadata and arrays in a TileDB group.
 

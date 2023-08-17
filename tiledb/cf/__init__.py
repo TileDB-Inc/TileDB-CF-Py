@@ -21,6 +21,7 @@ from .core import (
     Group,
     GroupSchema,
     create_group,
+    open_group_array,
 )
 from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
 from .netcdf_engine import from_netcdf, has_netCDF4

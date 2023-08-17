@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import Group, NetCDF4ConverterEngine
+from tiledb.cf import NetCDF4ConverterEngine, open_group_array
 
 netCDF4 = pytest.importorskip("netCDF4")
 
@@ -52,8 +52,8 @@ class TestSimplyCopyChunks:
         array_creator.domain_creator.max_fragment_shape = (4, 8, 2)
         assert array_creator.domain_creator.max_fragment_shape == (4, 8, 2)
         converter.convert_to_group(uri)
-        with Group(uri) as group:
-            with group.open_array(attr="f") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="f") as array:
                 array_uri = array.uri
                 result = array[...]
         result = result["f"] if isinstance(result, dict) else result
@@ -85,8 +85,8 @@ class TestSimplyCopyChunks:
             assigned_dim_values={"t": 0},
             assigned_attr_values={"g": g_data},
         )
-        with Group(uri) as group:
-            with group.open_array("array0") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, array="array0") as array:
                 array_uri = array.uri
                 result = array[0, :, :, :]
         f_result = result["f"]
@@ -147,8 +147,8 @@ class TestCoordinateCopyChunks:
         array_creator = converter.get_array_creator_by_attr("f")
         array_creator.domain_creator.max_fragment_shape = (4, 4)
         converter.convert_to_group(uri)
-        with Group(uri) as group:
-            with group.open_array(attr="f") as array:
+        with tiledb.Group(uri) as group:
+            with open_group_array(group, attr="f") as array:
                 array_uri = array.uri
                 result = array[...]
         for x_value, y_value, f_value in zip(result["x"], result["y"], result["f"]):
