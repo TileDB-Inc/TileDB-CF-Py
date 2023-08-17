@@ -18,7 +18,6 @@ from .core import (
     ArrayMetadata,
     AttrMetadata,
     DimMetadata,
-    Group,
     GroupSchema,
     create_group,
     open_group_array,
