@@ -244,7 +244,7 @@ class DimMetadata(Metadata):
 
 def create_group(
     uri: str,
-    group_schema: Union[GroupSchema, Mapping[str, tiledb.ArraySchema]],
+    group_schema: Mapping[str, tiledb.ArraySchema],
     *,
     key: Optional[Union[Dict[str, str], str]] = None,
     ctx: Optional[tiledb.Ctx] = None,
@@ -253,9 +253,11 @@ def create_group(
 ):
     """Creates a TileDB group with arrays at relative locations inside the group.
 
+    All arrays in the group will be added at a relative URI that matches the array name.
+
     Parameters:
         uri: Uniform resource identifier for TileDB group or array.
-        group_schema: Schema that defines the group to be created.
+        group_schema: A mapping from array names to array schemas to add to the group.
         ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         append: If ``True``, add arrays from the provided group schema to an
             already existing group. The names for the arrays in the group schema
@@ -289,10 +291,11 @@ def open_group_array(
     attr: Optional[str] = None,
     **kwargs,
 ) -> tiledb.Array:
-    """
-    Opens one of the arrays in the group, chosen by providing
-    array name or attr name, with an optional setting for a mode
-     different from the default group mode.
+    """Opens an array in a group either by specifying the name of the array or the name
+    of an attribute in the array.
+
+    If only providing the attribute, there must be exactly one array in the group with
+    an attribute with the requested name.
 
     Parameters:
         array: If not ``None``, the name of the array to open. Overrides attr if
@@ -301,8 +304,8 @@ def open_group_array(
             only one of the group arrays.
         **kwargs: Keyword arguments to pass to the ``tiledb.open`` method.
 
-        Returns:
-            tiledb.Array opened in the specified mode
+    Returns:
+        tiledb.Array opened in the specified mode
     """
     # Get the item in the group that either has the requested array name or
     # requested attribute.

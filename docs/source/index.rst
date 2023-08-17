@@ -11,18 +11,6 @@ Group and Metadata Support
 .. automodule:: tiledb.cf
    :noindex:
 
-Groups
-======
-
-.. autoclass:: tiledb.cf.Group
-  :members:
-
-Group Schema
-============
-
-.. autoclass:: tiledb.cf.GroupSchema
-  :members:
-
 Metadata Wrappers
 =================
 
