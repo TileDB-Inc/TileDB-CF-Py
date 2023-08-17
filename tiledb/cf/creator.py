@@ -13,7 +13,7 @@ import numpy as np
 
 import tiledb
 
-from .core import Group, GroupSchema
+from .core import GroupSchema, create_group
 
 DType = Union[int, float, str, None]
 DATA_SUFFIX = ".data"
@@ -241,7 +241,7 @@ class DataspaceCreator:
                 append to.
         """
         schema = self.to_schema(ctx)
-        Group.create(uri, schema, key, ctx, append=append)
+        create_group(uri, schema, key=key, ctx=ctx, append=append)
 
     def get_array_creator(self, array_name: str):
         """Returns the array creator with the requested name.

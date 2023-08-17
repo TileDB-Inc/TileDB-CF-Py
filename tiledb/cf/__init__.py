@@ -20,6 +20,7 @@ from .core import (
     DimMetadata,
     Group,
     GroupSchema,
+    create_group,
 )
 from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
 from .netcdf_engine import from_netcdf, has_netCDF4

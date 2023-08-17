@@ -12,9 +12,9 @@ from collections.abc import Mapping, MutableMapping
 from io import StringIO
 from typing import Any, Dict, Iterator, List, Optional, Tuple, TypeVar, Union
 
-import numpy as np
-
 import tiledb
+
+from ._utils import check_valid_group
 
 DType = TypeVar("DType", covariant=True)
 ATTR_METADATA_FLAG = "__tiledb_attr."
@@ -242,6 +242,46 @@ class DimMetadata(Metadata):
         return None
 
 
+def create_group(
+    uri: str,
+    group_schema: Union[GroupSchema, Mapping[str, tiledb.ArraySchema]],
+    *,
+    key: Optional[Union[Dict[str, str], str]] = None,
+    ctx: Optional[tiledb.Ctx] = None,
+    config: Optional[tiledb.Config] = None,
+    append: bool = False,
+):
+    """Creates a TileDB group with arrays at relative locations inside the group.
+
+    Parameters:
+        uri: Uniform resource identifier for TileDB group or array.
+        group_schema: Schema that defines the group to be created.
+        ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        append: If ``True``, add arrays from the provided group schema to an
+            already existing group. The names for the arrays in the group schema
+            cannot already exist in the group being append to.
+    """
+    if append:
+        check_valid_group(uri, ctx=ctx)
+        with tiledb.Group(uri, ctx=ctx) as group:
+            for array_name in group_schema:
+                if array_name in group:
+                    raise ValueError(
+                        f"Cannot append to group. Array `{array_name}` already exists."
+                    )
+    else:
+        tiledb.group_create(uri, ctx)
+    with tiledb.Group(uri, mode="w", ctx=ctx) as group:
+        for array_name, array_schema in group_schema.items():
+            tiledb.Array.create(
+                uri=_get_array_uri(uri, array_name),
+                schema=array_schema,
+                key=_get_array_key(key, array_name),
+                ctx=ctx,
+            )
+            group.add(uri=array_name, name=array_name, relative=True)
+
+
 class Group:
     """Class for accessing group metadata and arrays in a TileDB group.
 
@@ -258,50 +298,6 @@ class Group:
         timestamp: If not ``None``, timestamp to open the group metadata and array at.
         ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
     """
-
-    @classmethod
-    def create(
-        cls,
-        uri: str,
-        group_schema: GroupSchema,
-        key: Optional[Union[Dict[str, str], str]] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-        append: bool = False,
-    ):
-        """Creates a TileDB group and the arrays inside the group from a group schema.
-
-        This method creates a TileDB group at the provided URI and creates arrays
-        inside the group with the names and array schemas from the provided group
-        schema.
-
-        Parameters:
-            uri: Uniform resource identifier for TileDB group or array.
-            group_schema: Schema that defines the group to be created.
-            key: If not ``None``, encryption key, or dictionary of encryption keys to
-                decrypt arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            append: If ``True``, add arrays from the provided group schema to an
-                already existing group. The names for the arrays in the group schema
-                cannot already exist in the group being append to.
-        """
-        if append:
-            original_group_schema = GroupSchema.load(uri, ctx=ctx, key=key)
-            for array_name in group_schema:
-                if array_name in original_group_schema:
-                    raise ValueError(
-                        f"Cannot append to group. Array `{array_name}` already exists."
-                    )
-        else:
-            tiledb.group_create(uri, ctx)
-        with tiledb.Group(uri, mode="w", ctx=ctx) as group:
-            for array_name, array_schema in group_schema.items():
-                tiledb.Array.create(
-                    uri=_get_array_uri(uri, array_name),
-                    schema=array_schema,
-                    key=_get_array_key(key, array_name),
-                    ctx=ctx,
-                )
-                group.add(uri=array_name, name=array_name, relative=True)
 
     def __init__(
         self,

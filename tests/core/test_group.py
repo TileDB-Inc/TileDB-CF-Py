@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import Group, GroupSchema
+from tiledb.cf import Group, GroupSchema, create_group
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
@@ -41,7 +41,7 @@ class TestCreateGroup:
         """Creates a TileDB Group from GroupSchema and returns scenario dict."""
         uri = str(tmpdir_factory.mktemp("group1"))
         ctx = None
-        Group.create(uri, self._group_schema, self._key, ctx)
+        create_group(uri, self._group_schema, key=self._key, ctx=ctx)
         return uri
 
     def test_array_schemas(self, group_uri):
@@ -145,9 +145,9 @@ class TestGroupWithArrays:
 def test_append_group(tmpdir):
     uri = str(tmpdir.mkdir("append_group_test"))
     group_schema_1 = GroupSchema({"A1": _array_schema_1})
-    Group.create(uri, group_schema_1)
+    create_group(uri, group_schema_1)
     group_schema_2 = GroupSchema({"A2": _array_schema_2})
-    Group.create(uri, group_schema_2, append=True)
+    create_group(uri, group_schema_2, append=True)
     result = GroupSchema.load(uri)
     expected = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
     assert result == expected
@@ -156,9 +156,9 @@ def test_append_group(tmpdir):
 def test_append_group_add_metadata(tmpdir):
     uri = str(tmpdir.mkdir("append_group_test"))
     group_schema_1 = GroupSchema({"A1": _array_schema_1})
-    Group.create(uri, group_schema_1)
+    create_group(uri, group_schema_1)
     group_schema_2 = GroupSchema({"A2": _array_schema_2})
-    Group.create(uri, group_schema_2, append=True)
+    create_group(uri, group_schema_2, append=True)
     result = GroupSchema.load(uri)
     expected = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
     assert result == expected
@@ -167,6 +167,6 @@ def test_append_group_add_metadata(tmpdir):
 def test_append_group_array_exists_error(tmpdir):
     uri = str(tmpdir.mkdir("append_group_test"))
     group_schema_1 = GroupSchema({"A1": _array_schema_1})
-    Group.create(uri, group_schema_1)
+    create_group(uri, group_schema_1)
     with pytest.raises(ValueError):
-        Group.create(uri, group_schema_1, append=True)
+        create_group(uri, group_schema_1, append=True)
