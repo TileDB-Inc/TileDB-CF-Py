@@ -21,7 +21,6 @@ from .core import (
     DimMetadata,
     Group,
     GroupSchema,
-    VirtualGroup,
 )
 from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
 from .netcdf_engine import from_netcdf, has_netCDF4

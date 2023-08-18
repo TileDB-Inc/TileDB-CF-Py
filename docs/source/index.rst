@@ -17,9 +17,6 @@ Groups
 .. autoclass:: tiledb.cf.Group
   :members:
 
-.. autoclass:: tiledb.cf.VirtualGroup
-  :members:
-
 Group Schema
 ============
 

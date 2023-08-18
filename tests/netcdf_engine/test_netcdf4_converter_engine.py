@@ -991,55 +991,6 @@ class TestConverterNetCDFVariabelWithFill(ConvertNetCDFBase):
                 assert "_FillValue" not in array.meta
 
 
-def test_virtual_from_netcdf(group1_netcdf_file, tmpdir):
-    uri = str(tmpdir.mkdir("output").join("virtual1"))
-    from_netcdf(
-        group1_netcdf_file,
-        uri,
-        coords_to_dims=False,
-        use_virtual_groups=True,
-        collect_attrs=False,
-    )
-    x = np.linspace(-1.0, 1.0, 8)
-    y = np.linspace(-1.0, 1.0, 4)
-    # Test root
-    with tiledb.open(f"{uri}_x1", attr="x1") as array:
-        x1 = array[:]
-    np.testing.assert_equal(x1, x)
-    # # Test group 3
-    with tiledb.open(f"{uri}_group3_A1", attr="A1") as array:
-        A1 = array[:, :]
-    with tiledb.open(f"{uri}_group3_A2", attr="A2") as array:
-        A2 = array[:, :]
-    with tiledb.open(f"{uri}_group3_A3", attr="A3") as array:
-        A3 = array[:, :]
-    np.testing.assert_equal(A1, np.outer(y, y))
-    np.testing.assert_equal(A2, np.zeros((4, 4), dtype=np.float64))
-    np.testing.assert_equal(A3, np.identity(4, dtype=np.int32))
-
-
-def test_virtual_from_file(simple2_netcdf_file, tmpdir):
-    uri = str(tmpdir.mkdir("output").join("virtual2"))
-    converter = NetCDF4ConverterEngine.from_file(
-        str(simple2_netcdf_file.filepath),
-        coords_to_dims=False,
-    )
-    converter.convert_to_virtual_group(uri)
-    assert isinstance(tiledb.ArraySchema.load(f"{uri}_array0"), tiledb.ArraySchema)
-    with tiledb.open(uri) as array:
-        assert array.meta["name"] == "simple2"
-
-
-def test_virtual_from_group(simple2_netcdf_file, tmpdir):
-    uri = str(tmpdir.mkdir("output").join("virtual3"))
-    with netCDF4.Dataset(simple2_netcdf_file.filepath, mode="r") as dataset:
-        converter = NetCDF4ConverterEngine.from_group(dataset, coords_to_dims=False)
-        converter.convert_to_virtual_group(uri, input_netcdf_group=dataset)
-    assert isinstance(tiledb.ArraySchema.load(f"{uri}_array0"), tiledb.ArraySchema)
-    with tiledb.open(uri) as array:
-        assert array.meta["name"] == "simple2"
-
-
 def test_group_metadata(tmpdir):
     filepath = str(tmpdir.mkdir("data").join("test_group_metadata.nc"))
     with netCDF4.Dataset(filepath, mode="w") as dataset:

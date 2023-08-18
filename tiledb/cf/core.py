@@ -65,41 +65,33 @@ def _array_schema_html(schema: tiledb.ArraySchema) -> str:
     return output.getvalue()
 
 
-def _get_array_uri(group_uri: str, array_name: str, is_virtual: bool) -> str:
+def _get_array_uri(group_uri: str, array_name: str) -> str:
     """Returns a URI for an array with name ``array_name`` inside a group at URI
         ``group_uri``.
 
     Parameters:
         group_uri: URI of the group containing the array
         array_name: name of the array
-        is_virtual: If ``True``, return the URI for an array in a virtual group.
-             Otherwise, return the URI for an array inside a "standard" group.
 
     Returns:
         Array URI of an array with name ``array_name`` inside a group at URI
             ``group_uri``.
     """
-    if is_virtual:
-        return f"{group_uri}_{array_name}"
     return os.path.join(group_uri, array_name)
 
 
-def _get_metadata_array_uri(group_uri: str, is_virtual: bool) -> str:
+def _get_metadata_array_uri(group_uri: str) -> str:
     """Returns a URI for an array with name ``array_name`` inside a group at URI
         ``group_uri``.
 
     Parameters:
         group_uri: URI of the group containing the array
         array_name: name of the array
-        is_virtual: If ``True``, return the URI for the metadata array in a virtual
-             group. Otherwise, return the URI for an array inside a "standard" group.
 
     Returns:
         Array URI of an array with name ``array_name`` inside a group at URI
             ``group_uri``.
     """
-    if is_virtual:
-        return group_uri
     return os.path.join(group_uri, METADATA_ARRAY_NAME)
 
 
@@ -324,14 +316,14 @@ class Group:
             create_metadata_group = group_schema.metadata_schema is not None
         if create_metadata_group:
             tiledb.Array.create(
-                uri=_get_metadata_array_uri(uri, is_virtual=False),
+                uri=_get_metadata_array_uri(uri),
                 schema=group_schema.metadata_schema,
                 key=_get_array_key(key, METADATA_ARRAY_NAME),
                 ctx=ctx,
             )
         for array_name, array_schema in group_schema.items():
             tiledb.Array.create(
-                uri=_get_array_uri(uri, array_name, is_virtual=False),
+                uri=_get_array_uri(uri, array_name),
                 schema=array_schema,
                 key=_get_array_key(key, array_name),
                 ctx=ctx,
@@ -348,14 +340,14 @@ class Group:
         """Constructs a new :class:`Group`."""
         self._group_schema = GroupSchema.load(uri, ctx, key)
         self._array_uris = {
-            array_name: _get_array_uri(uri, array_name, False)
+            array_name: _get_array_uri(uri, array_name)
             for array_name in self._group_schema.keys()
         }
         self._metadata_array = (
             None
             if self._group_schema.metadata_schema is None
             else tiledb.open(
-                uri=_get_metadata_array_uri(uri, False),
+                uri=_get_metadata_array_uri(uri),
                 mode=mode,
                 key=_get_array_key(key, METADATA_ARRAY_NAME),
                 timestamp=timestamp,
@@ -489,105 +481,6 @@ class Group:
             tdb_array.close()
 
 
-class VirtualGroup(Group):
-    """Class for accessing group metadata and arrays in a virtual TileDB group.
-
-    This is a subclass of :class:`tiledb.cf.Group` that treats a dictionary of arrays
-    like a TileDB group. If there is an array named ``__tiledb_group``, it will be
-    treated as the group metadata array.
-
-    See :class:`tiledb.cf.Group` for documentation on the methods and properties
-    available in this class.
-
-    Parameters:
-        array_uris: Mapping from array names to array uniform resource identifiers.
-        mode: Mode the array and metadata objects are opened in. Either read 'r' or
-            write 'w' mode.
-        key: If not ``None``, encryption key, or dictionary of encryption keys, to
-            decrypt arrays.
-        timestamp: If not ``None``, timestamp to open the group metadata and array at.
-        array: DEPRECACTED: use group.open_array instead.
-        attr: DEPRECATED: use group.open_array instead.
-        ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-    """
-
-    @classmethod
-    def create(
-        cls,
-        uri: str,
-        group_schema: GroupSchema,
-        key: Optional[Union[Dict[str, str], str]] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-        append: bool = False,
-    ):
-        """Create the arrays in a group schema.
-
-        This will create arrays for a group in a flat directory structure. The group
-        metadata array is created at the provided URI, and all other arrays are created
-        at ``{uri}_{array_name}`` where ``{uri}`` is the provided URI and
-        ``{array_name}`` is the name of the array as stored in the group schema.
-
-        Parameters:
-            uri: Uniform resource identifier for group metadata and prefix for arrays.
-            group_schema: Schema that defines the group to be created.
-            key: If not ``None``, encryption key, or dictionary of encryption keys to
-                decrypt arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            is_virtual: (DEPRECATED) If ``True``, create arrays in a flat directory
-                without creating a TileDB group.
-            append: If ``True``, add to existing group. Not valid for virtual groups.
-        """
-        if append:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    "Ignoring parameter append. Cannot append to a virtual group.",
-                    stacklevel=3,
-                )
-        if group_schema.metadata_schema is not None:
-            tiledb.Array.create(
-                uri=_get_metadata_array_uri(uri, is_virtual=True),
-                schema=group_schema.metadata_schema,
-                key=_get_array_key(key, METADATA_ARRAY_NAME),
-                ctx=ctx,
-            )
-        for array_name, array_schema in group_schema.items():
-            tiledb.Array.create(
-                uri=_get_array_uri(uri, array_name, is_virtual=True),
-                schema=array_schema,
-                key=_get_array_key(key, array_name),
-                ctx=ctx,
-            )
-
-    def __init__(
-        self,
-        array_uris: Dict[str, str],
-        mode: str = "r",
-        key: Optional[Union[Dict[str, str], str]] = None,
-        timestamp: Optional[int] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        self._array_uris = array_uris
-        self._group_schema = GroupSchema.load_virtual(array_uris, ctx, key)
-        self._metadata_array = (
-            tiledb.open(
-                uri=array_uris[METADATA_ARRAY_NAME],
-                mode=mode,
-                key=_get_array_key(key, METADATA_ARRAY_NAME),
-                timestamp=timestamp,
-                ctx=ctx,
-            )
-            if METADATA_ARRAY_NAME in array_uris
-            else None
-        )
-        self._mode = mode
-        self._key = key
-        self._timestamp = timestamp
-        self._ctx = ctx
-        self._open_arrays: Dict[
-            Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
-        ] = defaultdict(list)
-
-
 class GroupSchema(Mapping):
     """Schema for a TileDB group.
 
@@ -639,37 +532,6 @@ class GroupSchema(Mapping):
                     ctx,
                     local_key,
                 )
-        return cls(array_schemas, metadata_schema, False)
-
-    @classmethod
-    def load_virtual(
-        cls,
-        array_uris: Dict[str, str],
-        ctx: Optional[tiledb.Ctx] = None,
-        key: Optional[Union[Dict[str, str], str]] = None,
-    ):
-        """Loads a schema for a TileDB group from a mapping of array names to array
-        URIs.
-
-        Parameters:
-            array_uris: Mapping from array names to array uniform resource identifiers.
-            metadata_uri: Array uniform resource identifier for array where metadata is
-                stored.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            key: If not ``None``, encryption key, or dictionary of encryption keys, to
-                decrypt arrays.
-        """
-        array_schemas = {
-            array_name: tiledb.ArraySchema.load(
-                array_uri, ctx, _get_array_key(key, array_name)
-            )
-            for array_name, array_uri in array_uris.items()
-        }
-        metadata_schema = (
-            array_schemas.pop(METADATA_ARRAY_NAME)
-            if METADATA_ARRAY_NAME in array_schemas
-            else None
-        )
         return cls(array_schemas, metadata_schema, False)
 
     def __init__(
