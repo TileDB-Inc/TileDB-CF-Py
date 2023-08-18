@@ -520,3 +520,94 @@ class TestMultRegionWriteSimple1D(TileDBXarrayMultiWriterBase):
                 [tiledb.Attr("example", filters=default_filters, dtype=np.int32)],
             )
         }
+
+
+class TestCopyFromXarrayRegionErrors:
+    """Test error handling for writing to mismatched shapes.
+
+    This test uses a dataset where the arrays do not have consistent sizing.
+    The `example` array has `x` and `y` dimensions that are larger than the
+    dimensions in the `x` and `y` arrays.
+    """
+
+    name = "copy_region_errors"
+
+    dataset = xr.Dataset(
+        {
+            "example": xr.DataArray(np.reshape(np.arange(12), (4, 3)), dims=("x", "y")),
+            "x": xr.DataArray(
+                np.array([0.0, 0.5, 1.0, 1.5], dtype=np.float64), dims=("x",)
+            ),
+            "y": xr.DataArray(
+                np.array([-0.5, 0.0, 0.5], dtype=np.float64), dims=("y",)
+            ),
+        }
+    )
+
+    @pytest.fixture(scope="class")
+    def group_uri(self, tmpdir_factory):
+        # Create the initial group.
+        group_uri = str(tmpdir_factory.mktemp("output").join(self.name))
+        create_group_from_xarray(
+            self.dataset,
+            group_uri,
+            encoding={
+                "example": {"max_shape": (8, 8)},
+                "x": {"max_shape": (8,)},
+                "y": {"max_shape": (8,)},
+            },
+        )
+        return group_uri
+
+    def test_missing_dimension_region_error(self, group_uri):
+        with pytest.raises(ValueError):
+            copy_data_from_xarray(self.dataset, group_uri)
+
+    def test_region_outside_domain(self, group_uri):
+        with pytest.raises(ValueError):
+            copy_data_from_xarray(
+                self.dataset, group_uri, region={"x": slice(6, 10), "y": slice(0, 3)}
+            )
+
+    def test_variable_too_large_error(self, group_uri):
+        x_dataset = xr.Dataset(
+            {"x": xr.DataArray(np.arange(10, dtype=np.float64), dims=("x",))}
+        )
+        with pytest.raises(ValueError):
+            copy_data_from_xarray(x_dataset, group_uri)
+
+    def test_region_mismatch_variable_size(self, group_uri):
+        with pytest.raises(ValueError):
+            copy_data_from_xarray(
+                self.dataset, group_uri, region={"x": slice(0, 4), "y": slice(0, 4)}
+            )
+
+    def test_region_bad_dim_name(self, group_uri):
+        with pytest.raises(ValueError):
+            copy_data_from_xarray(
+                self.dataset, group_uri, region={"xx": slice(0, 4), "y": slice(0, 3)}
+            )
+
+    def test_region_type_error(self, group_uri):
+        with pytest.raises(TypeError):
+            copy_data_from_xarray(
+                self.dataset, group_uri, region={"x": (0, 4), "y": (0, 3)}
+            )
+
+    def test_region_step_value_error(self, group_uri):
+        with pytest.raises(ValueError):
+            copy_data_from_xarray(
+                self.dataset, group_uri, region={"x": slice(0, 4, 2), "y": slice(0, 3)}
+            )
+
+    def test_region_negative_value_error(self, group_uri):
+        with pytest.raises(ValueError):
+            copy_data_from_xarray(
+                self.dataset, group_uri, region={"x": slice(0, -4), "y": slice(0, 3)}
+            )
+
+    def test_region_zero_size_error(self, group_uri):
+        with pytest.raises(ValueError):
+            copy_data_from_xarray(
+                self.dataset, group_uri, region={"x": slice(1, 1), "y": slice(0, 3)}
+            )
