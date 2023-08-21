@@ -19,49 +19,6 @@ ATTR_METADATA_FLAG = "__tiledb_attr."
 DIM_METADATA_FLAG = "__tiledb_dim."
 
 
-def _array_schema_html(schema: tiledb.ArraySchema) -> str:
-    """Returns a HTML representation of a TileDB array."""
-    output = StringIO()
-    output.write("<ul>\n")
-    output.write("<li>\n")
-    output.write("Domain\n")
-    output.write("<table>\n")
-    for i in range(schema.domain.ndim):
-        output.write(
-            f'<tr><td style="text-align: left;">{repr(schema.domain.dim(i))}</td>'
-            f"</tr>\n"
-        )
-    output.write("</table>\n")
-    output.write("</li>\n")
-    output.write("<li>\n")
-    output.write("Attributes\n")
-    output.write("<table>\n")
-    for i in range(schema.nattr):
-        output.write(
-            f'<tr><td style="text-align: left;">{repr(schema.attr(i))}</td></tr>\n'
-        )
-    output.write("</table>\n")
-    output.write("</li>\n")
-    output.write("<li>\n")
-    output.write("Array properties")
-    output.write(
-        f"<table>\n"
-        f'<tr><td style="text-align: left;">cell_order={schema.cell_order}</td></tr>\n'
-        f'<tr><td style="text-align: left;">tile_order={schema.tile_order}</td></tr>\n'
-        f'<tr><td style="text-align: left;">capacity={schema.capacity}</td></tr>\n'
-        f'<tr><td style="text-align: left;">sparse={schema.sparse}</td></tr>\n'
-    )
-    if schema.sparse:
-        output.write(
-            f'<tr><td style="text-align: left;">allows_duplicates'
-            f"={schema.allows_duplicates}</td></tr>\n"
-        )
-    output.write("</table>\n")
-    output.write("</li>\n")
-    output.write("</ul>\n")
-    return output.getvalue()
-
-
 def _get_array_uri(group_uri: str, array_name: str) -> str:
     """Returns a URI for an array with name ``array_name`` inside a group at URI
         ``group_uri``.
