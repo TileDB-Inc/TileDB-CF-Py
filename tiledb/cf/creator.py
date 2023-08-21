@@ -13,7 +13,7 @@ import numpy as np
 
 import tiledb
 
-from .core import GroupSchema, create_group
+from .core import create_group
 
 DType = Union[int, float, str, None]
 DATA_SUFFIX = ".data"
@@ -299,8 +299,10 @@ class DataspaceCreator:
         """Iterators over shared dimensions in the CF dataspace."""
         return self._registry.shared_dims()
 
-    def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> GroupSchema:
-        """Returns a group schema for the CF dataspace.
+    def to_schema(
+        self, ctx: Optional[tiledb.Ctx] = None
+    ) -> Dict[str, tiledb.ArraySchema]:
+        """Returns a dictionary of array schemas for the CF dataspace.
 
         Parameters:
            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
@@ -314,8 +316,7 @@ class DataspaceCreator:
                     f"Failed to create an ArraySchema for array '{array_creator.name}'."
                     f" {str(err)}"
                 ) from err
-        group_schema = GroupSchema(array_schemas)
-        return group_schema
+        return array_schemas
 
 
 class DataspaceRegistry:

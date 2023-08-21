@@ -6,13 +6,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import (
-    AttrMetadata,
-    DimMetadata,
-    GroupSchema,
-    from_netcdf,
-    open_group_array,
-)
+from tiledb.cf import AttrMetadata, DimMetadata, from_netcdf, open_group_array
 from tiledb.cf.netcdf_engine import NetCDF4ConverterEngine
 
 netCDF4 = pytest.importorskip("netCDF4")
@@ -158,8 +152,9 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
             group.add(uri="original_array", name="original_array", relative=True)
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         converter.convert_to_group(uri, append=True)
-        group_schema = GroupSchema.load(uri)
-        assert set(group_schema.keys()) == {"original_array", "array0"}
+        with tiledb.Group(uri) as group:
+            group_items = {item.name for item in group}
+            assert group_items == {"original_array", "array0"}
 
     def test_append_to_group_bad_name_error(self, netcdf_file, tmpdir):
         """Tests raising error when appending to group with an array name that is in

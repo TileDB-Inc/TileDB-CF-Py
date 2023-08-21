@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import GroupSchema, create_group, open_group_array
+from tiledb.cf import create_group, open_group_array
 
 _row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
 _col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
@@ -29,27 +29,23 @@ _array_schema_3 = tiledb.ArraySchema(
 
 
 class TestCreateGroup:
-    _array_schemas = [
-        ("A1", _array_schema_1),
-        ("A2", _array_schema_2),
-    ]
-    _group_schema = GroupSchema(_array_schemas)
+    _array_schemas = {"A1": _array_schema_1, "A2": _array_schema_2}
     _key = None
 
     @pytest.fixture(scope="class")
     def group_uri(self, tmpdir_factory):
-        """Creates a TileDB Group from GroupSchema and returns scenario dict."""
+        """Creates a TileDB Group from a mapping of arrays and returns scenario dict."""
         uri = str(tmpdir_factory.mktemp("group1"))
         ctx = None
-        create_group(uri, self._group_schema, key=self._key, ctx=ctx)
+        create_group(uri, self._array_schemas, key=self._key, ctx=ctx)
         return uri
 
     def test_array_schemas(self, group_uri):
         uri = group_uri
         assert tiledb.object_type(uri) == "group"
-        for name, schema in self._array_schemas:
-            array_uri = group_uri + "/" + name
-            assert tiledb.ArraySchema.load(array_uri, key=self._key) == schema
+        for name, schema in self._array_schemas.items():
+            with tiledb.Group(uri) as group:
+                assert tiledb.ArraySchema.load(group[name].uri) == schema
 
 
 class TestGroupWithArrays:
@@ -106,29 +102,19 @@ class TestGroupWithArrays:
 
 def test_append_group(tmpdir):
     uri = str(tmpdir.mkdir("append_group_test"))
-    group_schema_1 = GroupSchema({"A1": _array_schema_1})
-    create_group(uri, group_schema_1)
-    group_schema_2 = GroupSchema({"A2": _array_schema_2})
-    create_group(uri, group_schema_2, append=True)
-    result = GroupSchema.load(uri)
-    expected = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
-    assert result == expected
-
-
-def test_append_group_add_metadata(tmpdir):
-    uri = str(tmpdir.mkdir("append_group_test"))
-    group_schema_1 = GroupSchema({"A1": _array_schema_1})
-    create_group(uri, group_schema_1)
-    group_schema_2 = GroupSchema({"A2": _array_schema_2})
-    create_group(uri, group_schema_2, append=True)
-    result = GroupSchema.load(uri)
-    expected = GroupSchema({"A1": _array_schema_1, "A2": _array_schema_2})
-    assert result == expected
+    create_group(uri, {"A1": _array_schema_1})
+    create_group(uri, {"A2": _array_schema_2}, append=True)
+    with tiledb.Group(uri) as group:
+        assert group["A1"].type == tiledb.libtiledb.Array
+        assert group["A2"].type == tiledb.libtiledb.Array
+        a1_schema = tiledb.ArraySchema.load(group["A1"].uri)
+        a2_schema = tiledb.ArraySchema.load(group["A2"].uri)
+        assert a1_schema == _array_schema_1
+        assert a2_schema == _array_schema_2
 
 
 def test_append_group_array_exists_error(tmpdir):
     uri = str(tmpdir.mkdir("append_group_test"))
-    group_schema_1 = GroupSchema({"A1": _array_schema_1})
-    create_group(uri, group_schema_1)
+    create_group(uri, {"A1": _array_schema_1})
     with pytest.raises(ValueError):
-        create_group(uri, group_schema_1, append=True)
+        create_group(uri, {"A1": _array_schema_1}, append=True)

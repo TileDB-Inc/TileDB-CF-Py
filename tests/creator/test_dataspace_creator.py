@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import DataspaceCreator, GroupSchema
+from tiledb.cf import DataspaceCreator
 from tiledb.cf.creator import ArrayCreator, SharedDim
 
 
@@ -84,7 +84,7 @@ class TestDataspaceCreatorExample1:
 
     def test_to_schema(self, dataspace_creator):
         group_schema = dataspace_creator.to_schema()
-        assert isinstance(group_schema, GroupSchema)
+        assert isinstance(group_schema, dict)
         assert len(group_schema) == 3
         assert group_schema["A1"] == tiledb.ArraySchema(
             domain=tiledb.Domain(
