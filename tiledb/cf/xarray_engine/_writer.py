@@ -282,16 +282,23 @@ def create_from_xarray(
                 group.meta[key] = value
 
 
-def extract_encoded_data(dataset):
+def extract_encoded_data(dataset, skip_vars=None):
     """Returns encoded xarray variables and attribtues (metadata) from an
     input xarray dataset.
+
+    dataset: Xarray dataset to encode.
+    skip_vars: Variables to exclude if they exist in the dataset
     """
+
+    if skip_vars is None:
+        skip_vars = set()
 
     # Get variables and apply xarray encoders.
     variables, group_metadata = encode_dataset_coordinates(dataset)
     variables = {
         var_name: times.CFDatetimeCoder().encode(times.CFTimedeltaCoder().encode(var))
         for var_name, var in variables.items()
+        if var_name not in skip_vars
     }
 
     # Check the input dataset is supported in TileDB.

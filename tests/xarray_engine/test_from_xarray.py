@@ -225,6 +225,45 @@ class TestWriteCoord1D(TileDBXarrayWriterBase):
         }
 
 
+class TestWriteSkipVar1D(TileDBXarrayWriterBase):
+    name = "simple_1d"
+
+    ds = xr.Dataset(
+        {
+            "example": xr.DataArray(
+                np.linspace(-1.0, 1.0, 16, dtype=np.float32), dims="rows"
+            ),
+            "index": xr.DataArray(np.arange(16, dtype=np.uint32), dims="rows"),
+        }
+    )
+
+    kwargs = {
+        "encoding": {
+            "index": {"tiles": (8,)},
+        },
+        "skip_vars": set(["example"]),
+    }
+
+    @pytest.fixture(scope="class")
+    def input_dataset(self):
+        return self.ds
+
+    @pytest.fixture(scope="class")
+    def expected_dataset(self):
+        return self.ds.drop_vars("example")
+
+    @pytest.fixture(scope="class")
+    def expected_schemas(self):
+        domain = tiledb.Domain(
+            tiledb.Dim("rows", domain=(0, 15), tile=8, dtype=np.uint32)
+        )
+        default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
+        index_attr = tiledb.Attr("index", filters=default_filters, dtype=np.uint32)
+        return {
+            "index": tiledb.ArraySchema(domain, (index_attr,)),
+        }
+
+
 class TestWriteUnlimitedDim1D(TileDBXarrayWriterBase):
     name = "unlimited_1d"
 
@@ -452,7 +491,7 @@ class TestWriteSimpleDask(TileDBXarrayWriterBase):
         }
 
 
-class TestMultWriteSimple1D(TileDBXarrayMultiWriterBase):
+class TestMultiWriteSimple1D(TileDBXarrayMultiWriterBase):
     name = "multiwrite_simple_1d"
 
     ds1 = xr.Dataset({"example": xr.DataArray(np.arange(16, dtype=np.int32), dims="x")})
@@ -482,7 +521,7 @@ class TestMultWriteSimple1D(TileDBXarrayMultiWriterBase):
         }
 
 
-class TestMultRegionWriteSimple1D(TileDBXarrayMultiWriterBase):
+class TestMultiRegionWriteSimple1D(TileDBXarrayMultiWriterBase):
     name = "multi_region_write_simple_1d"
 
     create_kwargs = {
@@ -510,6 +549,48 @@ class TestMultRegionWriteSimple1D(TileDBXarrayMultiWriterBase):
             xr.Dataset({"example": xr.DataArray(data[0:8], dims="x")}),
             xr.Dataset({"example": xr.DataArray(data, dims="x")}),
         ]
+
+    @pytest.fixture(scope="class")
+    def expected_schemas(self):
+        default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
+        return {
+            "example": tiledb.ArraySchema(
+                tiledb.Domain(tiledb.Dim("x", domain=(0, 15), tile=8, dtype=np.uint32)),
+                [tiledb.Attr("example", filters=default_filters, dtype=np.int32)],
+            )
+        }
+
+
+class MulitWriteSkipVars:
+    name = "multi_write_skip_vars"
+
+    ds1 = xr.Dataset(
+        {
+            "example": xr.DataArray(np.arange(16, dtype=np.int32), dims="x"),
+            "index": xr.DataArray(np.arange(-16, 0, dtype=np.int32), dims="x"),
+            "x": xr.DataArray(np.linspace(-1.0, 1.0, 16), dims="x"),
+        }
+    )
+    ds2 = xr.Dataset(
+        {
+            "example": xr.DataArray(np.arange(-16, 0, dtype=np.int32), dims="x"),
+            "x": xr.DataArray(np.linspace(-1.0, 1.0, 16), dims="x"),
+        }
+    )
+
+    create_kwargs = {
+        "encoding": {"example": {"tiles": (8,)}},
+        "skip_vars": set(["x", "index"]),
+    }
+    copy_kwargs = [{"skip_vars": set(["x", "index"])}, {"skip_vars": set(["x"])}]
+
+    @pytest.fixture(scope="class")
+    def input_datasets(self):
+        return [self.ds1, self.ds2]
+
+    @pytest.fixture(scope="class")
+    def expected_datasets(self):
+        return [self.ds1.drop_vars("index", "x"), self.ds2.drop_vars("x")]
 
     @pytest.fixture(scope="class")
     def expected_schemas(self):
