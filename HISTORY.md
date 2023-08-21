@@ -7,6 +7,7 @@
 * Negative values no longer supported in `region`  in xarray `from_xarray` and `copy_data_from_xarray`.
 * Removes VirtualGroup class.
 * Removes Group class.
+* Removes GroupSchema class.
 
 ### Deprecation
 
