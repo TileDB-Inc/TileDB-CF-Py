@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import os.path
 from collections.abc import Mapping, MutableMapping
-from io import StringIO
 from typing import Any, Dict, Iterator, Optional, TypeVar, Union
 
 import tiledb
