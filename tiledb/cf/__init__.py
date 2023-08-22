@@ -24,7 +24,13 @@ from .core import (
 )
 from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
 from .netcdf_engine import from_netcdf, has_netCDF4
-from .xarray_engine import has_xarray
+from .xarray_engine import (
+    copy_data_from_xarray,
+    copy_metadata_from_xarray,
+    create_group_from_xarray,
+    from_xarray,
+    has_xarray,
+)
 
 if has_netCDF4:
     from .netcdf_engine import NetCDF4ConverterEngine
