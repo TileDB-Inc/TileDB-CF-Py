@@ -1,3 +1,5 @@
+import sphinx_rtd_theme
+
 templates_path = ["_templates"]
 source_suffix = [".rst", ".md"]
 
@@ -11,6 +13,7 @@ version = "0.8.0"
 
 extensions = [
     "sphinx.ext.autodoc",
+    #"sphinx.ext.doctest",
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx_autodoc_typehints",
@@ -20,13 +23,17 @@ extensions = [
 
 language = "en"
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-pygments_style = "sphinx"
+pygments_style = "friendly"
 todo_include_todos = False
 
 
 # -- Options for HTML output -------------------------------------------
-html_theme = "traditional"
 html_static_path = ["_static"]
+html_logo = "_static/tiledb-logo_color_no_margin_@4x.png"
+html_favicon = "_static/favicon.ico"
+html_theme = "sphinx_rtd_theme"
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+
 
 # -- Options for HTMLHelp output ---------------------------------------
 htmlhelp_basename = "tiledb-cf-doc"
@@ -35,7 +42,7 @@ htmlhelp_basename = "tiledb-cf-doc"
 latex_documents = [
     (
         master_doc,
-        "tiledb.cf.tex",
+        "tiledb-cf.tex",
         "TileDB-CF-Py Documentation",
         "TileDB, Inc",
         "manual",
@@ -49,10 +56,10 @@ man_pages = [(master_doc, "tiledb.cf", "TileDB-CF-Py Documentation", [author], 1
 texinfo_documents = [
     (
         master_doc,
-        "tiledb.cf",
+        "tiledb-cf",
         "TileDB-CF-Py Documentation",
         author,
-        "tiledb.cf",
+        "tiledb-cf",
         "One line description of project.",
         "Miscellaneous",
     ),
