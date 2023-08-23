@@ -1,5 +1,8 @@
-TileDB-CF Python API Reference
-##############################
+.. _api:
+
+*************
+API Reference
+*************
 
 .. warning::
 
@@ -9,6 +12,8 @@ TileDB-CF Python API Reference
 .. automodule:: tiledb.cf
    :noindex:
 
+Core
+====
 
 .. autoclass:: tiledb.cf.Group
   :members:

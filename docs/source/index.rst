@@ -6,14 +6,15 @@ TileDB-CF Documentation
 
 TileDB-CF is a Python project for enabling easy access of climate, forecast, and other multi-dimensional many-array datasets in TileDB.
 
+.. warning::
+    The TileDB-CF library is still under initial development and changes may not be backward compatible.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :caption: TileDB-CF Python Documentation
 
-    Quick Start <quick-start>
-    Installation <install>
-    Data model <data-model>
+    Getting Started <intro>
+    Core <core>
     NetCDF Ingestion <netcdf-engine>
     Xarray Integration <xarray-engine>
     API <api>
