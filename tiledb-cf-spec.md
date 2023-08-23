@@ -2,7 +2,7 @@
 
 :information_source: **Notes:**
 
-* The current TileDB-CF format version number is **0.2.0**.
+* The current TileDB-CF format version number is **0.3.0**.
 
 ## Introduction
 
@@ -16,10 +16,8 @@ TileDB stores data as dense or sparse multi-dimensional arrays. An array (either
 
 * **Dimensions**: The dimensions along with their domains orient a multi-dimensional space of cells. A dimension is defined by its name, domain, and data type along with additional data that specifies data storage and compression. A tuple of dimension values is called the **cell coordinates**. There can be any number of dimensions in an array.
 * **Attributes**: In each cell in the logical layout, TileDB stores a tuple comprised of any number of attributes, each of any data type (fixed- or variable-sized).
-* **Array metadata**: This is (typically small) key-value data associated with an array.
-* **Axes labels**: These are practically other (dense or sparse) arrays attached to each dimension, which facilitate slicing multi-dimensional ranges on conditions other than array positional indices.
-
-Multiple arrays can be stored together in a **TileDB group**.
+* **Metadata**: This is (typically small) key-value data associated with an array or a group.
+* **Group**: A collection of arrays, sub-groups, and metadata.
 
 #### NetCDF Data Model
 
@@ -50,7 +48,7 @@ A CF Dataspace is a TileDB group that follows certain requirements in order to p
 
 #### Requirements for Metadata
 
-1. Group metadata is stored in a special metadata array named `__tiledb_group` inside the TileDB group.
+1. Group metadata is stored in the TileDB group.
 2. Attribute metadata is stored in the same array the attribute is stored in. The metadata key must use the prefix `__tiledb_attr.{attr_name}.` where `{attr_name}` is the full name of the attribute.
 3. If the metadata key `_FillValue` exists for an attribute; it must have the same value as the fill value for the attribute.
 
