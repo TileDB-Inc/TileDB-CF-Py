@@ -14,6 +14,8 @@
 
 ### New Features
 
+* Adds `skip_vars` argument to the methods for copying xarray Dataset to TileDB that allows the user to specify variables to skip.
+
 ### Improvements
 
 ## 0.8.0
