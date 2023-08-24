@@ -88,6 +88,21 @@ git stash pop
 
 The testing for this project uses pytest and GitHub workflows for testing. The test suite will be run on GitHub when you submit your pull request.
 
+### API Documentation
+
+To build the API documentation do the following from this projects root directory:
+
+1. Install required packages:
+   ```bash
+   python3 -m pip install tiledb-cf[docs]
+   ```
+2. Make the HTML document:
+   ```bash
+   make -C docs/ html
+   ```
+3. Open [docs/_build/html/index.html](./docs/_build/html/index.html) in a web browser of your choice.
+
+
 ### Pull Requests
 
 * `dev` is the development branch, all PR’s should be rebased on top of the latest `dev` commit.

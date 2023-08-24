@@ -49,7 +49,7 @@ Dataspace Creator
 .. autoclass:: tiledb.cf.creator.AttrCreator
   :members:
 
-NetCDF-to-TileDB 
+NetCDF-to-TileDB
 ================
 
 .. autofunction:: tiledb.cf.from_netcdf
@@ -87,4 +87,3 @@ TileDB-xarray
 .. autofunction:: tiledb.cf.copy_data_from_xarray
 
 .. autofunction:: tiledb.cf.copy_metadata_from_xarray
-

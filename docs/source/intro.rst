@@ -1,6 +1,5 @@
 .. _overview:
 
-
 ******************
 TileDB-CF Overview
 ******************
@@ -8,9 +7,12 @@ TileDB-CF Overview
 About
 =====
 
-Current compoents include:
+TileDB-CF is a python package intended to aid in modeling and analyzing complex multi-dimensional data in TileDB. Current components include:
 
-* 
+* Core
+* Creator
+* NetCDF Engine
+* Xarray Engine
 
 Installation
 ============
@@ -23,7 +25,7 @@ This project is available from [PyPI](https://pypi.org/project/tiledb-cf/) and m
 
 TileDB-CF contains optional features that will be enabled if the required python packages are included in the python environment it is called from:
 
-* 
+*
 
 
 To install tiledb-cf with additional dependencies use:
@@ -56,9 +58,9 @@ TileDB stores data as dense or sparse multi-dimensional arrays. The arrays can b
 
 * **Metadata**: This is (typically small) key-value data associated with an array or a group.
 
-* **Dimension labels** (experimental): Dimension labels store either increasing of decreasing data in a one-dimensional TileDB array that can be used to indirectly query other dimensions. 
+* **Dimension labels** (experimental): Dimension labels store either increasing of decreasing data in a one-dimensional TileDB array that can be used to indirectly query other dimensions.
 
- 
+
 
 **Comparison: NetCDF Data Model**
 
@@ -75,5 +77,3 @@ A NetCDF file consists of **groups**, **dimensions**, **variables**, and **attri
 * **Attribute**: An attribute is a key-value pair that is associated with either a group or variable. Attributes are used to store (typically small) metadata. NetCDF attributes are roughly equivalent to TileDB metadata.
 
 * **Group**: A NetCDF group is a collection of dimensions, variables, and attributes. A simple NetCDF group might map to a TileDB array. A more complex group would need to be mapped to a TileDB group.
-
-
