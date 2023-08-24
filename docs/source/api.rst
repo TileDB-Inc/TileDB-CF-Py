@@ -21,7 +21,6 @@ Core
 .. autoclass:: tiledb.cf.GroupSchema
   :members:
 
-
 .. autoclass:: tiledb.cf.ArrayMetadata
 
 .. autoclass:: tiledb.cf.AttrMetadata
