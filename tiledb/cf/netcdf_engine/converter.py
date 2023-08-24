@@ -822,6 +822,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
                 TileDB metadata. If ``False`` do not copy metadata.
         """
+        if copy_metadata and timestamp is not None:
+            raise NotImplementedError(
+                "Writing group metadata at a timestamp is not yet supported."
+            )
         array_uris = {
             array_creator.name: os.path.join(output_uri, array_creator.name)
             for array_creator in self._registry.array_creators()
@@ -840,9 +844,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         ) as netcdf_group:
             if copy_metadata:
                 with tiledb.Group(output_uri, mode="w", ctx=ctx) as group:
-                    # TODO: Before merge add warnings
-                    # - if key is not None
-                    # - if timestamp is not None
                     copy_group_metadata(netcdf_group, group.meta)
             for array_creator in self._registry.array_creators():
                 if isinstance(array_creator, NetCDF4ArrayConverter):
