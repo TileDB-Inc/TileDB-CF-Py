@@ -15,12 +15,11 @@ from .cli import cli
 from .core import (
     ATTR_METADATA_FLAG,
     DIM_METADATA_FLAG,
-    METADATA_ARRAY_NAME,
     ArrayMetadata,
     AttrMetadata,
     DimMetadata,
-    Group,
-    GroupSchema,
+    create_group,
+    open_group_array,
 )
 from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
 from .netcdf_engine import from_netcdf, has_netCDF4

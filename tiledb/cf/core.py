@@ -6,63 +6,16 @@ model."""
 from __future__ import annotations
 
 import os.path
-import warnings
-from collections import defaultdict
 from collections.abc import Mapping, MutableMapping
-from io import StringIO
-from typing import Any, Dict, Iterator, List, Optional, Tuple, TypeVar, Union
-
-import numpy as np
+from typing import Any, Dict, Iterator, Optional, TypeVar, Union
 
 import tiledb
 
+from ._utils import check_valid_group
+
 DType = TypeVar("DType", covariant=True)
-METADATA_ARRAY_NAME = "__tiledb_group"
 ATTR_METADATA_FLAG = "__tiledb_attr."
 DIM_METADATA_FLAG = "__tiledb_dim."
-
-
-def _array_schema_html(schema: tiledb.ArraySchema) -> str:
-    """Returns a HTML representation of a TileDB array."""
-    output = StringIO()
-    output.write("<ul>\n")
-    output.write("<li>\n")
-    output.write("Domain\n")
-    output.write("<table>\n")
-    for i in range(schema.domain.ndim):
-        output.write(
-            f'<tr><td style="text-align: left;">{repr(schema.domain.dim(i))}</td>'
-            f"</tr>\n"
-        )
-    output.write("</table>\n")
-    output.write("</li>\n")
-    output.write("<li>\n")
-    output.write("Attributes\n")
-    output.write("<table>\n")
-    for i in range(schema.nattr):
-        output.write(
-            f'<tr><td style="text-align: left;">{repr(schema.attr(i))}</td></tr>\n'
-        )
-    output.write("</table>\n")
-    output.write("</li>\n")
-    output.write("<li>\n")
-    output.write("Array properties")
-    output.write(
-        f"<table>\n"
-        f'<tr><td style="text-align: left;">cell_order={schema.cell_order}</td></tr>\n'
-        f'<tr><td style="text-align: left;">tile_order={schema.tile_order}</td></tr>\n'
-        f'<tr><td style="text-align: left;">capacity={schema.capacity}</td></tr>\n'
-        f'<tr><td style="text-align: left;">sparse={schema.sparse}</td></tr>\n'
-    )
-    if schema.sparse:
-        output.write(
-            f'<tr><td style="text-align: left;">allows_duplicates'
-            f"={schema.allows_duplicates}</td></tr>\n"
-        )
-    output.write("</table>\n")
-    output.write("</li>\n")
-    output.write("</ul>\n")
-    return output.getvalue()
 
 
 def _get_array_uri(group_uri: str, array_name: str) -> str:
@@ -78,21 +31,6 @@ def _get_array_uri(group_uri: str, array_name: str) -> str:
             ``group_uri``.
     """
     return os.path.join(group_uri, array_name)
-
-
-def _get_metadata_array_uri(group_uri: str) -> str:
-    """Returns a URI for an array with name ``array_name`` inside a group at URI
-        ``group_uri``.
-
-    Parameters:
-        group_uri: URI of the group containing the array
-        array_name: name of the array
-
-    Returns:
-        Array URI of an array with name ``array_name`` inside a group at URI
-            ``group_uri``.
-    """
-    return os.path.join(group_uri, METADATA_ARRAY_NAME)
 
 
 def _get_array_key(
@@ -258,69 +196,38 @@ class DimMetadata(Metadata):
         return None
 
 
-class Group:
-    """Class for accessing group metadata and arrays in a TileDB group.
+def create_group(
+    uri: str,
+    group_schema: Mapping[str, tiledb.ArraySchema],
+    *,
+    key: Optional[Union[Dict[str, str], str]] = None,
+    ctx: Optional[tiledb.Ctx] = None,
+    config: Optional[tiledb.Config] = None,
+    append: bool = False,
+):
+    """Creates a TileDB group with arrays at relative locations inside the group.
 
-    The group class is a context manager for accessing the arrays, group metadata,
-    and attributes in a TileDB group. It can be used to access group-level metadata and
-    open arrays inside the group.
+    All arrays in the group will be added at a relative URI that matches the array name.
 
     Parameters:
         uri: Uniform resource identifier for TileDB group or array.
-        mode: Mode the array and metadata objects are opened in. Either read 'r' or
-            write 'w' mode.
-        key: If not ``None``, encryption key, or dictionary of encryption keys by
-            array name, to decrypt arrays.
-        timestamp: If not ``None``, timestamp to open the group metadata and array at.
+        group_schema: A mapping from array names to array schemas to add to the group.
         ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        append: If ``True``, add arrays from the provided group schema to an
+            already existing group. The names for the arrays in the group schema
+            cannot already exist in the group being append to.
     """
-
-    @classmethod
-    def create(
-        cls,
-        uri: str,
-        group_schema: GroupSchema,
-        key: Optional[Union[Dict[str, str], str]] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-        append: bool = False,
-    ):
-        """Creates a TileDB group and the arrays inside the group from a group schema.
-
-        This method creates a TileDB group at the provided URI and creates arrays
-        inside the group with the names and array schemas from the provided group
-        schema.
-
-        Parameters:
-            uri: Uniform resource identifier for TileDB group or array.
-            group_schema: Schema that defines the group to be created.
-            key: If not ``None``, encryption key, or dictionary of encryption keys to
-                decrypt arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            append: If ``True``, add arrays from the provided group schema to an
-                already existing group. The names for the arrays in the group schema
-                cannot already exist in the group being append to.
-        """
-        if append:
-            original_group_schema = GroupSchema.load(uri, ctx=ctx, key=key)
+    if append:
+        check_valid_group(uri, ctx=ctx)
+        with tiledb.Group(uri, ctx=ctx) as group:
             for array_name in group_schema:
-                if array_name in original_group_schema:
+                if array_name in group:
                     raise ValueError(
                         f"Cannot append to group. Array `{array_name}` already exists."
                     )
-            create_metadata_group = (
-                original_group_schema.metadata_schema is None
-                and group_schema.metadata_schema is not None
-            )
-        else:
-            tiledb.group_create(uri, ctx)
-            create_metadata_group = group_schema.metadata_schema is not None
-        if create_metadata_group:
-            tiledb.Array.create(
-                uri=_get_metadata_array_uri(uri),
-                schema=group_schema.metadata_schema,
-                key=_get_array_key(key, METADATA_ARRAY_NAME),
-                ctx=ctx,
-            )
+    else:
+        tiledb.group_create(uri, ctx)
+    with tiledb.Group(uri, mode="w", ctx=ctx) as group:
         for array_name, array_schema in group_schema.items():
             tiledb.Array.create(
                 uri=_get_array_uri(uri, array_name),
@@ -328,321 +235,54 @@ class Group:
                 key=_get_array_key(key, array_name),
                 ctx=ctx,
             )
-
-    def __init__(
-        self,
-        uri: str,
-        mode: str = "r",
-        key: Optional[Union[Dict[str, str], str]] = None,
-        timestamp: Optional[int] = None,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        """Constructs a new :class:`Group`."""
-        self._group_schema = GroupSchema.load(uri, ctx, key)
-        self._array_uris = {
-            array_name: _get_array_uri(uri, array_name)
-            for array_name in self._group_schema.keys()
-        }
-        self._metadata_array = (
-            None
-            if self._group_schema.metadata_schema is None
-            else tiledb.open(
-                uri=_get_metadata_array_uri(uri),
-                mode=mode,
-                key=_get_array_key(key, METADATA_ARRAY_NAME),
-                timestamp=timestamp,
-                ctx=ctx,
-            )
-        )
-        self._mode = mode
-        self._key = key
-        self._timestamp = timestamp
-        self._ctx = ctx
-        self._open_arrays: Dict[
-            Tuple[Union[str, Any], Union[str, Any]], List[tiledb.Array]
-        ] = defaultdict(list)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exception_type, exception_value, exception_traceback):
-        self.close()
-
-    def close(self):
-        """Closes this Group, flushing all buffered data."""
-        if self._metadata_array is not None:
-            self._metadata_array.close()
-        for array_list in self._open_arrays.values():
-            for array in array_list:
-                array.close()
-        self._open_arrays.clear()
-
-    @property
-    def has_metadata_array(self) -> bool:
-        """Flag that is true if there a metadata array for storing group metadata."""
-        return self._metadata_array is not None
-
-    @property
-    def meta(self) -> Optional[tiledb.Metadata]:
-        """Metadata object for the group, or ``None`` if no array to store group
-        metadata exists."""
-        if self._metadata_array is None:
-            return None
-        return self._metadata_array.meta
-
-    def open_array(
-        self,
-        array: Optional[str] = None,
-        attr: Optional[str] = None,
-        mode: str = None,
-    ) -> tiledb.Array:
-        """
-        Opens one of the arrays in the group, chosen by providing
-        array name or attr name, with an optional setting for a mode
-        different from the default group mode.
-
-        Parameters:
-            array: If not ``None``, open the array with this name.
-                Overrides attr if both are provided.
-            attr: If not ``None``, open the array that contains this attr.
-                Attr must be in only one of the group arrays.
-            mode: mode the array is opened in. Either read 'r' or write 'w'.
-                If not provided, defaults to group mode.
-
-        Returns:
-            tiledb.Array opened in the specified mode
-        """
-        if mode is None:
-            mode = self._mode
-        if array is None and attr is None:
-            raise ValueError(
-                "Cannot open array. Either an array or attribute must be specified."
-            )
-        if array is None:
-            array_names = self._group_schema.arrays_with_attr(attr)
-            if array_names is None:
-                raise KeyError(f"No attribute with name '{attr}' found.")
-            if len(array_names) > 1:
-                raise ValueError(
-                    f"The array must be specified when opening an attribute that "
-                    f"exists in multiple arrays in a group. Arrays with attribute "
-                    f"'{attr}' include: {array_names}."
-                )
-            array = array_names[0]
-        tiledb_array = tiledb.open(
-            self._array_uris[array],
-            mode=self._mode,
-            key=_get_array_key(self._key, array),
-            attr=attr,
-            config=None,
-            timestamp=self._timestamp,
-            ctx=self._ctx,
-        )
-        array_key = (array, attr)
-        self._open_arrays[array_key].append(tiledb_array)
-        return tiledb_array
-
-    def close_array(self, array: Optional[str] = None, attr: Optional[str] = None):
-        """
-        Closes one of the open arrays in the group, chosen by providing
-        array name or attr name.
-
-        Parameters:
-            array: If not ``None``, close the array with this name.
-                Overrides attr if both are provided.
-            attr: If not ``None``, close the array that contains this attr.
-                Attr must be in only one of the group arrays.
-        """
-        if array is None and attr is None:
-            raise ValueError(
-                "Cannot open array. Either an array or attribute must be specified."
-            )
-        if array is None:
-            array_names = self._group_schema.arrays_with_attr(attr)
-            if array_names is None:
-                raise KeyError(f"No attribute with name '{attr}' found.")
-            if len(array_names) > 1:
-                raise ValueError(
-                    f"The array must be specified when opening an attribute that "
-                    f"exists in multiple arrays in a group. Arrays with attribute "
-                    f"'{attr}' include: {array_names}."
-                )
-            array = array_names[0]
-        array_key = (array, attr)
-        tiledb_arrays = self._open_arrays.pop(array_key)
-        if len(tiledb_arrays) > 1:
-            with warnings.catch_warnings():
-                warnings.warn(
-                    f"Closing more than one array reference with name: {array}."
-                    f"If you are using another reference it is now closed.",
-                    stacklevel=3,
-                )
-        for tdb_array in tiledb_arrays:
-            tdb_array.close()
+            group.add(uri=array_name, name=array_name, relative=True)
 
 
-class GroupSchema(Mapping):
-    """Schema for a TileDB group.
+def open_group_array(
+    group: tiledb.Group,
+    *,
+    array: Optional[str] = None,
+    attr: Optional[str] = None,
+    **kwargs,
+) -> tiledb.Array:
+    """Opens an array in a group either by specifying the name of the array or the name
+    of an attribute in the array.
 
-    A TileDB group is completely defined by the arrays in the group. This class is
-    a mapping from array names to array schemas. It also contains an optional array
-    schema for an array to store group-level metadata.
+    If only providing the attribute, there must be exactly one array in the group with
+    an attribute with the requested name.
 
     Parameters:
-        array_schemas: A dict of array names to array schemas in the group.
-        metadata_schema: If not ``None``, a schema for the group metadata array.
-        use_default_metadata_schema: If ``True`` and ``metadata_schema=None`` a default
-            schema will be created for the metadata array.
-        ctx: TileDB Context used for generating default metadata schema.
+        array: If not ``None``, the name of the array to open. Overrides attr if
+            both are provided.
+        attr: If not ``None``, open the array that contains this attr. Attr must be in
+            only one of the group arrays.
+        **kwargs: Keyword arguments to pass to the ``tiledb.open`` method.
+
+    Returns:
+        tiledb.Array opened in the specified mode
     """
-
-    @classmethod
-    def load(
-        cls,
-        uri: str,
-        ctx: Optional[tiledb.Ctx] = None,
-        key: Optional[Union[Dict[str, str], str]] = None,
-    ):
-        """Loads a schema for a TileDB group from a TileDB URI.
-
-        Parameters:
-            uri: uniform resource identifier for the TileDB group
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-            key: If not ``None``, encryption key, or dictionary of encryption keys, to
-                decrypt arrays.
-        """
-        metadata_schema = None
-        if tiledb.object_type(uri, ctx) != "group":
+    # Get the item in the group that either has the requested array name or
+    # requested attribute.
+    if array is not None:
+        item = group[array]
+    elif attr is not None:
+        arrays = tuple(
+            item
+            for item in group
+            if item.type == tiledb.libtiledb.Array
+            and tiledb.ArraySchema.load(item.uri).has_attr(attr)
+        )
+        if not arrays:
+            raise KeyError(f"No attribute with name '{attr}' found.")
+        if len(arrays) > 1:
             raise ValueError(
-                f"Failed to load the group schema. Provided uri '{uri}' is not a "
-                f"valid TileDB group."
+                f"The array must be specified when opening an attribute that "
+                f"exists in multiple arrays in a group. Arrays with attribute "
+                f"'{attr}' include: {item.name for item in group}."
             )
-        vfs = tiledb.VFS(ctx=ctx)
-        array_schemas = {}
-        for item_uri in vfs.ls(uri):
-            if not tiledb.object_type(item_uri, ctx) == "array":
-                continue
-            array_name = item_uri.split("/")[-1]
-            local_key = _get_array_key(key, array_name)
-            if array_name == METADATA_ARRAY_NAME:
-                metadata_schema = tiledb.ArraySchema.load(item_uri, ctx, local_key)
-            else:
-                array_schemas[array_name] = tiledb.ArraySchema.load(
-                    item_uri,
-                    ctx,
-                    local_key,
-                )
-        return cls(array_schemas, metadata_schema, False)
-
-    def __init__(
-        self,
-        array_schemas: Optional[Dict[str, tiledb.ArraySchema]] = None,
-        metadata_schema: Optional[tiledb.ArraySchema] = None,
-        use_default_metadata_schema: bool = True,
-        ctx: Optional[tiledb.Ctx] = None,
-    ):
-        if metadata_schema is None and use_default_metadata_schema:
-            self._metadata_schema = tiledb.ArraySchema(
-                domain=tiledb.Domain(
-                    tiledb.Dim(name="dim", domain=(0, 0), dtype=np.int32, ctx=ctx)
-                ),
-                attrs=[tiledb.Attr(name="attr", dtype=np.int32, ctx=ctx)],
-                sparse=False,
-            )
-        else:
-            self._metadata_schema = metadata_schema
-        if array_schemas is None:
-            self._array_schema_table = {}
-        else:
-            self._array_schema_table = dict(array_schemas)
-        self._attr_to_arrays: Dict[str, List[str]] = defaultdict(list)
-        for schema_name, schema in self._array_schema_table.items():
-            for attr in schema:
-                attr_name = attr.name
-                self._attr_to_arrays[attr_name].append(schema_name)
-
-    def __eq__(self, other: Any):
-        if not isinstance(other, GroupSchema):
-            return False
-        if len(self) != len(other):
-            return False
-        for name, schema in self._array_schema_table.items():
-            if schema != other.get(name):
-                return False
-        if self._metadata_schema != other.metadata_schema:
-            return False
-        return True
-
-    def __getitem__(self, schema_name: str) -> tiledb.ArraySchema:
-        """Returns the requested array schema.
-
-        Parameters:
-            schema_name: Name of the ArraySchema to be returned.
-
-        Returns:
-            ArraySchema with name `schema_name`.
-        """
-        return self._array_schema_table[schema_name]
-
-    def __iter__(self) -> Iterator[str]:
-        """Returns a generator that iterates over (name, ArraySchema) pairs."""
-        return self._array_schema_table.__iter__()
-
-    def __len__(self) -> int:
-        """Returns the number of ArraySchemas in the GroupSchema"""
-        return len(self._array_schema_table)
-
-    def __repr__(self) -> str:
-        """Returns the object representation of this GroupSchema in string form."""
-        output = StringIO()
-        output.write("GroupSchema:\n")
-        if self._metadata_schema is not None:
-            output.write(f"Group metadata schema: {repr(self._metadata_schema)}")
-        for name, schema in self.items():
-            output.write(f"'{name}': {repr(schema)}")
-        return output.getvalue()
-
-    def _repr_html_(self) -> str:
-        """Returns the object representation of this GroupSchame as HTML."""
-        output = StringIO()
-        output.write("<section>\n")
-        output.write(f"<h3>{self.__class__.__name__}</h3>\n")
-        if self._metadata_schema is not None:
-            output.write("<details>\n")
-            output.write("<summary>ArraySchema for Group Metadata Array</summary>\n")
-            output.write(_array_schema_html(self._metadata_schema))
-            output.write("</details>\n")
-        for name, schema in self.items():
-            output.write("<details>\n")
-            output.write(f"<summary>ArraySchema <em>{name}</em></summary>\n")
-            output.write(_array_schema_html(schema))
-            output.write("</details>\n")
-        output.write("</section>\n")
-        return output.getvalue()
-
-    def check(self):
-        """Checks the correctness of each array in the GroupSchema."""
-        for schema in self._array_schema_table.values():
-            schema.check()
-        if self._metadata_schema is not None:
-            self._metadata_schema.check()
-
-    def arrays_with_attr(self, attr_name: str) -> Optional[List[str]]:
-        """Returns a tuple of the names of all arrays with a matching attribute.
-
-        Parameter:
-            attr_name: Name of the attribute to look up arrays for.
-
-        Returns:
-            A tuple of the name of all arrays with a matching attribute, or `None` if no
-                such array.
-        """
-        return self._attr_to_arrays.get(attr_name)
-
-    def has_attr(self, attr_name: str) -> bool:
-        return attr_name in self._attr_to_arrays
-
-    @property
-    def metadata_schema(self) -> Optional[tiledb.ArraySchema]:
-        """ArraySchema for the group-level metadata."""
-        return self._metadata_schema
+        item = arrays[0]
+    else:
+        raise ValueError(
+            "Cannot open array. Either an array or attribute must be specified."
+        )
+    return tiledb.open(item.uri, attr=attr, **kwargs)

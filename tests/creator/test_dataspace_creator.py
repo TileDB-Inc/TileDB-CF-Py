@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf import METADATA_ARRAY_NAME, DataspaceCreator, GroupSchema
+from tiledb.cf import DataspaceCreator
 from tiledb.cf.creator import ArrayCreator, SharedDim
 
 
@@ -84,7 +84,7 @@ class TestDataspaceCreatorExample1:
 
     def test_to_schema(self, dataspace_creator):
         group_schema = dataspace_creator.to_schema()
-        assert isinstance(group_schema, GroupSchema)
+        assert isinstance(group_schema, dict)
         assert len(group_schema) == 3
         assert group_schema["A1"] == tiledb.ArraySchema(
             domain=tiledb.Domain(
@@ -142,13 +142,6 @@ def test_array_name_exists_error():
     creator.add_array_creator("array1", ("row",))
     with pytest.raises(ValueError):
         creator.add_array_creator("array1", ("row",))
-
-
-def test_array_name_reserved_error():
-    creator = DataspaceCreator()
-    creator.add_shared_dim("row", (0, 3), np.int64)
-    with pytest.raises(ValueError):
-        creator.add_array_creator(METADATA_ARRAY_NAME, ("row",))
 
 
 def test_add_attr_no_array_error():

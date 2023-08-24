@@ -13,7 +13,7 @@ import numpy as np
 
 import tiledb
 
-from .core import METADATA_ARRAY_NAME, Group, GroupSchema
+from .core import create_group
 
 DType = Union[int, float, str, None]
 DATA_SUFFIX = ".data"
@@ -241,7 +241,7 @@ class DataspaceCreator:
                 append to.
         """
         schema = self.to_schema(ctx)
-        Group.create(uri, schema, key, ctx, append=append)
+        create_group(uri, schema, key=key, ctx=ctx, append=append)
 
     def get_array_creator(self, array_name: str):
         """Returns the array creator with the requested name.
@@ -299,8 +299,10 @@ class DataspaceCreator:
         """Iterators over shared dimensions in the CF dataspace."""
         return self._registry.shared_dims()
 
-    def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> GroupSchema:
-        """Returns a group schema for the CF dataspace.
+    def to_schema(
+        self, ctx: Optional[tiledb.Ctx] = None
+    ) -> Dict[str, tiledb.ArraySchema]:
+        """Returns a dictionary of array schemas for the CF dataspace.
 
         Parameters:
            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
@@ -314,8 +316,7 @@ class DataspaceCreator:
                     f"Failed to create an ArraySchema for array '{array_creator.name}'."
                     f" {str(err)}"
                 ) from err
-        group_schema = GroupSchema(array_schemas)
-        return group_schema
+        return array_schemas
 
 
 class DataspaceRegistry:
@@ -331,8 +332,6 @@ class DataspaceRegistry:
     def check_new_array_name(self, array_name: str):
         if array_name in self._array_creators:
             raise ValueError(f"An array with name '{array_name}' already exists.")
-        if array_name == METADATA_ARRAY_NAME:
-            raise ValueError(f"The array name '{METADATA_ARRAY_NAME}' is reserved.")
 
     def check_new_attr_name(self, attr_name: str):
         if attr_name in self._attr_to_array:
