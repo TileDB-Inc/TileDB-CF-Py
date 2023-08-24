@@ -15,11 +15,9 @@ API Reference
 Core
 ====
 
-.. autoclass:: tiledb.cf.Group
-  :members:
+.. autofunction:: tiledb.cf.create_group
 
-.. autoclass:: tiledb.cf.GroupSchema
-  :members:
+.. autofunction:: tiledb.cf.open_group_array
 
 .. autoclass:: tiledb.cf.ArrayMetadata
 

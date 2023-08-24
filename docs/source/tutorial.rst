@@ -4,23 +4,6 @@
 TileDB-CF Tutorial
 ******************
 
-TileDB-CF provides some core functionality to help with manage multi-array datasets.
-
-Creating and Using TileDB Groups
-================================
-
-TileDB-CF adds some additional features around creating and using TileDB groups.
-
-Creating Groups
-----------------
-
-TODO
-
-Accessing Group Elements
--------------------------
-
-TODO
-
 
 NetCDF Converter Engine
 =======================
@@ -43,11 +26,17 @@ Some features and use cases do not directly transfer or may need to be modified 
 
 * **Compound data types**: As of TileDB version 2.2, compound data types are not directly supported in TileDB. Compound data types can be broken into their constituent parts; however, this breaks storage locality (TileDB attributes are stored in a [columnar format](https://docs.tiledb.com/main/basic-concepts/data-format)). Variable, opaque, and string data types are supported.
 
+
+NetCDF Conversion Quick Start
+-----------------------------
+
+TODO
+
+
 Command-Line Interface
 ----------------------
-#### Command Line Interface
 
-TileDB-CF provides a command line interface. Currently, it has the following commands:
+TileDB-CF provides a command line interface to the NetCDF converter engine. It contains the following options:
 
 .. code:: bash
 
