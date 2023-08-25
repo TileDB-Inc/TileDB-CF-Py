@@ -127,8 +127,7 @@ Some features and use cases do not directly transfer or may need to be modified 
 Programmatic Interface
 ----------------------
 
-The ``NetCDFConverterEngine`` is a configurable tool for ingesting data from NetCDF into TileDB. The class can be manually constructed, or it can be auto-generated from a NetCDF file or group.
-
+The ``NetCDFConverterEngine`` is a configurable tool for ingesting data from NetCDF into TileDB. The class can be manually constructed, or it can be auto-generated from a NetCDF file or group. See :ref:`netcdf-engine-api` for the API for this class.
 
 Command-Line Interface
 ----------------------
