@@ -15,5 +15,4 @@ TileDB-CF is a Python project for enabling easy access of climate, forecast, and
 
     Overview <overview>
     TileDB-CF Specification <tiledb-cf-spec>
-    Tutorial <tutorial>
     API <api>

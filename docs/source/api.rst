@@ -12,6 +12,8 @@ API Reference
 .. automodule:: tiledb.cf
    :noindex:
 
+.. _core-api:
+
 Core
 ====
 
@@ -25,6 +27,7 @@ Core
 
 .. autoclass:: tiledb.cf.DimMetadata
 
+.. _creator-api:
 
 Dataspace Creator
 =================
@@ -46,6 +49,8 @@ Dataspace Creator
 
 .. autoclass:: tiledb.cf.creator.AttrCreator
   :members:
+
+.. _netcdf-engine-api:
 
 NetCDF-to-TileDB
 ================
@@ -74,6 +79,8 @@ NetCDF-to-TileDB
 
 .. autoclass:: tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter
   :members:
+
+.. _xarray-engine-api:
 
 TileDB-xarray
 =============
