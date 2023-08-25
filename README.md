@@ -2,7 +2,7 @@
 
 # TileDB-CF-Py
 
-The TileDB-CF-Py library is a Python library for supporting the NetCDF data model in the [TileDB storage engine](https://github.com/TileDB-Inc/TileDB). TileDB-CF-Py provides readers and writers for viewing and manipulating TileDB arrays and groups using TileDB CF Dataspaces - a special TileDB group that follows the requirements in [tiledb-cf-spec.rst](docs/source/tiledb-cf-spec.rst).
+The TileDB-CF-Py library is a Python library for supporting the NetCDF data model in the [TileDB storage engine](https://github.com/TileDB-Inc/TileDB). TileDB-CF-Py provides readers and writers for viewing and manipulating TileDB arrays and groups using TileDB CF Dataspaces - a special TileDB group that follows the requirements in [docs/source/tiledb-cf-spec.rst](docs/source/tiledb-cf-spec.rst).
 
 :warning: This library is still under initial development and changes may not be backward compatible.
 
