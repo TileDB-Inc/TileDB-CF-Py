@@ -87,7 +87,7 @@ def copy_from_xarray(  # noqa: C901
     # Copy group metadata
     if copy_group_metadata:
         with tiledb.Group(group_uri, mode="w", config=config, ctx=ctx) as group:
-            for key, val in group_metadata:
+            for key, val in group_metadata.items():
                 safe_set_metadata(group.meta, key, val)
 
     # Skip iterating over full variable list if only writing group metadata.

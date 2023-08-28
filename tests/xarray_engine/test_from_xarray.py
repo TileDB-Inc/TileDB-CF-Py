@@ -149,10 +149,17 @@ class TestWriteSimple1D(TileDBXarrayWriterBase):
     ds = xr.Dataset(
         {
             "example": xr.DataArray(
-                np.linspace(-1.0, 1.0, 16, dtype=np.float32), dims="rows"
+                np.linspace(-1.0, 1.0, 16, dtype=np.float32),
+                dims="rows",
+                attrs={"units": "inches"},
             ),
-            "index": xr.DataArray(np.arange(16, dtype=np.uint32), dims="rows"),
-        }
+            "index": xr.DataArray(
+                np.arange(16, dtype=np.uint32),
+                dims="rows",
+                attrs={"long name": "Rows in the data array"},
+            ),
+        },
+        attrs={"description": "example dataset"},
     )
 
     kwargs = {
