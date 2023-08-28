@@ -2,7 +2,7 @@
 title: TileDB-CF Dataspace
 ---
 
-::: {.warning}
+::: {.callout-warning}
 The current dataspace specification is not stable. Backwards compatibility is not guaranteed for specification less than 1.0.0.
 :::
 

@@ -1,6 +1,11 @@
 project:
   type: website
   output-dir: docs
+  render:
+    - "documentation/index.md"
+    - "documentation/"
+    - "examples/"
+    - "documentation/api"
 
 format:
   html:
@@ -88,25 +93,25 @@ website:
 
         - section: "Overview"
           contents:
-            - href: "documentation/overview.md"
+            - href: "documentation/index.md"
 
-        - section: "TileDB-CF Dataspace Specification"
+        - section: "Specs"
           contents:
             - href: "documentation/tiledb-cf-spec.md"
 
-        - section: "TileDB-CF Core and Dataspace Creator"
+        - section: "Core"
           contents:
             - href: "documentation/core.md"
             - href: "examples/core/group-basics.ipynb"
 
-        - section: "TileDB-CF NetCDF Engine"
+        - section: "NetCDF Engine"
           contents:
             - href: "documentation/netcdf-engine.md"
             - href: "examples/netcdf_engine/netcdf-to-tiledb-basics.ipynb"
             - href: "examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.ipynb"
             - href: "examples/netcdf_engine/netcdf-to-tiledb-set-tiles.ipynb"
 
-        - section: "TileDB-CF Xarray Engine"
+        - section: "Xarray Engine"
           contents:
             - href: "documentation/xarray-engine.md"
             - href: "examples/xarray_engine/tiledb-xarray-basics.ipynb"

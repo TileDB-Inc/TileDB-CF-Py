@@ -16,7 +16,8 @@ dist/
 /.quarto/
 docs/.quarto
 /docs
-*.qmd
+documentation/api
+objects.json
 
 # pyenv
 .python-version

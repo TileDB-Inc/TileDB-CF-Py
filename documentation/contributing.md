@@ -1,6 +1,8 @@
-# Contributing to TileDB-CF-Py
+---
+title: Contributing to TileDB-CF-Py
+---
 
-Hi! Thank you for your interest in contributing to TileDB-CF-Py. The following notes are intended to help you file issues, bug reports, or contribute code to this open source project.
+Thank you for your interest in contributing to TileDB-CF-Py. The following notes are intended to help you file issues, bug reports, or contribute code to this open source project.
 
 ## Contributing Checklist
 
