@@ -12,6 +12,12 @@
 
 ### Improvements
 
+## 0.8.1
+
+### Bug Fixes
+
+* Fixes bug when writing xarray.Dataset group-level metadata to a TileDB group.
+
 ## 0.8.0
 
 ### Breaking Behavior
