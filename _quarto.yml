@@ -1,0 +1,127 @@
+project:
+  type: website
+  output-dir: docs
+
+format:
+  html:
+    toc: true
+    theme:
+      light: [flatly, "quarto-materials/tiledb.scss"]
+    mainfont: Helvetica
+    fontsize: 1rem
+    linkcolor: "#4d9fff"
+    code-copy: true
+    code-overflow: wrap
+    css: "quarto-materials/tiledb.css"
+
+quartodoc:
+    title: "API Reference"
+    package: tiledb
+    dir: "documentation/api"
+    sections:
+        - title: "Core"
+          desc: ""
+          contents:
+            - cf.create_group
+            - cf.open_group_array
+            - cf.ArrayMetadata
+            - cf.AttrMetadata
+            - cf.DimMetadata
+
+        - title: "Dataspace Creator"
+          desc: ""
+          contents:
+            - cf.DataspaceCreator
+            - cf.creator.SharedDim
+            - cf.creator.ArrayCreator
+            - cf.creator.DomainCreator
+            - cf.creator.DimCreator
+            - cf.creator.AttrCreator
+
+        - title: "NetCDF Engine"
+          desc: ""
+          contents:
+            - cf.from_netcdf
+            - cf.NetCDF4ConverterEngine
+            - cf.netcdf_engine.NetCDF4CoordToDimConverter
+            - cf.netcdf_engine.NetCDF4DimToDimConverter
+            - cf.netcdf_engine.NetCDF4ScalarToDimConverter
+            - cf.netcdf_engine.NetCDF4ArrayConverter
+            - cf.netcdf_engine.NetCDF4DomainConverter
+            - cf.netcdf_engine.NetCDF4ToDimConverter
+            - cf.netcdf_engine.NetCDF4VarToAttrConverter
+
+        - title: "Xarray Engine"
+          desc: ""
+          contents:
+            - cf.from_xarray
+            - cf.create_group_from_xarray
+            - cf.copy_data_from_xarray
+            - cf.copy_metadata_from_xarray
+
+website:
+  favicon: "images/favicon.ico"
+  site-url: https://tiledb-inc.github.io/tiledb-quarto-template/
+  repo-url: https://github.com/TileDB-Inc/tiledb-quarto-template
+
+  repo-actions: [issue]
+  page-navigation: true
+  navbar:
+    background: light
+    logo: "quarto-materials/tiledb-logo.png"
+    collapse-below: lg
+    left:
+      - text: "Home page"
+        href: "https://tiledb.com"
+      - text: "Login"
+        href: "https://cloud.tiledb.com/auth/login"
+      - text: "Contact us"
+        href: "https://tiledb.com/contact"
+      - text: "Repo"
+        href: "https://github.com/TileDB-Inc/tiledb-cf-py"
+
+  sidebar:
+    - style: "floating"
+      collapse-level: 2
+      align: left
+      contents:
+
+        - section: "Overview"
+          contents:
+            - href: "documentation/overview.md"
+
+        - section: "TileDB-CF Dataspace Specification"
+          contents:
+            - href: "documentation/tiledb-cf-spec.md"
+
+        - section: "TileDB-CF Core and Dataspace Creator"
+          contents:
+            - href: "documentation/core.md"
+            - href: "examples/core/group-basics.ipynb"
+
+        - section: "TileDB-CF NetCDF Engine"
+          contents:
+            - href: "documentation/netcdf-engine.md"
+            - href: "examples/netcdf_engine/netcdf-to-tiledb-basics.ipynb"
+            - href: "examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.ipynb"
+            - href: "examples/netcdf_engine/netcdf-to-tiledb-set-tiles.ipynb"
+
+        - section: "TileDB-CF Xarray Engine"
+          contents:
+            - href: "documentation/xarray-engine.md"
+            - href: "examples/xarray_engine/tiledb-xarray-basics.ipynb"
+            - href: "examples/xarray_engine/tiledb-xarray-partially-filled-arrays.ipynb"
+
+
+        - section: "API Reference"
+          contents:
+            - href: "documentation/api/index.qmd"
+
+        - section: "History"
+          contents:
+            - href: "HISTORY.md"
+
+        - section: "Contributing"
+          contents:
+            - href: "documentation/contributing.md"
+            - href: "documentation/code-of-conduct.md"

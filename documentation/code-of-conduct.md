@@ -1,4 +1,8 @@
-# Introduction
+---
+title: TileDB-CF Code of Conduct
+---
+
+## Introduction
 
 All participants in TileDB spaces are expected to adhere to high standards of
 professionalism in all interactions. These standards include, but are not

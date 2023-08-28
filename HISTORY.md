@@ -265,7 +265,7 @@ The TileDB-CF-Py v0.2.0 release is the initial release of TileDB-CF-Py.
 
 ### New Features
 
-* Initial release of the [TileDB CF dataspace specification](tiledb-cf-spec.md) for defining a data model compatible with the NetCDF data model.
+* Initial release of the TileDB CF dataspace specification (tiledb-cf-spec.md) for defining a data model compatible with the NetCDF data model.
 * Adds a `Group` class for reading and writing to arrays in a TileDB group.
 * Adds a `GroupSchema` class for loading the array schemas for ararys in a TileDB group.
 * Adds `AttrMetadata` and `ArrayMetadata` class for managing attribute specific metadata.

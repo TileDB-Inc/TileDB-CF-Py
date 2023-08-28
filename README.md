@@ -34,4 +34,4 @@ Example Jupyter notebooks are available in the [examples](./examples) folder.
 
 ## Development
 
-For information on contributing to this project see the [CONTRIBUTING](CONTRIBUTING.md) document.
+For information on contributing to this project see the [contributing](documentation/contributing.md) document and the [code of conduct](documentation/code-of-conduct.md).

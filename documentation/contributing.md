@@ -8,7 +8,7 @@ Hi! Thank you for your interest in contributing to TileDB-CF-Py. The following n
 
 * Contributing code? You rock! Be sure to [review the contributor section](#contributing-code) for helpful tips on the tools we use to build this project, format code, and issue pull requests (PR)'s.
 
-Note: All participants in TileDB spaces are expected to adhere to a high standard of profectionalism in all interactions. See the [code of conduct](CODE_OF_CONDUCT.md) for more information.
+Note: All participants in TileDB spaces are expected to adhere to a high standard of profectionalism in all interactions. See the [code of conduct](code-of-conduct.md) for more information.
 
 ## Reporting a Bug
 
@@ -113,7 +113,7 @@ To build the API documentation do the following from this projects root director
 
 * Run the formatting (`isort`, `black`) and linting tools (`flake8`, `mypy`) before submitting a final PR. Make sure that your contribution generally follows the format and naming conventions used by surrounding code.
 
-* Update the [HISTROY.md](HISTORY.md) with any changes/adds/removes to user-facing API or system behavior. Make sure to note any non-backward compatible changes as a breaking change.
+* Update the HISTORY with any changes/adds/removes to user-facing API or system behavior. Make sure to note any non-backward compatible changes as a breaking change.
 
 * Submit a PR, writing a descriptive message.  If a PR closes an open issue, reference the issue in the PR message (e.g. If an issue closes issue number 10, you would write `closes #10`)
 
