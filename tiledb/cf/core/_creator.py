@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 """Classes for creating a dataspace."""
 
 from __future__ import annotations
@@ -13,9 +11,9 @@ import numpy as np
 
 import tiledb
 
-from .core import create_group
+from .._utils import DType
+from .api import create_group
 
-DType = Union[int, float, str, None]
 DATA_SUFFIX = ".data"
 INDEX_SUFFIX = ".index"
 

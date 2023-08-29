@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 """``tiledb.cf`` is the core module for the TileDB-CF-Py library.
 
 This module contains core classes and functions for supporting the NetCDF data model in
@@ -14,14 +12,17 @@ simply import using:
 from .cli import cli
 from .core import (
     ATTR_METADATA_FLAG,
+    DATA_SUFFIX,
     DIM_METADATA_FLAG,
+    INDEX_SUFFIX,
     ArrayMetadata,
     AttrMetadata,
+    DataspaceCreator,
     DimMetadata,
     create_group,
+    dataspace_name,
     open_group_array,
 )
-from .creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
 from .netcdf_engine import from_netcdf, has_netCDF4
 from .xarray_engine import (
     copy_data_from_xarray,

@@ -1,10 +1,8 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf.creator import ArrayCreator, DataspaceRegistry, SharedDim
+from tiledb.cf.core._creator import ArrayCreator, DataspaceRegistry, SharedDim
 
 
 class TestArrayCreatorSparseExample1:

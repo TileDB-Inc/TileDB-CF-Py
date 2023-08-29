@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 """Functions for converting NetCDF files to TileDB."""
 
 from pathlib import Path
