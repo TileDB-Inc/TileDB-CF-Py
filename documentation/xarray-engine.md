@@ -32,7 +32,9 @@ For a TileDB group to be readable by xarray, the following must be satisfied:
 
 The TileDB backend engine can be used with the standard xarray keyword arguments. It supports the additional TileDB-specific arguments:
 
-* TODO
+* `config`: An optional TileDB configuration object to use in arrays and groups.
+* `ctx`: An optional TileDB context object to use for all TileDB operations.
+* `timestamp`: An optional timestamp to open the TileDB array at (not supported on groups).
 
 
 ## Writing from Xarray to TileDB
@@ -45,7 +47,7 @@ There are two sets of functions for writing to xarray:
 
     * Functions used: `from_xarray`
     * Useful when copying an entire xarray dataset to a TileDB group in a single function call.
-    * Creates the group and copies all data and metadata to the new group.
+    * Creates the group and copies all data and metadata to the new group in a single function call.
 
 2. Multi-dataset ingestion.
 

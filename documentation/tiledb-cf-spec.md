@@ -1,5 +1,5 @@
 ---
-title: TileDB-CF Dataspace
+title: TileDB-CF Dataspace Specification
 ---
 
 ::: {.callout-warning}

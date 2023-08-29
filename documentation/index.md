@@ -10,16 +10,14 @@ The TileDB-CF library is still under initial development and changes may not be 
 
 TileDB-CF is a python package intended to aid in modeling and analyzing complex multi-dimensional data in TileDB. It currently contains the following components:
 
-* **Core**: High-level API for common TileDB group and metadata actions.
-
-* **Creator**: Support for generating a group following the TileDB-CF dataspace specification.
+* **Core**: High-level API for common TileDB group and metadata actions, and a creator class for generating TileDB groups following the TileDB-CF Dataspace specification.
 
 * **NetCDF Engine**: Support for creating a TileDB group or array from NetCDF data and copying the data into the new group or array.
 
 * **Xarray Engine**:
 
   - Backend engine that can be used with `xarray.open_dataset`.
-  - Support for create a TileDB from an xarray dataset and copying the data into the new group.
+  - Support for creating a TileDB from an xarray dataset and copying the data into the new group.
 
 
 ## Installation
@@ -32,12 +30,11 @@ pip install tiledb-cf
 
 TileDB-CF contains optional features that will be enabled if the required python packages are included in the python environment. These include:
 
-* `docs`: support for generating documentation with sphinx,
 * `netCDF4`: support for the NetCDF engine,
 * `xarray`: support for the xarray engine,
 * `parallel`: support for dask operations (used with the xarray engine),
-* `examples`: additional packages needed to run the example notebooks.
-
+* `complete`: all of the above packages,
+* `docs`: support for quartodoc and the example notebooks.
 
 To install tiledb-cf with additional dependencies use:
 
@@ -45,10 +42,10 @@ To install tiledb-cf with additional dependencies use:
 pip install tiledb-cf[<optional dependecies>]
 ```
 
-For example, to install xarray with dask support and the NetCDF converter engine use:
+For example, to install TileDB-CF-Py and enable the xarray engine with dask support:
 
 ```bash
-pip install tiledb-cf[xarray,parallel,netCDF4]
+pip install tiledb-cf[xarray,parallel]
 ```
 
 ## TileDB Data Model

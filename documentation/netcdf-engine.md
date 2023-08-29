@@ -1,6 +1,6 @@
-___
+---
 title: TileDB-CF NetCDF Engine
-___
+---
 
 ## NetCDF Data Model
 The NetCDF data model is a common choice for multi-dimensional data, especially in the climate and weather space. NetCDF and TileDB use over lapping terminology to refer to concepts in their respective data model.
@@ -11,7 +11,7 @@ A NetCDF file consists of **groups**, **dimensions**, **variables**, and **attri
 
 * **Dimensions**: A dimension is a name-size pair that describes an axis of a multi-dimension array. The size of the dimension may be "unlimited" (allowed to grow). The NetCDF dimension is roughly ananlogous to a TileDB dimension in a dense TileDB array.
 
-* **Variables**: A variable is a multi-dimensional array with a NetCDF dimension associated to each axis of the array. The size of the dimensions must match the shape of the multi-dimensional array. A NetCDF variable is roughly equivalent to a TileDB attribute in a sparse or dense TileDB array or a TileDB dimension in a sparse TileDB array.
+* **Variables**: A variable is a multi-dimensional array with a NetCDF dimension associated to each axis of the array. The size of the dimensions must match the shape of the multi-dimensional array. A NetCDF variable is roughly equivalent to either a TileDB attribute in a sparse or dense TileDB array or a TileDB dimension in a sparse TileDB array.
 
 * **Attribute**: An attribute is a key-value pair that is associated with either a group or variable. Attributes are used to store (typically small) metadata. NetCDF attributes are roughly equivalent to TileDB metadata.
 
@@ -20,7 +20,7 @@ A NetCDF file consists of **groups**, **dimensions**, **variables**, and **attri
 
 ## NetCDF-to-TileDB Compatibility
 
-The TileDB-CF package provides an interface for generating TileDB groups from NetCDF datasets using the TileDB CF Dataspace convention. The CF Dataspace model supports the classic NetCDF-4 data model by mapping:
+The TileDB-CF package provides an interface for generating TileDB groups from NetCDF datasets using the TileDB-CF Dataspace convention. The CF Dataspace model supports the classic NetCDF-4 data model by mapping:
 
 * NetCDF groups to TileDB groups;
 * NetCDF dimensions to TileDB dimensions;
