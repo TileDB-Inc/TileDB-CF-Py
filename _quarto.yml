@@ -94,21 +94,26 @@ website:
           contents:
             - href: "documentation/core.md"
             - href: "documentation/tiledb-cf-spec.md"
-            - href: "examples/core/group-basics.ipynb"
+            - section: "Examples"
+              contents:
+                - href: "examples/core/group-basics.ipynb"
 
         - section: "NetCDF Engine"
           contents:
             - href: "documentation/netcdf-engine.md"
-            - href: "examples/netcdf_engine/netcdf-to-tiledb-basics.ipynb"
-            - href: "examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.ipynb"
-            - href: "examples/netcdf_engine/netcdf-to-tiledb-set-tiles.ipynb"
+            - section: "Examples"
+              contents:
+                - href: "examples/netcdf_engine/netcdf-to-tiledb-basics.ipynb"
+                - href: "examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.ipynb"
+                - href: "examples/netcdf_engine/netcdf-to-tiledb-set-tiles.ipynb"
 
         - section: "Xarray Engine"
           contents:
             - href: "documentation/xarray-engine.md"
-            - href: "examples/xarray_engine/tiledb-xarray-basics.ipynb"
-            - href: "examples/xarray_engine/tiledb-xarray-partially-filled-arrays.ipynb"
-
+            - section: "Examples"
+              contents:
+                - href: "examples/xarray_engine/tiledb-xarray-basics.ipynb"
+                - href: "examples/xarray_engine/tiledb-xarray-partially-filled-arrays.ipynb"
 
         - section: "API Reference"
           contents:
