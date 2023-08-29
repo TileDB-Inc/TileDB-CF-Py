@@ -5,7 +5,6 @@ project:
     - "documentation/index.md"
     - "documentation/"
     - "examples/"
-    - "documentation/api"
 
 format:
   html:
@@ -32,10 +31,6 @@ quartodoc:
             - cf.ArrayMetadata
             - cf.AttrMetadata
             - cf.DimMetadata
-
-        - title: "Dataspace Creator"
-          desc: ""
-          contents:
             - cf.DataspaceCreator
             - cf.creator.SharedDim
             - cf.creator.ArrayCreator
@@ -43,7 +38,7 @@ quartodoc:
             - cf.creator.DimCreator
             - cf.creator.AttrCreator
 
-        - title: "NetCDF Engine"
+        - title: "NetCDF Support"
           desc: ""
           contents:
             - cf.from_netcdf
@@ -56,7 +51,7 @@ quartodoc:
             - cf.netcdf_engine.NetCDF4ToDimConverter
             - cf.netcdf_engine.NetCDF4VarToAttrConverter
 
-        - title: "Xarray Engine"
+        - title: "Xarray Support"
           desc: ""
           contents:
             - cf.from_xarray
@@ -95,13 +90,10 @@ website:
           contents:
             - href: "documentation/index.md"
 
-        - section: "Specs"
-          contents:
-            - href: "documentation/tiledb-cf-spec.md"
-
-        - section: "Core"
+        - section: "TileDB-CF Core"
           contents:
             - href: "documentation/core.md"
+            - href: "documentation/tiledb-cf-spec.md"
             - href: "examples/core/group-basics.ipynb"
 
         - section: "NetCDF Engine"
@@ -121,10 +113,6 @@ website:
         - section: "API Reference"
           contents:
             - href: "documentation/api/index.qmd"
-
-        - section: "History"
-          contents:
-            - href: "HISTORY.md"
 
         - section: "Contributing"
           contents:
