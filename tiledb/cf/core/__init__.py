@@ -1,6 +1,6 @@
 """Core TileDB-CF functionality."""
 
-from ._creator import DATA_SUFFIX, INDEX_SUFFIX, DataspaceCreator, dataspace_name
+from ._creator import DataspaceCreator
 from ._metadata import (
     ATTR_METADATA_FLAG,
     DIM_METADATA_FLAG,

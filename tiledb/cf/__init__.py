@@ -12,15 +12,12 @@ simply import using:
 from .cli import cli
 from .core import (
     ATTR_METADATA_FLAG,
-    DATA_SUFFIX,
     DIM_METADATA_FLAG,
-    INDEX_SUFFIX,
     ArrayMetadata,
     AttrMetadata,
     DataspaceCreator,
     DimMetadata,
     create_group,
-    dataspace_name,
     open_group_array,
 )
 from .netcdf_engine import from_netcdf, has_netCDF4

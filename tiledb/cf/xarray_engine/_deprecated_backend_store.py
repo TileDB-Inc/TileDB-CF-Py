@@ -30,11 +30,11 @@ try:
 except ModuleNotFoundError:
     has_tiledb = False
 
-from ..core import DATA_SUFFIX, INDEX_SUFFIX
-
 _ATTR_PREFIX = "__tiledb_attr."
 _DIM_PREFIX = "__tiledb_dim."
 _COORD_SUFFIX = ".data"
+_DATA_SUFFIX = ".data"
+_INDEX_SUFFIX = ".index"
 
 
 class TileDBIndexConverter:
@@ -395,10 +395,10 @@ class TileDBDataStore(AbstractDataStore):
         dims = {indexer.name: indexer.size for indexer in index_converters}
         for attr in schema:
             variable_name = attr.name
-            if variable_name.endswith(DATA_SUFFIX):
-                variable_name = variable_name[: -len(DATA_SUFFIX)]
-            elif variable_name.endswith(INDEX_SUFFIX):
-                variable_name = variable_name[: -len(INDEX_SUFFIX)]
+            if variable_name.endswith(_DATA_SUFFIX):
+                variable_name = variable_name[: -len(_DATA_SUFFIX)]
+            elif variable_name.endswith(_INDEX_SUFFIX):
+                variable_name = variable_name[: -len(_INDEX_SUFFIX)]
             data = LazilyIndexedArray(
                 TileDBDenseArrayWrapper(
                     attr,

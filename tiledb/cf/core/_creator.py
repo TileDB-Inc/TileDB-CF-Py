@@ -14,27 +14,6 @@ import tiledb
 from .._utils import DType
 from .api import create_group
 
-DATA_SUFFIX = ".data"
-INDEX_SUFFIX = ".index"
-
-
-def dataspace_name(full_name: str):
-    """Returns dataspace name for from full dimension or attribute name.
-
-    Parameters:
-        full_name: The full name of the dimension or attribute as it will be written in
-            TileDB.
-
-    Returns:
-        The name of the dimension or attribute as it would be written in the NetCDF data
-        model.
-    """
-    if full_name.endswith(DATA_SUFFIX):
-        return full_name[: -len(DATA_SUFFIX)]
-    if full_name.endswith(INDEX_SUFFIX):
-        return full_name[: -len(INDEX_SUFFIX)]
-    return full_name
-
 
 class DataspaceCreator:
     """Creator for a group of arrays that satify the CF Dataspace Convention.
@@ -334,13 +313,6 @@ class DataspaceRegistry:
     def check_new_attr_name(self, attr_name: str):
         if attr_name in self._attr_to_array:
             raise ValueError(f"An attribute with name '{attr_name}' already exists.")
-        ds_name = dataspace_name(attr_name)
-        ds_names = {ds_name, ds_name + DATA_SUFFIX, ds_name + INDEX_SUFFIX}
-        if not ds_names.isdisjoint(self._attr_to_array.keys()):
-            raise ValueError(
-                f"An attribute named with the dataspace name '{ds_name}' already "
-                f"exists."
-            )
 
     def check_new_dim(self, shared_dim: SharedDim):
         if (
