@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Sequence
 
 import numpy as np
 from typing_extensions import Self
@@ -8,7 +8,9 @@ from typing_extensions import Self
 import tiledb
 
 from .._utils import DType
+from ._fragment_writer import FragmentWriter
 from .registry import RegisteredByNameMixin, Registry
+from .source import BufferData
 
 
 class AttrCreator(RegisteredByNameMixin):
@@ -33,12 +35,14 @@ class AttrCreator(RegisteredByNameMixin):
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
         registry: Optional[Registry[Self]] = None,
+        fragment_writers: Optional[Sequence[FragmentWriter]] = None,
     ):
         self.dtype = np.dtype(dtype)
         self.fill = fill
         self.var = var
         self.nullable = nullable
         self.filters = filters
+        self._fragment_writers = fragment_writers
         super().__init__(name, registry)
 
     def __repr__(self):
@@ -55,6 +59,17 @@ class AttrCreator(RegisteredByNameMixin):
             f" &rarr; tiledb.Attr(name={self.name}, dtype='{self.dtype!s}', "
             f"var={self.var}, nullable={self.nullable}{filters_str})"
         )
+
+    def set_fragment_data(self, fragment_index: int, buffer_data: BufferData):
+        if self._fragment_writers is None:
+            raise ValueError("Attribute creator has not fragment writers")
+        if self.buffer_data.dtype != self.buffer_data:
+            raise ValueError(
+                "Cannot set data with dtype='{buffer_data.dtype}' to an attribute witha"
+                f"dtype='{self._dtype}'."
+            )
+        # TODO: Check variable length?
+        self._fragment_writers[fragment_index].set_attr_data(self.name, buffer_data)
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
         """Returns a :class:`tiledb.Attr` using the current properties.

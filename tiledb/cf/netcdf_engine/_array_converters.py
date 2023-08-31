@@ -78,8 +78,10 @@ class NetCDF4ArrayConverter(ArrayCreator):
         )
         tiledb_array[coord_values] = data
 
-    def _new_core(self, dim_registry: Registry[SharedDim], dim_names: Sequence[str]):
-        return NetCDF4ArrayConverterCore(dim_registry, dim_names)
+    def _new_core(
+        self, sparse: bool, dim_registry: Registry[SharedDim], dim_names: Sequence[str]
+    ):
+        return NetCDF4ArrayConverterCore(sparse, dim_registry, dim_names)
 
     def _new_domain_creator(self):
         return NetCDF4DomainConverter(self._core)

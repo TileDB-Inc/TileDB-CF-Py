@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Sequence
 from io import StringIO
-from typing import Dict, Iterable, Optional, Sequence, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 from typing_extensions import Self
@@ -11,6 +12,7 @@ import tiledb
 
 from ._attr_creator import AttrCreator
 from ._dim_creator import DimCreator
+from ._fragment_writer import DenseFragmentRegion, FragmentWriter, SparseFragmentRegion
 from ._shared_dim import SharedDim
 from .registry import RegisteredByNameMixin, Registry
 
@@ -107,9 +109,10 @@ class ArrayCreator(RegisteredByNameMixin):
 
         # Initialize the core implementation, the domain creator, and the
         # attribute registry.
-        self._core = self._new_core(dim_registry, dim_order)
+        self._core = self._new_core(sparse, dim_registry, dim_order)
         self._domain_creator = self._new_domain_creator()
         self._attr_registry = ArrayAttrRegistry(self._core)
+        self._fragment_writers = ArrayFragmentWriters(self._core)
 
         # Set array properties.
         self.cell_order = cell_order
@@ -154,8 +157,10 @@ class ArrayCreator(RegisteredByNameMixin):
         output.write("  )")
         return output.getvalue()
 
-    def _new_core(self, dataspace_registry, dim_names: Sequence[str]):
-        return ArrayCreatorCore(dataspace_registry, dim_names)
+    def _new_core(
+        self, sparse: bool, dim_registry: Registry[SharedDim], dim_names: Sequence[str]
+    ):
+        return ArrayCreatorCore(sparse, dim_registry, dim_names)
 
     def _new_domain_creator(self):
         return DomainCreator(self._core)
@@ -199,6 +204,7 @@ class ArrayCreator(RegisteredByNameMixin):
             filters = self.attrs_filters
         AttrCreator(
             registry=self._attr_registry,
+            fragment_writers=self._fragment_writers,
             name=name,
             dtype=dtype,
             fill=fill,
@@ -206,6 +212,14 @@ class ArrayCreator(RegisteredByNameMixin):
             nullable=nullable,
             filters=filters,
         )
+
+    def add_dense_fragment_writer(
+        self, *, target_region: Optional[Tuple[Tuple[int, int], ...]] = None
+    ):
+        self._core.add_dense_fragment_writer(target_region=target_region)
+
+    def add_sparse_fragment_writer(self, size=int):
+        self._core.add_sparse_fragment_writer(size)
 
     def create(
         self, uri: str, key: Optional[str] = None, ctx: Optional[tiledb.Ctx] = None
@@ -218,6 +232,25 @@ class ArrayCreator(RegisteredByNameMixin):
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
         tiledb.Array.create(uri=uri, schema=self.to_schema(ctx), key=key, ctx=ctx)
+
+    def write(self, uri: str, *, key: Optional[str] = None, ctx=None, append=False):
+        if not append:
+            self.create(uri, key=key, ctx=ctx)
+        with tiledb.open(uri, key=key, ctx=ctx, mode="w") as array:
+            for frag_writer in self._core.fragment_writers():
+                frag_writer.write(array)
+
+    def write_fragment(
+        self,
+        uri: str,
+        fragment_index: int,
+        *,
+        key: Optional[str] = None,
+        ctx=None,
+    ):
+        with tiledb.open(uri, key=key, ctx=ctx, mode="w") as array:
+            frag_writer = self._core.get_fragment_writer(fragment_index)
+            frag_writer.write(array)
 
     @property
     def domain_creator(self) -> DomainCreator:
@@ -293,6 +326,14 @@ class ArrayCreator(RegisteredByNameMixin):
         """
         return self._core.deregister_attr_creator(attr_name)
 
+    @property
+    def sparse(self) -> bool:
+        return self._core.sparse
+
+    @sparse.setter
+    def sparse(self, is_sparse: bool):
+        self._core.sparse = is_sparse
+
     def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.ArraySchema:
         """Returns an array schema for the array.
 
@@ -317,15 +358,47 @@ class ArrayCreator(RegisteredByNameMixin):
 
 
 class ArrayCreatorCore:
-    def __init__(self, dim_registry: Registry[SharedDim], array_dims: Sequence[str]):
+    def __init__(
+        self, sparse: bool, dim_registry: Registry[SharedDim], array_dims: Sequence[str]
+    ):
+        self._sparse = sparse
         self._dim_registry = dim_registry
         self._dim_creators = tuple(
             self._new_dim_creator(dim_name) for dim_name in array_dims
         )
         self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
+        self._fragment_writers: List[FragmentWriter] = list()
 
     def _new_dim_creator(self, dim_name: str, **kwargs):
         return DimCreator(self._dim_registry[dim_name], **kwargs)
+
+    def add_dense_fragment_writer(
+        self, *, target_region: Optional[Tuple[Tuple[int, int], ...]] = None
+    ):
+        if self._sparse:
+            raise ValueError(
+                "Setting a dense fragment region on a sparse array is not implemented."
+            )
+        if target_region is None:
+            target_region = tuple(dim.domain for dim in self._dim_creators)
+        self._fragment_writers.append(
+            FragmentWriter(
+                region=DenseFragmentRegion(target_region=target_region),
+                dim_creators=self._dim_creators,
+                attr_creators=self._attr_creators,
+            )
+        )
+
+    def add_sparse_fragment_writer(self, size: int):
+        if not self._sparse:
+            raise ValueError("Cannot set a sparse region to a dense array.")
+        self._fragment_writers.append(
+            FragmentWriter(
+                region=SparseFragmentRegion(size),
+                dim_creators=self._dim_creators,
+                attr_creatos=self._attr_creators,
+            )
+        )
 
     def attr_creators(self):
         """Iterates over attribute creators in the array creator."""
@@ -351,6 +424,10 @@ class ArrayCreatorCore:
     def dim_creators(self):
         """Iterates over dimension creators in the array creator."""
         return iter(self._dim_creators)
+
+    def fragment_writers(self):
+        """Iterates over fragmetn writers in the array creator."""
+        return iter(self._fragment_writers)
 
     def get_attr_creator(self, key: Union[str, int]) -> AttrCreator:
         """Returns the requested attribute creator.
@@ -389,6 +466,9 @@ class ArrayCreatorCore:
             if dim_creator.name == dim_name:
                 return index
         raise KeyError(f"Dimension creator with name '{dim_name}' not found.")
+
+    def get_fragment_writer(self, index: int) -> Tuple[slice]:
+        return self._fragment_writers[int]
 
     def has_attr_creator(self, name: str) -> bool:
         """Returns if an attribute creator with the requested name is in the array
@@ -451,6 +531,22 @@ class ArrayCreatorCore:
         self._dim_creators = (
             self._dim_creators[:dim_index] + self._dim_creators[dim_index + 1 :]
         )
+
+    @property
+    def sparse(self) -> bool:
+        return self._sparse
+
+    @sparse.setter
+    def sparse(self, is_sparse: bool):
+        if is_sparse is self._sparse:
+            # No-op
+            return
+        if len(self._fragment_writers) > 0:
+            raise NotImplementedError(
+                "Support for changing sparsity after setting fragment regions is not "
+                "implemented."
+            )
+        self._sparse = is_sparse
 
     def update_attr_creator_name(self, original_name: str, new_name: str):
         """Renames an attribute in the array.
@@ -557,3 +653,15 @@ class DomainCreator:
             raise ValueError("Cannot create schema for array with no dimensions.")
         tiledb_dims = [dim_creator.to_tiledb() for dim_creator in self]
         return tiledb.Domain(tiledb_dims, ctx=ctx)
+
+
+# TODO: Make MutableSequence
+class ArrayFragmentWriters(Sequence):
+    def __init__(self, core: ArrayCreatorCore):
+        self._core = core
+
+    def __getitem__(self, index: int) -> FragmentWriter:
+        return self._core.get_fragment_writer(index)
+
+    def __len__(self) -> int:
+        return self._core.nfragments()
