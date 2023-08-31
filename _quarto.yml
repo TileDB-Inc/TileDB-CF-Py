@@ -15,7 +15,7 @@ format:
     fontsize: 1rem
     linkcolor: "#4d9fff"
     code-copy: true
-    code-overflow: wrap
+    code-overflow: scroll
     css: "quarto-materials/tiledb.css"
 
 quartodoc:
