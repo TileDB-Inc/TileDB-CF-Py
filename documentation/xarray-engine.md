@@ -5,7 +5,7 @@ title: TileDB-CF Xarray Engine
 
 ## Reading from TileDB with Xarray
 
-Xarray uses a plugin infrastructure that allows third-party developers to create their own backend engines for reading and writing. TileDB-CF contains one such backend. To use the backend, make sure `tiledb-cf` is installed in your current Python environment, and use the `tiledb` engine:
+Xarray uses a plugin infrastructure that allows third-party developers to create their own backend engines for reading data into xarray. TileDB-CF contains one such backend. To use the backend, make sure `tiledb-cf` is installed in your current Python environment, and use the `tiledb` engine:
 
 
 ```python
