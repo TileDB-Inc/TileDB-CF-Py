@@ -45,7 +45,7 @@ pip install tiledb-cf[<optional dependecies>]
 For example, to install TileDB-CF-Py and enable the xarray engine with dask support:
 
 ```bash
-pip install tiledb-cf[xarray,parallel]
+pip install 'tiledb-cf[xarray,parallel]'
 ```
 
 ## TileDB Data Model
