@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="generator" content="quarto-0.9.141">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>netcdf-to-tiledb-basics</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+
+  <script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+  <script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+  <script src="../../site_libs/clipboard/clipboard.min.js"></script>
+  <meta name="quarto:offset" content="../../">
+  <script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+  <script src="../../site_libs/quarto-search/fuse.min.js"></script>
+  <script src="../../site_libs/quarto-search/quarto-search.js"></script>
+  <link href="../../examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.html" rel="next">
+  <link href="../../documentation/netcdf-engine.html" rel="prev">
+  <link href="../../images/favicon.ico" rel="icon">
+  <script src="../../site_libs/quarto-html/quarto.js"></script>
+  <script src="../../site_libs/quarto-html/popper.min.js"></script>
+  <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+  <script src="../../site_libs/quarto-html/anchor.min.js"></script>
+  <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+  <link id="quarto-text-highlighting-styles" href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet">
+  <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+  <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+  <link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <script id="quarto-search-options" type="application/json">{
+    "location": "navbar",
+    "copy-button": false,
+    "collapse-after": 3,
+    "panel-placement": "end",
+    "type": "overlay",
+    "limit": 20,
+    "language": {
+      "search-no-results-text": "No results",
+      "search-matching-documents-text": "matching documents",
+      "search-copy-link-title": "Copy link to search",
+      "search-hide-matches-text": "Hide additional matches",
+      "search-more-match-text": "more match in this document",
+      "search-more-matches-text": "more matches in this document",
+      "search-clear-button-title": "Clear",
+      "search-detached-cancel-button-title": "Cancel",
+      "search-submit-button-title": "Submit"
+    }
+  }</script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+  <link rel="stylesheet" href="../../quarto-materials/tiledb.css">
+</head>
+<body class="floating">
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <a class="navbar-brand" href="../../index.html">
+    <img src="../../quarto-materials/tiledb-logo.png" alt="">
+  </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com">Home page</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://cloud.tiledb.com/auth/login">Login</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com/contact">Contact us</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/TileDB-Inc/tiledb-cf-py">Repo</a>
+  </li>  
+</ul>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+    <div class="container-fluid d-flex justify-content-between">
+      <h1 class="quarto-secondary-nav-title">(Untitled)</h1>
+      <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">Overview</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/index.html" class="sidebar-item-text sidebar-link">TileDB-CF Overview</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">TileDB-CF Core</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/core.html" class="sidebar-item-text sidebar-link">TileDB-CF Core</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/tiledb-cf-spec.html" class="sidebar-item-text sidebar-link">TileDB-CF Dataspace Specification</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">Examples</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/core/group-basics.html" class="sidebar-item-text sidebar-link">Working with Arrays in a TileDB Group</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="true">NetCDF Engine</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/netcdf-engine.html" class="sidebar-item-text sidebar-link">TileDB-CF NetCDF Engine</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-expanded="true">Examples</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/netcdf_engine/netcdf-to-tiledb-basics.html" class="sidebar-item-text sidebar-link active">Converting a simple NetCDF file to a TileDB array</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.html" class="sidebar-item-text sidebar-link">NetCDF-to-TileDB: How to set the max fragment size for copying data</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/netcdf_engine/netcdf-to-tiledb-set-tiles.html" class="sidebar-item-text sidebar-link">NetCDF-To-TileDB: How to set tile sizes</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" aria-expanded="true">Xarray Engine</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/xarray-engine.html" class="sidebar-item-text sidebar-link">TileDB-CF Xarray Engine</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" aria-expanded="false">Examples</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/xarray_engine/tiledb-xarray-basics.html" class="sidebar-item-text sidebar-link">TileDB Backend for xarray</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/xarray_engine/tiledb-xarray-partially-filled-arrays.html" class="sidebar-item-text sidebar-link">TileDB Backend for xarray (Partially Filled Arrays)</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" aria-expanded="true">API Reference</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/api/index.html" class="sidebar-item-text sidebar-link">API Reference</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" aria-expanded="true">Contributing</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/contributing.html" class="sidebar-item-text sidebar-link">Contributing to TileDB-CF-Py</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/code-of-conduct.html" class="sidebar-item-text sidebar-link">TileDB-CF Code of Conduct</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc">
+<h2 id="toc-title">On this page</h2>
+<ul>
+<li><a href="#converting-a-simple-netcdf-file-to-a-tiledb-array" class="nav-link active" data-scroll-target="#converting-a-simple-netcdf-file-to-a-tiledb-array">Converting a simple NetCDF file to a TileDB array</a>
+<ul class="collapse">
+<li><a href="#about-this-example" class="nav-link" data-scroll-target="#about-this-example">About this Example</a>
+<ul class="collapse">
+<li><a href="#what-it-shows" class="nav-link" data-scroll-target="#what-it-shows">What it Shows</a></li>
+<li><a href="#example-dataset" class="nav-link" data-scroll-target="#example-dataset">Example dataset</a></li>
+<li><a href="#set-up-requirements" class="nav-link" data-scroll-target="#set-up-requirements">Set-up Requirements</a></li>
+</ul></li>
+<li><a href="#create-an-example-netcdf-file" class="nav-link" data-scroll-target="#create-an-example-netcdf-file">Create an example NetCDF file</a></li>
+<li><a href="#convert-netcdf-file-to-a-tiledb-group" class="nav-link" data-scroll-target="#convert-netcdf-file-to-a-tiledb-group">Convert NetCDF file to a TileDB Group</a>
+<ul class="collapse">
+<li><a href="#examine-the-data-in-the-arrays" class="nav-link" data-scroll-target="#examine-the-data-in-the-arrays">Examine the data in the arrays</a></li>
+</ul></li>
+<li><a href="#convert-to-a-single-sparse-tiledb-array" class="nav-link" data-scroll-target="#convert-to-a-single-sparse-tiledb-array">Convert to a Single Sparse TileDB Array</a></li>
+</ul></li>
+</ul>
+<div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<section id="converting-a-simple-netcdf-file-to-a-tiledb-array" class="level1">
+<h1>Converting a simple NetCDF file to a TileDB array</h1>
+<section id="about-this-example" class="level2">
+<h2 class="anchored" data-anchor-id="about-this-example">About this Example</h2>
+<section id="what-it-shows" class="level3">
+<h3 class="anchored" data-anchor-id="what-it-shows">What it Shows</h3>
+<p>The purpose of this example is to show the basics of converting a NetCDF file to TileDB arrays.</p>
+<p>This includes:</p>
+<ol type="1">
+<li>Options for auto-generating a converter from a NetCDF file.</li>
+<li>Changing the TileDB schema settings before conversion.</li>
+<li>Creating the TileDB group and copying data from the NetCDF file to the TileDB arrays.</li>
+</ol>
+</section>
+<section id="example-dataset" class="level3">
+<h3 class="anchored" data-anchor-id="example-dataset">Example dataset</h3>
+<p>This example shows convertering a small NetCDF file with 2 dimensions and 4 variables:</p>
+<ul>
+<li>Dimensions:
+<ul>
+<li>x: size=100</li>
+<li>y: size=100</li>
+</ul></li>
+<li>Variables:
+<ul>
+<li>x(x)
+<ul>
+<li>description: evenly spaced values from -5 to 5</li>
+<li>data type: 64-bit floating point</li>
+</ul></li>
+<li>y(y)
+<ul>
+<li>description: evenly spaced values from -5 to 5</li>
+<li>data type: 64-bit floating point</li>
+</ul></li>
+<li>A1(x, y)
+<ul>
+<li>description: x + y</li>
+<li>data type: 64-bit floating point</li>
+</ul></li>
+<li>A1(x, y)
+<ul>
+<li>description: sin((x/2)^2 + y^2</li>
+<li>data type: 64-bit floating point</li>
+</ul></li>
+</ul></li>
+</ul>
+</section>
+<section id="set-up-requirements" class="level3">
+<h3 class="anchored" data-anchor-id="set-up-requirements">Set-up Requirements</h3>
+<p>This example requires the following python packages are installed: netCDF4, numpy, tiledb, tiledb-cf, and matplotlib</p>
+<div class="cell">
+<div class="sourceCode" id="cb1"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> netCDF4</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> tiledb</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> tiledb.cf</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode" id="cb2"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Set names for the output generated by the example.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>output_dir <span class="op">=</span> <span class="st">"output/netcdf-to-tiledb-basics"</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>netcdf_file <span class="op">=</span> <span class="ss">f"</span><span class="sc">{</span>output_dir<span class="sc">}</span><span class="ss">/simple1.nc"</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>group_uri <span class="op">=</span> <span class="ss">f"</span><span class="sc">{</span>output_dir<span class="sc">}</span><span class="ss">/simple_netcdf_to_group_1"</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>array_uri <span class="op">=</span> <span class="ss">f"</span><span class="sc">{</span>output_dir<span class="sc">}</span><span class="ss">/simple_netcdf_to_array_1"</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode" id="cb3"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Reset output folder</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> os</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> shutil</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>shutil.rmtree(output_dir, ignore_errors<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>os.mkdir(output_dir)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="create-an-example-netcdf-file" class="level2">
+<h2 class="anchored" data-anchor-id="create-an-example-netcdf-file">Create an example NetCDF file</h2>
+<p>If the NetCDF file does not exist, we create a small NetCDF file for this example.</p>
+<div class="cell">
+<div class="sourceCode" id="cb4"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>x_data <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">5.0</span>, <span class="fl">5.0</span>, <span class="dv">100</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>y_data <span class="op">=</span> np.linspace(<span class="op">-</span><span class="fl">5.0</span>, <span class="fl">5.0</span>, <span class="dv">100</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>xv, yv <span class="op">=</span> np.meshgrid(x_data, y_data, sparse<span class="op">=</span><span class="va">True</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> netCDF4.Dataset(netcdf_file, mode<span class="op">=</span><span class="st">"w"</span>) <span class="im">as</span> dataset:</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>    dataset.setncatts({<span class="st">"title"</span>: <span class="st">"Simple dataset for examples"</span>})</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>    dataset.createDimension(<span class="st">"x"</span>, <span class="dv">100</span>)</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>    dataset.createDimension(<span class="st">"y"</span>, <span class="dv">100</span>)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>    A1 <span class="op">=</span> dataset.createVariable(<span class="st">"A1"</span>, np.float64, (<span class="st">"x"</span>, <span class="st">"y"</span>))</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    A1.setncattr(<span class="st">"full_name"</span>, <span class="st">"Example matrix A1"</span>)</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>    A1.setncattr(<span class="st">"description"</span>, <span class="st">"x + y"</span>)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>    A1[:, :] <span class="op">=</span> xv <span class="op">+</span> yv</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>    A2 <span class="op">=</span> dataset.createVariable(<span class="st">"A2"</span>, np.float64, (<span class="st">"x"</span>, <span class="st">"y"</span>))</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>    A2[:, :] <span class="op">=</span> np.sin((xv <span class="op">/</span> <span class="fl">2.0</span>) <span class="op">**</span> <span class="dv">2</span> <span class="op">+</span> yv<span class="op">**</span><span class="dv">2</span>)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>    A2.setncattr(<span class="st">"full_name"</span>, <span class="st">"Example matrix A2"</span>)</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    A2.setncattr(<span class="st">"description"</span>, <span class="st">"sin((x/2)^2 + y^2"</span>)</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>    x1 <span class="op">=</span> dataset.createVariable(<span class="st">"x"</span>, np.float64, (<span class="st">"x"</span>,))</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    x1[:] <span class="op">=</span> x_data</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a>    y <span class="op">=</span> dataset.createVariable(<span class="st">"y"</span>, np.float64, (<span class="st">"y"</span>,))</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>    y[:] <span class="op">=</span> y_data</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Created example NetCDF file `</span><span class="sc">{</span>netcdf_file<span class="sc">}</span><span class="ss">`."</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="convert-netcdf-file-to-a-tiledb-group" class="level2">
+<h2 class="anchored" data-anchor-id="convert-netcdf-file-to-a-tiledb-group">Convert NetCDF file to a TileDB Group</h2>
+<p>In this section we convert a NetCDF file to TileDB in a way that:</p>
+<ul>
+<li>maps NetCDF dimensions to TileDB dimensions,</li>
+<li>maps NetCDF variables to TileDB attributes.</li>
+</ul>
+<p>The functions <code>NetCDF4ConverterEngine.from_file</code> and <code>NetCDF4ConverterEngine.from_group</code> auto-generate a <code>NetCDF4ConverterEngine</code> for an exising NetCDF file. The properties in the <code>NetCDF4ConverterEngine</code> can be modified after the converter is generated.</p>
+<p>Parameters:</p>
+<ul>
+<li><p>Set the location of the NetCDF group to be converted.</p>
+<ul>
+<li>In <code>from_file</code>:
+<ul>
+<li><code>input_file</code>: The input NetCDF file to generate the converter engine from.</li>
+<li><code>group_path</code>: The path to the NetCDF group to copy data from. Use <code>'/'</code> for the root group.</li>
+</ul></li>
+<li>In <code>from_group</code>:
+<ul>
+<li><code>input_netcdf_group</code>: The NetCDF group to generate the converter engine from. (Must be a <code>netCDF4.Dataset</code> or <code>netCDF4.Group</code>.)</li>
+</ul></li>
+</ul></li>
+<li><p>Set the array grouping. A NetCDF variable maps to TileDB attributes. The <code>collect_attrs</code> parameters determines if each NetCDF variable is stored in a separate array, or if all NetCDF variables with the same underlying dimensions are stored in the same TileDB array. Scalar variables are always grouped together.</p>
+<ul>
+<li><code>collect_attrs</code>: If <code>True</code>, store all attributes with the same dimensions in the same array. Otherwise, store each attribute in a separate array.</li>
+</ul></li>
+<li><p>Set default properties for TileDB dimension.</p>
+<ul>
+<li><code>unlimited_dim_size</code>: The default size of the domain for TileDB dimensions created from unlimited NetCDF dimensions. If <code>None</code>, the current size of the NetCDF dimension will be used.</li>
+<li><code>dim_dtype</code>: The default numpy dtype to use when converting a NetCDF dimension to a TileDB dimension.</li>
+</ul></li>
+<li><p>Set tile sizes for TileDB dimensions. Multiple arrays in the TileDB group may have the same name, domain, and type, but different tiles and compression filters. The <code>tiles_by_var</code> and <code>tiles_by_dims</code> parameters allow a way of setting the tiles for the dimensions in different arrays.</p>
+<ul>
+<li><code>tiles_by_var</code>: A map from the name of a single NetCDF variable to the tiles of the dimensions of the TileDB array that contains the data from that variable.</li>
+<li><code>tiles_by_dims</code>: A map from the name of NetCDF dimensions defining a variable to the tiles of the dimensions of any TileDB array that contains data from a variable defined on those dimensions.</li>
+</ul></li>
+<li><p>Convert 1D variables with the same name and dimension to a TileDB dimension instead of a TileDB attribute. This is an advanced usage, and will move the data away from a NetCDF-like data model.</p>
+<ul>
+<li><code>coords_to_dims</code>: If <code>True</code>, convert the NetCDF coordinate variable into a TileDB dimension for sparse arrays. Otherwise, convert the coordinate dimension into a TileDB dimension and the coordinate variable into a TileDB attribute.</li>
+</ul></li>
+<li><p>Unpack NetCDF data that uses <code>add_offset</code> and <code>scale_factor</code>.</p>
+<ul>
+<li><code>unpack_vars</code>: If <code>True</code>, for any variable that has NetCDF attributes <code>add_offset</code> or <code>scale_factor</code> apply linear transformation <code>x -&gt; add_offset * x + scale_factor</code> to data before conversion. The data type will be set to the data type of the scaled data and the attributes <code>add_offset</code> and <code>scale_factor</code> will be dropped.</li>
+</ul></li>
+<li><p>Set filters for TileDB dimensions, attributes, and offsets.</p>
+<ul>
+<li><code>offsets_filters</code>: Default TileDB filters for all offsets for variable length TileDB attributes and TileDB dimensions.</li>
+<li><code>attrs_filters</code>: Default TileDB filters for all attributes.</li>
+</ul></li>
+</ul>
+<div class="cell">
+<div class="sourceCode" id="cb5"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Auto-generate NetCDF to TileDB conversion from a NetCDF file.</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>converter <span class="op">=</span> tiledb.cf.NetCDF4ConverterEngine.from_file(</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    netcdf_file,</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    dim_dtype<span class="op">=</span>np.uint32,</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    attrs_filters<span class="op">=</span>[tiledb.ZstdFilter(level<span class="op">=</span><span class="dv">7</span>)],</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>converter</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode" id="cb6"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Update properties manually by modifying the array creators</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. Update properties for x</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>x_array <span class="op">=</span> converter.get_array_creator_by_attr(<span class="st">"x.data"</span>)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>x_array.name <span class="op">=</span> <span class="st">"x"</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>x_array.domain_creator.tiles <span class="op">=</span> (<span class="dv">20</span>,)</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. Update properties for y</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>y_array <span class="op">=</span> converter.get_array_creator_by_attr(<span class="st">"y.data"</span>)</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>y_array.name <span class="op">=</span> <span class="st">"y"</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>y_array.domain_creator.tiles <span class="op">=</span> (<span class="dv">20</span>,)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. Update properties for array of matrices</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>data_array <span class="op">=</span> converter.get_array_creator_by_attr(<span class="st">"A1"</span>)</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>data_array.name <span class="op">=</span> <span class="st">"data"</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>data_array.domain_creator.tiles <span class="op">=</span> (<span class="dv">20</span>, <span class="dv">20</span>)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>converter</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Run the conversions to create two dense TileDB arrays:</p>
+<div class="cell">
+<div class="sourceCode" id="cb7"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>converter.convert_to_group(group_uri)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<section id="examine-the-data-in-the-arrays" class="level3">
+<h3 class="anchored" data-anchor-id="examine-the-data-in-the-arrays">Examine the data in the arrays</h3>
+<p>Open the attributes from the generated TileDB group:</p>
+<div class="cell">
+<div class="sourceCode" id="cb8"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> tiledb.Group(group_uri) <span class="im">as</span> group:</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> (</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>        tiledb.cf.open_group_array(group, attr<span class="op">=</span><span class="st">"x.data"</span>) <span class="im">as</span> x_array,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>        tiledb.cf.open_group_array(group, attr<span class="op">=</span><span class="st">"y.data"</span>) <span class="im">as</span> y_array,</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>        tiledb.cf.open_group_array(group, array<span class="op">=</span><span class="st">"data"</span>) <span class="im">as</span> data_array,</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>    ):</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>        x <span class="op">=</span> x_array[:]</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>        y <span class="op">=</span> y_array[:]</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a>        data <span class="op">=</span> data_array[...]</span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>        A1 <span class="op">=</span> data[<span class="st">"A1"</span>]</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a>        A2 <span class="op">=</span> data[<span class="st">"A2"</span>]</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>        a1_description <span class="op">=</span> tiledb.cf.AttrMetadata(data_array.meta, <span class="st">"A1"</span>)[<span class="st">"description"</span>]</span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a>        a2_description <span class="op">=</span> tiledb.cf.AttrMetadata(data_array.meta, <span class="st">"A2"</span>)[<span class="st">"description"</span>]</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode" id="cb9"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>fig, axes <span class="op">=</span> plt.subplots(nrows<span class="op">=</span><span class="dv">1</span>, ncols<span class="op">=</span><span class="dv">2</span>)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].contourf(x, y, A1)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">0</span>].set_title(a1_description)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].contourf(x, y, A2)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>axes[<span class="dv">1</span>].set_title(a2_description)<span class="op">;</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+</section>
+<section id="convert-to-a-single-sparse-tiledb-array" class="level2">
+<h2 class="anchored" data-anchor-id="convert-to-a-single-sparse-tiledb-array">Convert to a Single Sparse TileDB Array</h2>
+<p>In this section we convert a NetCDF file to TileDB in a way taht:</p>
+<ul>
+<li>maps NetCDF ‘coordinate’ variables to TileDB dimensions,</li>
+<li>maps NetCDF standard variables to TileDB attributes.</li>
+</ul>
+<div class="cell">
+<div class="sourceCode" id="cb10"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>converter2 <span class="op">=</span> tiledb.cf.NetCDF4ConverterEngine.from_file(</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>    netcdf_file, coords_to_dims<span class="op">=</span><span class="va">True</span>, attrs_filters<span class="op">=</span>[tiledb.ZstdFilter(level<span class="op">=</span><span class="dv">7</span>)]</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>converter2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode" id="cb11"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Update properties for the array</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>converter2.get_shared_dim(<span class="st">"x"</span>).domain <span class="op">=</span> (<span class="op">-</span><span class="fl">5.0</span>, <span class="fl">5.0</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>converter2.get_shared_dim(<span class="st">"y"</span>).domain <span class="op">=</span> (<span class="op">-</span><span class="fl">5.0</span>, <span class="fl">5.0</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>data_array <span class="op">=</span> converter2.get_array_creator(<span class="st">"array0"</span>)</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>data_array.domain_creator.tiles <span class="op">=</span> (<span class="fl">1.0</span>, <span class="fl">1.0</span>)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>data_array.capacity <span class="op">=</span> <span class="dv">400</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>converter2</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode" id="cb12"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>converter2.convert_to_array(array_uri)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode" id="cb13"><pre class="sourceCode python cell-code code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>tiledb.ArraySchema.load(array_uri)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+
+
+
+</section>
+</section>
+</main> <!-- /main -->
+<script type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    setTimeout(function() {
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="../../documentation/netcdf-engine.html" class="pagination-link">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">TileDB-CF NetCDF Engine</span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="../../examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.html" class="pagination-link">
+        <span class="nav-page-text">NetCDF-to-TileDB: How to set the max fragment size for copying data</span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+</body></html>

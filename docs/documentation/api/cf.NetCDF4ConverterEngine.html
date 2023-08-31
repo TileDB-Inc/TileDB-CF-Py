@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="generator" content="quarto-0.9.141">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>cf.netcdf4converterengine</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
+
+  <script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+  <script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+  <script src="../../site_libs/clipboard/clipboard.min.js"></script>
+  <meta name="quarto:offset" content="../../">
+  <script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+  <script src="../../site_libs/quarto-search/fuse.min.js"></script>
+  <script src="../../site_libs/quarto-search/quarto-search.js"></script>
+  <link href="../../images/favicon.ico" rel="icon">
+  <script src="../../site_libs/quarto-html/quarto.js"></script>
+  <script src="../../site_libs/quarto-html/popper.min.js"></script>
+  <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+  <script src="../../site_libs/quarto-html/anchor.min.js"></script>
+  <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+  <link id="quarto-text-highlighting-styles" href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet">
+  <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+  <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+  <link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <script id="quarto-search-options" type="application/json">{
+    "location": "navbar",
+    "copy-button": false,
+    "collapse-after": 3,
+    "panel-placement": "end",
+    "type": "overlay",
+    "limit": 20,
+    "language": {
+      "search-no-results-text": "No results",
+      "search-matching-documents-text": "matching documents",
+      "search-copy-link-title": "Copy link to search",
+      "search-hide-matches-text": "Hide additional matches",
+      "search-more-match-text": "more match in this document",
+      "search-more-matches-text": "more matches in this document",
+      "search-clear-button-title": "Clear",
+      "search-detached-cancel-button-title": "Cancel",
+      "search-submit-button-title": "Submit"
+    }
+  }</script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+  <link rel="stylesheet" href="../../quarto-materials/tiledb.css">
+</head>
+<body class="floating">
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <a class="navbar-brand" href="../../index.html">
+    <img src="../../quarto-materials/tiledb-logo.png" alt="">
+  </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com">Home page</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://cloud.tiledb.com/auth/login">Login</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com/contact">Contact us</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/TileDB-Inc/tiledb-cf-py">Repo</a>
+  </li>  
+</ul>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+    <div class="container-fluid d-flex justify-content-between">
+      <h1 class="quarto-secondary-nav-title">(Untitled)</h1>
+      <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">Overview</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/index.html" class="sidebar-item-text sidebar-link">TileDB-CF Overview</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">TileDB-CF Core</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/core.html" class="sidebar-item-text sidebar-link">TileDB-CF Core</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/tiledb-cf-spec.html" class="sidebar-item-text sidebar-link">TileDB-CF Dataspace Specification</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">Examples</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/core/group-basics.html" class="sidebar-item-text sidebar-link">Working with Arrays in a TileDB Group</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="true">NetCDF Engine</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/netcdf-engine.html" class="sidebar-item-text sidebar-link">TileDB-CF NetCDF Engine</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-expanded="false">Examples</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/netcdf_engine/netcdf-to-tiledb-basics.html" class="sidebar-item-text sidebar-link">Converting a simple NetCDF file to a TileDB array</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.html" class="sidebar-item-text sidebar-link">NetCDF-to-TileDB: How to set the max fragment size for copying data</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/netcdf_engine/netcdf-to-tiledb-set-tiles.html" class="sidebar-item-text sidebar-link">NetCDF-To-TileDB: How to set tile sizes</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" aria-expanded="true">Xarray Engine</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/xarray-engine.html" class="sidebar-item-text sidebar-link">TileDB-CF Xarray Engine</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" aria-expanded="false">Examples</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/xarray_engine/tiledb-xarray-basics.html" class="sidebar-item-text sidebar-link">TileDB Backend for xarray</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/xarray_engine/tiledb-xarray-partially-filled-arrays.html" class="sidebar-item-text sidebar-link">TileDB Backend for xarray (Partially Filled Arrays)</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" aria-expanded="true">API Reference</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/api/index.html" class="sidebar-item-text sidebar-link">API Reference</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" aria-expanded="true">Contributing</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/contributing.html" class="sidebar-item-text sidebar-link">Contributing to TileDB-CF-Py</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/code-of-conduct.html" class="sidebar-item-text sidebar-link">TileDB-CF Code of Conduct</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc">
+<h2 id="toc-title">On this page</h2>
+<ul>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine" class="nav-link active" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine">cf.NetCDF4ConverterEngine</a>
+<ul class="collapse">
+<li><a href="#methods" class="nav-link" data-scroll-target="#methods">Methods</a>
+<ul class="collapse">
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.add_array_converter" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.add_array_converter">add_array_converter</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.add_coord_to_dim_converter" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.add_coord_to_dim_converter">add_coord_to_dim_converter</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.add_dim_to_dim_converter" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.add_dim_to_dim_converter">add_dim_to_dim_converter</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.add_scalar_to_dim_converter" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.add_scalar_to_dim_converter">add_scalar_to_dim_converter</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.add_var_to_attr_converter" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.add_var_to_attr_converter">add_var_to_attr_converter</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.convert_to_array" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.convert_to_array">convert_to_array</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.convert_to_group" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.convert_to_group">convert_to_group</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.copy_to_array" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.copy_to_array">copy_to_array</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.copy_to_group" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.copy_to_group">copy_to_group</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.from_file" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.from_file">from_file</a></li>
+<li><a href="#tiledb.cf.NetCDF4ConverterEngine.from_group" class="nav-link" data-scroll-target="#tiledb.cf.NetCDF4ConverterEngine.from_group">from_group</a></li>
+</ul></li>
+</ul></li>
+</ul>
+<div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<section id="tiledb.cf.NetCDF4ConverterEngine" class="level1">
+<h1>cf.NetCDF4ConverterEngine</h1>
+<p><code>cf.netcdf_engine.NetCDF4ConverterEngine(self, default_input_file=None, default_group_path=None)</code></p>
+<p>Converter for NetCDF to TileDB using netCDF4.</p>
+<p>This class is used to generate and copy data to a TileDB group or array from a NetCDF file. The converter can be auto-generated from a NetCDF group, or it can be manually defined.</p>
+<p>This is a subclass of :class:<code>tiledb.cf.DataspaceCreator</code>. See :class:<code>tiledb.cf.DataspaceCreator</code> for documentation of additional properties and methods.</p>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<table class="table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.add_array_converter">add_array_converter</a></td>
+<td>Adds a new NetCDF to TileDB array converter to the CF dataspace.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.add_coord_to_dim_converter">add_coord_to_dim_converter</a></td>
+<td>Adds a new NetCDF coordinate to TileDB dimension converter.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.add_dim_to_dim_converter">add_dim_to_dim_converter</a></td>
+<td>Adds a new NetCDF dimension to TileDB dimension converter.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.add_scalar_to_dim_converter">add_scalar_to_dim_converter</a></td>
+<td>Adds a new TileDB dimension for NetCDF scalar variables.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.add_var_to_attr_converter">add_var_to_attr_converter</a></td>
+<td>Adds a new variable to attribute converter to an array in the CF dataspace.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.convert_to_array">convert_to_array</a></td>
+<td>Creates a TileDB arrays for a CF dataspace with only one array and copies</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.convert_to_group">convert_to_group</a></td>
+<td>Creates a TileDB group and its arrays from the defined CF dataspace and</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.copy_to_array">copy_to_array</a></td>
+<td>Copies data from a NetCDF group to a TileDB array.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.copy_to_group">copy_to_group</a></td>
+<td>Copies data from a NetCDF group to a TileDB CF dataspace.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.from_file">from_file</a></td>
+<td>Returns a :class:<code>NetCDF4ConverterEngine</code> from a group in a NetCDF file.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.NetCDF4ConverterEngine.from_group">from_group</a></td>
+<td>Returns a :class:<code>NetCDF4ConverterEngine</code> from a :class:<code>netCDF4.Group</code>.</td>
+</tr>
+</tbody>
+</table>
+<section id="tiledb.cf.NetCDF4ConverterEngine.add_array_converter" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.add_array_converter">add_array_converter</h3>
+<p><code>cf.NetCDF4ConverterEngine.add_array_converter(self, array_name, dims, cell_order='row-major', tile_order='row-major', capacity=0, tiles=None, dim_filters=None, offsets_filters=None, attrs_filters=None, allows_duplicates=False, sparse=False)</code></p>
+<p>Adds a new NetCDF to TileDB array converter to the CF dataspace.</p>
+<p>The name of each array must be unique. All properties must match the normal requirements for a <code>TileDB.ArraySchema</code>.</p>
+<p>Parameters: array_name: Name of the new array to be created. dims: An ordered list of the names of the shared dimensions for the domain of this array. cell_order: The order in which TileDB stores the cells on disk inside a tile. Valid values are: <code>row-major</code> (default) or <code>C</code> for row major; <code>col-major</code> or <code>F</code> for column major; or <code>Hilbert</code> for a Hilbert curve. tile_order: The order in which TileDB stores the tiles on disk. Valid values are: <code>row-major</code> or <code>C</code> (default) for row major; or <code>col-major</code> or <code>F</code> for column major. capacity: The number of cells in a data tile of a sparse fragment. tiles: An optional ordered list of tile sizes for the dimensions of the array. The length must match the number of dimensions in the array. dim_filters: A dict from dimension name to a <code>FilterList</code> for dimensions in the array. offsets_filters: Filters for the offsets for variable length attributes or dimensions. attrs_filters: Default filters to use when adding an attribute to the array. allows_duplicates: Specifies if multiple values can be stored at the same coordinate. Only allowed for sparse arrays. sparse: Specifies if the array is a sparse TileDB array (true) or dense TileDB array (false).</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.add_coord_to_dim_converter" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.add_coord_to_dim_converter">add_coord_to_dim_converter</h3>
+<p><code>cf.NetCDF4ConverterEngine.add_coord_to_dim_converter(self, ncvar, dim_name=None, domain=None, dtype=None, unpack=False)</code></p>
+<p>Adds a new NetCDF coordinate to TileDB dimension converter.</p>
+<p>Parameters: var: NetCDF coordinate variable to be converted. dim_name: If not <code>None</code>, name to use for the TileDB dimension. domain: If not <code>None</code>, the domain the TileDB dimension is valid on. dtype: If not <code>None</code>, the data type the TileDB dimension will be set to. unpack: Unpack NetCDF data that has NetCDF attributes <code>scale_factor</code> or <code>add_offset</code> using the transformation <code>scale_factor * value +         unpack</code>.</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.add_dim_to_dim_converter" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.add_dim_to_dim_converter">add_dim_to_dim_converter</h3>
+<p><code>cf.NetCDF4ConverterEngine.add_dim_to_dim_converter(self, ncdim, unlimited_dim_size=None, dtype=_DEFAULT_INDEX_DTYPE, dim_name=None)</code></p>
+<p>Adds a new NetCDF dimension to TileDB dimension converter.</p>
+<p>Parameters: ncdim: NetCDF dimension to be converted. unlimited_dim_size: The size to use if the dimension is unlimited. If <code>None</code>, the current size of the NetCDF dimension will be used. dtype: Numpy type to use for the NetCDF dimension. dim_name: If not <code>None</code>, output name of the TileDB dimension.</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.add_scalar_to_dim_converter" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.add_scalar_to_dim_converter">add_scalar_to_dim_converter</h3>
+<p><code>cf.NetCDF4ConverterEngine.add_scalar_to_dim_converter(self, dim_name='__scalars', dtype=_DEFAULT_INDEX_DTYPE)</code></p>
+<p>Adds a new TileDB dimension for NetCDF scalar variables.</p>
+<p>Parameters: dim_name: Output name of the dimension. dtype: Numpy type to use for the scalar dimension</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.add_var_to_attr_converter" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.add_var_to_attr_converter">add_var_to_attr_converter</h3>
+<p><code>cf.NetCDF4ConverterEngine.add_var_to_attr_converter(self, ncvar, array_name, attr_name=None, dtype=None, fill=None, var=False, nullable=False, filters=None, unpack=False)</code></p>
+<p>Adds a new variable to attribute converter to an array in the CF dataspace.</p>
+<p>The attribute’s ‘dataspace name’ (name after dropping the suffix <code>.data</code> or <code>.index</code>) must be unique.</p>
+<p>Parameters: ncvar: NetCDF variable to convert to a TileDB attribute. name: Name of the new attribute that will be added. If <code>None</code>, the name will be copied from the NetCDF variable. dtype: Numpy dtype of the new attribute. If <code>None</code>, the data type will be copied from the variable. fill: Fill value for unset cells. If <code>None</code>, the fill value will be copied from the NetCDF variable if it has a fill value. var: Specifies if the attribute is variable length (automatic for byte/strings). nullable: Specifies if the attribute is nullable using validity tiles. filters: Specifies compression filters for the attribute. unpack: Unpack NetCDF data that has NetCDF attributes <code>scale_factor</code> or <code>add_offset</code> using the transformation <code>scale_factor * value +         unpack</code>.</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.convert_to_array" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.convert_to_array">convert_to_array</h3>
+<p><code>cf.NetCDF4ConverterEngine.convert_to_array(self, output_uri, key=None, ctx=None, timestamp=None, input_netcdf_group=None, input_file=None, input_group_path=None, assigned_dim_values=None, assigned_attr_values=None, copy_metadata=True)</code></p>
+<p>Creates a TileDB arrays for a CF dataspace with only one array and copies data into it using the NetCDF converter engine.</p>
+<p>Parameters: output_uri: Uniform resource identifier for the TileDB array to be created. key: If not <code>None</code>, encryption key to encrypt and decrypt output arrays. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager. timestamp: If not <code>None</code>, the TileDB timestamp to write the NetCDF data to TileDB at. input_netcdf_group: If not <code>None</code>, the NetCDF group to copy data from. This will be prioritized over <code>input_file</code> if both are provided. input_file: If not <code>None</code>, the NetCDF file to copy data from. This will not be used if <code>netcdf_group</code> is not <code>None</code>. input_group_path: If not <code>None</code>, the path to the NetCDF group to copy data from. assigned_dim_values: Mapping from dimension name to value for dimensions that are not converter from the NetCDF group. assigned_attr_values: Mapping from attribute name to numpy array of values for attributes that are not converted from the NetCDF group. copy_metadata: If <code>True</code> copy NetCDF group and variable attributes to TileDB metadata. If <code>False</code> do not copy metadata.</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.convert_to_group" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.convert_to_group">convert_to_group</h3>
+<p><code>cf.NetCDF4ConverterEngine.convert_to_group(self, output_uri, key=None, ctx=None, timestamp=None, input_netcdf_group=None, input_file=None, input_group_path=None, assigned_dim_values=None, assigned_attr_values=None, copy_metadata=True, append=False)</code></p>
+<p>Creates a TileDB group and its arrays from the defined CF dataspace and copies data into them using the converter engine.</p>
+<p>Parameters: output_uri: Uniform resource identifier for the TileDB group to be created. key: If not <code>None</code>, encryption key to encrypt and decrypt output arrays. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager. timestamp: If not <code>None</code>, the TileDB timestamp to write the NetCDF data to TileDB at. input_netcdf_group: If not <code>None</code>, the NetCDF group to copy data from. This will be prioritized over <code>input_file</code> if both are provided. input_file: If not <code>None</code>, the NetCDF file to copy data from. This will not be used if <code>netcdf_group</code> is not <code>None</code>. input_group_path: If not <code>None</code>, the path to the NetCDF group to copy data from. assigned_dim_values: Mapping from dimension name to value for dimensions that are not converted from the NetCDF group. assigned_attr_values: Mapping from attribute name to numpy array of values for attributes that are not converted from the NetCDF group. copy_metadata: If <code>True</code> copy NetCDF group and variable attributes to TileDB metadata. If <code>False</code> do not copy metadata. append: If <code>True</code>, add arrays in the dataspace to an already existing group. The arrays in the dataspace cannot be in the group that is being append to.</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.copy_to_array" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.copy_to_array">copy_to_array</h3>
+<p><code>cf.NetCDF4ConverterEngine.copy_to_array(self, output_uri, key=None, ctx=None, timestamp=None, input_netcdf_group=None, input_file=None, input_group_path=None, assigned_dim_values=None, assigned_attr_values=None, copy_metadata=True)</code></p>
+<p>Copies data from a NetCDF group to a TileDB array.</p>
+<p>This will copy data from a NetCDF group that is defined either by a :class:<code>netCDF4.Group</code> or by an input_file and group path. If neither the <code>netcdf_group</code> or <code>input_file</code> is specified, this will copy data from the input file <code>self.default_input_file</code>. If both <code>netcdf_group</code> and <code>input_file</code> are set, this method will prioritize using the NetCDF group set by <code>netcdf_group</code>.</p>
+<p>Parameters: output_uri: Uniform resource identifier for the TileDB array data is being copied to. key: If not <code>None</code>, encryption key to decrypt arrays. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager. timestamp: If not <code>None</code>, the TileDB timestamp to write the NetCDF data to TileDB at. input_netcdf_group: If not <code>None</code>, the NetCDF group to copy data from. This will be prioritized over <code>input_file</code> if both are provided. input_file: If not <code>None</code>, the NetCDF file to copy data from. This will not be used if <code>netcdf_group</code> is not <code>None</code>. input_group_path: If not <code>None</code>, the path to the NetCDF group to copy data from. assigned_dim_values: Mapping from dimension name to value for dimensions that are not copied from the NetCDF group. assigned_attr_values: Mapping from attribute name to numpy array of values for attributes that are not copied from the NetCDF group. copy_metadata: If <code>True</code> copy NetCDF group and variable attributes to TileDB metadata. If <code>False</code> do not copy metadata.</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.copy_to_group" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.copy_to_group">copy_to_group</h3>
+<p><code>cf.NetCDF4ConverterEngine.copy_to_group(self, output_uri, key=None, ctx=None, timestamp=None, input_netcdf_group=None, input_file=None, input_group_path=None, assigned_dim_values=None, assigned_attr_values=None, copy_metadata=True)</code></p>
+<p>Copies data from a NetCDF group to a TileDB CF dataspace.</p>
+<p>This will copy data from a NetCDF group that is defined either by a :class:<code>netCDF4.Group</code> or by an input_file and group path. If neither the <code>netcdf_group</code> or <code>input_file</code> is specified, this will copy data from the input file <code>self.default_input_file</code>. If both <code>netcdf_group</code> and <code>input_file</code> are set, this method will prioritize using the NetCDF group set by <code>netcdf_group</code>.</p>
+<p>Parameters: output_uri: Uniform resource identifier for the TileDB group data is being copied to. key: If not <code>None</code>, encryption key to decrypt arrays. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager. timestamp: If not <code>None</code>, the TileDB timestamp to write the NetCDF data to TileDB at. input_netcdf_group: If not <code>None</code>, the NetCDF group to copy data from. This will be prioritized over <code>input_file</code> if both are provided. input_file: If not <code>None</code>, the NetCDF file to copy data from. This will not be used if <code>netcdf_group</code> is not <code>None</code>. input_group_path: If not <code>None</code>, the path to the NetCDF group to copy data from. assigned_dim_values: Mapping from dimension name to value for dimensions that are not copied from the NetCDF group. assigned_attr_values: Mapping from attribute name to numpy array of values for the attributes that are not copied from the NetCDF group. copy_metadata: If <code>True</code> copy NetCDF group and variable attributes to TileDB metadata. If <code>False</code> do not copy metadata.</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.from_file" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.from_file">from_file</h3>
+<p><code>cf.NetCDF4ConverterEngine.from_file(cls, input_file, group_path='/', unlimited_dim_size=None, dim_dtype=_DEFAULT_INDEX_DTYPE, tiles_by_var=None, tiles_by_dims=None, coords_to_dims=False, collect_attrs=True, unpack_vars=False, offsets_filters=None, attrs_filters=None)</code></p>
+<p>Returns a :class:<code>NetCDF4ConverterEngine</code> from a group in a NetCDF file.</p>
+<p>Parameters: input_file: The input NetCDF file to generate the converter engine from. group_path: The path to the NetCDF group to copy data from. Use <code>'/'</code> for the root group. unlimited_dim_size: The size of the domain for TileDB dimensions created from unlimited NetCDF dimensions. If <code>None</code>, the current size of the NetCDF dimension will be used. dim_dtype: The numpy dtype for TileDB dimensions. tiles_by_var: A map from the name of a NetCDF variable to the tiles of the dimensions of the variable in the generated TileDB array. tiles_by_dims: A map from the name of NetCDF dimensions defining a variable to the tiles of those dimensions in the generated TileDB array. coords_to_dims: If <code>True</code>, convert the NetCDF coordinate variable into a TileDB dimension for sparse arrays. Otherwise, convert the coordinate dimension into a TileDB dimension and the coordinate variable into a TileDB attribute. collect_attrs: If True, store all attributes with the same dimensions in the same array. Otherwise, store each attribute in a scalar array. unpack_vars: Unpack NetCDF variables with NetCDF attributes <code>scale_factor</code> or <code>add_offset</code> using the transformation <code>scale_factor * value +         unpack</code>. offsets_filters: Default filters for all offsets for variable attributes and dimensions. attrs_filters: Default filters for all attributes.</p>
+</section>
+<section id="tiledb.cf.NetCDF4ConverterEngine.from_group" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.NetCDF4ConverterEngine.from_group">from_group</h3>
+<p><code>cf.NetCDF4ConverterEngine.from_group(cls, netcdf_group, unlimited_dim_size=None, dim_dtype=_DEFAULT_INDEX_DTYPE, tiles_by_var=None, tiles_by_dims=None, coords_to_dims=False, collect_attrs=True, unpack_vars=False, offsets_filters=None, attrs_filters=None, default_input_file=None, default_group_path=None)</code></p>
+<p>Returns a :class:<code>NetCDF4ConverterEngine</code> from a :class:<code>netCDF4.Group</code>.</p>
+<p>Parameters: group: The NetCDF group to convert. unlimited_dim_size: The size of the domain for TileDB dimensions created from unlimited NetCDF dimensions. If <code>None</code>, the current size of the NetCDF variable will be used. dim_dtype: The numpy dtype for TileDB dimensions. tiles_by_var: A map from the name of a NetCDF variable to the tiles of the dimensions of the variable in the generated TileDB array. tiles_by_dims: A map from the name of NetCDF dimensions defining a variable to the tiles of those dimensions in the generated TileDB array. coords_to_dims: If <code>True</code>, convert the NetCDF coordinate variable into a TileDB dimension for sparse arrays. Otherwise, convert the coordinate dimension into a TileDB dimension and the coordinate variable into a TileDB attribute. collect_attrs: If <code>True</code>, store all attributes with the same dimensions in the same array. Otherwise, store each attribute in a scalar array. unpack_vars: Unpack NetCDF variables with NetCDF attributes <code>scale_factor</code> or <code>add_offset</code> using the transformation <code>scale_factor * value +         unpack</code>. offsets_filters: Default filters for all offsets for variable attributes and dimensions. attrs_filters: Default filters for all attributes. default_input_file: If not <code>None</code>, the default NetCDF input file to copy data from. default_group_path: If not <code>None</code>, the default NetCDF group to copy data from. Use <code>'/'</code> to specify the root group.</p>
+
+
+
+</section>
+</section>
+</section>
+</main> <!-- /main -->
+<script type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    setTimeout(function() {
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+</body></html>

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+  <meta charset="utf-8">
+  <meta name="generator" content="quarto-0.9.141">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>cf.dataspacecreator</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+  </style>
+
+  <script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+  <script src="../../site_libs/quarto-nav/headroom.min.js"></script>
+  <script src="../../site_libs/clipboard/clipboard.min.js"></script>
+  <meta name="quarto:offset" content="../../">
+  <script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
+  <script src="../../site_libs/quarto-search/fuse.min.js"></script>
+  <script src="../../site_libs/quarto-search/quarto-search.js"></script>
+  <link href="../../images/favicon.ico" rel="icon">
+  <script src="../../site_libs/quarto-html/quarto.js"></script>
+  <script src="../../site_libs/quarto-html/popper.min.js"></script>
+  <script src="../../site_libs/quarto-html/tippy.umd.min.js"></script>
+  <script src="../../site_libs/quarto-html/anchor.min.js"></script>
+  <link href="../../site_libs/quarto-html/tippy.css" rel="stylesheet">
+  <link id="quarto-text-highlighting-styles" href="../../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet">
+  <script src="../../site_libs/bootstrap/bootstrap.min.js"></script>
+  <link href="../../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+  <link href="../../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet">
+  <script id="quarto-search-options" type="application/json">{
+    "location": "navbar",
+    "copy-button": false,
+    "collapse-after": 3,
+    "panel-placement": "end",
+    "type": "overlay",
+    "limit": 20,
+    "language": {
+      "search-no-results-text": "No results",
+      "search-matching-documents-text": "matching documents",
+      "search-copy-link-title": "Copy link to search",
+      "search-hide-matches-text": "Hide additional matches",
+      "search-more-match-text": "more match in this document",
+      "search-more-matches-text": "more matches in this document",
+      "search-clear-button-title": "Clear",
+      "search-detached-cancel-button-title": "Cancel",
+      "search-submit-button-title": "Submit"
+    }
+  }</script>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+  <link rel="stylesheet" href="../../quarto-materials/tiledb.css">
+</head>
+<body class="floating">
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark ">
+      <div class="navbar-container container-fluid">
+      <a class="navbar-brand" href="../../index.html">
+    <img src="../../quarto-materials/tiledb-logo.png" alt="">
+  </a>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll me-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com">Home page</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://cloud.tiledb.com/auth/login">Login</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://tiledb.com/contact">Contact us</a>
+  </li>  
+  <li class="nav-item">
+    <a class="nav-link" href="https://github.com/TileDB-Inc/tiledb-cf-py">Repo</a>
+  </li>  
+</ul>
+              <div id="quarto-search" class="" title="Search"></div>
+          </div> <!-- /navcollapse -->
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+    <div class="container-fluid d-flex justify-content-between">
+      <h1 class="quarto-secondary-nav-title">(Untitled)</h1>
+      <button type="button" class="quarto-btn-toggle btn" aria-label="Show secondary navigation">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">Overview</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/index.html" class="sidebar-item-text sidebar-link">TileDB-CF Overview</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">TileDB-CF Core</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/core.html" class="sidebar-item-text sidebar-link">TileDB-CF Core</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/tiledb-cf-spec.html" class="sidebar-item-text sidebar-link">TileDB-CF Dataspace Specification</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">Examples</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-3" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-3" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/core/group-basics.html" class="sidebar-item-text sidebar-link">Working with Arrays in a TileDB Group</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="true">NetCDF Engine</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-4" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-4" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/netcdf-engine.html" class="sidebar-item-text sidebar-link">TileDB-CF NetCDF Engine</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-expanded="false">Examples</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-5" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-5" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/netcdf_engine/netcdf-to-tiledb-basics.html" class="sidebar-item-text sidebar-link">Converting a simple NetCDF file to a TileDB array</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.html" class="sidebar-item-text sidebar-link">NetCDF-to-TileDB: How to set the max fragment size for copying data</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/netcdf_engine/netcdf-to-tiledb-set-tiles.html" class="sidebar-item-text sidebar-link">NetCDF-To-TileDB: How to set tile sizes</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" aria-expanded="true">Xarray Engine</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-6" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-6" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/xarray-engine.html" class="sidebar-item-text sidebar-link">TileDB-CF Xarray Engine</a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" aria-expanded="false">Examples</a>
+      <a class="sidebar-item-toggle text-start collapsed" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-7" aria-expanded="false">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-7" class="collapse list-unstyled sidebar-section depth2 ">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/xarray_engine/tiledb-xarray-basics.html" class="sidebar-item-text sidebar-link">TileDB Backend for xarray</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../examples/xarray_engine/tiledb-xarray-partially-filled-arrays.html" class="sidebar-item-text sidebar-link">TileDB Backend for xarray (Partially Filled Arrays)</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" aria-expanded="true">API Reference</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-8" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-8" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/api/index.html" class="sidebar-item-text sidebar-link">API Reference</a>
+  </div>
+</li>
+    </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+    <div class="sidebar-item-container"> 
+        <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" aria-expanded="true">Contributing</a>
+      <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-9" aria-expanded="true">
+        <i class="bi bi-chevron-right ms-2"></i>
+      </a>
+    </div>
+    <ul id="quarto-sidebar-section-9" class="collapse list-unstyled sidebar-section depth1 show">  
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/contributing.html" class="sidebar-item-text sidebar-link">Contributing to TileDB-CF-Py</a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="../../documentation/code-of-conduct.html" class="sidebar-item-text sidebar-link">TileDB-CF Code of Conduct</a>
+  </div>
+</li>
+    </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc">
+<h2 id="toc-title">On this page</h2>
+<ul>
+<li><a href="#tiledb.cf.DataspaceCreator" class="nav-link active" data-scroll-target="#tiledb.cf.DataspaceCreator">cf.DataspaceCreator</a>
+<ul class="collapse">
+<li><a href="#methods" class="nav-link" data-scroll-target="#methods">Methods</a>
+<ul class="collapse">
+<li><a href="#tiledb.cf.DataspaceCreator.add_array_creator" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.add_array_creator">add_array_creator</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.add_attr_creator" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.add_attr_creator">add_attr_creator</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.add_shared_dim" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.add_shared_dim">add_shared_dim</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.array_creators" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.array_creators">array_creators</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.create_array" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.create_array">create_array</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.create_group" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.create_group">create_group</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.get_array_creator" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.get_array_creator">get_array_creator</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.get_array_creator_by_attr" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.get_array_creator_by_attr">get_array_creator_by_attr</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.get_shared_dim" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.get_shared_dim">get_shared_dim</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.remove_array_creator" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.remove_array_creator">remove_array_creator</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.remove_attr_creator" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.remove_attr_creator">remove_attr_creator</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.remove_shared_dim" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.remove_shared_dim">remove_shared_dim</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.shared_dims" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.shared_dims">shared_dims</a></li>
+<li><a href="#tiledb.cf.DataspaceCreator.to_schema" class="nav-link" data-scroll-target="#tiledb.cf.DataspaceCreator.to_schema">to_schema</a></li>
+</ul></li>
+</ul></li>
+</ul>
+<div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<section id="tiledb.cf.DataspaceCreator" class="level1">
+<h1>cf.DataspaceCreator</h1>
+<p><code>cf.DataspaceCreator(self)</code></p>
+<p>Creator for a group of arrays that satify the CF Dataspace Convention.</p>
+<p>This class can be used directly to create a TileDB group that follows the TileDB CF Dataspace convention. It is also useful as a super class for converters/ingesters of data from sources that follow a NetCDF or NetCDF-like data model to TileDB.</p>
+<section id="methods" class="level2">
+<h2 class="anchored" data-anchor-id="methods">Methods</h2>
+<table class="table">
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><a href="#tiledb.cf.DataspaceCreator.add_array_creator">add_array_creator</a></td>
+<td>Adds a new array to the CF dataspace.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.DataspaceCreator.add_attr_creator">add_attr_creator</a></td>
+<td>Adds a new attribute to an array in the CF dataspace.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.DataspaceCreator.add_shared_dim">add_shared_dim</a></td>
+<td>Adds a new dimension to the CF dataspace.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.DataspaceCreator.array_creators">array_creators</a></td>
+<td>Iterates over array creators in the CF dataspace.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.DataspaceCreator.create_array">create_array</a></td>
+<td>Creates a TileDB array for a CF dataspace with only one array.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.DataspaceCreator.create_group">create_group</a></td>
+<td>Creates a TileDB group and arrays for the CF dataspace.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.DataspaceCreator.get_array_creator">get_array_creator</a></td>
+<td>Returns the array creator with the requested name.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.DataspaceCreator.get_array_creator_by_attr">get_array_creator_by_attr</a></td>
+<td>Returns the array creator with the requested attribute in it.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.DataspaceCreator.get_shared_dim">get_shared_dim</a></td>
+<td>Returns the shared dimension with the requested name.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.DataspaceCreator.remove_array_creator">remove_array_creator</a></td>
+<td>Removes the specified array and all its attributes from the CF dataspace.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.DataspaceCreator.remove_attr_creator">remove_attr_creator</a></td>
+<td>Removes the specified attribute from the CF dataspace.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.DataspaceCreator.remove_shared_dim">remove_shared_dim</a></td>
+<td>Removes the specified dimension from the CF dataspace.</td>
+</tr>
+<tr class="odd">
+<td><a href="#tiledb.cf.DataspaceCreator.shared_dims">shared_dims</a></td>
+<td>Iterators over shared dimensions in the CF dataspace.</td>
+</tr>
+<tr class="even">
+<td><a href="#tiledb.cf.DataspaceCreator.to_schema">to_schema</a></td>
+<td>Returns a dictionary of array schemas for the CF dataspace.</td>
+</tr>
+</tbody>
+</table>
+<section id="tiledb.cf.DataspaceCreator.add_array_creator" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.add_array_creator">add_array_creator</h3>
+<p><code>cf.DataspaceCreator.add_array_creator(self, array_name, dims, cell_order='row-major', tile_order='row-major', capacity=0, tiles=None, dim_filters=None, offsets_filters=None, attrs_filters=None, allows_duplicates=False, sparse=False)</code></p>
+<p>Adds a new array to the CF dataspace.</p>
+<p>The name of each array must be unique. All other properties should satisfy the same requirements as a <code>tiledb.ArraySchema</code>.</p>
+<p>Parameters: array_name: Name of the new array to be created. dims: An ordered list of the names of the shared dimensions for the domain of this array. cell_order: The order in which TileDB stores the cells on disk inside a tile. Valid values are: <code>row-major</code> (default) or <code>C</code> for row major; <code>col-major</code> or <code>F</code> for column major; or <code>Hilbert</code> for a Hilbert curve. tile_order: The order in which TileDB stores the tiles on disk. Valid values are: <code>row-major</code> or <code>C</code> (default) for row major; or <code>col-major</code> or <code>F</code> for column major. capacity: The number of cells in a data tile of a sparse fragment. tiles: An optional ordered list of tile sizes for the dimensions of the array. The length must match the number of dimensions in the array. dim_filters: A dict from dimension name to a :class:<code>tiledb.FilterList</code> for dimensions in the array. offsets_filters: Filters for the offsets for variable length attributes or dimensions. attrs_filters: Default filters to use when adding an attribute to the array. allows_duplicates: Specifies if multiple values can be stored at the same coordinate. Only allowed for sparse arrays. sparse: Specifies if the array is a sparse TileDB array (true) or dense TileDB array (false).</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.add_attr_creator" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.add_attr_creator">add_attr_creator</h3>
+<p><code>cf.DataspaceCreator.add_attr_creator(self, attr_name, array_name, dtype, fill=None, var=False, nullable=False, filters=None)</code></p>
+<p>Adds a new attribute to an array in the CF dataspace.</p>
+<p>The ‘dataspace name’ (name after dropping the suffix <code>.data</code> or <code>.index</code>) must be unique.</p>
+<p>Parameters: attr_name: Name of the new attribute that will be added. array_name: Name of the array the attribute will be added to. dtype: Numpy dtype of the new attribute. fill: Fill value for unset cells. var: Specifies if the attribute is variable length (automatic for byte/strings). nullable: Specifies if the attribute is nullable using validity tiles. filters: Specifies compression filters for the attribute.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.add_shared_dim" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.add_shared_dim">add_shared_dim</h3>
+<p><code>cf.DataspaceCreator.add_shared_dim(self, dim_name, domain, dtype)</code></p>
+<p>Adds a new dimension to the CF dataspace.</p>
+<p>Each dimension name must be unique. Adding a dimension where the name, domain, and dtype matches a current dimension does nothing.</p>
+<p>Parameters: dim_name: Name of the new dimension to be created. domain: The (inclusive) interval on which the dimension is valid. dtype: The numpy dtype of the values and domain of the dimension.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.array_creators" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.array_creators">array_creators</h3>
+<p><code>cf.DataspaceCreator.array_creators(self)</code></p>
+<p>Iterates over array creators in the CF dataspace.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.create_array" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.create_array">create_array</h3>
+<p><code>cf.DataspaceCreator.create_array(self, uri, key=None, ctx=None)</code></p>
+<p>Creates a TileDB array for a CF dataspace with only one array.</p>
+<p>Parameters: uri: Uniform resource identifier for the TileDB array to be created. key: If not <code>None</code>, encryption key to decrypt the array. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.create_group" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.create_group">create_group</h3>
+<p><code>cf.DataspaceCreator.create_group(self, uri, key=None, ctx=None, append=False)</code></p>
+<p>Creates a TileDB group and arrays for the CF dataspace.</p>
+<p>Parameters: uri: Uniform resource identifier for the TileDB group to be created. key: If not <code>None</code>, encryption key, or dictionary of encryption keys, to decrypt arrays. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager. append: If <code>True</code>, add arrays in the dataspace to an already existing group. The arrays in the dataspace cannot be in the group that is being append to.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.get_array_creator" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.get_array_creator">get_array_creator</h3>
+<p><code>cf.DataspaceCreator.get_array_creator(self, array_name)</code></p>
+<p>Returns the array creator with the requested name.</p>
+<p>Parameters: array_name: Name of the array to return.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.get_array_creator_by_attr" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.get_array_creator_by_attr">get_array_creator_by_attr</h3>
+<p><code>cf.DataspaceCreator.get_array_creator_by_attr(self, attr_name)</code></p>
+<p>Returns the array creator with the requested attribute in it.</p>
+<p>Parameters: attr_name: Name of the attribute to return the array creator with.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.get_shared_dim" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.get_shared_dim">get_shared_dim</h3>
+<p><code>cf.DataspaceCreator.get_shared_dim(self, dim_name)</code></p>
+<p>Returns the shared dimension with the requested name.</p>
+<p>Parameters: array_name: Name of the array to return.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.remove_array_creator" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.remove_array_creator">remove_array_creator</h3>
+<p><code>cf.DataspaceCreator.remove_array_creator(self, array_name)</code></p>
+<p>Removes the specified array and all its attributes from the CF dataspace.</p>
+<p>Parameters: array_name: Name of the array that will be removed.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.remove_attr_creator" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.remove_attr_creator">remove_attr_creator</h3>
+<p><code>cf.DataspaceCreator.remove_attr_creator(self, attr_name)</code></p>
+<p>Removes the specified attribute from the CF dataspace.</p>
+<p>Parameters: attr_name: Name of the attribute that will be removed.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.remove_shared_dim" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.remove_shared_dim">remove_shared_dim</h3>
+<p><code>cf.DataspaceCreator.remove_shared_dim(self, dim_name)</code></p>
+<p>Removes the specified dimension from the CF dataspace.</p>
+<p>This can only be used to remove dimensions that are not currently being used in an array.</p>
+<p>Parameters: dim_name: Name of the dimension to be removed.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.shared_dims" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.shared_dims">shared_dims</h3>
+<p><code>cf.DataspaceCreator.shared_dims(self)</code></p>
+<p>Iterators over shared dimensions in the CF dataspace.</p>
+</section>
+<section id="tiledb.cf.DataspaceCreator.to_schema" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.to_schema">to_schema</h3>
+<p><code>cf.DataspaceCreator.to_schema(self, ctx=None)</code></p>
+<p>Returns a dictionary of array schemas for the CF dataspace.</p>
+<p>Parameters: ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager.</p>
+
+
+
+</section>
+</section>
+</section>
+</main> <!-- /main -->
+<script type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const clipboard = new window.ClipboardJS('.code-copy-button', {
+    target: function(trigger) {
+      return trigger.previousElementSibling;
+    }
+  });
+  clipboard.on('success', function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    setTimeout(function() {
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  });
+  function tippyHover(el, contentFn) {
+    const config = {
+      allowHTML: true,
+      content: contentFn,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start'
+    };
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      let href = ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      return note.innerHTML;
+    });
+  }
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const cites = ref.parentNode.getAttribute('data-cites').split(' ');
+    tippyHover(ref, function() {
+      var popup = window.document.createElement('div');
+      cites.forEach(function(cite) {
+        var citeDiv = window.document.createElement('div');
+        citeDiv.classList.add('hanging-indent');
+        citeDiv.classList.add('csl-entry');
+        var biblioDiv = window.document.getElementById('ref-' + cite);
+        if (biblioDiv) {
+          citeDiv.innerHTML = biblioDiv.innerHTML;
+        }
+        popup.appendChild(citeDiv);
+      });
+      return popup.innerHTML;
+    });
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+</body></html>
