@@ -12,8 +12,12 @@ dist/
 .mypy_cache/
 .coverage*
 
-# Sphinx documentation
-docs/_build/
+# Quarto documentation
+/.quarto/
+docs/.quarto
+/docs
+documentation/api
+objects.json
 
 # pyenv
 .python-version
