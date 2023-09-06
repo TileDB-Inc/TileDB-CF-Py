@@ -276,7 +276,7 @@
 
 <section id="tiledb.cf.open_group_array" class="level1">
 <h1>cf.open_group_array</h1>
-<p><code>cf.open_group_array(group, *, array=None, attr=None, **kwargs)</code></p>
+<p><code>cf.core.open_group_array(group, *, array=None, attr=None, **kwargs)</code></p>
 <p>Opens an array in a group either by specifying the name of the array or the name of an attribute in the array.</p>
 <p>If only providing the attribute, there must be exactly one array in the group with an attribute with the requested name.</p>
 <p>Parameters: array: If not <code>None</code>, the name of the array to open. Overrides attr if both are provided. attr: If not <code>None</code>, open the array that contains this attr. Attr must be in only one of the group arrays. **kwargs: Keyword arguments to pass to the <code>tiledb.open</code> method.</p>

@@ -276,7 +276,7 @@
 
 <section id="tiledb.cf.create_group" class="level1">
 <h1>cf.create_group</h1>
-<p><code>cf.create_group(uri, group_schema, *, key=None, ctx=None, config=None, append=False)</code></p>
+<p><code>cf.core.create_group(uri, group_schema, *, key=None, ctx=None, config=None, append=False)</code></p>
 <p>Creates a TileDB group with arrays at relative locations inside the group.</p>
 <p>All arrays in the group will be added at a relative URI that matches the array name.</p>
 <p>Parameters: uri: Uniform resource identifier for TileDB group or array. group_schema: A mapping from array names to array schemas to add to the group. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager. append: If <code>True</code>, add arrays from the provided group schema to an already existing group. The names for the arrays in the group schema cannot already exist in the group being append to.</p>
