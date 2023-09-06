@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 from typing import Optional
 
 import click

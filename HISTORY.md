@@ -8,6 +8,7 @@
 * Removes VirtualGroup class.
 * Removes Group class.
 * Removes GroupSchema class.
+* Moves `creator` module into the `core` module.
 
 ### Deprecation
 

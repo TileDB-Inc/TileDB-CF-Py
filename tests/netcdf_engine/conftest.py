@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Sequence, Tuple
 

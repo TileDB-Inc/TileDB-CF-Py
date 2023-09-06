@@ -1,11 +1,9 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 import numpy as np
 import pytest
 
 import tiledb
 from tiledb.cf import DataspaceCreator
-from tiledb.cf.creator import ArrayCreator, SharedDim
+from tiledb.cf.core._creator import ArrayCreator, SharedDim
 
 
 class TestDataspaceCreatorExample1:
@@ -412,7 +410,7 @@ def test_rename_dim_attr_name_in_array_exists_error():
 
 
 def test_dataspace_creator_name():
-    from tiledb.cf.creator import dataspace_name
+    from tiledb.cf import dataspace_name
 
     assert dataspace_name("name.index") == "name"
     assert dataspace_name("name.data") == "name"

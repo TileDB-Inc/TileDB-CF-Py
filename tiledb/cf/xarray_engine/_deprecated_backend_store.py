@@ -1,6 +1,3 @@
-# Copyright 2020 TileDB Inc.
-# Licensed under the MIT License.
-
 """Module for using TileDB as an xarray backend plugin.
 
 This plugin can be used to open a generic TileDB array.
@@ -33,7 +30,7 @@ try:
 except ModuleNotFoundError:
     has_tiledb = False
 
-from ..creator import DATA_SUFFIX, INDEX_SUFFIX
+from ..core import DATA_SUFFIX, INDEX_SUFFIX
 
 _ATTR_PREFIX = "__tiledb_attr."
 _DIM_PREFIX = "__tiledb_dim."

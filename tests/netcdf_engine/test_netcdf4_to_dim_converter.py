@@ -1,9 +1,7 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 import numpy as np
 import pytest
 
-from tiledb.cf.creator import DataspaceRegistry, SharedDim
+from tiledb.cf.core._creator import DataspaceRegistry, SharedDim
 from tiledb.cf.netcdf_engine import NetCDF4ToDimConverter
 
 netCDF4 = pytest.importorskip("netCDF4")

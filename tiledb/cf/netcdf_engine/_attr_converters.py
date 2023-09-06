@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 """Classes for converting NetCDF4 objects to TileDB attributes."""
 
 from abc import abstractmethod
@@ -10,7 +8,7 @@ import numpy as np
 
 import tiledb
 from tiledb.cf.core import AttrMetadata
-from tiledb.cf.creator import ArrayRegistry, AttrCreator
+from tiledb.cf.core._creator import ArrayRegistry, AttrCreator
 
 from ._utils import (
     COORDINATE_SUFFIX,

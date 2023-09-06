@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 import pytest
 
 from tiledb.cf.netcdf_engine import open_netcdf_group

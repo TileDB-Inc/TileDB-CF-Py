@@ -32,11 +32,6 @@ quartodoc:
             - cf.AttrMetadata
             - cf.DimMetadata
             - cf.DataspaceCreator
-            - cf.creator.SharedDim
-            - cf.creator.ArrayCreator
-            - cf.creator.DomainCreator
-            - cf.creator.DimCreator
-            - cf.creator.AttrCreator
 
         - title: "NetCDF Support"
           desc: ""

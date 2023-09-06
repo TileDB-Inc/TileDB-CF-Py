@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 """Classes for converting NetCDF4 objects to TileDB attributes."""
 
 import itertools
@@ -10,9 +8,10 @@ import netCDF4
 import numpy as np
 
 import tiledb
-from tiledb.cf.core import DimMetadata, DType
-from tiledb.cf.creator import DataspaceRegistry, DimCreator, SharedDim
+from tiledb.cf.core import DimMetadata
+from tiledb.cf.core._creator import DataspaceRegistry, DimCreator, SharedDim
 
+from .._utils import DType
 from ._utils import get_unpacked_dtype, get_variable_values, safe_set_metadata
 
 

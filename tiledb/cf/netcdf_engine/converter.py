@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 """Classes for converting NetCDF4 files to TileDB."""
 
 import os
@@ -12,9 +10,9 @@ import netCDF4
 import numpy as np
 
 import tiledb
-from tiledb.cf.core import DType
-from tiledb.cf.creator import DataspaceCreator
+from tiledb.cf.core import DataspaceCreator
 
+from .._utils import DType
 from ._array_converters import NetCDF4ArrayConverter
 from ._dim_converters import (
     NetCDF4CoordToDimConverter,

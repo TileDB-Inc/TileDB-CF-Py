@@ -1,6 +1,3 @@
-# Copyright 2022 TileDB Inc.
-# Licensed under the MIT License.
-
 import sys
 
 import numpy as np

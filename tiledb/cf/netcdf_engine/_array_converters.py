@@ -1,5 +1,3 @@
-# Copyright 2021 TileDB Inc.
-# Licensed under the MIT License.
 """Classes for converting NetCDF4 files to TileDB."""
 
 import itertools
@@ -9,7 +7,7 @@ import netCDF4
 import numpy as np
 
 import tiledb
-from tiledb.cf.creator import (
+from tiledb.cf.core._creator import (
     ArrayCreator,
     ArrayRegistry,
     DataspaceRegistry,
