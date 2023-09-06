@@ -2,134 +2,134 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/index.html</loc>
-    <lastmod>2023-09-06T18:34:02.702Z</lastmod>
+    <lastmod>2023-09-06T19:00:53.267Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.netcdf_engine.NetCDF4DomainConverter.html</loc>
-    <lastmod>2023-09-06T18:34:03.370Z</lastmod>
+    <lastmod>2023-09-06T19:00:53.923Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.netcdf_engine.NetCDF4ArrayConverter.html</loc>
-    <lastmod>2023-09-06T18:34:03.698Z</lastmod>
+    <lastmod>2023-09-06T19:00:54.247Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.copy_metadata_from_xarray.html</loc>
-    <lastmod>2023-09-06T18:34:04.002Z</lastmod>
+    <lastmod>2023-09-06T19:00:54.551Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.from_netcdf.html</loc>
-    <lastmod>2023-09-06T18:34:04.314Z</lastmod>
+    <lastmod>2023-09-06T19:00:54.863Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/index.html</loc>
-    <lastmod>2023-09-06T18:34:04.686Z</lastmod>
+    <lastmod>2023-09-06T19:00:55.239Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.DimMetadata.html</loc>
-    <lastmod>2023-09-06T18:34:04.934Z</lastmod>
+    <lastmod>2023-09-06T19:00:55.491Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.AttrMetadata.html</loc>
-    <lastmod>2023-09-06T18:34:05.242Z</lastmod>
+    <lastmod>2023-09-06T19:00:55.767Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.netcdf_engine.NetCDF4CoordToDimConverter.html</loc>
-    <lastmod>2023-09-06T18:34:05.522Z</lastmod>
+    <lastmod>2023-09-06T19:00:56.047Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.create_group.html</loc>
-    <lastmod>2023-09-06T18:34:05.786Z</lastmod>
+    <lastmod>2023-09-06T19:00:56.299Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.netcdf_engine.NetCDF4ToDimConverter.html</loc>
-    <lastmod>2023-09-06T18:34:06.150Z</lastmod>
+    <lastmod>2023-09-06T19:00:56.603Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.NetCDF4ConverterEngine.html</loc>
-    <lastmod>2023-09-06T18:34:06.602Z</lastmod>
+    <lastmod>2023-09-06T19:00:56.991Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.DataspaceCreator.html</loc>
-    <lastmod>2023-09-06T18:34:06.926Z</lastmod>
+    <lastmod>2023-09-06T19:00:57.303Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.netcdf_engine.NetCDF4VarToAttrConverter.html</loc>
-    <lastmod>2023-09-06T18:34:07.230Z</lastmod>
+    <lastmod>2023-09-06T19:00:57.595Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.copy_data_from_xarray.html</loc>
-    <lastmod>2023-09-06T18:34:07.514Z</lastmod>
+    <lastmod>2023-09-06T19:00:57.847Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.from_xarray.html</loc>
-    <lastmod>2023-09-06T18:34:07.786Z</lastmod>
+    <lastmod>2023-09-06T19:00:58.111Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.netcdf_engine.NetCDF4ScalarToDimConverter.html</loc>
-    <lastmod>2023-09-06T18:34:08.058Z</lastmod>
+    <lastmod>2023-09-06T19:00:58.375Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.open_group_array.html</loc>
-    <lastmod>2023-09-06T18:34:08.322Z</lastmod>
+    <lastmod>2023-09-06T19:00:58.639Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.ArrayMetadata.html</loc>
-    <lastmod>2023-09-06T18:34:08.586Z</lastmod>
+    <lastmod>2023-09-06T19:00:58.887Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.netcdf_engine.NetCDF4DimToDimConverter.html</loc>
-    <lastmod>2023-09-06T18:34:08.862Z</lastmod>
+    <lastmod>2023-09-06T19:00:59.147Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/api/cf.create_group_from_xarray.html</loc>
-    <lastmod>2023-09-06T18:34:09.138Z</lastmod>
+    <lastmod>2023-09-06T19:00:59.399Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/code-of-conduct.html</loc>
-    <lastmod>2023-09-06T18:34:09.426Z</lastmod>
+    <lastmod>2023-09-06T19:00:59.675Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/contributing.html</loc>
-    <lastmod>2023-09-06T18:34:09.778Z</lastmod>
+    <lastmod>2023-09-06T19:01:00.011Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/core.html</loc>
-    <lastmod>2023-09-06T18:34:10.042Z</lastmod>
+    <lastmod>2023-09-06T19:01:00.263Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/netcdf-engine.html</loc>
-    <lastmod>2023-09-06T18:34:10.362Z</lastmod>
+    <lastmod>2023-09-06T19:01:00.575Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/tiledb-cf-spec.html</loc>
-    <lastmod>2023-09-06T18:34:10.682Z</lastmod>
+    <lastmod>2023-09-06T19:01:00.891Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/documentation/xarray-engine.html</loc>
-    <lastmod>2023-09-06T18:34:11.018Z</lastmod>
+    <lastmod>2023-09-06T19:01:01.211Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/examples/core/group-basics.html</loc>
-    <lastmod>2023-09-06T18:34:11.546Z</lastmod>
+    <lastmod>2023-09-06T19:01:01.723Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/examples/netcdf_engine/netcdf-to-tiledb-basics.html</loc>
-    <lastmod>2023-09-06T18:34:11.958Z</lastmod>
+    <lastmod>2023-09-06T19:01:02.151Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/examples/netcdf_engine/netcdf-to-tiledb-set-tiles.html</loc>
-    <lastmod>2023-09-06T18:34:12.442Z</lastmod>
+    <lastmod>2023-09-06T19:01:02.539Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/examples/netcdf_engine/netcdf-to-tiledb-set-max-fragment-size.html</loc>
-    <lastmod>2023-09-06T18:34:12.726Z</lastmod>
+    <lastmod>2023-09-06T19:01:02.827Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/examples/xarray_engine/tiledb-xarray-basics.html</loc>
-    <lastmod>2023-09-06T18:34:13.098Z</lastmod>
+    <lastmod>2023-09-06T19:01:03.239Z</lastmod>
   </url>
   <url>
     <loc>https://tiledb-inc.github.io/tiledb-quarto-template/examples/xarray_engine/tiledb-xarray-partially-filled-arrays.html</loc>
-    <lastmod>2023-09-06T18:34:13.402Z</lastmod>
+    <lastmod>2023-09-06T19:01:03.547Z</lastmod>
   </url>
 </urlset>
