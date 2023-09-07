@@ -152,10 +152,9 @@ def test_add_attr_name_exists_error():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", (0, 3), np.int64)
     creator.add_array_creator("array1", ("row",))
-    creator.add_array_creator("array2", ("row",))
     creator.add_attr_creator("attr1", "array1", np.float64)
     with pytest.raises(ValueError):
-        creator.add_attr_creator("attr1", "array2", np.float64)
+        creator.add_attr_creator("attr1", "array1", np.float64)
 
 
 def test_add_attr_dim_name_in_array_exists_error():
