@@ -166,16 +166,6 @@ def test_add_attr_dim_name_in_array_exists_error():
         creator.add_attr_creator("row", "array1", np.float64)
 
 
-def test_add_attr_axis_data_coord_exists_error():
-    creator = DataspaceCreator()
-    creator.add_shared_dim("row", (0, 3), np.int64)
-    creator.add_array_creator("array1", ("row",))
-    creator.add_array_creator("array2", ("row",))
-    creator.add_attr_creator("attr1", "array1", np.float64)
-    with pytest.raises(ValueError):
-        creator.add_attr_creator("attr1.data", "array2", np.float64)
-
-
 def test_add_dim_name_exists_error():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", (1, 4), np.uint64)
@@ -407,14 +397,6 @@ def test_rename_dim_attr_name_in_array_exists_error():
     creator.add_attr_creator("x1", "A1", np.float64)
     with pytest.raises(ValueError):
         creator.get_shared_dim("y1").name = "x1"
-
-
-def test_dataspace_creator_name():
-    from tiledb.cf import dataspace_name
-
-    assert dataspace_name("name.index") == "name"
-    assert dataspace_name("name.data") == "name"
-    assert dataspace_name("name.other") == "name.other"
 
 
 def test_to_schema_bad_array():
