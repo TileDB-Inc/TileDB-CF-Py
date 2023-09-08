@@ -888,6 +888,7 @@ class AttrCreator(metaclass=ABCMeta):
     @name.setter
     def name(self, name: str):
         self._array_registry.check_new_attr_name(name)
+        self._array_registry.update_attr_creator_name(self._name, name)
         self._name = name
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
