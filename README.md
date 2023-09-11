@@ -25,7 +25,7 @@ pip install tiledb-cf
 
 ### Documentation
 
-Coming soon.
+Documentation is available at: [https://tiledb-inc.github.io/TileDB-CF-Py](https://tiledb-inc.github.io/TileDB-CF-Py/)
 
 ### Example Notebooks
 
