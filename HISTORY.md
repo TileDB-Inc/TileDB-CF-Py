@@ -4,6 +4,18 @@
 
 ### Breaking Behavior
 
+### Deprecation
+
+### Bug Fixes
+
+### New Features
+
+### Improvements
+
+## 0.9.0
+
+### Breaking Behavior
+
 * Negative values no longer supported in `region`  in xarray `from_xarray` and `copy_data_from_xarray`.
 * Removes VirtualGroup class.
 * Removes Group class.
@@ -18,17 +30,11 @@
 * Removes function `dataspace_name`.
 * Removes constants `INDEX_SUFFIX` and `DATA_SUFFIX`.
 
-### Deprecation
-
-### Bug Fixes
-
 ### New Features
 
 * Adds `skip_vars` argument to the methods for copying xarray Dataset to TileDB that allows the user to specify variables to skip.
 * Adds method `create_group` that creates a TileDB group and arrays.
 * Adds method `open_group_array` that opens a TileDB array from a provided Group.
-
-### Improvements
 
 ## 0.8.1
 
