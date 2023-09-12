@@ -468,7 +468,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         NetCDF4ArrayConverter(
             dataspace_registry=self._registry,
             name=array_name,
-            dims=dims,
+            dim_order=dims,
             cell_order=cell_order,
             tile_order=tile_order,
             capacity=capacity,

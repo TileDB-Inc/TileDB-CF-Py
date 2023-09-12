@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABCMeta
 from collections import OrderedDict
 from io import StringIO
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -121,7 +121,7 @@ class DataspaceCreator:
         ArrayCreator(
             dataspace_registry=self._registry,
             name=array_name,
-            dims=dims,
+            dim_order=dims,
             cell_order=cell_order,
             tile_order=tile_order,
             capacity=capacity,
@@ -439,9 +439,9 @@ class ArrayCreator:
 
     def __init__(
         self,
-        dataspace_registry: DataspaceRegistry,
-        name: str,
-        dims: Sequence[str],
+        *,
+        name: str = "array",
+        dim_order: Sequence[str] = None,
         cell_order: str = "row-major",
         tile_order: str = "row-major",
         capacity: int = 0,
@@ -451,16 +451,28 @@ class ArrayCreator:
         attrs_filters: Optional[tiledb.FilterList] = None,
         allows_duplicates: bool = False,
         sparse: bool = False,
+        dataspace_registry: Optional[DataspaceRegistry] = None,
+        shared_dims: Optional[Iterable[SharedDim]] = None,
     ):
-        if isinstance(dims, str):
-            dims = (dims,)
-        if len(set(dims)) != len(dims):
+        # Create the dataspace registry if it does not already exist and add
+        # any potentially new shared dimensions.
+        if dataspace_registry is None:
+            dataspace_registry = DataspaceRegistry()
+        if shared_dims is not None:
+            for dim in shared_dims:
+                dataspace_registry.register_shared_dim(dim)
+
+        if dim_order is None:
+            dim_order = tuple()
+        elif isinstance(dim_order, str):
+            dim_order = (dim_order,)
+        if len(set(dim_order)) != len(dim_order):
             raise ValueError(
                 "Cannot create array; the array has repeating dimensions. All "
                 "dimensions must have a unique name."
             )
         self._registry, self._domain_creator = self._register(
-            dataspace_registry, name, dims
+            dataspace_registry, name, dim_order
         )
         self.cell_order = cell_order
         self.tile_order = tile_order
