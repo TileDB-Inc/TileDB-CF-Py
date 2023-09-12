@@ -1079,7 +1079,7 @@ class SharedDim(metaclass=ABCMeta):
 
     def __init__(
         self,
-        dataspace_registry: DataspaceRegistry,
+        registry: Optional[DataspaceRegistry],
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
@@ -1087,8 +1087,9 @@ class SharedDim(metaclass=ABCMeta):
         self._name = name
         self.domain = domain
         self.dtype = np.dtype(dtype)
-        self._dataspace_registry = dataspace_registry
-        self._dataspace_registry.register_shared_dim(self)
+        self._registry = registry
+        if registry is not None:
+            self._registry.register_shared_dim(self)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -1132,6 +1133,21 @@ class SharedDim(metaclass=ABCMeta):
 
     @name.setter
     def name(self, name: str):
-        self._dataspace_registry.check_rename_shared_dim(self._name, name)
-        self._dataspace_registry.update_shared_dim_name(self._name, name)
+        if self._registry is not None:
+            self._registry.check_rename_shared_dim(self._name, name)
+            self._registry.update_shared_dim_name(self._name, name)
         self._name = name
+
+    @property
+    def registry(self) -> Optional[DataspaceRegistry]:
+        return self._registry
+
+    @registry.setter
+    def registry(self, registry: DataspaceRegistry):
+        if self._registry is not None:
+            raise ValueError(
+                "Cannot register a shared dimension that is already registered."
+            )
+        self._registry = registry
+        if self._registry is not None:
+            self._registry.register_shared_dim(self)

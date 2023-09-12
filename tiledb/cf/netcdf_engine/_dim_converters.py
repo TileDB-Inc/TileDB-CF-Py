@@ -174,7 +174,7 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
 
     def __init__(
         self,
-        dataspace_registry: DataspaceRegistry,
+        dataspace_registry: Optional[DataspaceRegistry],
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
@@ -236,7 +236,7 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
     @classmethod
     def from_netcdf(
         cls,
-        dataspace_registry: DataspaceRegistry,
+        dataspace_registry: Optional[DataspaceRegistry],
         ncvar: netCDF4.Variable,
         name: Optional[str] = None,
         domain: Optional[Tuple[DType, DType]] = None,
@@ -325,7 +325,7 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
 
     def __init__(
         self,
-        dataspace_registry: DataspaceRegistry,
+        dataspace_registry: Optional[DataspaceRegistry],
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
@@ -368,7 +368,7 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
     @classmethod
     def from_netcdf(
         cls,
-        dataspace_registry: DataspaceRegistry,
+        dataspace_registry: Optional[DataspaceRegistry],
         dim: netCDF4.Dimension,
         unlimited_dim_size: Optional[int],
         dtype: np.dtype,
@@ -456,7 +456,10 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimBase):
 
     @classmethod
     def create(
-        cls, dataspace_registry: DataspaceRegistry, dim_name: str, dtype: np.dtype
+        cls,
+        dataspace_registry: Optional[DataspaceRegistry],
+        dim_name: str,
+        dtype: np.dtype,
     ):
         return cls(dataspace_registry, dim_name, (0, 0), dtype)
 
