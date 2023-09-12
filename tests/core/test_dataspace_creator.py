@@ -7,6 +7,47 @@ from tiledb.cf.core._creator import ArrayCreator, SharedDim
 
 
 class TestDataspaceCreatorExample1:
+    expected_schemas = {
+        "A1": tiledb.ArraySchema(
+            domain=tiledb.Domain(
+                tiledb.Dim(
+                    name="pressure.index", domain=(0, 3), tile=2, dtype=np.uint64
+                )
+            ),
+            attrs=[
+                tiledb.Attr(name="pressure.data", dtype=np.float64),
+                tiledb.Attr(name="b", dtype=np.float64),
+                tiledb.Attr(name="c", dtype=np.uint64),
+            ],
+        ),
+        "A2": tiledb.ArraySchema(
+            domain=tiledb.Domain(
+                tiledb.Dim(
+                    name="pressure.index", domain=(0, 3), tile=2, dtype=np.uint64
+                ),
+                tiledb.Dim(
+                    name="temperature",
+                    domain=(1, 8),
+                    tile=4,
+                    dtype=np.uint64,
+                    filters=tiledb.FilterList(
+                        [
+                            tiledb.ZstdFilter(level=1),
+                        ]
+                    ),
+                ),
+            ),
+            sparse=True,
+            attrs=[tiledb.Attr(name="d", dtype=np.uint64)],
+        ),
+        "A3": tiledb.ArraySchema(
+            domain=tiledb.Domain(
+                tiledb.Dim(name="temperature", domain=(1, 8), tile=8, dtype=np.uint64),
+            ),
+            attrs=[tiledb.Attr(name="e", dtype=np.float64)],
+        ),
+    }
+
     @pytest.fixture
     def dataspace_creator(self):
         creator = DataspaceCreator()
@@ -84,44 +125,38 @@ class TestDataspaceCreatorExample1:
         group_schema = dataspace_creator.to_schema()
         assert isinstance(group_schema, dict)
         assert len(group_schema) == 3
-        assert group_schema["A1"] == tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(
-                    name="pressure.index", domain=(0, 3), tile=2, dtype=np.uint64
-                )
-            ),
-            attrs=[
-                tiledb.Attr(name="pressure.data", dtype=np.float64),
-                tiledb.Attr(name="b", dtype=np.float64),
-                tiledb.Attr(name="c", dtype=np.uint64),
-            ],
-        )
-        assert group_schema["A2"] == tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(
-                    name="pressure.index", domain=(0, 3), tile=2, dtype=np.uint64
-                ),
-                tiledb.Dim(
-                    name="temperature",
-                    domain=(1, 8),
-                    tile=4,
-                    dtype=np.uint64,
-                    filters=tiledb.FilterList(
-                        [
-                            tiledb.ZstdFilter(level=1),
-                        ]
-                    ),
-                ),
-            ),
-            sparse=True,
-            attrs=[tiledb.Attr(name="d", dtype=np.uint64)],
-        )
-        assert group_schema["A3"] == tiledb.ArraySchema(
-            domain=tiledb.Domain(
-                tiledb.Dim(name="temperature", domain=(1, 8), tile=8, dtype=np.uint64),
-            ),
-            attrs=[tiledb.Attr(name="e", dtype=np.float64)],
-        )
+        assert group_schema["A1"] == self.expected_schemas["A1"]
+        assert group_schema["A2"] == self.expected_schemas["A2"]
+        assert group_schema["A3"] == self.expected_schemas["A3"]
+
+    def test_create_group(self, dataspace_creator, tmpdir_factory):
+        uri = str(tmpdir_factory.mktemp("output").join("dataspace_example_1"))
+        dataspace_creator.create_group(uri, append=False)
+        with tiledb.Group(uri, mode="r") as group:
+            assert len(group) == 3
+            for item in group:
+                result_schema = tiledb.ArraySchema.load(item.uri)
+                expected_schema = self.expected_schemas[item.name]
+                assert result_schema == expected_schema
+
+
+def test_create_array(tmpdir):
+    # Generate dataspace creator
+    creator = DataspaceCreator()
+    creator.add_shared_dim("d1", (0, 1_000_000), np.uint32)
+    creator.add_array_creator("A1", ("d1"))
+    creator.get_array_creator("A1").add_attr_creator("a1", np.float64)
+
+    # Create the array
+    array_uri = str(tmpdir.mkdir("output").join("example_create_array"))
+    creator.create_array(array_uri)
+
+    # Load and check schema
+    schema = tiledb.ArraySchema.load(array_uri)
+    assert schema == tiledb.ArraySchema(
+        tiledb.Domain(tiledb.Dim("d1", domain=(0, 1_000_000), dtype=np.uint32)),
+        attrs=[tiledb.Attr("a1", dtype=np.float64)],
+    )
 
 
 def test_repr_empty_dataspace():
@@ -152,10 +187,9 @@ def test_add_attr_name_exists_error():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", (0, 3), np.int64)
     creator.add_array_creator("array1", ("row",))
-    creator.add_array_creator("array2", ("row",))
     creator.add_attr_creator("attr1", "array1", np.float64)
     with pytest.raises(ValueError):
-        creator.add_attr_creator("attr1", "array2", np.float64)
+        creator.add_attr_creator("attr1", "array1", np.float64)
 
 
 def test_add_attr_dim_name_in_array_exists_error():
@@ -166,21 +200,22 @@ def test_add_attr_dim_name_in_array_exists_error():
         creator.add_attr_creator("row", "array1", np.float64)
 
 
-def test_add_attr_axis_data_coord_exists_error():
-    creator = DataspaceCreator()
-    creator.add_shared_dim("row", (0, 3), np.int64)
-    creator.add_array_creator("array1", ("row",))
-    creator.add_array_creator("array2", ("row",))
-    creator.add_attr_creator("attr1", "array1", np.float64)
-    with pytest.raises(ValueError):
-        creator.add_attr_creator("attr1.data", "array2", np.float64)
-
-
 def test_add_dim_name_exists_error():
     creator = DataspaceCreator()
     creator.add_shared_dim("row", (1, 4), np.uint64)
     with pytest.raises(ValueError):
         creator.add_shared_dim("row", (0, 3), np.int64)
+
+
+def test_get_array_creator_by_attr_not_uniquer():
+    creator = DataspaceCreator()
+    creator.add_shared_dim("row", (1, 4), np.uint32)
+    creator.add_array_creator("A1", ["row"])
+    creator.get_array_creator("A1").add_attr_creator("attr", np.int32)
+    creator.add_array_creator("A2", ["row"])
+    creator.get_array_creator("A2").add_attr_creator("attr", np.int32)
+    with pytest.raises(ValueError):
+        creator.get_array_creator_by_attr("attr")
 
 
 def test_remove_empty_array():
@@ -407,14 +442,6 @@ def test_rename_dim_attr_name_in_array_exists_error():
     creator.add_attr_creator("x1", "A1", np.float64)
     with pytest.raises(ValueError):
         creator.get_shared_dim("y1").name = "x1"
-
-
-def test_dataspace_creator_name():
-    from tiledb.cf import dataspace_name
-
-    assert dataspace_name("name.index") == "name"
-    assert dataspace_name("name.data") == "name"
-    assert dataspace_name("name.other") == "name.other"
 
 
 def test_to_schema_bad_array():

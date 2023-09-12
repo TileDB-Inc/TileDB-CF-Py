@@ -53,6 +53,10 @@ class TestArrayCreatorSparseExample1:
         nattr = array_creator.nattr
         assert nattr == 1
 
+    def test_ndim(self, array_creator):
+        ndim = array_creator.ndim
+        assert ndim == 2
+
 
 class TestArrayCreatorDense1:
     @pytest.fixture
@@ -126,6 +130,8 @@ def test_rename_attr():
     array_creator.attr_creator("enthalp").name = "enthalpy"
     attr_names = tuple(attr_creator.name for attr_creator in array_creator)
     assert attr_names == ("enthalpy",)
+    assert not array_creator.has_attr_creator("enthalp")
+    assert array_creator.has_attr_creator("enthalpy")
 
 
 def test_array_no_dim():

@@ -9,6 +9,14 @@
 * Removes Group class.
 * Removes GroupSchema class.
 * Moves `creator` module into the `core` module.
+* Updates Dataspace Convention to 0.3.0.
+    - Replaces group-level metadata array with group metadata.
+    - Removes dataspace names.
+    - Removes requirement attribute are unique.
+    - Add dimension-level metadata.
+    - Redefines Simple CF Dataspace.
+* Removes function `dataspace_name`.
+* Removes constants `INDEX_SUFFIX` and `DATA_SUFFIX`.
 
 ### Deprecation
 
