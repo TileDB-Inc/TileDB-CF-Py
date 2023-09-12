@@ -271,17 +271,21 @@
 <ul>
 <li><a href="#current-tiledb-cf-dataspace-specification" class="nav-link active" data-scroll-target="#current-tiledb-cf-dataspace-specification">Current TileDB-CF Dataspace Specification</a>
 <ul class="collapse">
-<li><a href="#tiledb-cf-dataspace-0.2.0" class="nav-link" data-scroll-target="#tiledb-cf-dataspace-0.2.0">TileDB-CF Dataspace 0.2.0</a></li>
+<li><a href="#tiledb-cf-dataspace-0.3.0" class="nav-link" data-scroll-target="#tiledb-cf-dataspace-0.3.0">TileDB-CF Dataspace 0.3.0</a></li>
 <li><a href="#simple-cf-dataspace" class="nav-link" data-scroll-target="#simple-cf-dataspace">Simple CF Dataspace</a></li>
 </ul></li>
 <li><a href="#specification-qa" class="nav-link" data-scroll-target="#specification-qa">Specification Q&amp;A</a></li>
 <li><a href="#changelog" class="nav-link" data-scroll-target="#changelog">Changelog</a>
 <ul class="collapse">
+<li><a href="#version-0.3.0" class="nav-link" data-scroll-target="#version-0.3.0">Version 0.3.0</a></li>
+<li><a href="#version-0.2.0" class="nav-link" data-scroll-target="#version-0.2.0">Version 0.2.0</a></li>
 <li><a href="#version-0.1.0" class="nav-link" data-scroll-target="#version-0.1.0">Version 0.1.0</a></li>
 </ul></li>
 <li><a href="#appendix" class="nav-link" data-scroll-target="#appendix">Appendix</a>
 <ul class="collapse">
 <li><a href="#tiledb-cf-dataspace-0.1.0" class="nav-link" data-scroll-target="#tiledb-cf-dataspace-0.1.0">TileDB-CF Dataspace 0.1.0</a></li>
+<li><a href="#tiledb-cf-dataspace-0.2.0" class="nav-link" data-scroll-target="#tiledb-cf-dataspace-0.2.0">TileDB-CF Dataspace 0.2.0</a></li>
+<li><a href="#simple-cf-dataspace-1" class="nav-link" data-scroll-target="#simple-cf-dataspace-1">Simple CF Dataspace</a></li>
 </ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
@@ -308,32 +312,27 @@ Warning
 <section id="current-tiledb-cf-dataspace-specification" class="level2">
 <h2 class="anchored" data-anchor-id="current-tiledb-cf-dataspace-specification">Current TileDB-CF Dataspace Specification</h2>
 <ul>
-<li>The current TileDB-CF format version number is <strong>0.2.0</strong>.</li>
+<li>The current TileDB-CF format version number is <strong>0.3.0</strong>.</li>
 </ul>
-<section id="tiledb-cf-dataspace-0.2.0" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb-cf-dataspace-0.2.0">TileDB-CF Dataspace 0.2.0</h3>
+<section id="tiledb-cf-dataspace-0.3.0" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb-cf-dataspace-0.3.0">TileDB-CF Dataspace 0.3.0</h3>
 <p>A TileDB CF dataspace is a TileDB group with arrays, attributes, and dimensions that satisfy the following rules.</p>
 <section id="terminology" class="level4">
 <h4 class="anchored" data-anchor-id="terminology">Terminology</h4>
 <ul>
-<li><strong>Dataspace name</strong>: The name of an attribute or dimension stripped of an optional suffix of <code>.index</code> or <code>.data</code>.</li>
 <li><strong>Collection of dimensions</strong>: A set of TileDB dimensions with the same name, data type, and domain.</li>
 </ul>
 </section>
 <section id="cf-dataspace" class="level4">
 <h4 class="anchored" data-anchor-id="cf-dataspace">CF Dataspace</h4>
-<p>A CF Dataspace is a TileDB group that follows certain requirements in order to provide additional relational context to dimensions and attributes using naming conventions. In a CF Dataspace, TileDB attributes within the entire group are unique and TileDB dimensions that share the same name are considered the same object.</p>
-<p><strong>Requirements for Attributes and Dimensions</strong></p>
+<p><strong>Requirements for Dimensions</strong></p>
 <ol type="1">
-<li>All attributes and dimension must be named (there must not be any anonymous attributes or dimensions).</li>
 <li>All dimensions that share a name must belong to the same collection (they must have the same domain and data type).</li>
-<li>All attributes must have a unique dataspace name.</li>
 </ol>
 <p><strong>Requirements for Metadata</strong></p>
 <ol type="1">
-<li>Group metadata is stored in a special metadata array named <code>__tiledb_group</code> inside the TileDB group.</li>
-<li>Attribute metadata is stored in the same array the attribute is stored in. The metadata key must use the prefix <code>__tiledb_attr.{attr_name}.</code> where <code>{attr_name}</code> is the full name of the attribute.</li>
-<li>If the metadata key <code>_FillValue</code> exists for an attribute; it must have the same value as the fill value for the attribute.</li>
+<li>Attribute metadata is stored in the same array as the attribute. The metadata key must use the prefix <code>__tiledb_attr.{attr_name}.</code> where <code>{attr_name}</code> is the full name of the attribute.</li>
+<li>Dimension metadata is stored in the same array as the dimension. The metadata key must use the prefix <code>__tiledb_dim.{dim_name}.</code> where <code>{dim_name}</code> is the full name of the dimension.</li>
 </ol>
 </section>
 </section>
@@ -343,7 +342,14 @@ Warning
 <p><strong>Additional Requirements for Dimensions</strong></p>
 <ol type="1">
 <li>All dimensions use integer indices and have a domain with lower bound of 0.</li>
-<li>All collections of dimensions must have a unique dataspace name.</li>
+</ol>
+<p><strong>Additional Requirements for Arrays</strong></p>
+<ol type="1">
+<li>All arrays in the group are named and have a single attribute.</li>
+</ol>
+<p><strong>Additional Requirements for Metadata</strong></p>
+<ol type="1">
+<li>There is only group and attribute level metadata.</li>
 </ol>
 </section>
 </section>
@@ -362,10 +368,40 @@ Warning
 </section>
 <section id="changelog" class="level2">
 <h2 class="anchored" data-anchor-id="changelog">Changelog</h2>
+<section id="version-0.3.0" class="level3">
+<h3 class="anchored" data-anchor-id="version-0.3.0">Version 0.3.0</h3>
+<ul>
+<li><p>Terminology</p>
+<ul>
+<li>Remove notion of a dataspace name.</li>
+</ul></li>
+<li><p>CF Dataspace</p>
+<ul>
+<li>Remove requirement that all attributes and dimension are named (allow anonymous attributes and dimensions).</li>
+<li>Remove group metadata array. Group metadata is now directly supported in the TileDB core engine.</li>
+<li>Remove the notion of a dataspace name and the associated requirements.</li>
+<li>Remove requirement attributes have unique dataspace names for general CF Datspace.</li>
+<li>Remove requirement of <code>_FillValue</code>.</li>
+<li>Add dimension-level metadata.</li>
+</ul></li>
+<li><p>Simple CF Dataspace</p>
+<ul>
+<li>Remove requiment all collections of dimension have a unique dataspace name.</li>
+<li>Add requirement all arrays are uniquely named and have a single attribute.</li>
+<li>Add restriction that metadata only exists for attributes and groups.</li>
+</ul></li>
+</ul>
+</section>
+<section id="version-0.2.0" class="level3">
+<h3 class="anchored" data-anchor-id="version-0.2.0">Version 0.2.0</h3>
+<ul>
+<li>Major revision. See appendix for full specification.</li>
+</ul>
+</section>
 <section id="version-0.1.0" class="level3">
 <h3 class="anchored" data-anchor-id="version-0.1.0">Version 0.1.0</h3>
 <ul>
-<li>Initial release. See :ref:<code>cf-spec-0.1.0</code></li>
+<li>Initial release. See appendix for full specification.</li>
 </ul>
 </section>
 </section>
@@ -403,10 +439,46 @@ Warning
 <ul>
 <li>All data dimensions must have an axis label that maps an index dimension with the same dataspace name as the data dimension to an attribute with the same full name and data type as the data dimension.</li>
 </ul>
-
-
-
 </section>
+</section>
+<section id="tiledb-cf-dataspace-0.2.0" class="level3">
+<h3 class="anchored" data-anchor-id="tiledb-cf-dataspace-0.2.0">TileDB-CF Dataspace 0.2.0</h3>
+<p>A TileDB CF dataspace is a TileDB group with arrays, attributes, and dimensions that satisfy the following rules.</p>
+<section id="terminology-2" class="level4">
+<h4 class="anchored" data-anchor-id="terminology-2">Terminology</h4>
+<ul>
+<li><strong>Dataspace name</strong>: The name of an attribute or dimension stripped of an optional suffix of <code>.index</code> or <code>.data</code>.</li>
+<li><strong>Collection of dimensions</strong>: A set of TileDB dimensions with the same name, data type, and domain.</li>
+</ul>
+</section>
+<section id="cf-dataspace-2" class="level4">
+<h4 class="anchored" data-anchor-id="cf-dataspace-2">CF Dataspace</h4>
+<p>A CF Dataspace is a TileDB group that follows certain requirements in order to provide additional relational context to dimensions and attributes using naming conventions. In a CF Dataspace, TileDB attributes within the entire group are unique and TileDB dimensions that share the same name are considered the same object.</p>
+<p><strong>Requirements for Attributes and Dimensions</strong></p>
+<ol type="1">
+<li>All attributes and dimension must be named (there must not be any anonymous attributes or dimensions).</li>
+<li>All dimensions that share a name must belong to the same collection (they must have the same domain and data type).</li>
+<li>All attributes must have a unique dataspace name.</li>
+</ol>
+<p><strong>Requirements for Metadata</strong></p>
+<ol type="1">
+<li>Group metadata is stored in a special metadata array named <code>__tiledb_group</code> inside the TileDB group.</li>
+<li>Attribute metadata is stored in the same array the attribute is stored in. The metadata key must use the prefix <code>__tiledb_attr.{attr_name}.</code> where <code>{attr_name}</code> is the full name of the attribute.</li>
+<li>If the metadata key <code>_FillValue</code> exists for an attribute; it must have the same value as the fill value for the attribute.</li>
+</ol>
+</section>
+</section>
+<section id="simple-cf-dataspace-1" class="level3">
+<h3 class="anchored" data-anchor-id="simple-cf-dataspace-1">Simple CF Dataspace</h3>
+<p>A simple CF dataspace is a direct implementation of the NetCDF data model in TileDB. It follows the same rules as a CF dataspace along with the following requirements:</p>
+<p><strong>Additional Requirements for Dimensions</strong></p>
+<ol type="1">
+<li>All dimensions use integer indices and have a domain with lower bound of 0.</li>
+<li>All collections of dimensions must have a unique dataspace name.</li>
+</ol>
+
+
+
 </section>
 </section>
 </main> <!-- /main -->
