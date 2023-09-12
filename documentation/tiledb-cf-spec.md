@@ -26,8 +26,8 @@ A TileDB CF dataspace is a TileDB group with arrays, attributes, and dimensions 
 
 **Requirements for Metadata**
 
-1. Attribute metadata is stored in the same array the attribute is stored in. The metadata key must use the prefix `__tiledb_attr.{attr_name}.` where `{attr_name}` is the full name of the attribute.
-2. Dimension metadata is store in the same array as the dimension. The metadta key must use the prefix `__tiledb_dim.{dim_name}.` where `{dim_name}` is the full name of the dimension.
+1. Attribute metadata is stored in the same array as the attribute. The metadata key must use the prefix `__tiledb_attr.{attr_name}.` where `{attr_name}` is the full name of the attribute.
+2. Dimension metadata is stored in the same array as the dimension. The metadata key must use the prefix `__tiledb_dim.{dim_name}.` where `{dim_name}` is the full name of the dimension.
 
 ### Simple CF Dataspace
 
@@ -41,7 +41,7 @@ A simple CF dataspace is a direct implementation of the NetCDF data model in Til
 
 1. All arrays in the group are named and have a single attribute.
 
-**Additional Requirements for Attributes**
+**Additional Requirements for Metadata**
 
 1. There is only group and attribute level metadata.
 
