@@ -501,7 +501,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
 
         """
         NetCDF4CoordToDimConverter.from_netcdf(
-            dataspace_registry=self._registry,
+            registry=self._dim_registry,
             ncvar=ncvar,
             name=dim_name,
             domain=domain,
@@ -526,7 +526,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dim_name: If not ``None``, output name of the TileDB dimension.
         """
         NetCDF4DimToDimConverter.from_netcdf(
-            dataspace_registry=self._registry,
+            registry=self._dim_registry,
             dim=ncdim,
             unlimited_dim_size=unlimited_dim_size,
             dtype=dtype,
@@ -545,7 +545,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dtype: Numpy type to use for the scalar dimension
         """
         NetCDF4ScalarToDimConverter.create(
-            dataspace_registry=self._registry, dim_name=dim_name, dtype=dtype
+            registry=self._dim_registry, dim_name=dim_name, dtype=dtype
         )
 
     def add_var_to_attr_converter(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from abc import ABCMeta
 from collections import OrderedDict
 from io import StringIO
-from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Self, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -13,6 +13,7 @@ import tiledb
 
 from .._utils import DType
 from .api import create_group
+from .registry import RegisteredByName, Registry
 
 
 class DataspaceCreator:
@@ -27,6 +28,7 @@ class DataspaceCreator:
 
     def __init__(self):
         self._registry = DataspaceRegistry()
+        self._dim_registry = DataspaceDimRegistry(self._registry)
 
     def __repr__(self):
         output = StringIO()
@@ -172,7 +174,7 @@ class DataspaceCreator:
             domain: The (inclusive) interval on which the dimension is valid.
             dtype: The numpy dtype of the values and domain of the dimension.
         """
-        SharedDim(self._registry, dim_name, domain, dtype)
+        SharedDim(self._dim_registry, dim_name, domain, dtype)
 
     def array_creators(self):
         """Iterates over array creators in the CF dataspace."""
@@ -416,6 +418,28 @@ class DataspaceRegistry:
 
     def update_shared_dim_name(self, original_name: str, new_name: str):
         self._shared_dims[new_name] = self._shared_dims.pop(original_name)
+
+
+class DataspaceDimRegistry:
+    def __init__(self, dataspace_impl: DataspaceRegistry):
+        self._impl = dataspace_impl
+
+    def __delitem__(self, name: str):
+        self._registry.deregister_shared_dim(name)
+
+    def __getitem__(self, name: str) -> SharedDim:
+        self._impl.get_shared_dim(name)
+
+    def __setitem__(self, name: str, value: SharedDim):
+        if value.is_registered:
+            raise ValueError("SharedDim '{value.name}' is already registered.")
+        if name != value.name:
+            value.name = name
+        self._impl.register_shared_dim(value)
+
+    def rename(self, old_name: str, new_name: str):
+        self._impl.check_rename_shared_dim(old_name, new_name)
+        self._impl.update_shared_dim_name(old_name, new_name)
 
 
 class ArrayCreator:
@@ -1086,12 +1110,12 @@ class DimCreator:
         )
 
 
-class SharedDim(metaclass=ABCMeta):
+class SharedDim(RegisteredByName, metaclass=ABCMeta):
     """Definition for the name, domain and data type of a collection of dimensions."""
 
     def __init__(
         self,
-        registry: Optional[DataspaceRegistry],
+        registry: Optional[Registry[Self]],
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
@@ -1099,9 +1123,8 @@ class SharedDim(metaclass=ABCMeta):
         self._name = name
         self.domain = domain
         self.dtype = np.dtype(dtype)
-        self._registry = registry
-        if registry is not None:
-            self._registry.register_shared_dim(self)
+        self._registry = None
+        self.set_registry(registry)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):
@@ -1137,29 +1160,3 @@ class SharedDim(metaclass=ABCMeta):
         if self.domain:
             return np.issubdtype(self.dtype, np.integer) and self.domain[0] == 0
         return False
-
-    @property
-    def name(self) -> str:
-        """Name of the shared dimension."""
-        return self._name
-
-    @name.setter
-    def name(self, name: str):
-        if self._registry is not None:
-            self._registry.check_rename_shared_dim(self._name, name)
-            self._registry.update_shared_dim_name(self._name, name)
-        self._name = name
-
-    @property
-    def registry(self) -> Optional[DataspaceRegistry]:
-        return self._registry
-
-    @registry.setter
-    def registry(self, registry: DataspaceRegistry):
-        if self._registry is not None:
-            raise ValueError(
-                "Cannot register a shared dimension that is already registered."
-            )
-        self._registry = registry
-        if self._registry is not None:
-            self._registry.register_shared_dim(self)

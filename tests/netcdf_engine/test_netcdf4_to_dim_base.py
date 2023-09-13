@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 
-from tiledb.cf.core._creator import DataspaceRegistry
 from tiledb.cf.netcdf_engine import (
     NetCDF4CoordToDimConverter,
     NetCDF4DimToDimConverter,
@@ -29,8 +28,7 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             dataset.createDimension("value")
             var = dataset.createVariable("value", np.float64, ("value",))
             var[:] = np.random.rand((8))
-            registry = DataspaceRegistry()
-            converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
+            converter = NetCDF4CoordToDimConverter.from_netcdf(None, var)
             assert converter.name == var.name
             assert converter.domain is None
             assert converter.dtype == np.dtype(np.float64)
@@ -54,8 +52,7 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             dataset.createDimension("value")
             var = dataset.createVariable("value", np.float64, ("value",))
             var[:] = data
-            registry = DataspaceRegistry()
-            converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
+            converter = NetCDF4CoordToDimConverter.from_netcdf(None, var)
             result = converter.get_values(dataset, sparse=True, indexer=indexer)
         np.testing.assert_equal(result, data[indexer])
 
@@ -65,8 +62,7 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             dataset.createDimension("value")
             var = dataset.createVariable("value", np.float64, ("value",))
             var[:] = data
-            registry = DataspaceRegistry()
-            converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
+            converter = NetCDF4CoordToDimConverter.from_netcdf(None, var)
             query_size = converter.get_query_size(dataset)
         np.testing.assert_equal(query_size, 8)
 
@@ -74,8 +70,7 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dataset.createDimension("value")
             var = dataset.createVariable("value", np.float64, ("value",))
-            registry = DataspaceRegistry()
-            converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
+            converter = NetCDF4CoordToDimConverter.from_netcdf(None, var)
             with pytest.raises(ValueError):
                 converter.get_values(dataset, sparse=True, indexer=slice(None))
 
@@ -85,8 +80,7 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             dataset.createDimension("value")
             var = dataset.createVariable("value", np.float64, ("value",))
             var[:] = data
-            registry = DataspaceRegistry()
-            converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
+            converter = NetCDF4CoordToDimConverter.from_netcdf(None, var)
             with pytest.raises(NotImplementedError):
                 converter.get_values(dataset, sparse=False, indexer=slice(None))
 
@@ -96,8 +90,7 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
             dataset.createDimension("value")
             var = dataset.createVariable("value", np.float64, ("value",))
             var[:] = data
-            registry = DataspaceRegistry()
-            converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
+            converter = NetCDF4CoordToDimConverter.from_netcdf(None, var)
             with pytest.raises(ValueError):
                 converter.get_values(dataset, sparse=False, indexer=slice(0, 8, 2))
 
@@ -105,8 +98,7 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dataset.createDimension("value")
             var = dataset.createVariable("value", np.float64, ("value",))
-            registry = DataspaceRegistry()
-            converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
+            converter = NetCDF4CoordToDimConverter.from_netcdf(None, var)
             group = dataset.createGroup("group1")
             with pytest.raises(KeyError):
                 converter.get_values(group, sparse=True, indexer=slice(None))
@@ -115,8 +107,7 @@ class TestNetCDFCoordToDimConverterUnlimCoord:
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dataset.createDimension("value")
             var = dataset.createVariable("value", np.float64, ("value",))
-            registry = DataspaceRegistry()
-            converter = NetCDF4CoordToDimConverter.from_netcdf(registry, var)
+            converter = NetCDF4CoordToDimConverter.from_netcdf(None, var)
             group = dataset.createGroup("group1")
             group.createVariable("value", np.float64, tuple())
             with pytest.raises(ValueError):
@@ -134,10 +125,7 @@ class TestNetCDFDimToDimConverterSimpleDim:
     def test_class_properties(self):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 1000, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 1000, np.uint64)
             assert isinstance(repr(converter), str)
             assert converter.input_dim_name == dim.name
             assert converter.input_dim_size == dim.size
@@ -152,20 +140,14 @@ class TestNetCDFDimToDimConverterSimpleDim:
     def test_get_values(self, sparse, values):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 1000, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 1000, np.uint64)
             result = converter.get_values(dataset, sparse=sparse, indexer=slice(None))
             np.testing.assert_equal(result, values)
 
     def test_get_query_size(self):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 1000, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 1000, np.uint64)
             query_size = converter.get_query_size(dataset)
             np.testing.assert_equal(query_size, 8)
 
@@ -176,20 +158,14 @@ class TestNetCDFDimToDimConverterSimpleDim:
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
             group = dataset.createGroup("group1")
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 1000, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 1000, np.uint64)
             result = converter.get_values(group, sparse=sparse, indexer=slice(None))
             np.testing.assert_equal(result, values)
 
     def test_no_dim_error(self):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 1000, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 1000, np.uint64)
         with netCDF4.Dataset("no_dims.nc", mode="w", diskless=True) as dataset:
             group = dataset.createGroup("group")
             with pytest.raises(KeyError):
@@ -198,10 +174,7 @@ class TestNetCDFDimToDimConverterSimpleDim:
     def test_get_values_bad_step_error(self):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", 8)
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 1000, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 1000, np.uint64)
             with pytest.raises(ValueError):
                 converter.get_values(dataset, sparse=False, indexer=slice(0, 8, 2))
 
@@ -214,9 +187,8 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", None)
             max_size = 100
-            registry = DataspaceRegistry()
             converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, max_size, np.uint64
+                None, dim, max_size, np.uint64
             )
             assert isinstance(repr(converter), str)
             assert converter.input_dim_name == dim.name
@@ -230,10 +202,7 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
     def test_get_values_no_data(self, sparse):
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             dim = dataset.createDimension("row", None)
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 100, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 100, np.uint64)
             with pytest.raises(IndexError):
                 converter.get_values(dataset, sparse=sparse, indexer=slice(None))
 
@@ -252,10 +221,7 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
             var = dataset.createVariable("data", np.int32, ("row",))
             size = 10
             var[:] = np.arange(size)
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 100, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 100, np.uint64)
             result = converter.get_values(dataset, sparse=sparse, indexer=indexer)
             np.testing.assert_equal(result, expected_result)
 
@@ -265,10 +231,7 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
             var = dataset.createVariable("data", np.int32, ("row",))
             size = 10
             var[:] = np.arange(size)
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 100, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 100, np.uint64)
             query_size = converter.get_query_size(dataset)
             np.testing.assert_equal(query_size, size)
 
@@ -278,25 +241,20 @@ class TestNetCDFDimToDimConverterUnlimitedDim:
             var = dataset.createVariable("data", np.int32, ("row",))
             size = 11
             var[:] = np.arange(size)
-            registry = DataspaceRegistry()
-            converter = NetCDF4DimToDimConverter.from_netcdf(
-                registry, dim, 10, np.uint64
-            )
+            converter = NetCDF4DimToDimConverter.from_netcdf(None, dim, 10, np.uint64)
             with pytest.raises(IndexError):
                 converter.get_values(dataset, sparse=True, indexer=slice(None))
 
 
 class TestNetCDFScalarToDimConverter:
     def test_class_properties(self):
-        registry = DataspaceRegistry()
-        converter = NetCDF4ScalarToDimConverter.create(registry, "__scalars", np.uint32)
+        converter = NetCDF4ScalarToDimConverter.create(None, "__scalars", np.uint32)
         assert converter.name == "__scalars"
         assert converter.domain == (0, 0)
         assert converter.dtype == np.dtype(np.uint32)
 
     def test_repr(self):
-        registry = DataspaceRegistry()
-        converter = NetCDF4ScalarToDimConverter.create(registry, "__scalars", np.uint32)
+        converter = NetCDF4ScalarToDimConverter.create(None, "__scalars", np.uint32)
         isinstance(repr(converter), str)
 
     @pytest.mark.parametrize(
@@ -308,36 +266,31 @@ class TestNetCDFScalarToDimConverter:
         ],
     )
     def test_get_values(self, sparse, indexer, expected_result):
-        registry = DataspaceRegistry()
-        converter = NetCDF4ScalarToDimConverter.create(registry, "__scalars", np.uint32)
+        converter = NetCDF4ScalarToDimConverter.create(None, "__scalars", np.uint32)
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             result = converter.get_values(dataset, sparse=sparse, indexer=indexer)
             np.testing.assert_equal(result, expected_result)
 
     def test_get_values_bad_step_error(self):
-        registry = DataspaceRegistry()
-        converter = NetCDF4ScalarToDimConverter.create(registry, "__scalars", np.uint32)
+        converter = NetCDF4ScalarToDimConverter.create(None, "__scalars", np.uint32)
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             with pytest.raises(ValueError):
                 converter.get_values(dataset, sparse=False, indexer=slice(0, 1, -1))
 
     def test_get_values_bad_start_error(self):
-        registry = DataspaceRegistry()
-        converter = NetCDF4ScalarToDimConverter.create(registry, "__scalars", np.uint32)
+        converter = NetCDF4ScalarToDimConverter.create(None, "__scalars", np.uint32)
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             with pytest.raises(IndexError):
                 converter.get_values(dataset, sparse=False, indexer=slice(-1, 1))
 
     def test_get_values_bad_stop_error(self):
-        registry = DataspaceRegistry()
-        converter = NetCDF4ScalarToDimConverter.create(registry, "__scalars", np.uint32)
+        converter = NetCDF4ScalarToDimConverter.create(None, "__scalars", np.uint32)
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             with pytest.raises(IndexError):
                 converter.get_values(dataset, sparse=False, indexer=slice(0, 10))
 
     def test_get_query_size(self):
-        registry = DataspaceRegistry()
-        converter = NetCDF4ScalarToDimConverter.create(registry, "__scalars", np.uint32)
+        converter = NetCDF4ScalarToDimConverter.create(None, "__scalars", np.uint32)
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
             result = converter.get_query_size(dataset)
             np.testing.assert_equal(result, 1)

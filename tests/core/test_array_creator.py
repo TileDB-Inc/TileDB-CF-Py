@@ -31,7 +31,6 @@ class TestArrayCreatorSparseExample1:
 
     def test_create(self, tmpdir, array_creator):
         uri = str(tmpdir.mkdir("output").join("sparse_example_1"))
-        print(array_creator)
         array_creator.create(uri)
         assert tiledb.object_type(uri) == "array"
 
