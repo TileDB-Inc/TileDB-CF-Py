@@ -428,11 +428,11 @@ class DataspaceDimRegistry:
         self._registry.deregister_shared_dim(name)
 
     def __getitem__(self, name: str) -> SharedDim:
-        self._impl.get_shared_dim(name)
+        return self._impl.get_shared_dim(name)
 
     def __setitem__(self, name: str, value: SharedDim):
         if value.is_registered:
-            raise ValueError("SharedDim '{value.name}' is already registered.")
+            raise ValueError(f"SharedDim '{value.name}' is already registered.")
         if name != value.name:
             value.name = name
         self._impl.register_shared_dim(value)
