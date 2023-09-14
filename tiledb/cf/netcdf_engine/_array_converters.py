@@ -135,7 +135,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
         if filters is None:
             filters = self.attrs_filters
         NetCDF4VarToAttrConverter.from_netcdf(
-            array_registry=self._registry,
+            registry=self._attr_registry,
             ncvar=ncvar,
             name=name,
             dtype=dtype,

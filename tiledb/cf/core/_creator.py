@@ -498,6 +498,7 @@ class ArrayCreator:
         self._registry, self._domain_creator = self._register(
             dataspace_registry, name, dim_order
         )
+        self._attr_registry = ArrayAttrRegistry(self._registry)
         self.cell_order = cell_order
         self.tile_order = tile_order
         self.capacity = capacity
@@ -587,7 +588,15 @@ class ArrayCreator:
         """
         if filters is None:
             filters = self.attrs_filters
-        AttrCreator(self._registry, name, dtype, fill, var, nullable, filters)
+        AttrCreator(
+            registry=self._attr_registry,
+            name=name,
+            dtype=dtype,
+            fill=fill,
+            var=var,
+            nullable=nullable,
+            filters=filters,
+        )
 
     def create(
         self, uri: str, key: Optional[str] = None, ctx: Optional[tiledb.Ctx] = None
@@ -870,7 +879,29 @@ class ArrayRegistry:
         self._attr_creators[new_name] = self._attr_creators.pop(original_name)
 
 
-class AttrCreator(metaclass=ABCMeta):
+class ArrayAttrRegistry:
+    def __init__(self, array_impl: ArrayRegistry):
+        self._impl = array_impl
+
+    def __delitem__(self, name: str):
+        self._registry.deregister_attr_creator(name)
+
+    def __getitem__(self, name: str) -> AttrCreator:
+        self._impl.get_attr_creator(name)
+
+    def __setitem__(self, name: str, value: AttrCreator):
+        if value.is_registered:
+            raise ValueError("AttrCreator '{value.name}' is already registered.")
+        if name != value.name:
+            value.name = name
+        self._impl.register_attr_creator(value)
+
+    def rename(self, old_name: str, new_name: str):
+        self._impl.check_new_attr_name(new_name)
+        self._impl.update_attr_creator_name(old_name, new_name)
+
+
+class AttrCreator(RegisteredByName, metaclass=ABCMeta):
     """Creator for a TileDB attribute.
 
     Attributes:
@@ -884,22 +915,23 @@ class AttrCreator(metaclass=ABCMeta):
 
     def __init__(
         self,
-        array_registry: ArrayRegistry,
         name: str,
         dtype: np.dtype,
+        *,
         fill: Optional[DType] = None,
         var: bool = False,
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
+        registry: Optional[Registry[Self]] = None,
     ):
-        self._array_registry = array_registry
         self._name = name
         self.dtype = np.dtype(dtype)
         self.fill = fill
         self.var = var
         self.nullable = nullable
         self.filters = filters
-        self._array_registry.register_attr_creator(self)
+        self._registry = None
+        self.set_registry(registry)
 
     def __repr__(self):
         filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
@@ -915,17 +947,6 @@ class AttrCreator(metaclass=ABCMeta):
             f" &rarr; tiledb.Attr(name={self.name}, dtype='{self.dtype!s}', "
             f"var={self.var}, nullable={self.nullable}{filters_str})"
         )
-
-    @property
-    def name(self) -> str:
-        """Name of the attribute."""
-        return self._name
-
-    @name.setter
-    def name(self, name: str):
-        self._array_registry.check_new_attr_name(name)
-        self._array_registry.update_attr_creator_name(self._name, name)
-        self._name = name
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
         """Returns a :class:`tiledb.Attr` using the current properties.
