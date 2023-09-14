@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABCMeta
 from collections import OrderedDict
+from collections.abc import MutableMapping
 from io import StringIO
 from typing import Any, Dict, Iterable, Optional, Self, Sequence, Tuple, Union
 
@@ -27,20 +28,20 @@ class DataspaceCreator:
     """
 
     def __init__(self):
-        self._registry = DataspaceRegistry()
-        self._dim_registry = DataspaceDimRegistry(self._registry)
-        self._array_registry = DataspaceArrayRegistry(self._registry)
+        self._core = DataspaceCreatorCore()
+        self._domain = DataspaceDomain(self._core)
+        self._array_registry = DataspaceArrayRegistry(self._core)
 
     def __repr__(self):
         output = StringIO()
         output.write("DataspaceCreator(")
-        if self._registry.ndim > 0:
+        if self._core.ndim > 0:
             output.write("\n Shared Dimensions:\n")
-            for dim in self._registry.shared_dims():
+            for dim in self._core.shared_dims():
                 output.write(f"  '{dim.name}':  {repr(dim)},\n")
-        if self._registry.narray > 0:
+        if self._core.narray > 0:
             output.write("\n Array Creators:\n")
-            for array_creator in self._registry.array_creators():
+            for array_creator in self._core.array_creators():
                 output.write(f"  '{array_creator.name}':{repr(array_creator)}\n")
         output.write(")")
         return output.getvalue()
@@ -51,9 +52,9 @@ class DataspaceCreator:
         output.write("<ul>\n")
         output.write("<li>\n")
         output.write("Shared Dimensions\n")
-        if self._registry.ndim > 0:
+        if self._core.ndim > 0:
             output.write("<table>\n")
-            for dim in self._registry.shared_dims():
+            for dim in self._core.shared_dims():
                 output.write(
                     f'<tr><td style="text-align: left;">{dim.html_input_summary()} '
                     f"&rarr; SharedDim({dim.html_output_summary()})</td>\n</tr>\n"
@@ -62,7 +63,7 @@ class DataspaceCreator:
         output.write("</li>\n")
         output.write("<li>\n")
         output.write("Array Creators\n")
-        for array_creator in self._registry.array_creators():
+        for array_creator in self._core.array_creators():
             output.write("<details>\n")
             output.write("<summary>\n")
             output.write(
@@ -123,7 +124,7 @@ class DataspaceCreator:
         """
         ArrayCreator(
             registry=self._array_registry,
-            dim_registry=self._dim_registry,
+            dim_registry=self._domain,
             name=array_name,
             dim_order=dims,
             cell_order=cell_order,
@@ -162,7 +163,7 @@ class DataspaceCreator:
             nullable: Specifies if the attribute is nullable using validity tiles.
             filters: Specifies compression filters for the attribute.
         """
-        array_creator = self._registry.get_array_creator(array_name)
+        array_creator = self._core.get_array_creator(array_name)
         array_creator.add_attr_creator(attr_name, dtype, fill, var, nullable, filters)
 
     def add_shared_dim(self, dim_name: str, domain: Tuple[Any, Any], dtype: np.dtype):
@@ -176,11 +177,11 @@ class DataspaceCreator:
             domain: The (inclusive) interval on which the dimension is valid.
             dtype: The numpy dtype of the values and domain of the dimension.
         """
-        SharedDim(dim_name, domain, dtype, registry=self._dim_registry)
+        SharedDim(dim_name, domain, dtype, registry=self._domain)
 
     def array_creators(self):
         """Iterates over array creators in the CF dataspace."""
-        return self._registry.array_creators()
+        return self._core.array_creators()
 
     def create_array(
         self,
@@ -195,12 +196,12 @@ class DataspaceCreator:
             key: If not ``None``, encryption key to decrypt the array.
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        if self._registry.narray != 1:
+        if self._core.narray != 1:
             raise ValueError(
                 f"Can only use `create_array` for a {self.__class__.__name__} with "
                 f"exactly 1 array creator."
             )
-        array_creator = next(self._registry.array_creators())
+        array_creator = next(self._core.array_creators())
         array_creator.create(uri, key=key, ctx=ctx)
 
     def create_group(
@@ -230,7 +231,7 @@ class DataspaceCreator:
         Parameters:
             array_name: Name of the array to return.
         """
-        return self._registry.get_array_creator(array_name)
+        return self._core.get_array_creator(array_name)
 
     def get_array_creator_by_attr(self, attr_name: str):
         """Returns the array creator with the requested attribute in it.
@@ -238,7 +239,7 @@ class DataspaceCreator:
         Parameters:
             attr_name: Name of the attribute to return the array creator with.
         """
-        return self._registry.get_array_creator_by_attr(attr_name)
+        return self._core.get_array_creator_by_attr(attr_name)
 
     def get_shared_dim(self, dim_name: str):
         """Returns the shared dimension with the requested name.
@@ -246,7 +247,7 @@ class DataspaceCreator:
         Parameters:
             array_name: Name of the array to return.
         """
-        return self._registry.get_shared_dim(dim_name)
+        return self._core.get_shared_dim(dim_name)
 
     def remove_array_creator(self, array_name: str):
         """Removes the specified array and all its attributes from the CF dataspace.
@@ -254,7 +255,7 @@ class DataspaceCreator:
         Parameters:
             array_name: Name of the array that will be removed.
         """
-        self._registry.deregister_array_creator(array_name)
+        self._core.deregister_array_creator(array_name)
 
     def remove_attr_creator(self, attr_name: str):
         """Removes the specified attribute from the CF dataspace.
@@ -262,7 +263,7 @@ class DataspaceCreator:
         Parameters:
             attr_name: Name of the attribute that will be removed.
         """
-        array_creator = self._registry.get_array_creator_by_attr(attr_name=attr_name)
+        array_creator = self._core.get_array_creator_by_attr(attr_name=attr_name)
         array_creator.remove_attr_creator(attr_name)
 
     def remove_shared_dim(self, dim_name: str):
@@ -274,11 +275,11 @@ class DataspaceCreator:
         Parameters:
             dim_name: Name of the dimension to be removed.
         """
-        self._registry.deregister_shared_dim(dim_name)
+        self._core.deregister_shared_dim(dim_name)
 
     def shared_dims(self):
         """Iterators over shared dimensions in the CF dataspace."""
-        return self._registry.shared_dims()
+        return self._core.shared_dims()
 
     def to_schema(
         self, ctx: Optional[tiledb.Ctx] = None
@@ -289,7 +290,7 @@ class DataspaceCreator:
            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
         array_schemas = {}
-        for array_creator in self._registry.array_creators():
+        for array_creator in self._core.array_creators():
             try:
                 array_schemas[array_creator.name] = array_creator.to_schema(ctx)
             except tiledb.libtiledb.TileDBError as err:
@@ -300,7 +301,7 @@ class DataspaceCreator:
         return array_schemas
 
 
-class DataspaceRegistry:
+class DataspaceCreatorCore:
     def __init__(self):
         self._shared_dims: Dict[str, SharedDim] = {}
         self._array_creators: Dict[str, ArrayCreator] = {}
@@ -422,48 +423,60 @@ class DataspaceRegistry:
         self._shared_dims[new_name] = self._shared_dims.pop(original_name)
 
 
-class DataspaceArrayRegistry:
-    def __init__(self, dataspace_impl: DataspaceRegistry):
-        self._impl = dataspace_impl
+class DataspaceArrayRegistry(MutableMapping):
+    def __init__(self, core: DataspaceCreatorCore):
+        self._core = core
 
     def __delitem__(self, name: str):
-        self._impl.deregister_array_creator(name)
+        self._core.deregister_array_creator(name)
 
     def __getitem__(self, name: str) -> ArrayCreator:
-        return self._impl.get_array_creator(name)
+        return self._core.get_array_creator(name)
+
+    def __iter__(self):
+        return self._core.array_creators()
+
+    def __len__(self) -> int:
+        return self._crore.naarray
 
     def __setitem__(self, name: str, value: ArrayCreator):
         if value.is_registered:
             raise ValueError(f"Array creator '{value.name}' is already registered.")
         if name != value.name:
             value.name = name
-        self._impl.register_array_creator(value)
+        self._core.register_array_creator(value)
 
     def rename(self, old_name: str, new_name: str):
-        self._impl.check_new_array_name(new_name)
-        self._impl.update_array_creator_name(old_name, new_name)
+        self._core.check_new_array_name(new_name)
+        self._core.update_array_creator_name(old_name, new_name)
 
 
-class DataspaceDimRegistry:
-    def __init__(self, dataspace_impl: DataspaceRegistry):
-        self._impl = dataspace_impl
+class DataspaceDomain(MutableMapping):
+    def __init__(self, core: DataspaceCreatorCore):
+        self._core = core
 
     def __delitem__(self, name: str):
-        self._registry.deregister_shared_dim(name)
+        self._core.deregister_shared_dim(name)
 
     def __getitem__(self, name: str) -> SharedDim:
-        return self._impl.get_shared_dim(name)
+        return self._core.get_shared_dim(name)
+
+    def __iter__(self):
+        return self._core.shared_dims()
+
+    def __len__(self) -> int:
+        return self._core.ndim
 
     def __setitem__(self, name: str, value: SharedDim):
         if value.is_registered:
             raise ValueError(f"SharedDim '{value.name}' is already registered.")
         if name != value.name:
             value.name = name
-        self._impl.register_shared_dim(value)
+        self._core.register_shared_dim(value)
 
     def rename(self, old_name: str, new_name: str):
-        self._impl.check_rename_shared_dim(old_name, new_name)
-        self._impl.update_shared_dim_name(old_name, new_name)
+        self._core.check_rename_shared_dim(old_name, new_name)
+        self._core.update_shared_dim_name(old_name, new_name)
 
 
 class ArrayDimRegistry:
