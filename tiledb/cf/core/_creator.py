@@ -1025,7 +1025,7 @@ class AttrCreator(RegisteredByName, metaclass=ABCMeta):
 class DomainCreator:
     """Creator for a TileDB domain."""
 
-    def __init__(self, array_core):
+    def __init__(self, array_core: ArrayCreatorCore):
         self._core = array_core
 
     def __iter__(self):
@@ -1108,6 +1108,7 @@ class DimCreator:
     def __init__(
         self,
         base: SharedDim,
+        *,
         tile: Optional[Union[int, float]] = None,
         filters: Optional[Union[tiledb.FilterList]] = None,
     ):

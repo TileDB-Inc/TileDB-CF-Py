@@ -28,6 +28,7 @@ class NetCDF4ToDimConverter(DimCreator):
     def __init__(
         self,
         base: SharedDim,
+        *,
         tile: Optional[Union[int, float]] = None,
         filters: Optional[tiledb.FilterList] = None,
         max_fragment_length: Optional[int] = None,
