@@ -10,10 +10,11 @@ import tiledb
 from tiledb.cf.core._creator import (
     ArrayCreator,
     ArrayCreatorCore,
-    DataspaceRegistry,
     DomainCreator,
+    SharedDim,
 )
 
+from ..core.registry import Registry
 from ._attr_converters import NetCDF4ToAttrConverter, NetCDF4VarToAttrConverter
 from ._dim_converters import NetCDF4ToDimBase, NetCDF4ToDimConverter
 
@@ -81,10 +82,8 @@ class NetCDF4ArrayConverter(ArrayCreator):
         )
         tiledb_array[coord_values] = data
 
-    def _new_core(
-        self, dataspace_registry: DataspaceRegistry, dim_names: Sequence[str]
-    ):
-        return NetCDF4ArrayConverterCore(dataspace_registry, dim_names)
+    def _new_core(self, dim_registry: Registry[SharedDim], dim_names: Sequence[str]):
+        return NetCDF4ArrayConverterCore(dim_registry, dim_names)
 
     def _new_domain_creator(self):
         return NetCDF4DomainConverter(self._core)
@@ -200,9 +199,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
 
 class NetCDF4ArrayConverterCore(ArrayCreatorCore):
     def _new_dim_creator(self, dim_name: str, **kwargs):
-        return NetCDF4ToDimConverter(
-            self._dataspace_registry.get_shared_dim(dim_name), **kwargs
-        )
+        return NetCDF4ToDimConverter(self._dim_registry[dim_name], **kwargs)
 
     def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Add an additional dimension into the domain of the array.
@@ -213,9 +210,7 @@ class NetCDF4ArrayConverterCore(ArrayCreatorCore):
                 from the end of the new number of dimensions.
             dim_kwargs: Keyword arguments to pass to :class:`NetCDF4ToDimConverter`.
         """
-        dim_creator = NetCDF4ToDimConverter(
-            self._dataspace_registry.get_shared_dim(dim_name), **dim_kwargs
-        )
+        dim_creator = self._new_dim_creator(dim_name, **dim_kwargs)
         if dim_creator.is_from_netcdf:
             if any(
                 isinstance(attr_creator, NetCDF4VarToAttrConverter)

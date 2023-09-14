@@ -29,6 +29,7 @@ class DataspaceCreator:
     def __init__(self):
         self._registry = DataspaceRegistry()
         self._dim_registry = DataspaceDimRegistry(self._registry)
+        self._array_registry = DataspaceArrayRegistry(self._registry)
 
     def __repr__(self):
         output = StringIO()
@@ -121,7 +122,8 @@ class DataspaceCreator:
                 TileDB array (false).
         """
         ArrayCreator(
-            dataspace_registry=self._registry,
+            registry=self._array_registry,
+            dim_registry=self._dim_registry,
             name=array_name,
             dim_order=dims,
             cell_order=cell_order,
@@ -420,6 +422,28 @@ class DataspaceRegistry:
         self._shared_dims[new_name] = self._shared_dims.pop(original_name)
 
 
+class DataspaceArrayRegistry:
+    def __init__(self, dataspace_impl: DataspaceRegistry):
+        self._impl = dataspace_impl
+
+    def __delitem__(self, name: str):
+        self._impl.deregister_array_creator(name)
+
+    def __getitem__(self, name: str) -> ArrayCreator:
+        return self._impl.get_array_creator(name)
+
+    def __setitem__(self, name: str, value: ArrayCreator):
+        if value.is_registered:
+            raise ValueError(f"Array creator '{value.name}' is already registered.")
+        if name != value.name:
+            value.name = name
+        self._impl.register_array_creator(value)
+
+    def rename(self, old_name: str, new_name: str):
+        self._impl.check_new_array_name(new_name)
+        self._impl.update_array_creator_name(old_name, new_name)
+
+
 class DataspaceDimRegistry:
     def __init__(self, dataspace_impl: DataspaceRegistry):
         self._impl = dataspace_impl
@@ -442,7 +466,47 @@ class DataspaceDimRegistry:
         self._impl.update_shared_dim_name(old_name, new_name)
 
 
-class ArrayCreator:
+class ArrayDimRegistry:
+    def __init__(self):
+        self._shared_dims: Dict[str, SharedDim] = dict()
+
+    def __delitem__(self, name: str):
+        if name in self._in_use:
+            raise ValueError(
+                f"Cannot remove shared dimension '{name}' that is being used by "
+                f"an array."
+            )
+        del self._shared_dims[name]
+
+    def __getitem__(self, name: str) -> SharedDim:
+        return self._shared_dims[name]
+
+    def __setitem__(self, name: str, value: SharedDim):
+        if value.is_registered:
+            raise ValueError(f"Shared dimension '{value.name}' is already registered.")
+        old_name = value.name
+        if name != value.name:
+            value.name = name
+        if value.name in self._shared_dims and value != self._shared_dims[value.name]:
+            if value.name != old_name:
+                value.name = old_name
+            raise ValueError(
+                f"Cannot add shared dimension '{value.name}'. A different shared "
+                f"dimension with that name already exists."
+            )
+        self._shared_dims[name] = value
+
+    def rename(self, old_name: str, new_name: str):
+        if new_name in self._shared_dims:
+            raise NotImplementedError(
+                f"Cannot rename dimension '{old_name}' to '{new_name}'. A "
+                f"dimension with the same name already exists, and merging dimensions "
+                f"has not yet been implemented."
+            )
+        self._shared_dims[new_name] = self._shared_dims.pop(old_name)
+
+
+class ArrayCreator(RegisteredByName):
     """Creator for a TileDB array using shared dimension definitions.
 
     Attributes:
@@ -475,17 +539,11 @@ class ArrayCreator:
         attrs_filters: Optional[tiledb.FilterList] = None,
         allows_duplicates: bool = False,
         sparse: bool = False,
-        dataspace_registry: Optional[DataspaceRegistry] = None,
+        registry: Optional[Registry[Self]] = None,
+        dim_registry: Optional[Registry[SharedDim]] = None,
         shared_dims: Optional[Iterable[SharedDim]] = None,
     ):
-        # Create the dataspace registry if it does not already exist and add
-        # any potentially new shared dimensions.
-        if dataspace_registry is None:
-            dataspace_registry = DataspaceRegistry()
-        if shared_dims is not None:
-            for dim in shared_dims:
-                dataspace_registry.register_shared_dim(dim)
-
+        # Check all dimension names are unique.
         if dim_order is None:
             dim_order = tuple()
         elif isinstance(dim_order, str):
@@ -496,10 +554,20 @@ class ArrayCreator:
                 "dimensions must have a unique name."
             )
 
-        self._core = self._new_core(dataspace_registry, dim_order)
+        # Get dimension registry and add any new dimensions.
+        if dim_registry is None:
+            dim_registry = ArrayDimRegistry()
+        if shared_dims is not None:
+            for dim in shared_dims:
+                dim_registry[dim.name] = dim
+
+        # Initialize the core implementation, the domain creator, and the
+        # attribute registry.
+        self._core = self._new_core(dim_registry, dim_order)
         self._domain_creator = self._new_domain_creator()
         self._attr_registry = ArrayAttrRegistry(self._core)
 
+        # Set array properties.
         self.cell_order = cell_order
         self.tile_order = tile_order
         self.capacity = capacity
@@ -512,9 +580,11 @@ class ArrayCreator:
         self.attrs_filters = attrs_filters
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
+
+        # Set name and registry for the array creator.
         self._name = name
-        self._dataspace_registry = dataspace_registry
-        dataspace_registry.register_array_creator(self)
+        self._registry = None
+        self.set_registry(registry)
 
     def __iter__(self):
         """Returns iterator over attribute creators."""
@@ -622,17 +692,6 @@ class ArrayCreator:
         return self._core.has_attr_creator(name)
 
     @property
-    def name(self) -> str:
-        """Name of the array."""
-        return self._name
-
-    @name.setter
-    def name(self, name: str):
-        self._dataspace_registry.check_new_array_name(name)
-        self._dataspace_registry.update_array_creator_name(self._name, name)
-        self._name = name
-
-    @property
     def nattr(self) -> int:
         """Number of attributes in the array."""
         return self._core.nattr
@@ -716,19 +775,15 @@ class ArrayCreator:
 
 
 class ArrayCreatorCore:
-    def __init__(
-        self,
-        dataspace_registry: DataspaceRegistry,
-        array_dims: Tuple[SharedDim, ...],
-    ):
-        self._dataspace_registry = dataspace_registry
+    def __init__(self, dim_registry: Registry[SharedDim], array_dims: Tuple[str, ...]):
+        self._dim_registry = dim_registry
         self._dim_creators = tuple(
             self._new_dim_creator(dim_name) for dim_name in array_dims
         )
         self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
 
     def _new_dim_creator(self, dim_name: str, **kwargs):
-        return DimCreator(self._dataspace_registry.get_shared_dim(dim_name), **kwargs)
+        return DimCreator(self._dim_registry[dim_name], **kwargs)
 
     def attr_creators(self):
         """Iterates over attribute creators in the array creator."""

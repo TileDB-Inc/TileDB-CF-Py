@@ -466,7 +466,8 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 TileDB array (false).
         """
         NetCDF4ArrayConverter(
-            dataspace_registry=self._registry,
+            registry=self._array_registry,
+            dim_registry=self._dim_registry,
             name=array_name,
             dim_order=dims,
             cell_order=cell_order,
