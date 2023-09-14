@@ -1,7 +1,7 @@
 """Classes for converting NetCDF4 objects to TileDB attributes."""
 
 from abc import abstractmethod
-from typing import Optional, Sequence, Self, Union
+from typing import Optional, Self, Sequence, Union
 
 import netCDF4
 import numpy as np

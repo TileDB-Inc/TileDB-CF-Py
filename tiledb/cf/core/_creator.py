@@ -495,10 +495,11 @@ class ArrayCreator:
                 "Cannot create array; the array has repeating dimensions. All "
                 "dimensions must have a unique name."
             )
-        self._registry, self._domain_creator = self._register(
-            dataspace_registry, name, dim_order
-        )
-        self._attr_registry = ArrayAttrRegistry(self._registry)
+
+        self._core = self._new_core(dataspace_registry, dim_order)
+        self._domain_creator = self._new_domain_creator()
+        self._attr_registry = ArrayAttrRegistry(self._core)
+
         self.cell_order = cell_order
         self.tile_order = tile_order
         self.capacity = capacity
@@ -512,11 +513,12 @@ class ArrayCreator:
         self.allows_duplicates = allows_duplicates
         self.sparse = sparse
         self._name = name
+        self._dataspace_registry = dataspace_registry
         dataspace_registry.register_array_creator(self)
 
     def __iter__(self):
         """Returns iterator over attribute creators."""
-        return self._registry.attr_creators()
+        return self._core.attr_creators()
 
     def __repr__(self) -> str:
         output = StringIO()
@@ -540,16 +542,11 @@ class ArrayCreator:
         output.write("  )")
         return output.getvalue()
 
-    def _register(
-        self, dataspace_registry: DataspaceRegistry, name: str, dim_names: Sequence[str]
-    ):
-        dim_creators = tuple(
-            DimCreator(dataspace_registry.get_shared_dim(dim_name))
-            for dim_name in dim_names
-        )
+    def _new_core(self, dataspace_registry, dim_names: Sequence[str]):
+        return ArrayCreatorCore(dataspace_registry, dim_names)
 
-        array_registry = ArrayRegistry(dataspace_registry, name, dim_creators)
-        return array_registry, DomainCreator(array_registry, dataspace_registry)
+    def _new_domain_creator(self):
+        return DomainCreator(self._core)
 
     def attr_creator(self, key: Union[int, str]) -> AttrCreator:
         """Returns the requested attribute creator
@@ -560,7 +557,7 @@ class ArrayCreator:
         Returns:
             The attribute creator at the given index of name.
         """
-        return self._registry.get_attr_creator(key)
+        return self._core.get_attr_creator(key)
 
     def add_attr_creator(
         self,
@@ -622,26 +619,28 @@ class ArrayCreator:
         Parameters:
             name: The name of the attribute creator to check for.
         """
-        return self._registry.has_attr_creator(name)
+        return self._core.has_attr_creator(name)
 
     @property
     def name(self) -> str:
         """Name of the array."""
-        return self._registry.name
+        return self._name
 
     @name.setter
     def name(self, name: str):
-        self._registry.name = name
+        self._dataspace_registry.check_new_array_name(name)
+        self._dataspace_registry.update_array_creator_name(self._name, name)
+        self._name = name
 
     @property
     def nattr(self) -> int:
         """Number of attributes in the array."""
-        return self._registry.nattr
+        return self._core.nattr
 
     @property
     def ndim(self) -> int:
         """Number of dimensions in the array."""
-        return self._registry.ndim
+        return self._core.ndim
 
     def html_summary(self) -> str:
         """Returns a string HTML summary of the :class:`ArrayCreator`."""
@@ -691,7 +690,7 @@ class ArrayCreator:
         Parameters:
             attr_name: Name of the attribute to remove.
         """
-        return self._registry.deregister_attr_creator(attr_name)
+        return self._core.deregister_attr_creator(attr_name)
 
     def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.ArraySchema:
         """Returns an array schema for the array.
@@ -699,7 +698,7 @@ class ArrayCreator:
         Parameters:
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
-        if self._registry.nattr == 0:
+        if self._core.nattr == 0:
             raise ValueError("Cannot create schema for array with no attributes.")
         domain = self._domain_creator.to_tiledb(ctx)
         attrs = tuple(attr_creator.to_tiledb(ctx) for attr_creator in self)
@@ -716,17 +715,20 @@ class ArrayCreator:
         )
 
 
-class ArrayRegistry:
+class ArrayCreatorCore:
     def __init__(
         self,
         dataspace_registry: DataspaceRegistry,
-        name: str,
-        dim_creators: Tuple[DimCreator, ...],
+        array_dims: Tuple[SharedDim, ...],
     ):
         self._dataspace_registry = dataspace_registry
-        self._name = name
-        self._dim_creators = dim_creators
+        self._dim_creators = tuple(
+            self._new_dim_creator(dim_name) for dim_name in array_dims
+        )
         self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
+
+    def _new_dim_creator(self, dim_name: str, **kwargs):
+        return DimCreator(self._dataspace_registry.get_shared_dim(dim_name), **kwargs)
 
     def attr_creators(self):
         """Iterates over attribute creators in the array creator."""
@@ -800,14 +802,9 @@ class ArrayRegistry:
         """
         return name in self._attr_creators
 
-    def inject_dim_creator(self, dim_creator: DimCreator, position: int):
-        """Add an additional dimension into the domain of the array.
-
-        Parameters:
-            dim_creator: The dimension creator to add.
-            position: Position of the shared dimension. Negative values count backwards
-                from the end of the new number of dimensions.
-        """
+    def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
+        """Add an additional dimension into the domain of the array."""
+        dim_creator = self._new_dim_creator(dim_name, **dim_kwargs)
         if dim_creator.name in {dim_creator.name for dim_creator in self._dim_creators}:
             raise ValueError(
                 f"Cannot add dimension creator `{dim_creator.name}` to this array. "
@@ -827,17 +824,6 @@ class ArrayRegistry:
         self._dim_creators = (
             self._dim_creators[:index] + (dim_creator,) + self._dim_creators[index:]
         )
-
-    @property
-    def name(self) -> str:
-        """Name of the array."""
-        return self._name
-
-    @name.setter
-    def name(self, name: str):
-        self._dataspace_registry.check_new_array_name(name)
-        self._dataspace_registry.update_array_creator_name(self._name, name)
-        self._name = name
 
     @property
     def nattr(self) -> int:
@@ -880,25 +866,25 @@ class ArrayRegistry:
 
 
 class ArrayAttrRegistry:
-    def __init__(self, array_impl: ArrayRegistry):
-        self._impl = array_impl
+    def __init__(self, array_core: ArrayCreatorCore):
+        self._core = array_core
 
     def __delitem__(self, name: str):
-        self._registry.deregister_attr_creator(name)
+        self._core.deregister_attr_creator(name)
 
     def __getitem__(self, name: str) -> AttrCreator:
-        self._impl.get_attr_creator(name)
+        self._core.get_attr_creator(name)
 
     def __setitem__(self, name: str, value: AttrCreator):
         if value.is_registered:
             raise ValueError("AttrCreator '{value.name}' is already registered.")
         if name != value.name:
             value.name = name
-        self._impl.register_attr_creator(value)
+        self._core.register_attr_creator(value)
 
     def rename(self, old_name: str, new_name: str):
-        self._impl.check_new_attr_name(new_name)
-        self._impl.update_attr_creator_name(old_name, new_name)
+        self._core.check_new_attr_name(new_name)
+        self._core.update_attr_creator_name(old_name, new_name)
 
 
 class AttrCreator(RegisteredByName, metaclass=ABCMeta):
@@ -971,12 +957,11 @@ class AttrCreator(RegisteredByName, metaclass=ABCMeta):
 class DomainCreator:
     """Creator for a TileDB domain."""
 
-    def __init__(self, array_registry, dataspace_registry):
-        self._array_registry = array_registry
-        self._dataspace_registry = dataspace_registry
+    def __init__(self, array_core):
+        self._core = array_core
 
     def __iter__(self):
-        return self._array_registry.dim_creators()
+        return self._core.dim_creators()
 
     def __len__(self):
         return self.ndim
@@ -990,15 +975,12 @@ class DomainCreator:
                 from the end of the new number of dimensions.
             dim_kwargs: Keyword arguments to pass to :class:`DimCreator`.
         """
-        self._array_registry.inject_dim_creator(
-            DimCreator(self._dataspace_registry.get_shared_dim(dim_name), **dim_kwargs),
-            position,
-        )
+        self._core.inject_dim_creator(dim_name, position, **dim_kwargs)
 
     @property
     def ndim(self):
         """Number of dimensions in the domain."""
-        return self._array_registry.ndim
+        return self._core.ndim
 
     def dim_creator(self, dim_id):
         """Returns a dimension creator from the domain creator given the dimension's
@@ -1010,7 +992,7 @@ class DomainCreator:
         Returns:
             The dimension creator with the requested key.
         """
-        return self._array_registry.get_dim_creator(dim_id)
+        return self._core.get_dim_creator(dim_id)
 
     def remove_dim_creator(self, dim_id: Union[str, int]):
         """Removes a dimension creator from the array creator.
@@ -1019,10 +1001,10 @@ class DomainCreator:
             dim_id: dimension index (int) or name (str)
         """
         if isinstance(dim_id, int):
-            self._array_registry.remove_dim_creator(dim_id)
+            self._core.remove_dim_creator(dim_id)
         else:
-            index = self._array_registry.get_dim_position_by_name(dim_id)
-            self._array_registry.remove_dim_creator(index)
+            index = self._core.get_dim_position_by_name(dim_id)
+            self._core.remove_dim_creator(index)
 
     @property
     def tiles(self):
