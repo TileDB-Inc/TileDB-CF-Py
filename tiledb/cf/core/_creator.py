@@ -174,7 +174,7 @@ class DataspaceCreator:
             domain: The (inclusive) interval on which the dimension is valid.
             dtype: The numpy dtype of the values and domain of the dimension.
         """
-        SharedDim(self._dim_registry, dim_name, domain, dtype)
+        SharedDim(dim_name, domain, dtype, registry=self._dim_registry)
 
     def array_creators(self):
         """Iterates over array creators in the CF dataspace."""
@@ -1115,10 +1115,11 @@ class SharedDim(RegisteredByName, metaclass=ABCMeta):
 
     def __init__(
         self,
-        registry: Optional[Registry[Self]],
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
+        *,
+        registry: Optional[Registry[Self]] = None,
     ):
         self._name = name
         self.domain = domain

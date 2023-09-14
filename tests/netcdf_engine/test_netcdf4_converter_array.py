@@ -19,9 +19,7 @@ class TestAttrsFilters:
             dim = dataset.createDimension("row", 64)
             var = dataset.createVariable("x", np.float64, ("row",))
             shared_dims = [
-                netcdf_engine.NetCDF4DimToDimConverter.from_netcdf(
-                    None, dim, None, np.uint64
-                )
+                netcdf_engine.NetCDF4DimToDimConverter.from_netcdf(dim, None, np.uint64)
             ]
             converter = netcdf_engine.NetCDF4ArrayConverter(
                 dim_order=("row",), shared_dims=shared_dims, attrs_filters=attrs_filters
@@ -38,9 +36,7 @@ class TestAttrsFilters:
             dim = dataset.createDimension("row", 64)
             var = dataset.createVariable("x", np.float64, ("row",))
             shared_dims = [
-                netcdf_engine.NetCDF4DimToDimConverter.from_netcdf(
-                    None, dim, None, np.uint64
-                )
+                netcdf_engine.NetCDF4DimToDimConverter.from_netcdf(dim, None, np.uint64)
             ]
             converter = netcdf_engine.NetCDF4ArrayConverter(
                 dim_order=("row",), shared_dims=shared_dims, attrs_filters=attrs_filters
@@ -52,9 +48,9 @@ class TestAttrsFilters:
 def test_remove_dim_creator_front():
     """Tests removing a dimension in the front of the domain."""
     shared_dims = [
-        SharedDim(None, "x0", (0, 7), np.uint32),
-        SharedDim(None, "x1", (0, 7), np.uint32),
-        SharedDim(None, "x2", (0, 4), np.uint32),
+        SharedDim("x0", (0, 7), np.uint32),
+        SharedDim("x1", (0, 7), np.uint32),
+        SharedDim("x2", (0, 4), np.uint32),
     ]
     creator = netcdf_engine.NetCDF4ArrayConverter(
         dim_order=("x0", "x1", "x2"), shared_dims=shared_dims
@@ -67,9 +63,9 @@ def test_remove_dim_creator_front():
 def test_remove_dim_creator_back():
     """Tests removing a dimension in the back of the domain."""
     shared_dims = [
-        SharedDim(None, "x1", (0, 7), np.uint32),
-        SharedDim(None, "x2", (0, 7), np.uint32),
-        SharedDim(None, "x3", (0, 4), np.uint32),
+        SharedDim("x1", (0, 7), np.uint32),
+        SharedDim("x2", (0, 7), np.uint32),
+        SharedDim("x3", (0, 4), np.uint32),
     ]
     creator = netcdf_engine.NetCDF4ArrayConverter(
         dim_order=("x1", "x2", "x3"), shared_dims=shared_dims
@@ -82,9 +78,9 @@ def test_remove_dim_creator_back():
 def test_remove_dim_creator_middle():
     """Tests removing a dimension in the middle of the domain."""
     shared_dims = [
-        SharedDim(None, "x0", (0, 7), np.uint32),
-        SharedDim(None, "x1", (0, 7), np.uint32),
-        SharedDim(None, "x2", (0, 4), np.uint32),
+        SharedDim("x0", (0, 7), np.uint32),
+        SharedDim("x1", (0, 7), np.uint32),
+        SharedDim("x2", (0, 4), np.uint32),
     ]
     creator = netcdf_engine.NetCDF4ArrayConverter(
         dim_order=("x0", "x1", "x2"), shared_dims=shared_dims
@@ -97,9 +93,9 @@ def test_remove_dim_creator_middle():
 def test_remove_dim_creator_key_error():
     """Tests key error when removing a dimension by name."""
     shared_dims = [
-        SharedDim(None, "x0", (0, 7), np.uint32),
-        SharedDim(None, "x1", (0, 7), np.uint32),
-        SharedDim(None, "x2", (0, 4), np.uint32),
+        SharedDim("x0", (0, 7), np.uint32),
+        SharedDim("x1", (0, 7), np.uint32),
+        SharedDim("x2", (0, 4), np.uint32),
     ]
     creator = netcdf_engine.NetCDF4ArrayConverter(
         dim_order=("x0", "x1", "x2"), shared_dims=shared_dims
@@ -111,7 +107,7 @@ def test_remove_dim_creator_key_error():
 def test_set_max_fragment_shape_error():
     """Tests raising an error when attempting to set max_fragment_shape with a value
     that is a bad length."""
-    shared_dims = [SharedDim(None, "x", (0, 7), np.uint32)]
+    shared_dims = [SharedDim("x", (0, 7), np.uint32)]
     creator = netcdf_engine.NetCDF4ArrayConverter(
         dim_order=("x"), shared_dims=shared_dims
     )
@@ -122,7 +118,7 @@ def test_set_max_fragment_shape_error():
 
 def test_array_converter_indexer_error():
     """Tests value error when copying with an indexer of bad length."""
-    shared_dims = [SharedDim(None, "x", (0, 7), np.uint32)]
+    shared_dims = [SharedDim("x", (0, 7), np.uint32)]
     creator = netcdf_engine.NetCDF4ArrayConverter(
         dim_order=("x"), shared_dims=shared_dims
     )

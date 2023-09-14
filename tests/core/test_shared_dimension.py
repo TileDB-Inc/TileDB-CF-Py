@@ -20,9 +20,9 @@ _tiledb_dim = [
     ],
 )
 def test_is_index_dim(domain, dtype, result):
-    shared_dim = SharedDim(None, "name", domain, dtype)
+    shared_dim = SharedDim("name", domain, dtype)
     assert shared_dim.is_index_dim == result
 
 
 def test_compare_other_object():
-    assert SharedDim(None, "dim", (1, 4), np.int32) != "not a dimension"
+    assert SharedDim("dim", (1, 4), np.int32) != "not a dimension"

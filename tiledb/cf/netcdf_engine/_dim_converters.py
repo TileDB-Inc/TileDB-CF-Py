@@ -9,7 +9,7 @@ import numpy as np
 
 import tiledb
 from tiledb.cf.core import DimMetadata
-from tiledb.cf.core._creator import DataspaceRegistry, DimCreator, SharedDim
+from tiledb.cf.core._creator import DimCreator, SharedDim
 
 from .._utils import DType
 from ..core.registry import Registry
@@ -175,7 +175,6 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
 
     def __init__(
         self,
-        registry: Optional[Registry[Self]],
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
@@ -183,8 +182,10 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
         input_var_name: str,
         input_var_dtype: np.dtype,
         unpack: bool,
+        *,
+        registry: Optional[Registry[Self]] = None,
     ):
-        super().__init__(registry, name, domain, dtype)
+        super().__init__(name, domain, dtype, registry=registry)
         self.input_dim_name = input_dim_name
         self.input_var_name = input_var_name
         self.input_var_dtype = input_var_dtype
@@ -237,12 +238,13 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
     @classmethod
     def from_netcdf(
         cls,
-        registry: Optional[DataspaceRegistry],
         ncvar: netCDF4.Variable,
+        *,
         name: Optional[str] = None,
         domain: Optional[Tuple[DType, DType]] = None,
         dtype: Optional[np.dtype] = None,
         unpack: bool = False,
+        registry: Optional[Registry[Self]] = None,
     ):
         if len(ncvar.dimensions) != 1:
             raise ValueError(
@@ -326,15 +328,16 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
 
     def __init__(
         self,
-        registry: Optional[Registry[Self]],
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
         input_dim_name: str,
         input_dim_size: int,
         is_unlimited: bool,
+        *,
+        registry: Optional[Registry[Self]],
     ):
-        super().__init__(registry, name, domain, dtype)
+        super().__init__(name, domain, dtype, registry=registry)
         self.input_dim_name = input_dim_name
         self.input_dim_size = input_dim_size
         self.is_unlimited = is_unlimited
@@ -369,11 +372,12 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
     @classmethod
     def from_netcdf(
         cls,
-        registry: Optional[DataspaceRegistry],
         dim: netCDF4.Dimension,
         unlimited_dim_size: Optional[int],
         dtype: np.dtype,
+        *,
         name: Optional[str] = None,
+        registry: Optional[Registry[Self]] = None,
     ):
         size = (
             unlimited_dim_size
@@ -458,11 +462,12 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimBase):
     @classmethod
     def create(
         cls,
-        registry: Optional[DataspaceRegistry],
         dim_name: str,
         dtype: np.dtype,
+        *,
+        registry: Optional[Registry[Self]] = None,
     ):
-        return cls(registry, dim_name, (0, 0), dtype)
+        return cls(dim_name, (0, 0), dtype, registry=registry)
 
     def get_query_size(self, netcdf_group: netCDF4.Dataset):
         """Returns the number of coordinates to copy from NetCDF to TileDB.
