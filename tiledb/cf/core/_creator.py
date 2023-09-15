@@ -469,7 +469,7 @@ class DataspaceDomain(MutableMapping):
 
     def __setitem__(self, name: str, value: SharedDim):
         if value.is_registered:
-            raise ValueError(f"SharedDim '{value.name}' is already registered.")
+            raise ValueError(f"Shared dimension '{value.name}' is already registered.")
         if name != value.name:
             value.name = name
         self._core.register_shared_dim(value)
