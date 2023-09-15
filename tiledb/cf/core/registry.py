@@ -38,7 +38,7 @@ class RegisteredByName:
 
     def set_registry(self, registry: Optional[Registry[Self]]):
         if self._registry is not None:
-            raise ValueError("Registry for is already set.")
+            raise ValueError("Registry is already set.")
         if registry is not None:
             registry[self.name] = self
         self._registry = registry
