@@ -5,11 +5,13 @@ from typing import Optional, Sequence, Union
 
 import netCDF4
 import numpy as np
+from typing_extensions import Self
 
 import tiledb
 from tiledb.cf.core import AttrMetadata
-from tiledb.cf.core._creator import ArrayRegistry, AttrCreator
+from tiledb.cf.core._creator import AttrCreator
 
+from ..core.registry import Registry
 from ._utils import (
     COORDINATE_SUFFIX,
     get_netcdf_metadata,
@@ -70,7 +72,6 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
 
     def __init__(
         self,
-        array_registry: ArrayRegistry,
         name: str,
         dtype: np.dtype,
         fill: Optional[Union[int, float, str]],
@@ -80,9 +81,11 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         input_var_name: str,
         input_var_dtype: np.dtype,
         unpack: bool,
+        *,
+        registry: Optional[Registry[Self]] = None,
     ):
         super().__init__(
-            array_registry=array_registry,
+            registry=registry,
             name=name,
             dtype=dtype,
             fill=fill,
@@ -132,8 +135,8 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
     @classmethod
     def from_netcdf(
         cls,
-        array_registry: ArrayRegistry,
         ncvar: netCDF4.Variable,
+        *,
         name: Optional[str] = None,
         dtype: Optional[np.dtype] = None,
         fill: Optional[Union[int, float, str]] = None,
@@ -141,6 +144,7 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
         unpack: bool = False,
+        registry: Optional[Registry[Self]] = None,
     ):
         if fill is None:
             fill = get_netcdf_metadata(ncvar, "_FillValue")
@@ -154,7 +158,7 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
             dtype = get_unpacked_dtype(ncvar) if unpack else ncvar.dtype
         dtype = np.dtype(dtype)
         return cls(
-            array_registry=array_registry,
+            registry=registry,
             name=name,
             dtype=dtype,
             fill=fill,

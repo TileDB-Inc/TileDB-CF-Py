@@ -466,9 +466,10 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 TileDB array (false).
         """
         NetCDF4ArrayConverter(
-            dataspace_registry=self._registry,
+            registry=self._array_registry,
+            dim_registry=self._domain,
             name=array_name,
-            dims=dims,
+            dim_order=dims,
             cell_order=cell_order,
             tile_order=tile_order,
             capacity=capacity,
@@ -501,7 +502,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
 
         """
         NetCDF4CoordToDimConverter.from_netcdf(
-            dataspace_registry=self._registry,
+            registry=self._domain,
             ncvar=ncvar,
             name=dim_name,
             domain=domain,
@@ -526,7 +527,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dim_name: If not ``None``, output name of the TileDB dimension.
         """
         NetCDF4DimToDimConverter.from_netcdf(
-            dataspace_registry=self._registry,
+            registry=self._domain,
             dim=ncdim,
             unlimited_dim_size=unlimited_dim_size,
             dtype=dtype,
@@ -545,7 +546,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             dtype: Numpy type to use for the scalar dimension
         """
         NetCDF4ScalarToDimConverter.create(
-            dataspace_registry=self._registry, dim_name=dim_name, dtype=dtype
+            registry=self._domain, dim_name=dim_name, dtype=dtype
         )
 
     def add_var_to_attr_converter(
@@ -582,7 +583,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 unpack``.
         """
         try:
-            array_creator = self._registry.get_array_creator(array_name)
+            array_creator = self._core.get_array_creator(array_name)
         except KeyError as err:  # pragma: no cover
             raise KeyError(
                 f"Cannot add attribute to array '{array_name}'. No array named "
@@ -742,13 +743,13 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
                 TileDB metadata. If ``False`` do not copy metadata.
         """
-        if self._registry.narray != 1:  # pragma: no cover
+        if self._core.narray != 1:  # pragma: no cover
             raise ValueError(
                 f"Can only use `copy_to_array` for a {self.__class__.__name__} with "
                 f"exactly 1 array creator. This {self.__class__.__name__} contains "
-                f"{self._registry.narray} array creators."
+                f"{self._core.narray} array creators."
             )
-        array_creator = next(self._registry.array_creators())
+        array_creator = next(self._core.array_creators())
         if input_netcdf_group is None:
             input_file = (
                 input_file if input_file is not None else self.default_input_file
@@ -826,7 +827,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             )
         array_uris = {
             array_creator.name: os.path.join(output_uri, array_creator.name)
-            for array_creator in self._registry.array_creators()
+            for array_creator in self._core.array_creators()
         }
         if input_netcdf_group is None:
             input_file = (
@@ -843,7 +844,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             if copy_metadata:
                 with tiledb.Group(output_uri, mode="w", ctx=ctx) as group:
                     copy_group_metadata(netcdf_group, group.meta)
-            for array_creator in self._registry.array_creators():
+            for array_creator in self._core.array_creators():
                 if isinstance(array_creator, NetCDF4ArrayConverter):
                     array_creator.copy(
                         netcdf_group=netcdf_group,

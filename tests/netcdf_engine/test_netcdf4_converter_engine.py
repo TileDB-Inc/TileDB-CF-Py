@@ -1097,7 +1097,7 @@ def test_variable_fill(tmpdir):
         dataset.createDimension("row", 4)
         dataset.createVariable("x1", np.dtype("int64"), ("row",), fill_value=-1)
         converter = NetCDF4ConverterEngine.from_group(dataset, coords_to_dims=False)
-        attr_creator = converter._registry.get_attr_creator("x1")
+        attr_creator = converter._core.get_attr_creator("x1")
         assert attr_creator.fill == -1
 
 

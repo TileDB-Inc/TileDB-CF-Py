@@ -6,12 +6,14 @@ from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import netCDF4
 import numpy as np
+from typing_extensions import Self
 
 import tiledb
 from tiledb.cf.core import DimMetadata
-from tiledb.cf.core._creator import DataspaceRegistry, DimCreator, SharedDim
+from tiledb.cf.core._creator import DimCreator, SharedDim
 
 from .._utils import DType
+from ..core.registry import Registry
 from ._utils import get_unpacked_dtype, get_variable_values, safe_set_metadata
 
 
@@ -27,6 +29,7 @@ class NetCDF4ToDimConverter(DimCreator):
     def __init__(
         self,
         base: SharedDim,
+        *,
         tile: Optional[Union[int, float]] = None,
         filters: Optional[tiledb.FilterList] = None,
         max_fragment_length: Optional[int] = None,
@@ -174,7 +177,6 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
 
     def __init__(
         self,
-        dataspace_registry: DataspaceRegistry,
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
@@ -182,8 +184,10 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
         input_var_name: str,
         input_var_dtype: np.dtype,
         unpack: bool,
+        *,
+        registry: Optional[Registry[Self]] = None,
     ):
-        super().__init__(dataspace_registry, name, domain, dtype)
+        super().__init__(name, domain, dtype, registry=registry)
         self.input_dim_name = input_dim_name
         self.input_var_name = input_var_name
         self.input_var_dtype = input_var_dtype
@@ -236,12 +240,13 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
     @classmethod
     def from_netcdf(
         cls,
-        dataspace_registry: DataspaceRegistry,
         ncvar: netCDF4.Variable,
+        *,
         name: Optional[str] = None,
         domain: Optional[Tuple[DType, DType]] = None,
         dtype: Optional[np.dtype] = None,
         unpack: bool = False,
+        registry: Optional[Registry[Self]] = None,
     ):
         if len(ncvar.dimensions) != 1:
             raise ValueError(
@@ -252,7 +257,7 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
             dtype = get_unpacked_dtype(ncvar) if unpack else ncvar.dtype
         dtype = np.dtype(dtype)
         return cls(
-            dataspace_registry=dataspace_registry,
+            registry=registry,
             name=name if name is not None else ncvar.name,
             domain=domain,
             dtype=dtype,
@@ -325,15 +330,16 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
 
     def __init__(
         self,
-        dataspace_registry: DataspaceRegistry,
         name: str,
         domain: Optional[Tuple[Optional[DType], Optional[DType]]],
         dtype: np.dtype,
         input_dim_name: str,
         input_dim_size: int,
         is_unlimited: bool,
+        *,
+        registry: Optional[Registry[Self]],
     ):
-        super().__init__(dataspace_registry, name, domain, dtype)
+        super().__init__(name, domain, dtype, registry=registry)
         self.input_dim_name = input_dim_name
         self.input_dim_size = input_dim_size
         self.is_unlimited = is_unlimited
@@ -368,11 +374,12 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
     @classmethod
     def from_netcdf(
         cls,
-        dataspace_registry: DataspaceRegistry,
         dim: netCDF4.Dimension,
         unlimited_dim_size: Optional[int],
         dtype: np.dtype,
+        *,
         name: Optional[str] = None,
+        registry: Optional[Registry[Self]] = None,
     ):
         size = (
             unlimited_dim_size
@@ -380,7 +387,7 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
             else dim.size
         )
         return cls(
-            dataspace_registry=dataspace_registry,
+            registry=registry,
             name=name if name is not None else dim.name,
             domain=(0, size - 1),
             dtype=dtype,
@@ -456,9 +463,13 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimBase):
 
     @classmethod
     def create(
-        cls, dataspace_registry: DataspaceRegistry, dim_name: str, dtype: np.dtype
+        cls,
+        dim_name: str,
+        dtype: np.dtype,
+        *,
+        registry: Optional[Registry[Self]] = None,
     ):
-        return cls(dataspace_registry, dim_name, (0, 0), dtype)
+        return cls(dim_name, (0, 0), dtype, registry=registry)
 
     def get_query_size(self, netcdf_group: netCDF4.Dataset):
         """Returns the number of coordinates to copy from NetCDF to TileDB.

@@ -9,11 +9,12 @@ import numpy as np
 import tiledb
 from tiledb.cf.core._creator import (
     ArrayCreator,
-    ArrayRegistry,
-    DataspaceRegistry,
+    ArrayCreatorCore,
     DomainCreator,
+    SharedDim,
 )
 
+from ..core.registry import Registry
 from ._attr_converters import NetCDF4ToAttrConverter, NetCDF4VarToAttrConverter
 from ._dim_converters import NetCDF4ToDimBase, NetCDF4ToDimConverter
 
@@ -81,16 +82,11 @@ class NetCDF4ArrayConverter(ArrayCreator):
         )
         tiledb_array[coord_values] = data
 
-    def _register(
-        self, dataspace_registry: DataspaceRegistry, name: str, dim_names: Sequence[str]
-    ):
-        shared_dims = map(dataspace_registry.get_shared_dim, dim_names)
-        dim_creators = tuple(map(NetCDF4ToDimConverter, shared_dims))
-        array_registry = ArrayRegistry(dataspace_registry, name, dim_creators)
-        return (
-            array_registry,
-            NetCDF4DomainConverter(array_registry, dataspace_registry),
-        )
+    def _new_core(self, dim_registry: Registry[SharedDim], dim_names: Sequence[str]):
+        return NetCDF4ArrayConverterCore(dim_registry, dim_names)
+
+    def _new_domain_creator(self):
+        return NetCDF4DomainConverter(self._core)
 
     def add_var_to_attr_converter(
         self,
@@ -135,7 +131,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
         if filters is None:
             filters = self.attrs_filters
         NetCDF4VarToAttrConverter.from_netcdf(
-            array_registry=self._registry,
+            registry=self._attr_registry,
             ncvar=ncvar,
             name=name,
             dtype=dtype,
@@ -201,6 +197,50 @@ class NetCDF4ArrayConverter(ArrayCreator):
                 )
 
 
+class NetCDF4ArrayConverterCore(ArrayCreatorCore):
+    def _new_dim_creator(self, dim_name: str, **kwargs):
+        return NetCDF4ToDimConverter(self._dim_registry[dim_name], **kwargs)
+
+    def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
+        """Add an additional dimension into the domain of the array.
+
+        Parameters:
+            dim_name: Name of the shared dimension to add to the array's domain.
+            position: Position of the shared dimension. Negative values count backwards
+                from the end of the new number of dimensions.
+            dim_kwargs: Keyword arguments to pass to :class:`NetCDF4ToDimConverter`.
+        """
+        dim_creator = self._new_dim_creator(dim_name, **dim_kwargs)
+        if dim_creator.is_from_netcdf:
+            if any(
+                isinstance(attr_creator, NetCDF4VarToAttrConverter)
+                for attr_creator in self.attr_creators()
+            ):
+                raise ValueError(
+                    "Cannot add a new NetCDF dimension converter to an array that "
+                    "already contains NetCDF variable to attribute converters."
+                )
+        if dim_creator.name in {dim_creator.name for dim_creator in self._dim_creators}:
+            raise ValueError(
+                f"Cannot add dimension creator `{dim_creator.name}` to this array. "
+                f"That dimension is already in use."
+            )
+        if dim_creator.name in self._attr_creators:
+            raise ValueError(
+                f"Cannot add dimension creator `{dim_creator.name}` to this array. An "
+                f"attribute creator with that name already exists."
+            )
+        index = self.ndim + 1 + position if position < 0 else position
+        if index < 0 or index > self.ndim:
+            raise IndexError(
+                f"Cannot add dimension to position {position} for an array with "
+                f"{self.ndim} dimensions."
+            )
+        self._dim_creators = (
+            self._dim_creators[:index] + (dim_creator,) + self._dim_creators[index:]
+        )
+
+
 class NetCDF4DomainConverter(DomainCreator):
     """Converter for NetCDF dimensions to a TileDB domain."""
 
@@ -247,19 +287,7 @@ class NetCDF4DomainConverter(DomainCreator):
                 from the end of the new number of dimensions.
             dim_kwargs: Keyword arguments to pass to :class:`NetCDF4ToDimConverter`.
         """
-        dim_creator = NetCDF4ToDimConverter(
-            self._dataspace_registry.get_shared_dim(dim_name), **dim_kwargs
-        )
-        if dim_creator.is_from_netcdf:
-            if any(
-                isinstance(attr_creator, NetCDF4VarToAttrConverter)
-                for attr_creator in self._array_registry.attr_creators()
-            ):
-                raise ValueError(
-                    "Cannot add a new NetCDF dimension converter to an array that "
-                    "already contains NetCDF variable to attribute converters."
-                )
-        self._array_registry.inject_dim_creator(dim_creator, position)
+        self._core.inject_dim_creator(dim_name, position, **dim_kwargs)
 
     @property
     def max_fragment_shape(self):
@@ -299,16 +327,16 @@ class NetCDF4DomainConverter(DomainCreator):
         index = (
             dim_id
             if isinstance(dim_id, int)
-            else self._array_registry.get_dim_position_by_name(dim_id)
+            else self._core.get_dim_position_by_name(dim_id)
         )
-        dim_creator = self._array_registry.get_dim_creator(index)
+        dim_creator = self._core.get_dim_creator(index)
         if isinstance(dim_creator.base, NetCDF4ToDimBase):
             if any(
                 isinstance(attr_creator, NetCDF4VarToAttrConverter)
-                for attr_creator in self._array_registry.attr_creators()
+                for attr_creator in self._core.attr_creators()
             ):
                 raise ValueError(
                     "Cannot remove NetCDF dimension converter from an array that "
                     "contains NetCDF variable to attribute converters."
                 )
-        self._array_registry.remove_dim_creator(index)
+        self._core.remove_dim_creator(index)

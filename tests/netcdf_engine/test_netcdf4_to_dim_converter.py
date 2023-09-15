@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from tiledb.cf.core._creator import DataspaceRegistry, SharedDim
+from tiledb.cf.core._creator import SharedDim
 from tiledb.cf.netcdf_engine import NetCDF4ToDimConverter
 
 netCDF4 = pytest.importorskip("netCDF4")
@@ -10,12 +10,11 @@ netCDF4 = pytest.importorskip("netCDF4")
 class TestSharedDimBase:
     """This class tests the NetCDF4ToDimConverter for a non-NetCDF dimension."""
 
-    registry = DataspaceRegistry()
     shared_dim = SharedDim(
         name="dim0",
         dtype=np.dtype("int32"),
         domain=(0, 31),
-        dataspace_registry=registry,
+        registry=None,
     )
 
     def test_default_properties(self):
