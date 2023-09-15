@@ -7,13 +7,9 @@ import netCDF4
 import numpy as np
 
 import tiledb
-from tiledb.cf.core._creator import (
-    ArrayCreator,
-    ArrayCreatorCore,
-    DomainCreator,
-    SharedDim,
-)
 
+from ..core._array_creator import ArrayCreator, ArrayCreatorCore, DomainCreator
+from ..core._shared_dim import SharedDim
 from ..core.registry import Registry
 from ._attr_converters import NetCDF4ToAttrConverter, NetCDF4VarToAttrConverter
 from ._dim_converters import NetCDF4ToDimBase, NetCDF4ToDimConverter

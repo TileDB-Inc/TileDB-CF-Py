@@ -3,7 +3,8 @@ import pytest
 
 import tiledb
 from tiledb.cf import DataspaceCreator
-from tiledb.cf.core._creator import ArrayCreator, SharedDim
+from tiledb.cf.core._array_creator import ArrayCreator
+from tiledb.cf.core._shared_dim import SharedDim
 
 
 class TestDataspaceCreatorExample1:
