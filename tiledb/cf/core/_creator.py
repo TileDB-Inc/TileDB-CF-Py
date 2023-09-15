@@ -436,7 +436,7 @@ class DataspaceArrayRegistry(MutableMapping):
         return self._core.array_creators()
 
     def __len__(self) -> int:
-        return self._crore.naarray
+        return self._core.narray
 
     def __setitem__(self, name: str, value: ArrayCreator):
         if value.is_registered:
@@ -483,11 +483,6 @@ class ArrayDimRegistry:
         self._shared_dims: Dict[str, SharedDim] = dict()
 
     def __delitem__(self, name: str):
-        if name in self._in_use:
-            raise ValueError(
-                f"Cannot remove shared dimension '{name}' that is being used by "
-                f"an array."
-            )
         del self._shared_dims[name]
 
     def __getitem__(self, name: str) -> SharedDim:
@@ -541,7 +536,7 @@ class ArrayCreator(RegisteredByNameMixin):
         self,
         *,
         name: str = "array",
-        dim_order: Sequence[str] = None,
+        dim_order: Optional[Sequence[str]] = None,
         cell_order: str = "row-major",
         tile_order: str = "row-major",
         capacity: int = 0,
@@ -785,7 +780,7 @@ class ArrayCreator(RegisteredByNameMixin):
 
 
 class ArrayCreatorCore:
-    def __init__(self, dim_registry: Registry[SharedDim], array_dims: Tuple[str, ...]):
+    def __init__(self, dim_registry: Registry[SharedDim], array_dims: Sequence[str]):
         self._dim_registry = dim_registry
         self._dim_creators = tuple(
             self._new_dim_creator(dim_name) for dim_name in array_dims
@@ -858,7 +853,7 @@ class ArrayCreatorCore:
                 return index
         raise KeyError(f"Dimension creator with name '{dim_name}' not found.")
 
-    def has_attr_creator(self, name: str) -> AttrCreator:
+    def has_attr_creator(self, name: str) -> bool:
         """Returns if an attribute creator with the requested name is in the array
         creator
 
@@ -938,7 +933,7 @@ class ArrayAttrRegistry:
         self._core.deregister_attr_creator(name)
 
     def __getitem__(self, name: str) -> AttrCreator:
-        self._core.get_attr_creator(name)
+        return self._core.get_attr_creator(name)
 
     def __setitem__(self, name: str, value: AttrCreator):
         if value.is_registered:
