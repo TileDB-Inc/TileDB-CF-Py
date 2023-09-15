@@ -285,7 +285,7 @@
 
 <section id="tiledb.cf.netcdf_engine.NetCDF4CoordToDimConverter" class="level1">
 <h1>cf.netcdf_engine.NetCDF4CoordToDimConverter</h1>
-<p><code>cf.netcdf_engine.NetCDF4CoordToDimConverter(self, dataspace_registry, name, domain, dtype, input_dim_name, input_var_name, input_var_dtype, unpack)</code></p>
+<p><code>cf.netcdf_engine.NetCDF4CoordToDimConverter(self, name, domain, dtype, input_dim_name, input_var_name, input_var_dtype, unpack, *, registry=None)</code></p>
 <p>Converter for a NetCDF variable/dimension pair to a TileDB dimension.</p>
 <p>Attributes: name: Name of the TileDB dimension. domain: The (inclusive) interval on which the dimension is valid. dtype: The numpy dtype of the values and domain of the dimension. input_dim_name: The name of input NetCDF dimension. input_var_name: The name of input NetCDF variable. input_var_dtype: The numpy dtype of the input NetCDF variable.</p>
 <section id="methods" class="level2">

@@ -284,7 +284,7 @@
 
 <section id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter" class="level1">
 <h1>cf.netcdf_engine.NetCDF4VarToAttrConverter</h1>
-<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter(self, array_registry, name, dtype, fill, var, nullable, filters, input_var_name, input_var_dtype, unpack)</code></p>
+<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter(self, name, dtype, fill, var, nullable, filters, input_var_name, input_var_dtype, unpack, *, registry=None)</code></p>
 <p>Converter for a NetCDF variable to a TileDB attribute.</p>
 <p>Attributes: name: Name of the new attribute. dtype: Numpy dtype of the attribute. fill: Fill value for unset cells. var: Specifies if the attribute is variable length (automatic for byte/strings). nullable: Specifies if the attribute is nullable using validity tiles. filters: Specifies compression filters for the attribute. input_var_name: Name of the input NetCDF variable that will be converted. input_var_dtype: Numpy dtype of the input NetCDF variable.</p>
 <section id="methods" class="level2">

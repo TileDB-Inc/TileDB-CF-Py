@@ -284,7 +284,7 @@
 
 <section id="tiledb.cf.netcdf_engine.NetCDF4DimToDimConverter" class="level1">
 <h1>cf.netcdf_engine.NetCDF4DimToDimConverter</h1>
-<p><code>cf.netcdf_engine.NetCDF4DimToDimConverter(self, dataspace_registry, name, domain, dtype, input_dim_name, input_dim_size, is_unlimited)</code></p>
+<p><code>cf.netcdf_engine.NetCDF4DimToDimConverter(self, name, domain, dtype, input_dim_name, input_dim_size, is_unlimited, *, registry)</code></p>
 <p>Converter for a NetCDF dimension to a TileDB dimension.</p>
 <p>Attributes: name: Name of the TileDB dimension. domain: The (inclusive) interval on which the dimension is valid. dtype: The numpy dtype of the values and domain of the dimension. input_dim_name: Name of the input NetCDF variable. input_dim_size: Size of the input NetCDF variable. is_unlimited: If True, the input NetCDF variable is unlimited.</p>
 <section id="methods" class="level2">
