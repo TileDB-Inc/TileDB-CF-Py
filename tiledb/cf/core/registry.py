@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Optional, Protocol, Self, TypeVar
+from typing import Optional, TypeVar
+
+from typing_extensions import Protocol, Self
 
 T = TypeVar("T")
 
@@ -28,7 +30,7 @@ class Registry(Protocol[T]):
 class RegisteredByNameMixin:
     def __init__(self, name: str, registry: Optional[Registry[Self]]):
         self._name = name
-        self._registry = None
+        self._registry: Optional[Registry[Self]] = None
         self.set_registry(registry)
 
     @property

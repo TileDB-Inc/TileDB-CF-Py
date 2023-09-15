@@ -2,10 +2,11 @@
 
 import itertools
 from abc import abstractmethod
-from typing import Any, Dict, Iterable, Optional, Self, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Tuple, Union
 
 import netCDF4
 import numpy as np
+from typing_extensions import Self
 
 import tiledb
 from tiledb.cf.core import DimMetadata

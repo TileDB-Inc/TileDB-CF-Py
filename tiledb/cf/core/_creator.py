@@ -5,9 +5,10 @@ from __future__ import annotations
 from collections import OrderedDict
 from collections.abc import MutableMapping
 from io import StringIO
-from typing import Any, Dict, Iterable, Optional, Self, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, Optional, Sequence, Tuple, Union
 
 import numpy as np
+from typing_extensions import Self
 
 import tiledb
 

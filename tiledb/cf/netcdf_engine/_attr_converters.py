@@ -1,10 +1,11 @@
 """Classes for converting NetCDF4 objects to TileDB attributes."""
 
 from abc import abstractmethod
-from typing import Optional, Self, Sequence, Union
+from typing import Optional, Sequence, Union
 
 import netCDF4
 import numpy as np
+from typing_extensions import Self
 
 import tiledb
 from tiledb.cf.core import AttrMetadata
