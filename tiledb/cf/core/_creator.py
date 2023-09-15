@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from abc import ABCMeta
 from collections import OrderedDict
 from collections.abc import MutableMapping
 from io import StringIO
@@ -14,7 +13,7 @@ import tiledb
 
 from .._utils import DType
 from .api import create_group
-from .registry import RegisteredByName, Registry
+from .registry import RegisteredByNameMixin, Registry
 
 
 class DataspaceCreator:
@@ -519,7 +518,7 @@ class ArrayDimRegistry:
         self._shared_dims[new_name] = self._shared_dims.pop(old_name)
 
 
-class ArrayCreator(RegisteredByName):
+class ArrayCreator(RegisteredByNameMixin):
     """Creator for a TileDB array using shared dimension definitions.
 
     Attributes:
@@ -595,9 +594,7 @@ class ArrayCreator(RegisteredByName):
         self.sparse = sparse
 
         # Set name and registry for the array creator.
-        self._name = name
-        self._registry = None
-        self.set_registry(registry)
+        super().__init__(name, registry)
 
     def __iter__(self):
         """Returns iterator over attribute creators."""
@@ -955,7 +952,7 @@ class ArrayAttrRegistry:
         self._core.update_attr_creator_name(old_name, new_name)
 
 
-class AttrCreator(RegisteredByName, metaclass=ABCMeta):
+class AttrCreator(RegisteredByNameMixin):
     """Creator for a TileDB attribute.
 
     Attributes:
@@ -978,14 +975,12 @@ class AttrCreator(RegisteredByName, metaclass=ABCMeta):
         filters: Optional[tiledb.FilterList] = None,
         registry: Optional[Registry[Self]] = None,
     ):
-        self._name = name
         self.dtype = np.dtype(dtype)
         self.fill = fill
         self.var = var
         self.nullable = nullable
         self.filters = filters
-        self._registry = None
-        self.set_registry(registry)
+        super().__init__(name, registry)
 
     def __repr__(self):
         filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
@@ -1182,7 +1177,7 @@ class DimCreator:
         )
 
 
-class SharedDim(RegisteredByName, metaclass=ABCMeta):
+class SharedDim(RegisteredByNameMixin):
     """Definition for the name, domain and data type of a collection of dimensions."""
 
     def __init__(
@@ -1196,8 +1191,7 @@ class SharedDim(RegisteredByName, metaclass=ABCMeta):
         self._name = name
         self.domain = domain
         self.dtype = np.dtype(dtype)
-        self._registry = None
-        self.set_registry(registry)
+        super().__init__(name, registry)
 
     def __eq__(self, other):
         if not isinstance(other, self.__class__):

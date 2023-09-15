@@ -1,3 +1,7 @@
+"""Create a name registry for use in modifying grouped objects."""
+
+from __future__ import annotations
+
 from typing import Optional, Protocol, Self, TypeVar
 
 T = TypeVar("T")
@@ -21,7 +25,12 @@ class Registry(Protocol[T]):
         ...
 
 
-class RegisteredByName:
+class RegisteredByNameMixin:
+    def __init__(self, name: str, registry: Optional[Registry[Self]]):
+        self._name = name
+        self._registry = None
+        self.set_registry(registry)
+
     @property
     def is_registered(self) -> bool:
         return self._registry is not None
