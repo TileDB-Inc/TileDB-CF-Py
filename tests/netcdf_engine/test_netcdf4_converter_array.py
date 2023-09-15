@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf.core._creator import SharedDim
+from tiledb.cf.core._shared_dim import SharedDim
 
 netCDF4 = pytest.importorskip("netCDF4")
 netcdf_engine = pytest.importorskip("tiledb.cf.netcdf_engine")

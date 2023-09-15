@@ -9,8 +9,8 @@ from typing_extensions import Self
 
 import tiledb
 from tiledb.cf.core import AttrMetadata
-from tiledb.cf.core._creator import AttrCreator
 
+from ..core._attr_creator import AttrCreator
 from ..core.registry import Registry
 from ._utils import (
     COORDINATE_SUFFIX,

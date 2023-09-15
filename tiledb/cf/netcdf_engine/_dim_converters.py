@@ -10,9 +10,10 @@ from typing_extensions import Self
 
 import tiledb
 from tiledb.cf.core import DimMetadata
-from tiledb.cf.core._creator import DimCreator, SharedDim
 
 from .._utils import DType
+from ..core._dim_creator import DimCreator
+from ..core._shared_dim import SharedDim
 from ..core.registry import Registry
 from ._utils import get_unpacked_dtype, get_variable_values, safe_set_metadata
 

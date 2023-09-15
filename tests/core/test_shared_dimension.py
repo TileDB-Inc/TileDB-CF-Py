@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 import tiledb
-from tiledb.cf.core._creator import SharedDim
+from tiledb.cf.core._shared_dim import SharedDim
 
 _tiledb_dim = [
     tiledb.Dim(name="dim", domain=(1, 4), tile=4, dtype=np.int32),
