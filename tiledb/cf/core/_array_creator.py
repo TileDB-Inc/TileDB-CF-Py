@@ -12,9 +12,16 @@ import tiledb
 
 from ._attr_creator import AttrCreator
 from ._dim_creator import DimCreator
-from ._fragment_writer import DenseFragmentRegion, FragmentWriter, SparseFragmentRegion
+from ._fragment_writer import (
+    DenseArrayFragmentWriter,
+    FragmentWriter,
+    SparseArrayFragmentWriter,
+)
 from ._shared_dim import SharedDim
 from .registry import RegisteredByNameMixin, Registry
+
+
+DenseRange = Union[Tuple[int, int], Tuple[np.datetime64, np.datetime64]]
 
 
 class ArrayDimRegistry:
@@ -131,6 +138,9 @@ class ArrayCreator(RegisteredByNameMixin):
         # Set name and registry for the array creator.
         super().__init__(name, registry)
 
+    def __getitem__(self, key: Union[int, str]) -> AttrCreator:
+        return self._core.get_attr_creator(key)
+
     def __iter__(self):
         """Returns iterator over attribute creators."""
         return self._core.attr_creators()
@@ -213,13 +223,13 @@ class ArrayCreator(RegisteredByNameMixin):
             filters=filters,
         )
 
-    def add_dense_fragment_writer(
-        self, *, target_region: Optional[Tuple[Tuple[int, int], ...]] = None
+    def add_fragment_writer(
+        self,
+        *,
+        target_region: Optional[Tuple[DenseRange, ...]] = None,
+        size: Optional[int] = None,
     ):
-        self._core.add_dense_fragment_writer(target_region=target_region)
-
-    def add_sparse_fragment_writer(self, size=int):
-        self._core.add_sparse_fragment_writer(size)
+        self._core.add_fragment_writer(target_region=target_region, size=size)
 
     def create(
         self, uri: str, key: Optional[str] = None, ctx: Optional[tiledb.Ctx] = None
@@ -372,33 +382,31 @@ class ArrayCreatorCore:
     def _new_dim_creator(self, dim_name: str, **kwargs):
         return DimCreator(self._dim_registry[dim_name], **kwargs)
 
-    def add_dense_fragment_writer(
-        self, *, target_region: Optional[Tuple[Tuple[int, int], ...]] = None
+    def add_fragment_writer(
+        self,
+        *,
+        target_region: Optional[Tuple[Tuple[int, int], ...]] = None,
+        size: Optional[int] = None,
     ):
         if self._sparse:
-            raise ValueError(
-                "Setting a dense fragment region on a sparse array is not implemented."
+            self._fragment_writers.append(
+                SparseArrayFragmentWriter(
+                    attr_names=self._attr_creators.keys(),
+                    dims=tuple(dim.base for dim in self._dim_creators),
+                    target_region=target_region,
+                    size=size,
+                )
             )
-        if target_region is None:
-            target_region = tuple(dim.domain for dim in self._dim_creators)
-        self._fragment_writers.append(
-            FragmentWriter(
-                region=DenseFragmentRegion(target_region=target_region),
-                dim_creators=self._dim_creators,
-                attr_creators=self._attr_creators,
+        else:
+            if size is not None:
+                raise ValueError("Argument 'size' is not supported on dense arrays.")
+            self._fragment_writers.append(
+                DenseArrayFragmentWriter(
+                    attr_names=self._attr_creators.keys(),
+                    dims=tuple(dim.base for dim in self._dim_creators),
+                    target_region=target_region,
+                )
             )
-        )
-
-    def add_sparse_fragment_writer(self, size: int):
-        if not self._sparse:
-            raise ValueError("Cannot set a sparse region to a dense array.")
-        self._fragment_writers.append(
-            FragmentWriter(
-                region=SparseFragmentRegion(size),
-                dim_creators=self._dim_creators,
-                attr_creatos=self._attr_creators,
-            )
-        )
 
     def attr_creators(self):
         """Iterates over attribute creators in the array creator."""
@@ -420,6 +428,8 @@ class ArrayCreatorCore:
     def deregister_attr_creator(self, attr_name: str):
         """Removes an attribute from the group."""
         del self._attr_creators[attr_name]
+        for frag_writer in self._fragment_writers:
+            frag_writer.remove_attr(attr_name)
 
     def dim_creators(self):
         """Iterates over dimension creators in the array creator."""
@@ -467,8 +477,8 @@ class ArrayCreatorCore:
                 return index
         raise KeyError(f"Dimension creator with name '{dim_name}' not found.")
 
-    def get_fragment_writer(self, index: int) -> Tuple[slice]:
-        return self._fragment_writers[int]
+    def get_fragment_writer(self, index: int) -> FragmentWriter:
+        return self._fragment_writers[index]
 
     def has_attr_creator(self, name: str) -> bool:
         """Returns if an attribute creator with the requested name is in the array
@@ -481,6 +491,11 @@ class ArrayCreatorCore:
 
     def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Add an additional dimension into the domain of the array."""
+        if len(self._fragment_writers) > 0:
+            raise NotImplementedError(
+                "Injecting a dimension on an array that already has fragment writers "
+                "if not yet implemented."
+            )
         dim_creator = self._new_dim_creator(dim_name, **dim_kwargs)
         if dim_creator.name in {dim_creator.name for dim_creator in self._dim_creators}:
             raise ValueError(
@@ -514,6 +529,8 @@ class ArrayCreatorCore:
         self.check_new_attr_name(attr_creator.name)
         attr_name = attr_creator.name
         self._attr_creators[attr_name] = attr_creator
+        for frag_writer in self._fragment_writers:
+            frag_writer.add_attr(attr_name)
 
     def remove_dim_creator(self, dim_index: int):
         """Remove a dim creator from the array.

@@ -10,7 +10,7 @@ import tiledb
 from .._utils import DType
 from ._fragment_writer import FragmentWriter
 from .registry import RegisteredByNameMixin, Registry
-from .source import BufferData
+from .source import FieldData, NumpyData
 
 
 class AttrCreator(RegisteredByNameMixin):
@@ -60,16 +60,22 @@ class AttrCreator(RegisteredByNameMixin):
             f"var={self.var}, nullable={self.nullable}{filters_str})"
         )
 
-    def set_fragment_data(self, fragment_index: int, buffer_data: BufferData):
+    def set_fragment_data(self, fragment_index: int, attr_data: FieldData):
+        if isinstance(attr_data, np.ndarray):
+            data = NumpyData(attr_data.astype(self.dtype))
+        else:
+            data = attr_data
+        # Handle numpy data special?
         if self._fragment_writers is None:
             raise ValueError("Attribute creator has not fragment writers")
-        if self.buffer_data.dtype != self.buffer_data:
+        if data.dtype != self.dtype:
+            # Relax?
             raise ValueError(
-                "Cannot set data with dtype='{buffer_data.dtype}' to an attribute witha"
-                f"dtype='{self._dtype}'."
+                f"Cannot set data with dtype='{attr_data.dtype}' to an attribute witha"
+                f"dtype='{self.dtype}'."
             )
         # TODO: Check variable length?
-        self._fragment_writers[fragment_index].set_attr_data(self.name, buffer_data)
+        self._fragment_writers[fragment_index].set_attr_data(self.name, data)
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
         """Returns a :class:`tiledb.Attr` using the current properties.

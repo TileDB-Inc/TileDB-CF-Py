@@ -3,11 +3,7 @@ from typing import Any, Mapping, Optional, Protocol, Tuple
 import numpy as np
 
 
-class BufferData(Protocol):
-    @property
-    def data(self) -> np.array:
-        ...
-
+class FieldData(Protocol):
     @property
     def dtype(self) -> np.dtype:
         ...
@@ -28,17 +24,17 @@ class BufferData(Protocol):
     def size(self) -> int:
         ...
 
+    @property
+    def values(self) -> np.array:
+        ...
 
-class NumpyBuffer:
+
+class NumpyData:
     def __init__(
         self, input: np.array, *, metadata: Optional[Mapping[str, Any]] = None
     ):
         self._source_data = input
         self._metadata = dict() if metadata is None else dict(metadata)
-
-    @property
-    def data(self):
-        return self._source_data
 
     @property
     def dtype(self):
@@ -59,3 +55,7 @@ class NumpyBuffer:
     @property
     def size(self):
         return self._source_data.size
+
+    @property
+    def values(self):
+        return self._source_data

@@ -2,111 +2,124 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple, Union
+from abc import ABCMeta, abstractmethod
+from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
-from typing_extensions import Protocol
 
 import tiledb
 
 from .._utils import safe_set_metadata
 from ._metadata import AttrMetadata
-from .source import BufferData
+from ._shared_dim import SharedDim
+from .source import FieldData
+
+DenseRange = Union[Tuple[int, int], Tuple[np.datetime64, np.datetime64]]
 
 
-class FragmentRegionProtocol(Protocol):
-    @property
-    def shape(self) -> Union[None, Tuple[int, ...]]:
-        ...
-
-    @property
-    def size(self) -> Union[None, Tuple[int, ...]]:
-        ...
-
-    @property
-    def target_region(self) -> Union[None, Tuple[Tuple[int, int], ...]]:
-        ...
-
-
-class DenseFragmentRegion:
-    def __init__(self, target_region: Tuple[Tuple[int, int], ...]):
-        self._target_region = target_region
-        self._shape = tuple(
-            dim_range[1] - dim_range[0] + 1 for dim_range in target_region
-        )
-        self._size = sum(self._shape)
-
-    @property
-    def shape(self) -> Union[None, Tuple[int, ...]]:
-        return self._shape
-
-    @property
-    def size(self) -> int:
-        return sum(self._shape)
-
-    @property
-    def target_region(self) -> Union[None, Tuple[Tuple[int, int], ...]]:
-        return self._target_region
-
-
-class SparseFragmentRegion:
-    def __init__(self, size: int):
-        self._size
-
-    @property
-    def shape(self) -> Union[None, Tuple[int, ...]]:
-        return None
-
-    @property
-    def size(self) -> int:
-        return self._size
-
-    @property
-    def target_region(self) -> Union[None, Tuple[Tuple[int, int], ...]]:
-        return None
-
-
-class FragmentWriter:
-    def __init__(
-        self,
-        *,
-        sparse: bool,
-        region: FragmentRegionProtocol,
-        ndim: int,
-        attr_names: Sequence[str],
-    ):
-        # TODO: Clean-up sparse vs. dense story
-        self._sparse = sparse
-        self._region = region
-        if isinstance(self._region, SparseFragmentRegion):
-            self._dim_data = [None] * ndim
-        else:
-            self._dim_data = None
+class FragmentWriter(metaclass=ABCMeta):
+    def __init__(self, attr_names: Sequence[str]):
         self._attr_data = {name: None for name in attr_names}
 
     def add_attr(self, attr_name: str):
         self._attr_data.setdefault(attr_name, None)
 
-    def set_attr_data(self, attr_name: str, data: BufferData):
-        if data.size != self._region.size:
+    def remove_attr(self, attr_name: str):
+        del self._attr_data[attr_name]
+
+    @abstractmethod
+    def set_attr_data(self, attr_name: str, data: FieldData):
+        ...
+
+    @abstractmethod
+    def set_dim_data(self, dim_index: int, data: FieldData):
+        ...
+
+    @abstractmethod
+    def write(self, array: tiledb.libtiledb.Array):
+        ...
+
+    def write_attr_metadata(self, array: tiledb.libtiledb.Array):
+        for name, data in self._attr_data.items():
+            meta = AttrMetadata(array.meta, name)
+            for key, val in data.metadata.items():
+                safe_set_metadata(meta, key, val)
+
+
+class DenseRegion:
+    def __init__(
+        self,
+        dims: Tuple[SharedDim],
+        region: Tuple[DenseRange, ...],
+    ):
+        self._dims = dims
+        if region is None:
+            self._region = tuple(dim.domain for dim in self._dims)
+        else:
+            self._region = tuple(region)
+        if len(self._region) != len(self._dims):
+            # TODO: Add error message
+            raise ValueError()
+        self._shape = tuple(
+            int(dim_range[1] - dim_range[0]) + 1 for dim_range in self._region
+        )
+        self._size = sum(self._shape)
+
+    def coordinates(self, row_major=True):
+        if row_major:
+            raise NotImplementedError()
+        else:
+            raise NotImplementedError()
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @property
+    def size(self):
+        return self._size
+
+    def subarray(self) -> List[slice, ...]:
+        return [
+            (
+                slice(dim_range[0], dim_range[1] + 1)
+                if np.issubdtype(type(dim_range[1]), np.integer)
+                else slice(dim_range[0], dim_range[1])
+            )
+            for dim_range in self._region
+        ]
+
+    @property
+    def region(self):
+        return self._region
+
+
+class DenseArrayFragmentWriter(FragmentWriter):
+    def __init__(
+        self,
+        *,
+        dims: Tuple[SharedDim],
+        attr_names: Sequence[str],
+        target_region: Optional[Tuple[DenseRange, ...]],
+    ):
+        self._target_region = DenseRegion(dims, target_region)
+        super().__init__(attr_names)
+
+    def set_attr_data(self, attr_name: str, data: FieldData):
+        if data.size != self._target_region.size:
             raise ValueError(
                 f"Cannot set data with size {data.size} to a fragment region with size "
-                f"{self._region.size}"
+                f"{self._target_region.size}"
             )
-        if not self._sparse and data.shape != self._region.shape:
-            data.shape = self._region.shape
+        if data.shape != self._target_region.shape:
+            data.shape = self._target_region.shape
+        self._attr_data[attr_name] = data
 
-    def set_dim_data(self, dim_index: int, data: BufferData):
-        if not self._sparse:
-            raise ValueError("Cannot set dimension data on a dense fragment.")
-        if data.size != self._region.size:
-            raise ValueError(
-                f"Cannot set data with size {data.size} to a fragment region with size "
-                f"{self._region.size}"
-            )
-        self._dim_data[dim_index] = data
+    def set_dim_data(self, dim_index: int, data: FieldData):
+        raise ValueError("Cannot set dimension data on a dense fragment.")
 
-    def write_fragment(self, array: tiledb.libtiledb.Array):
+    def write(self, array: tiledb.libtiledb.Array):
+        # Check data is set.
         for name, data in self._attr_data.items():
             if data is None:
                 raise ValueError(
@@ -114,35 +127,71 @@ class FragmentWriter:
                 )
 
         # Write buffer data.
-        if array.sparse:
-            # TODO: Support dense region
+        array[*self._target_region.subarray()] = {
+            name: data.values for name, data in self._attr_data.items()
+        }
+        self.write_attr_metadata(array)
+
+
+class SparseArrayFragmentWriter:
+    def __init__(
+        self,
+        *,
+        dims: Tuple[SharedDim],
+        attr_names: Sequence[str],
+        size: Optional[int] = None,
+        target_region: Optional[Tuple[DenseRange, ...]] = None,
+    ):
+        if target_region is not None or size is None:
+            self._target_region = DenseRegion(dims, target_region)
+            self._size = self._target_region.size
+            self._dim_data = None
+        else:
+            self._target_region = None
+            self._dim_data = [None] * len(dims)
+            self._size = size
+        self._attr_data = {name: None for name in attr_names}
+
+    def set_attr_data(self, attr_name: str, data: FieldData):
+        if data.size != self._size:
+            raise ValueError(
+                f"Cannot set data with size {data.size} to a fragment region with size "
+                f"{self._region.size}"
+            )
+        self._attr_data[attr_name] = data
+
+    def set_dim_data(self, dim_index: int, data: FieldData):
+        if self._target_region is not None:
+            raise ValueError(
+                "Cannot set dimension data. Fragment writer is set on a dense region."
+            )
+        if data.size != self._size:
+            raise ValueError(
+                f"Cannot set data with size {data.size} to a fragment region with size "
+                f"{self._size}"
+            )
+        self._dim_data[dim_index] = data
+
+    def write(self, array: tiledb.libtiledb.Array):
+        # Check data is set.
+        if self._target_region is None:
             for idim, data in enumerate(self._dim_data):
                 if data is None:
                     raise ValueError(
                         f"Cannot write sparse fragment. Missing data for dimension "
                         f"with index {idim}."
                     )
-            array[*self._dim_data.data()] = {
-                name: buffer_data.data()
-                for name, buffer_data in self._attr_data.items()
-            }
-        else:
-            subarray = [
-                (
-                    tuple((dim_range[0], dim_range[1] + 1))
-                    if np.issubdtype(type(dim_range[1]), np.integer)
-                    else dim_range
-                )
-                for dim_range in self._region.target_region
-            ]
-            array[subarray] = {
-                name: buffer_data.data()
-                for name, buffer_data in self._attr_data.items()
-            }
-
-        # Write metadata.
-        # TODO: Add dimension metadata
         for name, data in self._attr_data.items():
-            meta = AttrMetadata(array.meta, name)
-            for key, val in data.metadata.items():
-                safe_set_metadata(meta, key, val)
+            if data is None:
+                raise ValueError(
+                    f"Cannot write fragment. Missing data for attribute '{name}'."
+                )
+
+        # Get dimension data.
+        if self._target_region is None:
+            coords = tuple(data.values for data in self._dim_data)
+        else:
+            coords = self._target_region.coordinates
+
+        # Write the data.
+        array[*coords] = {name: data.values for name, data in self._attr_data.items()}
