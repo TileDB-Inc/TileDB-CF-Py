@@ -52,6 +52,7 @@ class DenseRegion:
         dims: Tuple[SharedDim],
         region: Tuple[DenseRange, ...],
     ):
+        # TODO: Check all dimensions are ints or dataetime
         self._dims = dims
         if region is None:
             self._region = tuple(dim.domain for dim in self._dims)
@@ -65,11 +66,21 @@ class DenseRegion:
         )
         self._size = sum(self._shape)
 
-    def coordinates(self, row_major=True):
-        if row_major:
-            raise NotImplementedError()
-        else:
-            raise NotImplementedError()
+    def coordinates(self):
+        def create_coords(dim_range, dtype):
+            if dtype.kind in {"u", "i"}:
+                dt = 1
+            elif dtype.kind == "M":
+                dt = np.timedelta(1, np.datetime_data(dtype)[0])
+            else:
+                raise ValueError(f"Unsupported datatype {dtype}.")
+            return np.arange(dim_range[0], dim_range[1] + dt, dtype=dtype)
+
+        values = tuple(
+            create_coords(dim_range, dim.dtype)
+            for dim, dim_range in zip(self._dims, self._region)
+        )
+        return np.meshgrid(*values, indexing="ij")
 
     @property
     def shape(self):
@@ -191,7 +202,7 @@ class SparseArrayFragmentWriter:
         if self._target_region is None:
             coords = tuple(data.values for data in self._dim_data)
         else:
-            coords = self._target_region.coordinates
+            coords = self._target_region.coordinates()
 
         # Write the data.
         array[*coords] = {name: data.values for name, data in self._attr_data.items()}
