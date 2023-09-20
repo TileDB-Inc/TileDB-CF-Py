@@ -19,7 +19,7 @@ from ._fragment_writer import (
 )
 from ._shared_dim import SharedDim
 from .registry import RegisteredByNameMixin, Registry
-
+from .source import FieldData
 
 DenseRange = Union[Tuple[int, int], Tuple[np.datetime64, np.datetime64]]
 
@@ -119,7 +119,6 @@ class ArrayCreator(RegisteredByNameMixin):
         self._core = self._new_core(sparse, dim_registry, dim_order)
         self._domain_creator = self._new_domain_creator()
         self._attr_registry = ArrayAttrRegistry(self._core)
-        self._fragment_writers = ArrayFragmentWriters(self._core)
 
         # Set array properties.
         self.cell_order = cell_order
@@ -214,7 +213,6 @@ class ArrayCreator(RegisteredByNameMixin):
             filters = self.attrs_filters
         AttrCreator(
             registry=self._attr_registry,
-            fragment_writers=self._fragment_writers,
             name=name,
             dtype=dtype,
             fill=fill,
@@ -549,6 +547,11 @@ class ArrayCreatorCore:
             self._dim_creators[:dim_index] + self._dim_creators[dim_index + 1 :]
         )
 
+    def set_fragment_attr_data(
+        self, fragment_index: int, attr_name: str, data: FieldData
+    ):
+        self._fragment_writers[fragment_index].set_attr_data(attr_name, data)
+
     @property
     def sparse(self) -> bool:
         return self._sparse
@@ -591,6 +594,9 @@ class ArrayAttrRegistry:
         if name != value.name:
             value.name = name
         self._core.register_attr_creator(value)
+
+    def set_fragment_data(self, fragment_index: int, attr_name: str, data: FieldData):
+        self._core.set_fragment_attr_data(fragment_index, attr_name, data)
 
     def rename(self, old_name: str, new_name: str):
         self._core.check_new_attr_name(new_name)
@@ -670,15 +676,3 @@ class DomainCreator:
             raise ValueError("Cannot create schema for array with no dimensions.")
         tiledb_dims = [dim_creator.to_tiledb() for dim_creator in self]
         return tiledb.Domain(tiledb_dims, ctx=ctx)
-
-
-# TODO: Make MutableSequence
-class ArrayFragmentWriters(Sequence):
-    def __init__(self, core: ArrayCreatorCore):
-        self._core = core
-
-    def __getitem__(self, index: int) -> FragmentWriter:
-        return self._core.get_fragment_writer(index)
-
-    def __len__(self) -> int:
-        return self._core.nfragments()

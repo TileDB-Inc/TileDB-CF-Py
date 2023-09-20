@@ -1,16 +1,33 @@
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union
 
 import numpy as np
-from typing_extensions import Self
+from typing_extensions import Protocol
 
 import tiledb
 
 from .._utils import DType
 from ._fragment_writer import FragmentWriter
-from .registry import RegisteredByNameMixin, Registry
+from .registry import RegisteredByNameMixin
 from .source import FieldData, NumpyData
+
+
+class AttrRegistry(Protocol):
+    def __delitem__(self, name: str):
+        ...
+
+    def __getitem__(self, name: str) -> AttrCreator:
+        ...
+
+    def __setitem__(self, name: str, value: AttrCreator):
+        ...
+
+    def set_fragment_data(self, fragment_index: int, attr_name: str, data: FieldData):
+        ...
+
+    def rename(self, old_name: str, new_name: str):
+        ...
 
 
 class AttrCreator(RegisteredByNameMixin):
@@ -34,7 +51,7 @@ class AttrCreator(RegisteredByNameMixin):
         var: bool = False,
         nullable: bool = False,
         filters: Optional[tiledb.FilterList] = None,
-        registry: Optional[Registry[Self]] = None,
+        registry: Optional[AttrRegistry] = None,
         fragment_writers: Optional[Sequence[FragmentWriter]] = None,
     ):
         self.dtype = np.dtype(dtype)
@@ -60,14 +77,15 @@ class AttrCreator(RegisteredByNameMixin):
             f"var={self.var}, nullable={self.nullable}{filters_str})"
         )
 
-    def set_fragment_data(self, fragment_index: int, attr_data: FieldData):
+    def set_fragment_data(
+        self, fragment_index: int, attr_data: Union[np.ndarray, FieldData]
+    ):
+        if self._registry is None:
+            raise ValueError("Attribute creator is not registered to an array.")
         if isinstance(attr_data, np.ndarray):
             data = NumpyData(attr_data.astype(self.dtype))
         else:
             data = attr_data
-        # Handle numpy data special?
-        if self._fragment_writers is None:
-            raise ValueError("Attribute creator has not fragment writers")
         if data.dtype != self.dtype:
             # Relax?
             raise ValueError(
@@ -75,7 +93,7 @@ class AttrCreator(RegisteredByNameMixin):
                 f"dtype='{self.dtype}'."
             )
         # TODO: Check variable length?
-        self._fragment_writers[fragment_index].set_attr_data(self.name, data)
+        self._registry.set_fragment_data(fragment_index, self.name, data)
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
         """Returns a :class:`tiledb.Attr` using the current properties.
