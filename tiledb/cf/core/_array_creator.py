@@ -12,11 +12,7 @@ import tiledb
 
 from ._attr_creator import AttrCreator
 from ._dim_creator import DimCreator
-from ._fragment_writer import (
-    DenseArrayFragmentWriter,
-    FragmentWriter,
-    SparseArrayFragmentWriter,
-)
+from ._fragment_writer import FragmentWriter
 from ._shared_dim import SharedDim
 from .registry import RegisteredByNameMixin, Registry
 from .source import FieldData
@@ -378,7 +374,9 @@ class ArrayCreatorCore:
         self._fragment_writers: List[FragmentWriter] = list()
 
     def _new_dim_creator(self, dim_name: str, **kwargs):
-        return DimCreator(self._dim_registry[dim_name], **kwargs)
+        return DimCreator(
+            self._dim_registry[dim_name], registry=DomainDimRegistry(self), **kwargs
+        )
 
     def add_fragment_writer(
         self,
@@ -386,25 +384,15 @@ class ArrayCreatorCore:
         target_region: Optional[Tuple[Tuple[int, int], ...]] = None,
         size: Optional[int] = None,
     ):
-        if self._sparse:
-            self._fragment_writers.append(
-                SparseArrayFragmentWriter(
-                    attr_names=self._attr_creators.keys(),
-                    dims=tuple(dim.base for dim in self._dim_creators),
-                    target_region=target_region,
-                    size=size,
-                )
+        self._fragment_writers.append(
+            FragmentWriter(
+                sparse_array=self._sparse,
+                attr_names=self._attr_creators.keys(),
+                dims=tuple(dim.base for dim in self._dim_creators),
+                target_region=target_region,
+                size=size,
             )
-        else:
-            if size is not None:
-                raise ValueError("Argument 'size' is not supported on dense arrays.")
-            self._fragment_writers.append(
-                DenseArrayFragmentWriter(
-                    attr_names=self._attr_creators.keys(),
-                    dims=tuple(dim.base for dim in self._dim_creators),
-                    target_region=target_region,
-                )
-            )
+        )
 
     def attr_creators(self):
         """Iterates over attribute creators in the array creator."""
@@ -552,6 +540,11 @@ class ArrayCreatorCore:
     ):
         self._fragment_writers[fragment_index].set_attr_data(attr_name, data)
 
+    def set_fragment_dim_data(
+        self, fragment_index: int, dim_name: str, data: FieldData
+    ):
+        self._fragment_writers[fragment_index].set_dim_data(dim_name, data)
+
     @property
     def sparse(self) -> bool:
         return self._sparse
@@ -603,11 +596,23 @@ class ArrayAttrRegistry:
         self._core.update_attr_creator_name(old_name, new_name)
 
 
+class DomainDimRegistry:
+    def __init__(self, array_core: ArrayCreatorCore):
+        self._core = array_core
+
+    def set_fragment_data(self, fragment_index: int, dim_name: str, data: FieldData):
+        self._core.set_fragment_dim_data(fragment_index, dim_name, data)
+
+
 class DomainCreator:
     """Creator for a TileDB domain."""
 
     def __init__(self, array_core: ArrayCreatorCore):
         self._core = array_core
+        self._dim_registry = DomainDimRegistry(self._core)
+
+    def __getitem__(self, key: Union[int, str]):
+        return self._core.get_dim_creator(key)
 
     def __iter__(self):
         return self._core.dim_creators()
