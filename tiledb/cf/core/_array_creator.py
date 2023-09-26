@@ -237,12 +237,20 @@ class ArrayCreator(RegisteredByNameMixin):
         """
         tiledb.Array.create(uri=uri, schema=self.to_schema(ctx), key=key, ctx=ctx)
 
-    def write(self, uri: str, *, key: Optional[str] = None, ctx=None, append=False):
+    def write(
+        self,
+        uri: str,
+        *,
+        key: Optional[str] = None,
+        ctx=None,
+        append=False,
+        skip_metadata: bool = False,
+    ):
         if not append:
             self.create(uri, key=key, ctx=ctx)
         with tiledb.open(uri, key=key, ctx=ctx, mode="w") as array:
             for frag_writer in self._core.fragment_writers():
-                frag_writer.write(array)
+                frag_writer.write(array, skip_metadata=skip_metadata)
 
     def write_fragment(
         self,
@@ -251,10 +259,11 @@ class ArrayCreator(RegisteredByNameMixin):
         *,
         key: Optional[str] = None,
         ctx=None,
+        skip_metadata: bool = False,
     ):
         with tiledb.open(uri, key=key, ctx=ctx, mode="w") as array:
             frag_writer = self._core.get_fragment_writer(fragment_index)
-            frag_writer.write(array)
+            frag_writer.write(array, skip_metadata=skip_metadata)
 
     @property
     def domain_creator(self) -> DomainCreator:
@@ -510,6 +519,10 @@ class ArrayCreatorCore:
     @property
     def ndim(self) -> int:
         return len(self._dim_creators)
+
+    @property
+    def nfragment(self) -> int:
+        return len(self._fragment_writers)
 
     def register_attr_creator(self, attr_creator):
         self.check_new_attr_name(attr_creator.name)

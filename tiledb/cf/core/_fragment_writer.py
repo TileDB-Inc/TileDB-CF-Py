@@ -62,7 +62,7 @@ class FragmentWriter(metaclass=ABCMeta):
     def set_dim_data(self, dim_name: str, data: FieldData):
         self._target_region.set_dim_data(dim_name, data)
 
-    def write(self, array: tiledb.libtiledb.Array):
+    def write(self, array: tiledb.libtiledb.Array, *, skip_metadata: bool = False):
         # Check data is set.
         for name, data in self._attr_data.items():
             if data is None:
@@ -79,10 +79,11 @@ class FragmentWriter(metaclass=ABCMeta):
 
         array[*region] = {name: data.values for name, data in self._attr_data.items()}
 
-        for name, data in self._attr_data.items():
-            meta = AttrMetadata(array.meta, name)
-            for key, val in data.metadata.items():
-                safe_set_metadata(meta, key, val)
+        if not skip_metadata:
+            for name, data in self._attr_data.items():
+                meta = AttrMetadata(array.meta, name)
+                for key, val in data.metadata.items():
+                    safe_set_metadata(meta, key, val)
 
 
 class DenseRegion:
