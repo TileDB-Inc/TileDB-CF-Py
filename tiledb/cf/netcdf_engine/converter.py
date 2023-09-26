@@ -25,6 +25,7 @@ from ._utils import (
     get_variable_chunks,
     open_netcdf_group,
 )
+from .source import NetCDFGroupReader
 
 
 class NetCDF4ConverterEngine(DataspaceCreator):
@@ -398,6 +399,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         default_input_file: Optional[Union[str, Path]] = None,
         default_group_path: Optional[str] = None,
     ):
+        self._netcdf_group_reader = NetCDFGroupReader(
+            default_input_file, default_group_path
+        )
         self.default_input_file = default_input_file
         self.default_group_path = default_group_path
         super().__init__()
@@ -479,6 +483,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             attrs_filters=attrs_filters,
             allows_duplicates=allows_duplicates,
             sparse=sparse,
+            netcdf_group=self._netcdf_group_reader,
         )
 
     def add_coord_to_dim_converter(
@@ -750,34 +755,23 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 f"{self._core.narray} array creators."
             )
         array_creator = next(self._core.array_creators())
-        if input_netcdf_group is None:
-            input_file = (
-                input_file if input_file is not None else self.default_input_file
+        self._netcdf_group_reader.open(input_netcdf_group, input_file, input_group_path)
+        if isinstance(array_creator, NetCDF4ArrayConverter):
+            array_creator.copy(
+                netcdf_group=self._netcdf_group_reader.netcdf4,
+                tiledb_uri=output_uri,
+                tiledb_key=key,
+                tiledb_ctx=ctx,
+                tiledb_timestamp=timestamp,
+                assigned_dim_values=assigned_dim_values,
+                assigned_attr_values=assigned_attr_values,
+                copy_metadata=copy_metadata,
             )
-            input_group_path = (
-                input_group_path
-                if input_group_path is not None
-                else self.default_group_path
-            )
-        with open_netcdf_group(
-            input_netcdf_group, input_file, input_group_path
-        ) as netcdf_group:
-            if isinstance(array_creator, NetCDF4ArrayConverter):
-                array_creator.copy(
-                    netcdf_group=netcdf_group,
-                    tiledb_uri=output_uri,
-                    tiledb_key=key,
-                    tiledb_ctx=ctx,
-                    tiledb_timestamp=timestamp,
-                    assigned_dim_values=assigned_dim_values,
-                    assigned_attr_values=assigned_attr_values,
-                    copy_metadata=copy_metadata,
-                )
             if copy_metadata:
                 with tiledb.open(
                     output_uri, mode="w", key=key, timestamp=timestamp, ctx=ctx
                 ) as array:
-                    copy_group_metadata(netcdf_group, array.meta)
+                    copy_group_metadata(self._netcdf_group_reader, array.meta)
 
     def copy_to_group(
         self,
@@ -829,30 +823,19 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             array_creator.name: os.path.join(output_uri, array_creator.name)
             for array_creator in self._core.array_creators()
         }
-        if input_netcdf_group is None:
-            input_file = (
-                input_file if input_file is not None else self.default_input_file
-            )
-            input_group_path = (
-                input_group_path
-                if input_group_path is not None
-                else self.default_group_path
-            )
-        with open_netcdf_group(
-            input_netcdf_group, input_file, input_group_path
-        ) as netcdf_group:
-            if copy_metadata:
-                with tiledb.Group(output_uri, mode="w", ctx=ctx) as group:
-                    copy_group_metadata(netcdf_group, group.meta)
-            for array_creator in self._core.array_creators():
-                if isinstance(array_creator, NetCDF4ArrayConverter):
-                    array_creator.copy(
-                        netcdf_group=netcdf_group,
-                        tiledb_uri=array_uris[array_creator.name],
-                        tiledb_key=key,
-                        tiledb_ctx=ctx,
-                        tiledb_timestamp=timestamp,
-                        assigned_dim_values=assigned_dim_values,
-                        assigned_attr_values=assigned_attr_values,
-                        copy_metadata=copy_metadata,
-                    )
+        self._netcdf_group_reader.open(input_netcdf_group, input_file, input_group_path)
+        if copy_metadata:
+            with tiledb.Group(output_uri, mode="w", ctx=ctx) as group:
+                copy_group_metadata(self._netcdf_group_reader, group.meta)
+        for array_creator in self._core.array_creators():
+            if isinstance(array_creator, NetCDF4ArrayConverter):
+                array_creator.copy(
+                    netcdf_group=self._netcdf_group_reader.netcdf4,
+                    tiledb_uri=array_uris[array_creator.name],
+                    tiledb_key=key,
+                    tiledb_ctx=ctx,
+                    tiledb_timestamp=timestamp,
+                    assigned_dim_values=assigned_dim_values,
+                    assigned_attr_values=assigned_attr_values,
+                    copy_metadata=copy_metadata,
+                )

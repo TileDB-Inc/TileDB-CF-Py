@@ -265,7 +265,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
         converter.add_attr_creator("a1", "array0", np.float64)
         uri = str(tmpdir.mkdir("non-netcdf-attr-test"))
-        with pytest.raises(KeyError):
+        with pytest.raises(ValueError):
             converter.convert_to_group(uri)
 
     def test_non_netcdf_attr_bad_shape_error(self, netcdf_file, tmpdir):
@@ -275,7 +275,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         converter.add_attr_creator("a1", "array0", np.float64)
         a1_data = np.linspace(-1.0, 1.0, 4, dtype=np.float64)
         uri = str(tmpdir.mkdir("non-netcdf-attr-test"))
-        with pytest.raises(tiledb.libtiledb.TileDBError):
+        with pytest.raises(ValueError):
             converter.convert_to_group(uri, assigned_attr_values={"a1": a1_data})
 
     def test_inject_dim_creator(self, netcdf_file):
@@ -296,7 +296,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
             dim = dataset.createDimension("dim0", 10)
             converter.add_dim_to_dim_converter(dim)
         array_converter = converter.get_array_creator("array0")
-        with pytest.raises(ValueError):
+        with pytest.raises(NotImplementedError):
             array_converter.domain_creator.inject_dim_creator("dim0", 0)
 
     def test_remove_dim_needed_by_attr_error(self, netcdf_file):
@@ -304,7 +304,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         NetCDF4ConverterArray that is needed by an AttrCreator."""
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
         array_converter = converter.get_array_creator("array0")
-        with pytest.raises(ValueError):
+        with pytest.raises(NotImplementedError):
             array_converter.domain_creator.remove_dim_creator("row")
 
     def test_bad_array_name_error(self, netcdf_file):
@@ -635,8 +635,14 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
             )
             converter.add_array_converter("array", ("row", "extra", "col"))
             converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
-            with pytest.raises(KeyError):
-                converter.convert_to_array(uri, input_netcdf_group=netcdf_group)
+            converter.convert_to_array(uri, input_netcdf_group=netcdf_group)
+        with tiledb.open(uri) as array:
+            nonempty_domain = array.nonempty_domain()
+            data = array[:, 0, :]
+        assert nonempty_domain == ((0, 3), (0, 0), (0, 3))
+        tiledb_array = data["data"]
+        original = self.variable_data["data"]
+        np.testing.assert_equal(tiledb_array, original)
 
 
 class TestConvertUnpackVariables(ConvertNetCDFBase):

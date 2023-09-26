@@ -7,7 +7,7 @@ import numpy as np
 
 from tiledb.cf.core.source import NumericValue, NumpyRegion
 
-from ._utils import get_netcdf_metadata, open_netcdf_group
+from ._utils import get_netcdf_metadata
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -214,7 +214,7 @@ class NetCDF4VariableSource:
             if region is None:
                 self._region = None
                 self._shape = shape
-                self._size = sum(self._shape)
+                self._size = np.prod(self._shape)
             else:
                 self._region = NumpyRegion(region, shape)
                 self._size = self._region.size
@@ -230,7 +230,7 @@ class NetCDF4VariableSource:
 
     @property
     def fill(self) -> NumericValue:
-        self._fill
+        return self._fill
 
     def get_metadata(self) -> Mapping[str, Any]:
         variable = self._netcdf_group.variables[self._variable_name]

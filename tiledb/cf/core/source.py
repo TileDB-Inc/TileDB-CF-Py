@@ -221,9 +221,9 @@ class CFSourceConnector:
 
     @shape.setter
     def shape(self, new_shape: Tuple[int, ...]):
-        if sum(new_shape) != self._source.size:
+        if np.prod(new_shape) != self._source.size:
             raise ValueError(
-                f"Cannot reshape a variable with size={self._size} to the shape "
+                f"Cannot reshape a variable with size={self._source.size} to the shape "
                 f"shape={new_shape}."
             )
         self._shape = new_shape

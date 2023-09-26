@@ -4,6 +4,10 @@
 
 ### Breaking Behavior
 
+* Injecting/removing dimension on NetCDF4ConverterArrays with data set now throws `NotImplementedError` instead of `ValueError`.
+
+* Cannot change sparsity of NetCDF4ConverterArrays after adding data.
+
 ### Deprecation
 
 ### Bug Fixes

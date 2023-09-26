@@ -12,7 +12,7 @@ import tiledb
 from tiledb.cf.core import DimMetadata
 
 from .._utils import DType
-from ..core._dim_creator import DimCreator
+from ..core._dim_creator import DimCreator, DimRegistry
 from ..core._shared_dim import SharedDim
 from ..core.registry import Registry
 from ._utils import get_unpacked_dtype, get_variable_values, safe_set_metadata
@@ -34,11 +34,13 @@ class NetCDF4ToDimConverter(DimCreator):
         tile: Optional[Union[int, float]] = None,
         filters: Optional[tiledb.FilterList] = None,
         max_fragment_length: Optional[int] = None,
+        registry: Optional[DimRegistry] = None,
     ):
         self._base = base
         self.tile = tile
         self.filters = filters
         self.max_fragment_length = max_fragment_length
+        self._registry = registry
 
     def __repr__(self):
         filters_str = ""
