@@ -13,7 +13,7 @@ from ._metadata import (
 )
 from ._shared_dim import SharedDim
 from .api import create_group, open_group_array
-from .source import NumpyData
+from .source import CFSourceConnector, NumpyData, NumpyRegion
 
 __all__ = [
     ATTR_METADATA_FLAG,
@@ -22,11 +22,13 @@ __all__ = [
     AttrCreator,
     ArrayMetadata,
     AttrMetadata,
+    CFSourceConnector,
     DataspaceCreator,
     DimCreator,
     DimMetadata,
     DomainCreator,
     NumpyData,
+    NumpyRegion,
     SharedDim,
     create_group,
     open_group_array,
