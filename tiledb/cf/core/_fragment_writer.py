@@ -125,7 +125,7 @@ class DenseRegion:
         self._shape = tuple(
             int(dim_range[1] - dim_range[0]) + 1 for dim_range in self._region
         )
-        self._size = sum(self._shape)
+        self._size = np.prod(self._shape)
 
     def coordinates(self):
         def create_coords(dim_range, dtype):
