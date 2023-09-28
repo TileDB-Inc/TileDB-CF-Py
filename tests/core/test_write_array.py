@@ -34,7 +34,7 @@ def test_write_array_dense_1D_full(tmpdir):
         shared_dims=[SharedDim("dim1", (0, 7), np.uint32)],
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
-    creator.add_fragment_writer()
+    creator.add_dense_fragment_writer()
     creator["attr1"].set_fragment_data(0, attr_data)
 
     creator.write(uri)
@@ -55,7 +55,7 @@ def test_write_array_sparse_1D_dense_region_full(tmpdir):
         sparse=True,
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
-    creator.add_fragment_writer()
+    creator.add_dense_fragment_writer()
     creator["attr1"].set_fragment_data(0, attr_data)
 
     creator.write(uri)
@@ -80,7 +80,7 @@ def test_write_array_sparse_1D_sparse_region(tmpdir):
         sparse=True,
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
-    creator.add_fragment_writer(size=4)
+    creator.add_sparse_fragment_writer(size=4)
     creator["attr1"].set_fragment_data(0, attr_data)
     creator.domain_creator["dim1"].set_fragment_data(0, dim_data)
 

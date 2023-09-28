@@ -18,28 +18,42 @@ DenseRange = Union[Tuple[int, int], Tuple[np.datetime64, np.datetime64]]
 
 
 class FragmentWriter(metaclass=ABCMeta):
-    def __init__(
-        self,
-        sparse_array: bool,
+    @classmethod
+    def create_dense(
+        cls,
         dims: Tuple[SharedDim],
         attr_names: Sequence[str],
-        *,
-        target_region: Optional[Tuple[DenseRange, ...]] = None,
-        size: Optional[int] = None,
+        target_region: Optional[Tuple[DenseRange, ...]],
+    ):
+        return cls(DenseRegion(dims, target_region), attr_names)
+
+    @classmethod
+    def create_sparse(
+        cls, dims: Tuple[SharedDim], attr_names: Sequence[str], size: int
+    ):
+        return cls(SparseRegion(dims, size), attr_names)
+
+    def __init__(
+        self,
+        target_region: Union[DenseRegion, SparseRegion],
+        attr_names: Sequence[str],
     ):
         self._attr_data = {name: None for name in attr_names}
-        self._sparse_array = sparse_array
-        if not self._sparse_array or target_region is not None or size is None:
-            self._target_region: Union[DenseRegion, SparseRegion] = DenseRegion(
-                dims, target_region, size=size
-            )
+        self._target_region = target_region
+        if isinstance(self._target_region, DenseRegion):
+            self._is_dense_region = True
+        elif isinstance(self._target_region, SparseRegion):
+            self._is_dense_region = False
         else:
-            self._target_region: Union[DenseRegion, SparseRegion] = SparseRegion(
-                dims, size
-            )
+            # TODO: Add message for type error
+            raise TypeError()
 
     def add_attr(self, attr_name: str):
         self._attr_data.setdefault(attr_name, None)
+
+    @property
+    def is_dense_region(self) -> bool:
+        return self._is_dense_region
 
     def remove_attr(self, attr_name: str):
         del self._attr_data[attr_name]
@@ -72,9 +86,11 @@ class FragmentWriter(metaclass=ABCMeta):
 
         # Get the data for what region to write data: coordinates for a sparse array
         # and a subarray for a dense array.
-        if self._sparse_array:
+        if array.schema.sparse:
             region = self._target_region.coordinates()
         else:
+            if not self._is_dense_region:
+                raise RuntimeError("Cannot write a sparse fragment in a dense array.")
             region = self._target_region.subarray()
 
         array[*region] = {name: data.values for name, data in self._attr_data.items()}
@@ -91,8 +107,6 @@ class DenseRegion:
         self,
         dims: Tuple[SharedDim],
         region: Tuple[DenseRange, ...],
-        *,
-        size: Optional[int] = None,
     ):
         self._dims = dims
         for dim in self._dims:

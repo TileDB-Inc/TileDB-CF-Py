@@ -217,13 +217,14 @@ class ArrayCreator(RegisteredByNameMixin):
             filters=filters,
         )
 
-    def add_fragment_writer(
+    def add_dense_fragment_writer(
         self,
-        *,
         target_region: Optional[Tuple[DenseRange, ...]] = None,
-        size: Optional[int] = None,
     ):
-        self._core.add_fragment_writer(target_region=target_region, size=size)
+        self._core.add_dense_fragment_writer(target_region)
+
+    def add_sparse_fragment_writer(self, size: int):
+        self._core.add_sparse_fragment_writer(size)
 
     def create(
         self, uri: str, key: Optional[str] = None, ctx: Optional[tiledb.Ctx] = None
@@ -387,18 +388,23 @@ class ArrayCreatorCore:
             self._dim_registry[dim_name], registry=DomainDimRegistry(self), **kwargs
         )
 
-    def add_fragment_writer(
+    def add_dense_fragment_writer(
         self,
-        *,
-        target_region: Optional[Tuple[Tuple[int, int], ...]] = None,
-        size: Optional[int] = None,
+        target_region: Optional[Tuple[Tuple[int, int], ...]],
     ):
         self._fragment_writers.append(
-            FragmentWriter(
-                sparse_array=self._sparse,
-                attr_names=self._attr_creators.keys(),
+            FragmentWriter.create_dense(
                 dims=tuple(dim.base for dim in self._dim_creators),
+                attr_names=self._attr_creators.keys(),
                 target_region=target_region,
+            )
+        )
+
+    def add_sparse_fragment_writer(self, size: int):
+        self._fragment_writers.append(
+            FragmentWriter.create_sparse(
+                dims=tuple(dim.base for dim in self._dim_creators),
+                attr_names=self._attr_creators.keys(),
                 size=size,
             )
         )
