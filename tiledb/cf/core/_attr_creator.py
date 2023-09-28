@@ -84,6 +84,8 @@ class AttrCreator(RegisteredByNameMixin):
             raise ValueError("Attribute creator is not registered to an array.")
         if isinstance(attr_data, np.ndarray):
             data = NumpyData(attr_data.astype(self.dtype))
+        elif isinstance(attr_data, int):
+            data = NumpyData(np.ndarray(attr_data, dtype=self.dtype))
         else:
             data = attr_data
         if data.dtype != self.dtype:
