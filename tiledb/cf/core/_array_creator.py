@@ -578,10 +578,12 @@ class ArrayCreatorCore:
         if is_sparse is self._sparse:
             # No-op
             return
-        if len(self._fragment_writers) > 0:
-            raise NotImplementedError(
-                "Support for changing sparsity after setting fragment regions is not "
-                "implemented."
+        if is_sparse is False and any(
+            not writer.is_dense_region for writer in self._fragment_writers
+        ):
+            raise ValueError(
+                "Cannot convert an array with a sparse fragment writer to a dense "
+                "array."
             )
         self._sparse = is_sparse
 
