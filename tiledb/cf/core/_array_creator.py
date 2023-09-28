@@ -489,7 +489,7 @@ class ArrayCreatorCore:
         if len(self._fragment_writers) > 0:
             raise NotImplementedError(
                 "Injecting a dimension on an array that already has fragment writers "
-                "if not yet implemented."
+                "is not implemented."
             )
         dim_creator = self._new_dim_creator(dim_name, **dim_kwargs)
         if dim_creator.name in {dim_creator.name for dim_creator in self._dim_creators}:
@@ -539,6 +539,11 @@ class ArrayCreatorCore:
             position: Position of the shared dimension. Negative values count backwards
                 from the end of the new number of dimensions.
         """
+        if len(self._fragment_writers) > 0:
+            raise NotImplementedError(
+                "Removing a dimension on an array that already has fragment writers "
+                "is not implemented."
+            )
         index = dim_index + self.ndim if dim_index < 0 else dim_index
         if index < 0 or index >= self.ndim:
             raise IndexError(
