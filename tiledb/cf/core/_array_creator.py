@@ -221,10 +221,37 @@ class ArrayCreator(RegisteredByNameMixin):
         self,
         target_region: Optional[Tuple[DenseRange, ...]] = None,
     ):
+        """TODO: Add docs"""
         self._core.add_dense_fragment_writer(target_region)
 
-    def add_sparse_fragment_writer(self, size: int):
-        self._core.add_sparse_fragment_writer(size)
+    def add_sparse_fragment_writer(
+        self,
+        *,
+        size: Optional[int] = None,
+        shape: Optional[Tuple[int, ...]] = None,
+        form: str = "coo",
+    ):
+        """TODO: Add docs"""
+        if size is not None and shape is not None and np.prod(shape) != size:
+            raise ValueError("Mismatch between shape={shape} and size={size}.")
+
+        if form == "coo":
+            if size is None:
+                if shape is None:
+                    raise TypeError(
+                        "Must provided shape or size for writing in 'coo' form."
+                    )
+                size = np.prod(shape)
+            self._core.add_sparse_coo_fragment_writer(size)
+        elif form == "row-major":
+            if shape is None:
+                raise ValueError("Must set shape when using form 'row-major'.")
+            self._core.add_sparse_row_major_fragment_writer(shape)
+        else:
+            raise ValueError(
+                f"'{form}' is not a valid value for 'form'. Valid options include: "
+                f"'coo', 'row-major'."
+            )
 
     def create(
         self, uri: str, key: Optional[str] = None, ctx: Optional[tiledb.Ctx] = None
@@ -400,12 +427,21 @@ class ArrayCreatorCore:
             )
         )
 
-    def add_sparse_fragment_writer(self, size: int):
+    def add_sparse_coo_fragment_writer(self, size: int):
         self._fragment_writers.append(
-            FragmentWriter.create_sparse(
+            FragmentWriter.create_sparse_coo(
                 dims=tuple(dim.base for dim in self._dim_creators),
                 attr_names=self._attr_creators.keys(),
                 size=size,
+            )
+        )
+
+    def add_sparse_row_major_fragment_writer(self, shape: Tuple[int, ...]):
+        self._fragment_writers.append(
+            FragmentWriter.create_sparse_row_major(
+                dims=tuple(dim.base for dim in self._dim_creators),
+                attr_names=self._attr_creators.keys(),
+                shape=shape,
             )
         )
 

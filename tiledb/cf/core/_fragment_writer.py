@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from typing import List, Optional, Sequence, Tuple, Union
 
 import numpy as np
@@ -28,25 +28,34 @@ class FragmentWriter(metaclass=ABCMeta):
         return cls(DenseRegion(dims, target_region), attr_names)
 
     @classmethod
-    def create_sparse(
+    def create_sparse_coo(
         cls, dims: Tuple[SharedDim], attr_names: Sequence[str], size: int
     ):
         return cls(SparseRegion(dims, size), attr_names)
 
+    @classmethod
+    def create_sparse_row_major(
+        cls, dims: Tuple[SharedDim], attr_names: Sequence[str], shape: Tuple[int, ...]
+    ):
+        return cls(SparseRowMajorRegion(dims, shape), attr_names)
+
     def __init__(
         self,
-        target_region: Union[DenseRegion, SparseRegion],
+        target_region: Union[DenseRegion, SparseRegion, SparseRowMajorRegion],
         attr_names: Sequence[str],
     ):
         self._attr_data = {name: None for name in attr_names}
         self._target_region = target_region
         if isinstance(self._target_region, DenseRegion):
             self._is_dense_region = True
-        elif isinstance(self._target_region, SparseRegion):
+        elif isinstance(self._target_region, SparseRegion) or isinstance(
+            self._target_region, SparseRowMajorRegion
+        ):
             self._is_dense_region = False
         else:
-            # TODO: Add message for type error
-            raise TypeError()
+            raise TypeError(
+                f"Type {type(self._target_region)} is not a valid target region."
+            )
 
     def add_attr(self, attr_name: str):
         self._attr_data.setdefault(attr_name, None)
@@ -141,7 +150,9 @@ class DenseRegion:
             create_coords(dim_range, dim.dtype)
             for dim, dim_range in zip(self._dims, self._region)
         )
-        return np.meshgrid(*values, indexing="ij")
+        return tuple(
+            dim_data.reshape(-1) for dim_data in np.meshgrid(*values, indexing="ij")
+        )
 
     def set_dim_data(self, _dim_name: str, _data: FieldData):
         raise RuntimeError(
@@ -169,11 +180,7 @@ class DenseRegion:
 
 
 class SparseRegion:
-    def __init__(
-        self,
-        dims: Tuple[SharedDim],
-        size: int,
-    ):
+    def __init__(self, dims: Tuple[SharedDim], size: int):
         # Set dimensions.
         self._dims = dims
         self._dim_data = [None] * len(dims)
@@ -208,6 +215,63 @@ class SparseRegion:
     @property
     def shape(self) -> Optional[Tuple[int, ...]]:
         return None
+
+    @property
+    def size(self) -> int:
+        return self._size
+
+    def subarray(self) -> List[slice, ...]:
+        raise RuntimeError("Cannot construct a subarray for a sparse region.")
+
+
+class SparseRowMajorRegion:
+    def __init__(self, dims: Tuple[SharedDim], shape: Tuple[int, ...]):
+        # Check input.
+        if len(dims) != len(shape):
+            raise ValueError(
+                f"Cannot set a fragment with shape={shape} for an array with "
+                f"{len(dims)} dimensions."
+            )
+
+        # Set dimensions.
+        self._dims = dims
+        self._dim_data = [None] * len(dims)
+
+        # Set the size of the data.
+        self._shape = shape
+        self._size = np.prod(shape)
+
+    def coordinates(self):
+        for idim, data in enumerate(self._dim_data):
+            if data is None:
+                raise ValueError(
+                    f"Cannot construct dimension coordinates. Missing data for "
+                    f"dimension '{self._dims[idim].name}'."
+                )
+        coords = tuple(data.values for data in self._dim_data)
+        return tuple(
+            dim_data.reshape(-1) for dim_data in np.meshgrid(*coords, indexing="ij")
+        )
+
+    def set_dim_data(self, dim_name: str, data: FieldData):
+        for index, dim in enumerate(self._dims):
+            if dim.name == dim_name:
+                dim_index = index
+                break
+        else:
+            raise KeyError("No dimension with name '{dim_name}'")
+
+        if data.size != self._shape[dim_index]:
+            raise ValueError(
+                f"Cannot set data with size {data.size} to dimension the "
+                f"{dim_index + 1}-th dimension '{dim_name}' on a fragment with target "
+                f"region shape {self._shape}."
+            )
+        self._dim_data[dim_index] = data
+
+    @property
+    def shape(self) -> Optional[Tuple[int, ...]]:
+        return self._shape
 
     @property
     def size(self) -> int:
