@@ -102,6 +102,11 @@ class FragmentWriter(metaclass=ABCMeta):
                 raise RuntimeError("Cannot write a sparse fragment in a dense array.")
             region = self._target_region.subarray()
 
+        for attr in array.schema:
+            attr_data = self._attr_data[attr.name]
+            if hasattr(attr_data, "fill") and attr_data.fill != attr.fill[0]:
+                attr_data.fill = attr.fill
+
         array[*region] = {name: data.values for name, data in self._attr_data.items()}
 
         if not skip_metadata:
