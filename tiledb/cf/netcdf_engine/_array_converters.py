@@ -1,6 +1,6 @@
 """Classes for converting NetCDF4 files to TileDB."""
 
-from typing import Any, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 import netCDF4
 import numpy as np
@@ -16,7 +16,6 @@ from tiledb.cf.core import (
 
 from ..core._array_creator import ArrayCreatorCore, DomainDimRegistry
 from ..core.registry import Registry
-from ._attr_converters import NetCDF4ToAttrConverter
 from ._dim_converters import NetCDF4ToDimConverter
 from ._utils import COORDINATE_SUFFIX
 from .source import NetCDF4VariableSource, NetCDFGroupReader
@@ -45,51 +44,6 @@ class NetCDF4ArrayConverter(ArrayCreator):
         self._netcdf_group_reader = (
             NetCDFGroupReader() if netcdf_group is None else netcdf_group
         )
-
-    def _copy_to_array(
-        self,
-        netcdf_group: netCDF4.Group,
-        tiledb_array: tiledb.Array,
-        indexer: Tuple[slice, ...],
-        assigned_dim_values: Optional[Dict[str, Any]],
-        assigned_attr_values: Optional[Dict[str, np.ndarray]],
-    ):
-        """Copies data from a NetCDF group to a TileDB CF array.
-
-        Parameters:
-            netcdf_group: The NetCDF group to copy data from.
-            tiledb_array: The TileDB array to  copy data to.
-            indexer: Slices defining what values to copy for each dimension.
-            assigned_dim_values: Mapping from dimension name to value for dimensions
-                that are not copied from the NetCDF group.
-            assigned_attr_values: Mapping from attribute name to numpy array of values
-                for attributes that are not copied from the NetCDF group.
-        """
-        assert len(indexer) == self.ndim, "indexer has incorrect number of values"
-        netcdf_indexer = tuple(
-            index_slice
-            for index_slice, dim_creator in zip(indexer, self.domain_creator)
-            if dim_creator.is_from_netcdf
-        )
-        data = {}
-        for attr_creator in self:
-            attr_name = attr_creator.name
-            if isinstance(attr_creator, NetCDF4ToAttrConverter):
-                data[attr_name] = attr_creator.get_values(
-                    netcdf_group=netcdf_group, indexer=netcdf_indexer
-                )
-            else:
-                if (
-                    assigned_attr_values is None
-                    or attr_name not in assigned_attr_values
-                ):
-                    raise KeyError(f"Missing value for attribute '{attr_name}'.")
-
-                data[attr_name] = assigned_attr_values[attr_name][indexer]
-        coord_values = self._domain_creator.get_query_coordinates(
-            netcdf_group, self.sparse, indexer, assigned_dim_values
-        )
-        tiledb_array[coord_values] = data
 
     def _new_core(
         self, sparse: bool, dim_registry: Registry[SharedDim], dim_names: Sequence[str]
