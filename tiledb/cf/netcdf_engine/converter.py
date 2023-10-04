@@ -10,7 +10,7 @@ import netCDF4
 import numpy as np
 
 import tiledb
-from tiledb.cf.core import DataspaceCreator
+from tiledb.cf.core import DataspaceCreator, CFSourceConnector
 
 from .._utils import DType
 from ._array_converters import NetCDF4ArrayConverter
@@ -25,7 +25,7 @@ from ._utils import (
     get_variable_chunks,
     open_netcdf_group,
 )
-from .source import NetCDFGroupReader
+from .source import NetCDF4VariableSource, NetCDFGroupReader
 
 
 class NetCDF4ConverterEngine(DataspaceCreator):
@@ -222,16 +222,38 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 from. Use ``'/'`` to specify the root group.
         """
         converter = cls(default_input_file, default_group_path)
-        coord_names = set()
+        if coords_to_dims:
+            coord_names = set(
+                ncvar.name
+                for ncvar in netcdf_group.variables.values()
+                if ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name
+            )
+        else:
+            coord_names = set()
         tiles_by_var = {} if tiles_by_var is None else tiles_by_var
         tiles_by_dims = {} if tiles_by_dims is None else tiles_by_dims
-        if coords_to_dims:
-            for ncvar in netcdf_group.variables.values():
-                if ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name:
-                    converter.add_coord_to_dim_converter(ncvar, unpack=unpack_vars)
-                    coord_names.add(ncvar.name)
+        sources = {
+            ncvar.name: CFSourceConnector(
+                NetCDF4VariableSource.from_variable(
+                    netcdf_variable=ncvar,
+                    unpack=unpack_vars,
+                    netcdf_group=converter._netcdf_group_reader,
+                )
+            )
+            for ncvar in netcdf_group.variables.values()
+        }
+
         for ncvar in netcdf_group.variables.values():
             if ncvar.name in coord_names:
+                if ncvar.name not in {
+                    shared_dim.name for shared_dim in converter.shared_dims()
+                }:
+                    converter.add_shared_dim(
+                        dim_name=ncvar.name,
+                        domain=None,
+                        dtype=sources[ncvar.name].dtype,
+                    )
+
                 continue
             if not ncvar.dimensions:
                 if scalar_array_name in netcdf_group.variables:
@@ -255,11 +277,23 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     if dim.name not in {
                         shared_dim.name for shared_dim in converter.shared_dims()
                     }:
-                        converter.add_dim_to_dim_converter(
-                            dim,
-                            unlimited_dim_size,
-                            dim_dtype,
-                        )
+                        if dim.name in coord_names:
+                            converter.add_shared_dim(
+                                dim_name=dim.name,
+                                domain=None,
+                                dtype=sources[dim.name].dtype,
+                            )
+                        else:
+                            size = (
+                                unlimited_dim_size
+                                if dim.isunlimited() and unlimited_dim_size is not None
+                                else dim.size
+                            )
+                            converter.add_shared_dim(
+                                dim_name=dim.name,
+                                domain=(0, size - 1),
+                                dtype=dim_dtype,
+                            )
                 array_name = ncvar.name
                 has_coord_dim = any(
                     dim_name in coord_names for dim_name in ncvar.dimensions
@@ -281,6 +315,28 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     offsets_filters=offsets_filters,
                     attrs_filters=attrs_filters,
                 )
+                array_converter = converter.get_array_creator(array_name)
+
+                if has_coord_dim:
+                    array_converter.add_sparse_fragment_writer(
+                        shape=ncvar.shape, form="row-major"
+                    )
+                    for dim_name, dim_size in zip(ncvar.dimensions, ncvar.shape):
+                        if dim_name in coord_names:
+                            array_converter.domain_creator[dim_name].set_fragment_data(
+                                0, sources[dim_name]
+                            )
+                        else:
+                            array_converter.domain_creator[dim_name].set_fragment_data(
+                                0, np.arange(dim_size, dtype=dim_dtype)
+                            )
+
+                else:
+                    target_region = tuple((0, dim_size - 1) for dim_size in ncvar.shape)
+                    array_converter.add_dense_fragment_writer(
+                        target_region=target_region
+                    )
+
                 converter.add_var_to_attr_converter(
                     ncvar, array_name, unpack=unpack_vars
                 )
