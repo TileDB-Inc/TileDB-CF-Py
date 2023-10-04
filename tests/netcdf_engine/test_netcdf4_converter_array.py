@@ -114,20 +114,3 @@ def test_set_max_fragment_shape_error():
     creator.add_attr_creator("y0", dtype=np.dtype("int32"))
     with pytest.raises(ValueError):
         creator.domain_creator.max_fragment_shape = (None, None)
-
-
-def test_array_converter_indexer_error():
-    """Tests value error when copying with an indexer of bad length."""
-    shared_dims = [SharedDim("x", (0, 7), np.uint32)]
-    creator = netcdf_engine.NetCDF4ArrayConverter(
-        dim_order=("x"), shared_dims=shared_dims
-    )
-    creator.add_attr_creator("y0", dtype=np.dtype("int32"))
-    with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-        with pytest.raises(ValueError):
-            creator.domain_creator.get_query_coordinates(
-                netcdf_group=dataset,
-                sparse=False,
-                indexer=[slice(None), slice(None)],
-                assigned_dim_values={"x": 0},
-            )

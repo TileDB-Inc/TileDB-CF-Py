@@ -45,11 +45,6 @@ class NetCDF4ArrayConverter(ArrayCreator):
             NetCDFGroupReader() if netcdf_group is None else netcdf_group
         )
 
-    def _new_core(
-        self, sparse: bool, dim_registry: Registry[SharedDim], dim_names: Sequence[str]
-    ):
-        return NetCDF4ArrayConverterCore(sparse, dim_registry, dim_names)
-
     def _new_domain_creator(self):
         return NetCDF4DomainConverter(self._core)
 
@@ -86,12 +81,16 @@ class NetCDF4ArrayConverter(ArrayCreator):
                 ``add_offset`` using the transformation ``scale_factor * value +
                 unpack``.
         """
-        if ncvar.dimensions != self.domain_creator.netcdf_dims:
+        # TODO: Figure out if there is a different check that is needed here
+        netcdf_dims = tuple(
+            dim.name for dim in self._domain_creator if dim.name in ncvar.dimensions
+        )
+        if ncvar.dimensions != netcdf_dims:
             raise ValueError(
                 f"Cannot add NetCDF variable converter with NetCDF dimensions "
                 f"that do not match the array NetCDF dimension converters. Variable "
                 f"dimensions={ncvar.dimensions}, array NetCDF dimensions="
-                f"{self.domain_creator.netcdf_dims}."
+                f"{netcdf_dims}."
             )
 
         if self._core.nfragment == 0:
@@ -183,49 +182,8 @@ class NetCDF4ArrayConverter(ArrayCreator):
         )
 
 
-class NetCDF4ArrayConverterCore(ArrayCreatorCore):
-    def _new_dim_creator(self, dim_name: str, **kwargs):
-        return NetCDF4ToDimConverter(
-            self._dim_registry[dim_name], registry=DomainDimRegistry(self), *kwargs
-        )
-
-
 class NetCDF4DomainConverter(DomainCreator):
     """Converter for NetCDF dimensions to a TileDB domain."""
-
-    def get_query_coordinates(
-        self,
-        netcdf_group: netCDF4.Group,
-        sparse: bool,
-        indexer: Sequence[slice],
-        assigned_dim_values: Optional[Dict[str, Any]] = None,
-    ):
-        """Returns the coordinates used to copy data from a NetCDF group.
-
-        Parameters:
-            netcdf_group: Group to query the data from.
-            sparse: If ``True``, return coordinates for a sparse write. If ``False``,
-                return coordinates for a dense write.
-            assigned_dim_values: Values for any non-NetCDF dimensions.
-        """
-        if len(indexer) != self.ndim:
-            raise ValueError(
-                f"Indexer must be the same length as the domain of the array. Indexer "
-                f"of length {len(indexer)} provide for an array with {self.ndim} "
-                f"dimensions."
-            )
-        query_coords = tuple(
-            dim_creator.get_query_coordinates(
-                netcdf_group, sparse, index_slice, assigned_dim_values
-            )
-            for index_slice, dim_creator in zip(indexer, self)
-        )
-        if sparse:
-            return tuple(
-                dim_data.reshape(-1)
-                for dim_data in np.meshgrid(*query_coords, indexing="ij")
-            )
-        return query_coords
 
     @property
     def max_fragment_shape(self):
@@ -241,12 +199,3 @@ class NetCDF4DomainConverter(DomainCreator):
     def max_fragment_shape(self, value: Sequence[Optional[int]]):
         # TODO Fix this
         raise NotImplementedError()
-
-    @property
-    def netcdf_dims(self):
-        """Ordered tuple of NetCDF dimension names for dimension converters."""
-        return tuple(
-            dim_creator.base.input_dim_name
-            for dim_creator in self
-            if hasattr(dim_creator.base, "input_dim_name")
-        )
