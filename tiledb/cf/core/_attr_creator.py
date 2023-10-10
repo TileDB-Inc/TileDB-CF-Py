@@ -23,7 +23,9 @@ class AttrRegistry(Protocol):
     def __setitem__(self, name: str, value: AttrCreator):
         ...
 
-    def set_fragment_data(self, fragment_index: int, attr_name: str, data: FieldData):
+    def set_writer_data(
+        self, writer_index: Optional[int], attr_name: str, data: FieldData
+    ):
         ...
 
     def rename(self, old_name: str, new_name: str):
@@ -77,8 +79,11 @@ class AttrCreator(RegisteredByNameMixin):
             f"var={self.var}, nullable={self.nullable}{filters_str})"
         )
 
-    def set_fragment_data(
-        self, fragment_index: int, attr_data: Union[np.ndarray, FieldData]
+    def set_writer_data(
+        self,
+        attr_data: Union[np.ndarray, FieldData],
+        *,
+        writer_index: Optional[int] = None,
     ):
         if self._registry is None:
             raise ValueError("Attribute creator is not registered to an array.")
@@ -95,7 +100,7 @@ class AttrCreator(RegisteredByNameMixin):
                 f"dtype='{self.dtype}'."
             )
         # TODO: Check variable length?
-        self._registry.set_fragment_data(fragment_index, self.name, data)
+        self._registry.set_writer_data(writer_index, self.name, data)
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
         """Returns a :class:`tiledb.Attr` using the current properties.

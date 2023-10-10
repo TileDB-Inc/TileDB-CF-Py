@@ -13,7 +13,9 @@ from .source import FieldData, NumpyData
 
 
 class DimRegistry(Protocol):
-    def set_fragment_data(self, fragment_index: int, attr_name: str, data: FieldData):
+    def set_writer_data(
+        self, writer_index: Optional[int], attr_name: str, data: FieldData
+    ):
         ...
 
 
@@ -80,8 +82,11 @@ class DimCreator:
         """Name of the dimension."""
         return self._base.name
 
-    def set_fragment_data(
-        self, fragment_index: int, attr_data: Union[np.ndarray, FieldData]
+    def set_writer_data(
+        self,
+        attr_data: Union[np.ndarray, FieldData],
+        *,
+        writer_index: Optional[int] = None,
     ):
         if self._registry is None:
             raise ValueError("Dimension creator is not registered to an array.")
@@ -98,7 +103,7 @@ class DimCreator:
                 f"dtype='{self.dtype}'."
             )
         # TODO: Check variable length?
-        self._registry.set_fragment_data(fragment_index, self.name, data)
+        self._registry.set_writer_data(writer_index, self.name, data)
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
         """Returns a :class:`tiledb.Dim` using the current properties.

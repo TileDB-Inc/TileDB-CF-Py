@@ -270,28 +270,22 @@ class ArrayCreator(RegisteredByNameMixin):
         uri: str,
         *,
         key: Optional[str] = None,
-        ctx=None,
-        append=False,
+        ctx: Optional[tiledb.Ctx] = None,
+        timestamp: Optional[int] = None,
+        append: bool = False,
         skip_metadata: bool = False,
+        writer_indices: Optional[Iterable[int]] = None,
     ):
         if not append:
             self.create(uri, key=key, ctx=ctx)
-        with tiledb.open(uri, key=key, ctx=ctx, mode="w") as array:
-            for frag_writer in self._core.fragment_writers():
-                frag_writer.write(array, skip_metadata=skip_metadata)
-
-    def write_fragment(
-        self,
-        uri: str,
-        fragment_index: int,
-        *,
-        key: Optional[str] = None,
-        ctx=None,
-        skip_metadata: bool = False,
-    ):
-        with tiledb.open(uri, key=key, ctx=ctx, mode="w") as array:
-            frag_writer = self._core.get_fragment_writer(fragment_index)
-            frag_writer.write(array, skip_metadata=skip_metadata)
+        with tiledb.open(uri, key=key, ctx=ctx, timestamp=timestamp, mode="w") as array:
+            if writer_indices is None:
+                for frag_writer in self._core.fragment_writers():
+                    frag_writer.write(array, skip_metadata=skip_metadata)
+            else:
+                for index in writer_indices:
+                    frag_writer = self._core.get_fragment_writer(index)
+                    frag_writer.write(array, skip_metadata=skip_metadata)
 
     @property
     def domain_creator(self) -> DomainCreator:
@@ -563,7 +557,7 @@ class ArrayCreatorCore:
         return len(self._dim_creators)
 
     @property
-    def nfragment(self) -> int:
+    def nwriter(self) -> int:
         return len(self._fragment_writers)
 
     def register_attr_creator(self, attr_creator):
@@ -595,15 +589,27 @@ class ArrayCreatorCore:
             self._dim_creators[:dim_index] + self._dim_creators[dim_index + 1 :]
         )
 
-    def set_fragment_attr_data(
-        self, fragment_index: int, attr_name: str, data: FieldData
+    def set_writer_attr_data(
+        self, writer_index: Optional[int], attr_name: str, data: FieldData
     ):
-        self._fragment_writers[fragment_index].set_attr_data(attr_name, data)
+        if writer_index is None:
+            if self.nwriter > 1:
+                raise ValueError(
+                    "Must specify `writer_index` for array with multiple writers."
+                )
+            writer_index = 0
+        self._fragment_writers[writer_index].set_attr_data(attr_name, data)
 
-    def set_fragment_dim_data(
-        self, fragment_index: int, dim_name: str, data: FieldData
+    def set_writer_dim_data(
+        self, writer_index: Optional[int], dim_name: str, data: FieldData
     ):
-        self._fragment_writers[fragment_index].set_dim_data(dim_name, data)
+        if writer_index is None:
+            if self.nwriter > 1:
+                raise ValueError(
+                    "Must specify `writer_index` for array with multiple writers."
+                )
+            writer_index = 0
+        self._fragment_writers[writer_index].set_dim_data(dim_name, data)
 
     @property
     def sparse(self) -> bool:
@@ -650,8 +656,10 @@ class ArrayAttrRegistry:
             value.name = name
         self._core.register_attr_creator(value)
 
-    def set_fragment_data(self, fragment_index: int, attr_name: str, data: FieldData):
-        self._core.set_fragment_attr_data(fragment_index, attr_name, data)
+    def set_writer_data(
+        self, writer_index: Optional[int], attr_name: str, data: FieldData
+    ):
+        self._core.set_writer_attr_data(writer_index, attr_name, data)
 
     def rename(self, old_name: str, new_name: str):
         self._core.check_new_attr_name(new_name)
@@ -662,8 +670,10 @@ class DomainDimRegistry:
     def __init__(self, array_core: ArrayCreatorCore):
         self._core = array_core
 
-    def set_fragment_data(self, fragment_index: int, dim_name: str, data: FieldData):
-        self._core.set_fragment_dim_data(fragment_index, dim_name, data)
+    def set_writer_data(
+        self, writer_index: Optional[int], dim_name: str, data: FieldData
+    ):
+        self._core.set_writer_dim_data(writer_index, dim_name, data)
 
 
 class DomainCreator:

@@ -35,7 +35,7 @@ def test_write_array_dense_1D_full(tmpdir):
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
     creator.add_dense_fragment_writer()
-    creator["attr1"].set_fragment_data(0, attr_data)
+    creator["attr1"].set_writer_data(attr_data)
 
     creator.write(uri)
 
@@ -56,7 +56,7 @@ def test_write_array_sparse_1D_dense_region_full(tmpdir):
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
     creator.add_dense_fragment_writer()
-    creator["attr1"].set_fragment_data(0, attr_data)
+    creator["attr1"].set_writer_data(attr_data)
 
     creator.write(uri)
 
@@ -81,8 +81,8 @@ def test_write_array_sparse_1D_sparse_coo_region(tmpdir):
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
     creator.add_sparse_fragment_writer(size=4)
-    creator["attr1"].set_fragment_data(0, attr_data)
-    creator.domain_creator["dim1"].set_fragment_data(0, dim_data)
+    creator["attr1"].set_writer_data(attr_data)
+    creator.domain_creator["dim1"].set_writer_data(dim_data)
 
     creator.write(uri)
 
@@ -107,8 +107,8 @@ def test_write_array_sparse_1D_sparse_row_major_region(tmpdir):
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
     creator.add_sparse_fragment_writer(shape=(4,), form="row-major")
-    creator["attr1"].set_fragment_data(0, attr_data)
-    creator.domain_creator["dim1"].set_fragment_data(0, dim_data)
+    creator["attr1"].set_writer_data(attr_data)
+    creator.domain_creator["dim1"].set_writer_data(dim_data)
 
     creator.write(uri)
 
@@ -134,7 +134,7 @@ def test_write_array_dense_2D_full(tmpdir):
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
     creator.add_dense_fragment_writer()
-    creator["attr1"].set_fragment_data(0, attr_data)
+    creator["attr1"].set_writer_data(attr_data)
 
     creator.write(uri)
 
@@ -158,7 +158,7 @@ def test_write_array_sparse_2D_dense_region_full(tmpdir):
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
     creator.add_dense_fragment_writer()
-    creator["attr1"].set_fragment_data(0, attr_data)
+    creator["attr1"].set_writer_data(attr_data)
 
     creator.write(uri)
 
@@ -191,9 +191,9 @@ def test_write_array_sparse_2D_sparse_coo_region(tmpdir):
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
     creator.add_sparse_fragment_writer(size=4)
-    creator["attr1"].set_fragment_data(0, attr_data)
-    creator.domain_creator["dim1"].set_fragment_data(0, dim1_data)
-    creator.domain_creator["dim2"].set_fragment_data(0, dim2_data)
+    creator["attr1"].set_writer_data(attr_data)
+    creator.domain_creator["dim1"].set_writer_data(dim1_data)
+    creator.domain_creator["dim2"].set_writer_data(dim2_data)
 
     creator.write(uri)
 
@@ -223,9 +223,9 @@ def test_write_array_sparse_2D_sparse_row_major_region(tmpdir):
     )
     creator.add_attr_creator("attr1", dtype=np.int64)
     creator.add_sparse_fragment_writer(shape=(3, 4), form="row-major")
-    creator["attr1"].set_fragment_data(0, attr_data)
-    creator.domain_creator["dim1"].set_fragment_data(0, dim1_data)
-    creator.domain_creator["dim2"].set_fragment_data(0, dim2_data)
+    creator["attr1"].set_writer_data(attr_data)
+    creator.domain_creator["dim1"].set_writer_data(dim1_data)
+    creator.domain_creator["dim2"].set_writer_data(dim2_data)
 
     creator.write(uri)
 
