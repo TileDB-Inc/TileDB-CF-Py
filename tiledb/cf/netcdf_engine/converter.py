@@ -10,7 +10,7 @@ import netCDF4
 import numpy as np
 
 import tiledb
-from tiledb.cf.core import DataspaceCreator, CFSourceConnector
+from tiledb.cf.core import CFSourceConnector, DataspaceCreator
 
 from .._utils import DType
 from ._array_converters import NetCDF4ArrayConverter
@@ -264,7 +264,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 if scalar_array_name not in {
                     array_creator.name for array_creator in converter.array_creators()
                 }:
-                    converter.add_scalar_to_dim_converter("__scalars", dim_dtype)
+                    converter.add_shared_dim(
+                        dim_name="__scalars", domain=(0, 0), dtype=dim_dtype
+                    )
                     converter.add_array_converter(
                         scalar_array_name,
                         ("__scalars",),
@@ -390,21 +392,48 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         converter = cls(default_input_file, default_group_path)
         coord_names = set()
         dims_to_vars: Dict[Tuple[str, ...], List[str]] = defaultdict(list)
+        dims_to_shape: Dict[Tuple[str, ...], Tuple[int, ...]] = {}
         autotiles: Dict[Sequence[str], Optional[Sequence[int]]] = {}
         tiles_by_dims = {} if tiles_by_dims is None else tiles_by_dims
         tiles_by_var = {} if tiles_by_var is None else tiles_by_var
+
+        sources = {
+            ncvar.name: CFSourceConnector(
+                NetCDF4VariableSource.from_variable(
+                    netcdf_variable=ncvar,
+                    unpack=unpack_vars,
+                    netcdf_group=converter._netcdf_group_reader,
+                )
+            )
+            for ncvar in netcdf_group.variables.values()
+        }
+
         # Add data/coordinate dimension to converter, partition variables into arrays,
         # and compute the tile sizes for array dimensions.
         for ncvar in netcdf_group.variables.values():
             if coords_to_dims and ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name:
-                converter.add_coord_to_dim_converter(ncvar, unpack=unpack_vars)
+                # TODO: Remove following line
+                # converter.add_coord_to_dim_converter(ncvar, unpack=unpack_vars)
+                converter.add_shared_dim(
+                    dim_name=ncvar.name,
+                    domain=None,
+                    dtype=sources[ncvar.name].dtype,
+                )
                 coord_names.add(ncvar.name)
+                dims_to_shape[ncvar.dimensions] = ncvar.shape
             else:
-                if not ncvar.dimensions and "__scalars" not in {
-                    shared_dim.name for shared_dim in converter.shared_dims()
-                }:
-                    converter.add_scalar_to_dim_converter("__scalars", dim_dtype)
-                dim_names = ncvar.dimensions if ncvar.dimensions else ("__scalars",)
+                if not ncvar.dimensions:
+                    if "__scalars" not in {
+                        shared_dim.name for shared_dim in converter.shared_dims()
+                    }:
+                        converter.add_shared_dim(
+                            dim_name="__scalars", domain=(0, 0), dtype=dim_dtype
+                        )
+                    dim_names = ("__scalars",)
+                    dims_to_shape[dim_names] = (1,)
+                else:
+                    dim_names = ncvar.dimensions
+                    dims_to_shape[dim_names] = ncvar.shape
                 dims_to_vars[dim_names].append(ncvar.name)
                 chunks = tiles_by_var.get(
                     ncvar.name,
@@ -425,10 +454,15 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 if dim.name not in {
                     shared_dim.name for shared_dim in converter.shared_dims()
                 }:
-                    converter.add_dim_to_dim_converter(
-                        dim,
-                        unlimited_dim_size,
-                        dim_dtype,
+                    size = (
+                        unlimited_dim_size
+                        if dim.isunlimited() and unlimited_dim_size is not None
+                        else dim.size
+                    )
+                    converter.add_shared_dim(
+                        dim_name=dim.name,
+                        domain=(0, size - 1),
+                        dtype=dim_dtype,
                     )
         # Add arrays and attributes to the converter.
         for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
@@ -442,6 +476,26 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 offsets_filters=offsets_filters,
                 attrs_filters=attrs_filters,
             )
+            array_creator = converter.array_creator = converter.get_array_creator(
+                f"array{count}"
+            )
+            if has_coord_dim:
+                shape = dims_to_shape[dim_names]
+                array_creator.add_sparse_fragment_writer(shape=shape, form="row-major")
+                for dim_name, dim_size in zip(dim_names, shape):
+                    if dim_name in coord_names:
+                        array_creator.domain_creator[dim_name].set_fragment_data(
+                            0, sources[dim_name]
+                        )
+                    else:
+                        array_creator.domain_creator[dim_name].set_fragment_data(
+                            0, np.arange(dim_size, dtype=dim_dtype)
+                        )
+            else:
+                target_region = tuple(
+                    (0, dim_size - 1) for dim_size in dims_to_shape[dim_names]
+                )
+                array_creator.add_dense_fragment_writer(target_region=target_region)
             for var_name in dims_to_vars[dim_names]:
                 converter.add_var_to_attr_converter(
                     netcdf_group.variables[var_name],
