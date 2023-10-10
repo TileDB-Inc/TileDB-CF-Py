@@ -12,12 +12,6 @@ __all__ = ["has_netCDF4", "from_netcdf"]  # type: ignore
 
 if has_netCDF4:
     from ._array_converters import NetCDF4ArrayConverter, NetCDF4DomainConverter
-    from ._dim_converters import (
-        NetCDF4CoordToDimConverter,
-        NetCDF4DimToDimConverter,
-        NetCDF4ScalarToDimConverter,
-        NetCDF4ToDimConverter,
-    )
     from ._utils import open_netcdf_group
     from .converter import NetCDF4ConverterEngine
 

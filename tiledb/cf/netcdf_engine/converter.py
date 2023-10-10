@@ -12,13 +12,7 @@ import numpy as np
 import tiledb
 from tiledb.cf.core import CFSourceConnector, DataspaceCreator
 
-from .._utils import DType
 from ._array_converters import NetCDF4ArrayConverter
-from ._dim_converters import (
-    NetCDF4CoordToDimConverter,
-    NetCDF4DimToDimConverter,
-    NetCDF4ScalarToDimConverter,
-)
 from ._utils import (
     _DEFAULT_INDEX_DTYPE,
     COORDINATE_SUFFIX,
@@ -618,74 +612,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             allows_duplicates=allows_duplicates,
             sparse=sparse,
             netcdf_group=self._netcdf_group_reader,
-        )
-
-    def add_coord_to_dim_converter(
-        self,
-        ncvar: netCDF4.Variable,
-        dim_name: Optional[str] = None,
-        domain: Optional[Tuple[DType, DType]] = None,
-        dtype: Optional[np.dtype] = None,
-        unpack: bool = False,
-    ):
-        """Adds a new NetCDF coordinate to TileDB dimension converter.
-
-        Parameters:
-            var: NetCDF coordinate variable to be converted.
-            dim_name: If not ``None``, name to use for the TileDB dimension.
-            domain: If not ``None``, the domain the TileDB dimension is valid on.
-            dtype: If not ``None``, the data type the TileDB dimension will be set to.
-            unpack: Unpack NetCDF data that has NetCDF attributes ``scale_factor`` or
-                ``add_offset`` using the transformation ``scale_factor * value +
-                unpack``.
-
-        """
-        NetCDF4CoordToDimConverter.from_netcdf(
-            registry=self._domain,
-            ncvar=ncvar,
-            name=dim_name,
-            domain=domain,
-            dtype=dtype,
-            unpack=unpack,
-        )
-
-    def add_dim_to_dim_converter(
-        self,
-        ncdim: netCDF4.Dimension,
-        unlimited_dim_size: Optional[int] = None,
-        dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-        dim_name: Optional[str] = None,
-    ):
-        """Adds a new NetCDF dimension to TileDB dimension converter.
-
-        Parameters:
-            ncdim: NetCDF dimension to be converted.
-            unlimited_dim_size: The size to use if the dimension is unlimited. If
-                ``None``, the current size of the NetCDF dimension will be used.
-            dtype: Numpy type to use for the NetCDF dimension.
-            dim_name: If not ``None``, output name of the TileDB dimension.
-        """
-        NetCDF4DimToDimConverter.from_netcdf(
-            registry=self._domain,
-            dim=ncdim,
-            unlimited_dim_size=unlimited_dim_size,
-            dtype=dtype,
-            name=dim_name,
-        )
-
-    def add_scalar_to_dim_converter(
-        self,
-        dim_name: str = "__scalars",
-        dtype: np.dtype = _DEFAULT_INDEX_DTYPE,
-    ):
-        """Adds a new TileDB dimension for NetCDF scalar variables.
-
-        Parameters:
-            dim_name: Output name of the dimension.
-            dtype: Numpy type to use for the scalar dimension
-        """
-        NetCDF4ScalarToDimConverter.create(
-            registry=self._domain, dim_name=dim_name, dtype=dtype
         )
 
     def add_var_to_attr_converter(

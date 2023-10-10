@@ -16,11 +16,9 @@ class TestAttrsFilters:
         ``filters`` parameter is not specified."""
         attrs_filters = tiledb.FilterList([tiledb.ZstdFilter()])
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-            dim = dataset.createDimension("row", 64)
+            dataset.createDimension("row", 64)
             var = dataset.createVariable("x", np.float64, ("row",))
-            shared_dims = [
-                netcdf_engine.NetCDF4DimToDimConverter.from_netcdf(dim, None, np.uint64)
-            ]
+            shared_dims = [SharedDim("row", domain=(0, 63), dtype=np.uint64)]
             converter = netcdf_engine.NetCDF4ArrayConverter(
                 dim_order=("row",), shared_dims=shared_dims, attrs_filters=attrs_filters
             )
@@ -33,11 +31,9 @@ class TestAttrsFilters:
         attrs_filters = tiledb.FilterList([tiledb.ZstdFilter()])
         new_filters = tiledb.FilterList([tiledb.GzipFilter(level=5)])
         with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-            dim = dataset.createDimension("row", 64)
+            dataset.createDimension("row", 64)
             var = dataset.createVariable("x", np.float64, ("row",))
-            shared_dims = [
-                netcdf_engine.NetCDF4DimToDimConverter.from_netcdf(dim, None, np.uint64)
-            ]
+            shared_dims = [SharedDim("row", domain=(0, 63), dtype=np.uint64)]
             converter = netcdf_engine.NetCDF4ArrayConverter(
                 dim_order=("row",), shared_dims=shared_dims, attrs_filters=attrs_filters
             )

@@ -120,10 +120,8 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         converter = NetCDF4ConverterEngine()
         dim_dtype = np.dtype("uint32")
         converter.add_shared_dim("col", domain=(0, 4), dtype=dim_dtype)
+        converter.add_shared_dim("row", domain=(0, 7), dtype=dim_dtype)
         with netCDF4.Dataset(netcdf_file) as netcdf_group:
-            converter.add_dim_to_dim_converter(
-                netcdf_group.dimensions["row"], dtype=dim_dtype
-            )
             converter.add_array_converter("array", ("row", "col"))
             converter.add_var_to_attr_converter(netcdf_group.variables["x1"], "array")
             converter.convert_to_array(
@@ -292,9 +290,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     def test_inject_dim_mismatch_attr_dims_error(self, netcdf_file):
         """Tests injecting a dimension into a NetCDF4ConverterArray."""
         converter = NetCDF4ConverterEngine.from_file(netcdf_file)
-        with netCDF4.Dataset("inmemory", mode="w", diskless=True) as dataset:
-            dim = dataset.createDimension("dim0", 10)
-            converter.add_dim_to_dim_converter(dim)
+        converter.add_shared_dim("dim0", (0, 9), dtype=np.uint32)
         array_converter = converter.get_array_creator("array0")
         with pytest.raises(NotImplementedError):
             array_converter.domain_creator.inject_dim_creator("dim0", 0)
@@ -310,7 +306,7 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
     def test_bad_array_name_error(self, netcdf_file):
         converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=False)
         with pytest.raises(ValueError):
-            converter.add_array_converter("array0", tuple())
+            converter.add_array_creator("array0", tuple())
 
 
 class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
@@ -572,13 +568,9 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
         converter = NetCDF4ConverterEngine()
         dim_dtype = np.dtype("uint32")
         converter.add_shared_dim("extra", domain=(0, 4), dtype=dim_dtype)
+        converter.add_shared_dim("row", domain=(0, 3), dtype=dim_dtype)
+        converter.add_shared_dim("col", domain=(0, 3), dtype=dim_dtype)
         with netCDF4.Dataset(netcdf_file) as netcdf_group:
-            converter.add_dim_to_dim_converter(
-                netcdf_group.dimensions["row"], dtype=dim_dtype
-            )
-            converter.add_dim_to_dim_converter(
-                netcdf_group.dimensions["col"], dtype=dim_dtype
-            )
             converter.add_array_converter("array", ("row", "extra", "col"))
             converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
             converter.convert_to_array(
@@ -599,13 +591,9 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
         converter = NetCDF4ConverterEngine()
         dim_dtype = np.dtype("uint32")
         converter.add_shared_dim("extra", domain=(0, 4), dtype=dim_dtype)
+        converter.add_shared_dim("row", domain=(0, 3), dtype=dim_dtype)
+        converter.add_shared_dim("col", domain=(0, 3), dtype=dim_dtype)
         with netCDF4.Dataset(netcdf_file) as netcdf_group:
-            converter.add_dim_to_dim_converter(
-                netcdf_group.dimensions["row"], dtype=dim_dtype
-            )
-            converter.add_dim_to_dim_converter(
-                netcdf_group.dimensions["col"], dtype=dim_dtype
-            )
             converter.add_array_converter("array", ("row", "extra", "col"), sparse=True)
             converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
             converter.convert_to_array(
@@ -626,13 +614,9 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
         converter = NetCDF4ConverterEngine()
         dim_dtype = np.dtype("uint32")
         converter.add_shared_dim("extra", domain=(0, 4), dtype=dim_dtype)
+        converter.add_shared_dim("row", domain=(0, 3), dtype=dim_dtype)
+        converter.add_shared_dim("col", domain=(0, 3), dtype=dim_dtype)
         with netCDF4.Dataset(netcdf_file) as netcdf_group:
-            converter.add_dim_to_dim_converter(
-                netcdf_group.dimensions["row"], dtype=dim_dtype
-            )
-            converter.add_dim_to_dim_converter(
-                netcdf_group.dimensions["col"], dtype=dim_dtype
-            )
             converter.add_array_converter("array", ("row", "extra", "col"))
             converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
             converter.convert_to_array(uri, input_netcdf_group=netcdf_group)
@@ -1132,12 +1116,12 @@ def test_copy_no_var_error(tmpdir, simple1_netcdf_file, simple2_netcdf_file):
 
 def test_mismatched_netcdf_dims():
     with netCDF4.Dataset("example.nc", mode="w", diskless=True) as dataset:
-        x_dim = dataset.createDimension("x")
-        y_dim = dataset.createDimension("y")
+        dataset.createDimension("x")
+        dataset.createDimension("y")
         var = dataset.createVariable("value", np.float64, ("y", "x"))
         converter = NetCDF4ConverterEngine()
-        converter.add_dim_to_dim_converter(x_dim)
-        converter.add_dim_to_dim_converter(y_dim)
+        converter.add_shared_dim("x", domain=(0, 3), dtype=np.int32)
+        converter.add_shared_dim("y", domain=(0, 3), dtype=np.int32)
         converter.add_array_converter("array", ("x", "y"))
         with pytest.raises(ValueError):
             converter.add_var_to_attr_converter(array_name="array", ncvar=var)
