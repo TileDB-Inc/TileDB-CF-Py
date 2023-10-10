@@ -84,7 +84,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
                 f"{netcdf_dims}."
             )
 
-        if self._core.nfragment == 0:
+        if self._core.nwriter == 0:
             if len(ncvar.shape) == self.ndim:
                 target_region = tuple((0, dim_size - 1) for dim_size in ncvar.shape)
             else:
@@ -120,7 +120,7 @@ class NetCDF4ArrayConverter(ArrayCreator):
             nullable=nullable,
             filters=filters,
         )
-        attr_creator.set_fragment_data(0, source)
+        attr_creator.set_writer_data(source)
 
     def copy(
         self,
@@ -152,14 +152,12 @@ class NetCDF4ArrayConverter(ArrayCreator):
         if assigned_dim_values is not None:
             for dim_creator in self.domain_creator:
                 if dim_creator.name in assigned_dim_values:
-                    dim_creator.set_fragment_data(
-                        0, assigned_dim_values[dim_creator.name]
-                    )
+                    dim_creator.set_writer_data(assigned_dim_values[dim_creator.name])
         if assigned_attr_values is not None:
             for attr_creator in self:
                 if attr_creator.name in assigned_attr_values:
-                    attr_creator.set_fragment_data(
-                        0, assigned_attr_values[attr_creator.name]
+                    attr_creator.set_writer_data(
+                        assigned_attr_values[attr_creator.name]
                     )
         # TODO: Implement
         if tiledb_timestamp is not None:

@@ -312,9 +312,9 @@ class ArrayCreator(RegisteredByNameMixin):
         return self._core.ndim
 
     @property
-    def nfragment_writers(self) -> int:
+    def nwriter(self) -> int:
         """Number of fragment writers in the array."""
-        return self._core.nfragment
+        return self._core.nwriter
 
     def html_summary(self) -> str:
         """Returns a string HTML summary of the :class:`ArrayCreator`."""

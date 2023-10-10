@@ -278,7 +278,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     dtype=attr_source.dtype,
                     fill=attr_source.fill,
                 )
-                array_creator[ncvar.name].set_fragment_data(0, attr_source)
+                array_creator[ncvar.name].set_writer_data(attr_source)
             else:
                 for dim in ncvar.get_dims():
                     if dim.name not in {
@@ -330,12 +330,12 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     )
                     for dim_name, dim_size in zip(ncvar.dimensions, ncvar.shape):
                         if dim_name in coord_names:
-                            array_creator.domain_creator[dim_name].set_fragment_data(
-                                0, sources[dim_name]
+                            array_creator.domain_creator[dim_name].set_writer_data(
+                                sources[dim_name]
                             )
                         else:
-                            array_creator.domain_creator[dim_name].set_fragment_data(
-                                0, np.arange(dim_size, dtype=dim_dtype)
+                            array_creator.domain_creator[dim_name].set_writer_data(
+                                np.arange(dim_size, dtype=dim_dtype)
                             )
 
                 else:
@@ -352,7 +352,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     dtype=attr_source.dtype,
                     fill=attr_source.fill,
                 )
-                array_creator[attr_name].set_fragment_data(0, attr_source)
+                array_creator[attr_name].set_writer_data(attr_source)
         return converter
 
     @classmethod
@@ -493,12 +493,12 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 array_creator.add_sparse_fragment_writer(shape=shape, form="row-major")
                 for dim_name, dim_size in zip(dim_names, shape):
                     if dim_name in coord_names:
-                        array_creator.domain_creator[dim_name].set_fragment_data(
-                            0, sources[dim_name]
+                        array_creator.domain_creator[dim_name].set_writer_data(
+                            sources[dim_name]
                         )
                     else:
-                        array_creator.domain_creator[dim_name].set_fragment_data(
-                            0, np.arange(dim_size, dtype=dim_dtype)
+                        array_creator.domain_creator[dim_name].set_writer_data(
+                            np.arange(dim_size, dtype=dim_dtype)
                         )
             else:
                 target_region = tuple(
@@ -518,7 +518,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     dtype=attr_source.dtype,
                     fill=attr_source.fill,
                 )
-                array_creator[attr_name].set_fragment_data(0, attr_source)
+                array_creator[attr_name].set_writer_data(attr_source)
 
         return converter
 
@@ -819,14 +819,12 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         if assigned_dim_values is not None:
             for dim_creator in array_creator.domain_creator:
                 if dim_creator.name in assigned_dim_values:
-                    dim_creator.set_fragment_data(
-                        0, assigned_dim_values[dim_creator.name]
-                    )
+                    dim_creator.set_writer_data(assigned_dim_values[dim_creator.name])
         if assigned_attr_values is not None:
             for attr_creator in array_creator:
                 if attr_creator.name in assigned_attr_values:
-                    attr_creator.set_fragment_data(
-                        0, assigned_attr_values[attr_creator.name]
+                    attr_creator.set_writer_data(
+                        assigned_attr_values[attr_creator.name]
                     )
         if timestamp is not None:
             # TODO: Implement this.
@@ -901,20 +899,20 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             with tiledb.Group(output_uri, mode="w", ctx=ctx) as group:
                 copy_group_metadata(self._netcdf_group_reader, group.meta)
         for array_creator in self._core.array_creators():
-            if array_creator.nfragment_writers == 0:
+            if array_creator.nwriter == 0:
                 continue
 
             if assigned_dim_values is not None:
                 for dim_creator in array_creator.domain_creator:
                     if dim_creator.name in assigned_dim_values:
-                        dim_creator.set_fragment_data(
-                            0, assigned_dim_values[dim_creator.name]
+                        dim_creator.set_writer_data(
+                            assigned_dim_values[dim_creator.name]
                         )
             if assigned_attr_values is not None:
                 for attr_creator in array_creator:
                     if attr_creator.name in assigned_attr_values:
-                        attr_creator.set_fragment_data(
-                            0, assigned_attr_values[attr_creator.name]
+                        attr_creator.set_writer_data(
+                            assigned_attr_values[attr_creator.name]
                         )
 
             if timestamp is not None:
