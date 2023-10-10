@@ -6,27 +6,27 @@ import numpy as np
 class FieldData(Protocol):
     @property
     def dtype(self) -> np.dtype:
-        ...
+        """The numpy dtype of the data."""
 
     @property
     def metadata(self) -> Mapping[str, Any]:
-        ...
+        """A mapping of metadata string-to-value pairs."""
 
     @property
     def shape(self) -> Optional[Tuple[int, ...]]:
-        ...
+        """Shape of the data, or `None` if no shape."""
 
     @shape.setter
     def shape(self, new_shape: Tuple[int, ...]):
-        ...
+        """Set the shape to `new_shape`."""
 
     @property
     def size(self) -> int:
-        ...
+        """Size of the data."""
 
     @property
     def values(self) -> np.array:
-        ...
+        """Data values."""
 
 
 class NumpyData:

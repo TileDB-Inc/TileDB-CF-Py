@@ -15,21 +15,24 @@ from .source import FieldData, NumpyData
 
 class AttrRegistry(Protocol):
     def __delitem__(self, name: str):
-        ...
+        """Delete the element with the provided name."""
 
     def __getitem__(self, name: str) -> AttrCreator:
-        ...
+        """Get the element with the provided name."""
 
     def __setitem__(self, name: str, value: AttrCreator):
-        ...
+        """Set the elemetn with the provided name to the provided value."""
 
     def set_writer_data(
         self, writer_index: Optional[int], attr_name: str, data: FieldData
     ):
-        ...
+        """Set the data to the requested frgament writer."""
 
     def rename(self, old_name: str, new_name: str):
-        ...
+        """Rename an element of the registry.
+
+        If the rename fails, the registry should be left unchanged.
+        """
 
 
 class AttrCreator(RegisteredByNameMixin):
@@ -94,7 +97,6 @@ class AttrCreator(RegisteredByNameMixin):
         else:
             data = attr_data
         if data.dtype != self.dtype:
-            # Relax?
             raise ValueError(
                 f"Cannot set data with dtype='{attr_data.dtype}' to an attribute witha"
                 f"dtype='{self.dtype}'."

@@ -14,9 +14,9 @@ from .source import FieldData, NumpyData
 
 class DimRegistry(Protocol):
     def set_writer_data(
-        self, writer_index: Optional[int], attr_name: str, data: FieldData
+        self, writer_index: Optional[int], dim_name: str, data: FieldData
     ):
-        ...
+        """Set the data to the requested frgament writer."""
 
 
 class DimCreator:
@@ -84,22 +84,21 @@ class DimCreator:
 
     def set_writer_data(
         self,
-        attr_data: Union[np.ndarray, FieldData],
+        dim_data: Union[np.ndarray, FieldData],
         *,
         writer_index: Optional[int] = None,
     ):
         if self._registry is None:
             raise ValueError("Dimension creator is not registered to an array.")
-        if isinstance(attr_data, np.ndarray):
-            data = NumpyData(attr_data.astype(self.dtype))
-        elif isinstance(attr_data, int):
-            data = NumpyData(np.ndarray(attr_data, dtype=self.dtype))
+        if isinstance(dim_data, np.ndarray):
+            data = NumpyData(dim_data.astype(self.dtype))
+        elif isinstance(dim_data, int):
+            data = NumpyData(np.ndarray(dim_data, dtype=self.dtype))
         else:
-            data = attr_data
+            data = dim_data
         if data.dtype != self.dtype:
-            # Relax?
             raise ValueError(
-                f"Cannot set data with dtype='{attr_data.dtype}' to an attribute witha"
+                f"Cannot set data with dtype='{dim_data.dtype}' to an attribute witha"
                 f"dtype='{self.dtype}'."
             )
         # TODO: Check variable length?
@@ -114,6 +113,7 @@ class DimCreator:
         Returns:
             A tiledb dimension with the set properties.
         """
+        # TODO: Remove the following?
         if self.domain is None:
             raise ValueError(
                 f"Cannot create a TileDB dimension for dimension '{self.name}'. No "

@@ -26,9 +26,9 @@ class SharedDim(RegisteredByNameMixin):
         super().__init__(name, registry)
 
     def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        if not isinstance(self, other.__class__):
+        if not isinstance(other, self.__class__) or not isinstance(
+            self, other.__class__
+        ):
             return False
         return (
             self.name == other.name
