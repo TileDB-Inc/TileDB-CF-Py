@@ -21,6 +21,7 @@ from ._dim_converters import (
 )
 from ._utils import (
     _DEFAULT_INDEX_DTYPE,
+    COORDINATE_SUFFIX,
     copy_group_metadata,
     get_variable_chunks,
     open_netcdf_group,
@@ -267,13 +268,23 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     converter.add_shared_dim(
                         dim_name="__scalars", domain=(0, 0), dtype=dim_dtype
                     )
-                    converter.add_array_converter(
-                        scalar_array_name,
-                        ("__scalars",),
+                    converter.add_array_creator(
+                        array_name=scalar_array_name,
+                        dims=("__scalars",),
                         offsets_filters=offsets_filters,
                         attrs_filters=attrs_filters,
                     )
-                converter.add_var_to_attr_converter(ncvar, scalar_array_name)
+                    array_creator = converter.get_array_creator(scalar_array_name)
+                    array_creator.add_dense_fragment_writer()
+                else:
+                    array_creator = converter.get_array_creator(scalar_array_name)
+                attr_source = sources[ncvar.name]
+                array_creator.add_attr_creator(
+                    name=ncvar.name,
+                    dtype=attr_source.dtype,
+                    fill=attr_source.fill,
+                )
+                array_creator[ncvar.name].set_fragment_data(0, attr_source)
             else:
                 for dim in ncvar.get_dims():
                     if dim.name not in {
@@ -309,39 +320,45 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                         else get_variable_chunks(ncvar, unlimited_dim_size),
                     ),
                 )
-                converter.add_array_converter(
-                    array_name,
-                    ncvar.dimensions,
+                converter.add_array_creator(
+                    array_name=array_name,
+                    dims=ncvar.dimensions,
                     tiles=tiles,
                     sparse=has_coord_dim,
                     offsets_filters=offsets_filters,
                     attrs_filters=attrs_filters,
                 )
-                array_converter = converter.get_array_creator(array_name)
+                array_creator = converter.get_array_creator(array_name)
 
                 if has_coord_dim:
-                    array_converter.add_sparse_fragment_writer(
+                    array_creator.add_sparse_fragment_writer(
                         shape=ncvar.shape, form="row-major"
                     )
                     for dim_name, dim_size in zip(ncvar.dimensions, ncvar.shape):
                         if dim_name in coord_names:
-                            array_converter.domain_creator[dim_name].set_fragment_data(
+                            array_creator.domain_creator[dim_name].set_fragment_data(
                                 0, sources[dim_name]
                             )
                         else:
-                            array_converter.domain_creator[dim_name].set_fragment_data(
+                            array_creator.domain_creator[dim_name].set_fragment_data(
                                 0, np.arange(dim_size, dtype=dim_dtype)
                             )
 
                 else:
                     target_region = tuple((0, dim_size - 1) for dim_size in ncvar.shape)
-                    array_converter.add_dense_fragment_writer(
-                        target_region=target_region
-                    )
-
-                converter.add_var_to_attr_converter(
-                    ncvar, array_name, unpack=unpack_vars
+                    array_creator.add_dense_fragment_writer(target_region=target_region)
+                attr_name = (
+                    ncvar.name + COORDINATE_SUFFIX
+                    if ncvar.name in ncvar.dimensions
+                    else ncvar.name
                 )
+                attr_source = sources[ncvar.name]
+                array_creator.add_attr_creator(
+                    name=attr_name,
+                    dtype=attr_source.dtype,
+                    fill=attr_source.fill,
+                )
+                array_creator[attr_name].set_fragment_data(0, attr_source)
         return converter
 
     @classmethod
@@ -412,8 +429,6 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         # and compute the tile sizes for array dimensions.
         for ncvar in netcdf_group.variables.values():
             if coords_to_dims and ncvar.ndim == 1 and ncvar.dimensions[0] == ncvar.name:
-                # TODO: Remove following line
-                # converter.add_coord_to_dim_converter(ncvar, unpack=unpack_vars)
                 converter.add_shared_dim(
                     dim_name=ncvar.name,
                     domain=None,
@@ -468,9 +483,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         for count, dim_names in enumerate(sorted(dims_to_vars.keys())):
             has_coord_dim = any(dim_name in coord_names for dim_name in dim_names)
             chunks = autotiles.get(dim_names)
-            converter.add_array_converter(
-                f"array{count}",
-                dim_names,
+            converter.add_array_creator(
+                array_name=f"array{count}",
+                dims=dim_names,
                 tiles=chunks,
                 sparse=has_coord_dim,
                 offsets_filters=offsets_filters,
@@ -497,11 +512,20 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                 )
                 array_creator.add_dense_fragment_writer(target_region=target_region)
             for var_name in dims_to_vars[dim_names]:
-                converter.add_var_to_attr_converter(
-                    netcdf_group.variables[var_name],
-                    f"array{count}",
-                    unpack=unpack_vars,
+                ncvar = netcdf_group.variables[var_name]
+                attr_name = (
+                    ncvar.name + COORDINATE_SUFFIX
+                    if ncvar.name in ncvar.dimensions
+                    else ncvar.name
                 )
+                attr_source = sources[ncvar.name]
+                array_creator.add_attr_creator(
+                    name=attr_name,
+                    dtype=attr_source.dtype,
+                    fill=attr_source.fill,
+                )
+                array_creator[attr_name].set_fragment_data(0, attr_source)
+
         return converter
 
     def __init__(
@@ -866,22 +890,35 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             )
         array_creator = next(self._core.array_creators())
         self._netcdf_group_reader.open(input_netcdf_group, input_file, input_group_path)
-        if isinstance(array_creator, NetCDF4ArrayConverter):
-            array_creator.copy(
-                netcdf_group=self._netcdf_group_reader.netcdf4,
-                tiledb_uri=output_uri,
-                tiledb_key=key,
-                tiledb_ctx=ctx,
-                tiledb_timestamp=timestamp,
-                assigned_dim_values=assigned_dim_values,
-                assigned_attr_values=assigned_attr_values,
-                copy_metadata=copy_metadata,
-            )
-            if copy_metadata:
-                with tiledb.open(
-                    output_uri, mode="w", key=key, timestamp=timestamp, ctx=ctx
-                ) as array:
-                    copy_group_metadata(self._netcdf_group_reader, array.meta)
+        if assigned_dim_values is not None:
+            for dim_creator in array_creator.domain_creator:
+                if dim_creator.name in assigned_dim_values:
+                    dim_creator.set_fragment_data(
+                        0, assigned_dim_values[dim_creator.name]
+                    )
+        if assigned_attr_values is not None:
+            for attr_creator in array_creator:
+                if attr_creator.name in assigned_attr_values:
+                    attr_creator.set_fragment_data(
+                        0, assigned_attr_values[attr_creator.name]
+                    )
+        if timestamp is not None:
+            # TODO: Implement this.
+            raise NotImplementedError()
+
+        array_creator.write(
+            uri=output_uri,
+            key=key,
+            ctx=ctx,
+            append=True,
+            skip_metadata=not copy_metadata,
+        )
+
+        if copy_metadata:
+            with tiledb.open(
+                output_uri, mode="w", key=key, timestamp=timestamp, ctx=ctx
+            ) as array:
+                copy_group_metadata(self._netcdf_group_reader, array.meta)
 
     def copy_to_group(
         self,
@@ -938,14 +975,31 @@ class NetCDF4ConverterEngine(DataspaceCreator):
             with tiledb.Group(output_uri, mode="w", ctx=ctx) as group:
                 copy_group_metadata(self._netcdf_group_reader, group.meta)
         for array_creator in self._core.array_creators():
-            if isinstance(array_creator, NetCDF4ArrayConverter):
-                array_creator.copy(
-                    netcdf_group=self._netcdf_group_reader.netcdf4,
-                    tiledb_uri=array_uris[array_creator.name],
-                    tiledb_key=key,
-                    tiledb_ctx=ctx,
-                    tiledb_timestamp=timestamp,
-                    assigned_dim_values=assigned_dim_values,
-                    assigned_attr_values=assigned_attr_values,
-                    copy_metadata=copy_metadata,
-                )
+            if array_creator.nfragment_writers == 0:
+                continue
+
+            if assigned_dim_values is not None:
+                for dim_creator in array_creator.domain_creator:
+                    if dim_creator.name in assigned_dim_values:
+                        dim_creator.set_fragment_data(
+                            0, assigned_dim_values[dim_creator.name]
+                        )
+            if assigned_attr_values is not None:
+                for attr_creator in array_creator:
+                    if attr_creator.name in assigned_attr_values:
+                        attr_creator.set_fragment_data(
+                            0, assigned_attr_values[attr_creator.name]
+                        )
+
+            if timestamp is not None:
+                # TODO: Implement this.
+                raise NotImplementedError()
+
+            array_uri = array_uris[array_creator.name]
+            array_creator.write(
+                uri=array_uri,
+                key=key,
+                ctx=ctx,
+                append=True,
+                skip_metadata=not copy_metadata,
+            )

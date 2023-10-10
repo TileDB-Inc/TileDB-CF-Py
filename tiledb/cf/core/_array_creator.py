@@ -311,6 +311,11 @@ class ArrayCreator(RegisteredByNameMixin):
         """Number of dimensions in the array."""
         return self._core.ndim
 
+    @property
+    def nfragment_writers(self) -> int:
+        """Number of fragment writers in the array."""
+        return self._core.nfragment
+
     def html_summary(self) -> str:
         """Returns a string HTML summary of the :class:`ArrayCreator`."""
         cell_style = 'style="text-align: left;"'
