@@ -5,6 +5,8 @@ from typing import Optional, Tuple
 import numpy as np
 from typing_extensions import Self
 
+from tiledb.datatypes import DataType
+
 from .._utils import DType
 from .registry import RegisteredByNameMixin, Registry
 
@@ -22,7 +24,7 @@ class SharedDim(RegisteredByNameMixin):
     ):
         self._name = name
         self.domain = domain
-        self.dtype = np.dtype(dtype)
+        self.dtype = DataType.from_numpy(dtype).np_dtype
         super().__init__(name, registry)
 
     def __eq__(self, other):

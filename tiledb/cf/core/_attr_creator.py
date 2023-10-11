@@ -6,11 +6,12 @@ import numpy as np
 from typing_extensions import Protocol
 
 import tiledb
+from tiledb.datatypes import DataType
 
 from .._utils import DType
 from ._fragment_writer import FragmentWriter
 from .registry import RegisteredByNameMixin
-from .source import FieldData, NumpyData
+from .source import FieldData, create_field_data
 
 
 class AttrRegistry(Protocol):
@@ -59,7 +60,7 @@ class AttrCreator(RegisteredByNameMixin):
         registry: Optional[AttrRegistry] = None,
         fragment_writers: Optional[Sequence[FragmentWriter]] = None,
     ):
-        self.dtype = np.dtype(dtype)
+        self.dtype = DataType.from_numpy(dtype).np_dtype
         self.fill = fill
         self.var = var
         self.nullable = nullable
@@ -90,18 +91,7 @@ class AttrCreator(RegisteredByNameMixin):
     ):
         if self._registry is None:
             raise ValueError("Attribute creator is not registered to an array.")
-        if isinstance(attr_data, np.ndarray):
-            data = NumpyData(attr_data.astype(self.dtype))
-        elif isinstance(attr_data, int):
-            data = NumpyData(np.ndarray(attr_data, dtype=self.dtype))
-        else:
-            data = attr_data
-        if data.dtype != self.dtype:
-            raise ValueError(
-                f"Cannot set data with dtype='{attr_data.dtype}' to an attribute witha"
-                f"dtype='{self.dtype}'."
-            )
-        # TODO: Check variable length?
+        data = create_field_data(attr_data, self.dtype)
         self._registry.set_writer_data(writer_index, self.name, data)
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:

@@ -1,4 +1,4 @@
-from typing import Any, Mapping, Optional, Protocol, Tuple
+from typing import Any, Mapping, Optional, Protocol, Tuple, Union
 
 import numpy as np
 
@@ -59,3 +59,15 @@ class NumpyData:
     @property
     def values(self):
         return self._source_data
+
+
+def create_field_data(
+    source: Union[np.ndarray, int, FieldData], dtype: np.dtype
+) -> FieldData:
+    if isinstance(source, np.ndarray):
+        field_data = NumpyData(source.astype(dtype))
+    elif isinstance(source, int):
+        field_data = NumpyData(np.ndarray(source, dtype=dtype))
+    else:
+        field_data = source
+    return field_data

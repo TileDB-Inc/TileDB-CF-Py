@@ -9,7 +9,7 @@ import tiledb
 
 from .._utils import DType
 from ._shared_dim import SharedDim
-from .source import FieldData, NumpyData
+from .source import FieldData, create_field_data
 
 
 class DimRegistry(Protocol):
@@ -90,18 +90,7 @@ class DimCreator:
     ):
         if self._registry is None:
             raise ValueError("Dimension creator is not registered to an array.")
-        if isinstance(dim_data, np.ndarray):
-            data = NumpyData(dim_data.astype(self.dtype))
-        elif isinstance(dim_data, int):
-            data = NumpyData(np.ndarray(dim_data, dtype=self.dtype))
-        else:
-            data = dim_data
-        if data.dtype != self.dtype:
-            raise ValueError(
-                f"Cannot set data with dtype='{dim_data.dtype}' to an attribute witha"
-                f"dtype='{self.dtype}'."
-            )
-        # TODO: Check variable length?
+        data = create_field_data(dim_data, self.dtype)
         self._registry.set_writer_data(writer_index, self.name, data)
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
@@ -113,12 +102,6 @@ class DimCreator:
         Returns:
             A tiledb dimension with the set properties.
         """
-        # TODO: Remove the following?
-        if self.domain is None:
-            raise ValueError(
-                f"Cannot create a TileDB dimension for dimension '{self.name}'. No "
-                f"domain is set."
-            )
         return tiledb.Dim(
             name=self.name,
             domain=self.domain,
