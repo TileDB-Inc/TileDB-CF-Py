@@ -826,15 +826,13 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                     attr_creator.set_writer_data(
                         assigned_attr_values[attr_creator.name]
                     )
-        if timestamp is not None:
-            # TODO: Implement this.
-            raise NotImplementedError()
 
         array_creator.write(
             uri=output_uri,
             key=key,
             ctx=ctx,
             append=True,
+            timestamp=timestamp,
             skip_metadata=not copy_metadata,
         )
 
@@ -915,15 +913,12 @@ class NetCDF4ConverterEngine(DataspaceCreator):
                             assigned_attr_values[attr_creator.name]
                         )
 
-            if timestamp is not None:
-                # TODO: Implement this.
-                raise NotImplementedError()
-
             array_uri = array_uris[array_creator.name]
             array_creator.write(
                 uri=array_uri,
                 key=key,
                 ctx=ctx,
                 append=True,
+                timestamp=timestamp,
                 skip_metadata=not copy_metadata,
             )
