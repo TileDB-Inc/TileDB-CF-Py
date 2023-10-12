@@ -5,7 +5,9 @@ import pytest
 
 import tiledb
 from tiledb.cf import AttrMetadata, DimMetadata, from_netcdf, open_group_array
+from tiledb.cf.core.source import CFSourceConnector
 from tiledb.cf.netcdf_engine import NetCDF4ConverterEngine
+from tiledb.cf.netcdf_engine.source import NetCDF4VariableSource
 
 netCDF4 = pytest.importorskip("netCDF4")
 
@@ -122,8 +124,16 @@ class TestConverterSimpleNetCDF(ConvertNetCDFBase):
         converter.add_shared_dim("col", domain=(0, 4), dtype=dim_dtype)
         converter.add_shared_dim("row", domain=(0, 7), dtype=dim_dtype)
         with netCDF4.Dataset(netcdf_file) as netcdf_group:
-            converter.add_array_converter("array", ("row", "col"))
-            converter.add_var_to_attr_converter(netcdf_group.variables["x1"], "array")
+            converter.add_array_creator("array", ("row", "col"))
+            x1_var = netcdf_group.variables["x1"]
+            array_creator = converter.get_array_converter("array")
+            array_creator.add_attr_creator("x1", dtype=x1_var.dtype)
+            array_creator.add_dense_fragment_writer()
+            array_creator["x1"].set_writer_data(
+                CFSourceConnector(
+                    NetCDF4VariableSource.from_variable(netcdf_variable=x1_var)
+                )
+            )
             converter.convert_to_array(
                 uri, input_netcdf_group=netcdf_group, assigned_dim_values={"col": 2}
             )
@@ -571,8 +581,20 @@ class TestConvertNetCDFUnlimitedDim(ConvertNetCDFBase):
         converter.add_shared_dim("row", domain=(0, 3), dtype=dim_dtype)
         converter.add_shared_dim("col", domain=(0, 3), dtype=dim_dtype)
         with netCDF4.Dataset(netcdf_file) as netcdf_group:
-            converter.add_array_converter("array", ("row", "extra", "col"))
-            converter.add_var_to_attr_converter(netcdf_group.variables["data"], "array")
+            # Create array.
+            converter.add_array_creator("array", ("row", "extra", "col"))
+            array_creator = converter.get_array_creator("array")
+            array_creator.add_dense_fragment_writer()
+
+            # Set data.
+            data_var = netcdf_group.variables["data"]
+            array_creator.add_attr_creator("data", dtype=data_var.dtype)
+            array_creator.set_writer_data(
+                CFSourceConnector(
+                    NetCDF4VariableSource.from_variable(netcdf_variable=data_var)
+                )
+            )
+
             converter.convert_to_array(
                 uri, input_netcdf_group=netcdf_group, assigned_dim_values={"extra": 2}
             )
