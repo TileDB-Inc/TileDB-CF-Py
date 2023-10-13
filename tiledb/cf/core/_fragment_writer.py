@@ -10,7 +10,7 @@ import numpy as np
 import tiledb
 
 from .._utils import safe_set_metadata
-from ._metadata import AttrMetadata
+from ._metadata import AttrMetadata, DimMetadata
 from ._shared_dim import SharedDim
 from .source import FieldData
 
@@ -55,7 +55,7 @@ class FragmentWriter(metaclass=ABCMeta):
         else:
             raise TypeError(
                 f"Type {type(self._target_region)} is not a valid target region."
-            )
+            )  # pragma: no cover
 
     def add_attr(self, attr_name: str):
         self._attr_data.setdefault(attr_name, None)
@@ -63,6 +63,14 @@ class FragmentWriter(metaclass=ABCMeta):
     @property
     def is_dense_region(self) -> bool:
         return self._is_dense_region
+
+    @property
+    def nattr(self) -> int:
+        return len(self._attr_data)
+
+    @property
+    def ndim(self) -> int:
+        return self._target_region.ndim
 
     def remove_attr(self, attr_name: str):
         del self._attr_data[attr_name]
@@ -114,6 +122,7 @@ class FragmentWriter(metaclass=ABCMeta):
                 meta = AttrMetadata(array.meta, name)
                 for key, val in data.metadata.items():
                     safe_set_metadata(meta, key, val)
+            self._target_region.write_metadata(array)
 
 
 class DenseRegion:
@@ -159,6 +168,10 @@ class DenseRegion:
             dim_data.reshape(-1) for dim_data in np.meshgrid(*values, indexing="ij")
         )
 
+    @property
+    def ndim(self) -> int:
+        return len(self._shape)
+
     def set_dim_data(self, _dim_name: str, _data: FieldData):
         raise RuntimeError(
             "Cannot set dimension data on fragment that is being written to a dense "
@@ -183,6 +196,9 @@ class DenseRegion:
             for dim_range in self._region
         ]
 
+    def write_metadata(self, array: tiledb.libtiledb.Array):
+        """Write any metadata associated with this region."""
+
 
 class SparseRegion:
     def __init__(self, dims: Tuple[SharedDim], size: int):
@@ -201,6 +217,10 @@ class SparseRegion:
                     f"dimension '{self._dims[idim].name}'."
                 )
         return tuple(data.values for data in self._dim_data)
+
+    @property
+    def ndim(self) -> int:
+        return len(self._dims)
 
     def set_dim_data(self, dim_name: str, data: FieldData):
         if data.size != self._size:
@@ -227,6 +247,13 @@ class SparseRegion:
 
     def subarray(self) -> List[slice, ...]:
         raise RuntimeError("Cannot construct a subarray for a sparse region.")
+
+    def write_metadata(self, array: tiledb.libtiledb.Array):
+        """Write any metadata associated with this region."""
+        for dim, data in zip(self._dims, self._dim_data):
+            meta = DimMetadata(array.meta, dim.name)
+            for key, val in data.metadata.items():
+                safe_set_metadata(meta, key, val)
 
 
 class SparseRowMajorRegion:
@@ -258,6 +285,10 @@ class SparseRowMajorRegion:
             dim_data.reshape(-1) for dim_data in np.meshgrid(*coords, indexing="ij")
         )
 
+    @property
+    def ndim(self) -> int:
+        return len(self._dims)
+
     def set_dim_data(self, dim_name: str, data: FieldData):
         for index, dim in enumerate(self._dims):
             if dim.name == dim_name:
@@ -284,3 +315,10 @@ class SparseRowMajorRegion:
 
     def subarray(self) -> List[slice, ...]:
         raise RuntimeError("Cannot construct a subarray for a sparse region.")
+
+    def write_metadata(self, array: tiledb.libtiledb.Array):
+        """Write any metadata associated with this region."""
+        for dim, data in zip(self._dims, self._dim_data):
+            meta = DimMetadata(array.meta, dim.name)
+            for key, val in data.metadata.items():
+                safe_set_metadata(meta, key, val)
