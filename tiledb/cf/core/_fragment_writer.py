@@ -143,8 +143,10 @@ class DenseRegion:
         else:
             self._region = tuple(region)
         if len(self._region) != len(self._dims):
-            # TODO: Add error message
-            raise ValueError()
+            raise ValueError(
+                f"Cannot set {len(self._region)} regions on an array with "
+                f"{len(self._dims)} dimensions."
+            )
         self._shape = tuple(
             int(dim_range[1] - dim_range[0]) + 1 for dim_range in self._region
         )

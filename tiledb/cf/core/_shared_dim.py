@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import Optional, Tuple
 
 import numpy as np
-from typing_extensions import Self
-
 from tiledb.datatypes import DataType
+from typing_extensions import Self
 
 from .._utils import DType
 from .registry import RegisteredByNameMixin, Registry

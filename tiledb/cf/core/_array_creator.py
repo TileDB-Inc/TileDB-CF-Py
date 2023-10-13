@@ -221,7 +221,12 @@ class ArrayCreator(RegisteredByNameMixin):
         self,
         target_region: Optional[Tuple[DenseRange, ...]] = None,
     ):
-        """TODO: Add docs"""
+        """Add a writer for dense fragments.
+
+        target_region: Optional[Tuple[DenseRange, ...]], default=None
+            Region the fragments are written on. If ``None``, the region is
+            set to the entire domain of the array.
+        """
         self._core.add_dense_fragment_writer(target_region)
 
     def add_sparse_fragment_writer(
@@ -231,7 +236,33 @@ class ArrayCreator(RegisteredByNameMixin):
         shape: Optional[Tuple[int, ...]] = None,
         form: str = "coo",
     ):
-        """TODO: Add docs"""
+        """Add a writer for sparse fragments.
+
+        There are two valid forms for the sparse writer: "coo" and "row-major".
+
+        For "coo" form, the size is used to define the footprint of the data. This
+        supports a general sparse writes. The full expanded data for each dimension
+        must be provided.
+
+        Example input data for "coo" form on a 2D array:
+           dim1 = [1, 2, 1, 2]
+           dim2 = [3, 3, 4, 4]
+           attr = [1, 2, 3, 4]
+
+        For "row-major" form, a grid of data is provided. The data on each dimension
+        is just the dimension for that part of the grid:
+
+        Example input data for "row-major" form on a 2D array:
+            dim1 = [1, 2]
+            dim2 = [3, 4]
+            attr = [1, 2, 3, 4]
+
+        size: Optional[int], default=None
+        shape: Optional[Tuple[int, ...]], default=None
+        form: str, default="coo"
+            The form for the dimension data. Can either be "coo" (coordinate form) or
+            "row-major".
+        """
         if size is not None and shape is not None and np.prod(shape) != size:
             raise ValueError("Mismatch between shape={shape} and size={size}.")
 

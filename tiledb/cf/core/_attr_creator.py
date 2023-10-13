@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import Optional, Sequence, Union
 
 import numpy as np
+from tiledb.datatypes import DataType
 from typing_extensions import Protocol
 
 import tiledb
-from tiledb.datatypes import DataType
 
 from .._utils import DType
 from ._fragment_writer import FragmentWriter
