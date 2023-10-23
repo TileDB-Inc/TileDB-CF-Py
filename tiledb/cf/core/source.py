@@ -1,6 +1,7 @@
-from typing import Any, Mapping, Optional, Protocol, Tuple, Union
+from typing import Any, Mapping, Optional, Tuple, Union
 
 import numpy as np
+from typing_extensions import Protocol
 
 
 class FieldData(Protocol):

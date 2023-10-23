@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -115,7 +115,7 @@ class FragmentWriter(metaclass=ABCMeta):
             if hasattr(attr_data, "fill") and attr_data.fill != attr.fill[0]:
                 attr_data.fill = attr.fill
 
-        array[*region] = {name: data.values for name, data in self._attr_data.items()}
+        array[region] = {name: data.values for name, data in self._attr_data.items()}
 
         if not skip_metadata:
             for name, data in self._attr_data.items():
@@ -152,7 +152,7 @@ class DenseRegion:
         )
         self._size = np.prod(self._shape)
 
-    def coordinates(self):
+    def coordinates(self) -> Tuple[np.ndarray]:
         def create_coords(dim_range, dtype):
             if dtype.kind in {"u", "i"}:
                 dt = 1
@@ -188,15 +188,15 @@ class DenseRegion:
     def size(self) -> int:
         return self._size
 
-    def subarray(self) -> List[slice, ...]:
-        return [
+    def subarray(self) -> Tuple[slice, ...]:
+        return tuple(
             (
                 slice(dim_range[0], dim_range[1] + 1)
                 if np.issubdtype(type(dim_range[1]), np.integer)
                 else slice(dim_range[0], dim_range[1])
             )
             for dim_range in self._region
-        ]
+        )
 
     def write_metadata(self, array: tiledb.libtiledb.Array):
         """Write any metadata associated with this region."""
@@ -211,7 +211,7 @@ class SparseRegion:
         # Set the size of the data.
         self._size = size
 
-    def coordinates(self):
+    def coordinates(self) -> Tuple[np.ndarray]:
         for idim, data in enumerate(self._dim_data):
             if data is None:
                 raise ValueError(
@@ -247,7 +247,7 @@ class SparseRegion:
     def size(self) -> int:
         return self._size
 
-    def subarray(self) -> List[slice, ...]:
+    def subarray(self) -> Tuple[slice, ...]:
         raise RuntimeError("Cannot construct a subarray for a sparse region.")
 
     def write_metadata(self, array: tiledb.libtiledb.Array):
@@ -275,7 +275,7 @@ class SparseRowMajorRegion:
         self._shape = shape
         self._size = np.prod(shape)
 
-    def coordinates(self):
+    def coordinates(self) -> Tuple[np.ndarray]:
         for idim, data in enumerate(self._dim_data):
             if data is None:
                 raise ValueError(
@@ -315,7 +315,7 @@ class SparseRowMajorRegion:
     def size(self) -> int:
         return self._size
 
-    def subarray(self) -> List[slice, ...]:
+    def subarray(self) -> Tuple[slice, ...]:
         raise RuntimeError("Cannot construct a subarray for a sparse region.")
 
     def write_metadata(self, array: tiledb.libtiledb.Array):
