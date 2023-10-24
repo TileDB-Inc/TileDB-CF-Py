@@ -308,14 +308,14 @@
 </table>
 <section id="tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter">add_var_to_attr_converter</h3>
-<p><code>cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter(self, ncvar, name=None, dtype=None, fill=None, var=False, nullable=False, filters=None, unpack=False)</code></p>
+<p><code>cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter(ncvar, name=None, dtype=None, fill=None, var=False, nullable=False, filters=None, unpack=False)</code></p>
 <p>Adds a new variable to attribute converter to the array creator.</p>
 <p>The attribute’s ‘dataspace name’ (name after dropping the suffix <code>.data</code> or <code>.index</code>) be unique.</p>
 <p>Parameters: ncvar: NetCDF variable to convert to a TileDB attribute. name: Name of the new attribute that will be added. If <code>None</code>, the name will be copied from the NetCDF variable. dtype: Numpy dtype of the new attribute. If <code>None</code>, the data type will be copied from the variable. fill: Fill value for unset cells. If <code>None</code>, the fill value will be copied from the NetCDF variable if it has a fill value. var: Specifies if the attribute is variable length (automatic for byte/strings). nullable: Specifies if the attribute is nullable using validity tiles. filters: Specifies compression filters for the attribute. If <code>None</code>, use array’s <code>attrs_filters</code> property. unpack: Unpack NetCDF data that has NetCDF attributes <code>scale_factor</code> or <code>add_offset</code> using the transformation <code>scale_factor * value +         unpack</code>.</p>
 </section>
 <section id="tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.copy" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.copy">copy</h3>
-<p><code>cf.netcdf_engine.NetCDF4ArrayConverter.copy(self, netcdf_group, tiledb_uri, tiledb_key=None, tiledb_ctx=None, tiledb_timestamp=None, assigned_dim_values=None, assigned_attr_values=None, copy_metadata=True)</code></p>
+<p><code>cf.netcdf_engine.NetCDF4ArrayConverter.copy(netcdf_group, tiledb_uri, tiledb_key=None, tiledb_ctx=None, tiledb_timestamp=None, assigned_dim_values=None, assigned_attr_values=None, copy_metadata=True)</code></p>
 <p>Copies data from a NetCDF group to a TileDB CF array.</p>
 <p>Parameters: netcdf_group: The NetCDF group to copy data from. tiledb_uri: The TileDB array uri to copy data into. tiledb_key: If not <code>None</code>, the encryption key for the TileDB array. tiledb_ctx: If not <code>None</code>, the TileDB context wrapper for a TileDB storage manager to use when opening the TileDB array. tiledb_timestamp: If not <code>None</code>, the timestamp to write the TileDB data at. assigned_dim_values: Mapping from dimension name to value for dimensions that are not copied from the NetCDF group. assigned_attr_values: Mapping from attribute name to numpy array of values for attributes that are not copied from the NetCDF group.</p>
 

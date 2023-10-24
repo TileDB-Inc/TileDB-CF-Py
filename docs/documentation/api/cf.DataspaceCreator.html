@@ -295,7 +295,7 @@
 
 <section id="tiledb.cf.DataspaceCreator" class="level1">
 <h1>cf.DataspaceCreator</h1>
-<p><code>cf.core.DataspaceCreator(self)</code></p>
+<p><code>cf.DataspaceCreator(self)</code></p>
 <p>Creator for a group of arrays that satify the CF Dataspace Convention.</p>
 <p>This class can be used directly to create a TileDB group that follows the TileDB CF Dataspace convention. It is also useful as a super class for converters/ingesters of data from sources that follow a NetCDF or NetCDF-like data model to TileDB.</p>
 <section id="methods" class="level2">
@@ -368,87 +368,87 @@
 </table>
 <section id="tiledb.cf.DataspaceCreator.add_array_creator" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.add_array_creator">add_array_creator</h3>
-<p><code>cf.DataspaceCreator.add_array_creator(self, array_name, dims, cell_order='row-major', tile_order='row-major', capacity=0, tiles=None, dim_filters=None, offsets_filters=None, attrs_filters=None, allows_duplicates=False, sparse=False)</code></p>
+<p><code>cf.DataspaceCreator.add_array_creator(array_name, dims, cell_order='row-major', tile_order='row-major', capacity=0, tiles=None, dim_filters=None, offsets_filters=None, attrs_filters=None, allows_duplicates=False, sparse=False)</code></p>
 <p>Adds a new array to the CF dataspace.</p>
 <p>The name of each array must be unique. All other properties should satisfy the same requirements as a <code>tiledb.ArraySchema</code>.</p>
 <p>Parameters: array_name: Name of the new array to be created. dims: An ordered list of the names of the shared dimensions for the domain of this array. cell_order: The order in which TileDB stores the cells on disk inside a tile. Valid values are: <code>row-major</code> (default) or <code>C</code> for row major; <code>col-major</code> or <code>F</code> for column major; or <code>Hilbert</code> for a Hilbert curve. tile_order: The order in which TileDB stores the tiles on disk. Valid values are: <code>row-major</code> or <code>C</code> (default) for row major; or <code>col-major</code> or <code>F</code> for column major. capacity: The number of cells in a data tile of a sparse fragment. tiles: An optional ordered list of tile sizes for the dimensions of the array. The length must match the number of dimensions in the array. dim_filters: A dict from dimension name to a :class:<code>tiledb.FilterList</code> for dimensions in the array. offsets_filters: Filters for the offsets for variable length attributes or dimensions. attrs_filters: Default filters to use when adding an attribute to the array. allows_duplicates: Specifies if multiple values can be stored at the same coordinate. Only allowed for sparse arrays. sparse: Specifies if the array is a sparse TileDB array (true) or dense TileDB array (false).</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.add_attr_creator" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.add_attr_creator">add_attr_creator</h3>
-<p><code>cf.DataspaceCreator.add_attr_creator(self, attr_name, array_name, dtype, fill=None, var=False, nullable=False, filters=None)</code></p>
+<p><code>cf.DataspaceCreator.add_attr_creator(attr_name, array_name, dtype, fill=None, var=False, nullable=False, filters=None)</code></p>
 <p>Adds a new attribute to an array in the CF dataspace.</p>
 <p>The ‘dataspace name’ (name after dropping the suffix <code>.data</code> or <code>.index</code>) must be unique.</p>
 <p>Parameters: attr_name: Name of the new attribute that will be added. array_name: Name of the array the attribute will be added to. dtype: Numpy dtype of the new attribute. fill: Fill value for unset cells. var: Specifies if the attribute is variable length (automatic for byte/strings). nullable: Specifies if the attribute is nullable using validity tiles. filters: Specifies compression filters for the attribute.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.add_shared_dim" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.add_shared_dim">add_shared_dim</h3>
-<p><code>cf.DataspaceCreator.add_shared_dim(self, dim_name, domain, dtype)</code></p>
+<p><code>cf.DataspaceCreator.add_shared_dim(dim_name, domain, dtype)</code></p>
 <p>Adds a new dimension to the CF dataspace.</p>
 <p>Each dimension name must be unique. Adding a dimension where the name, domain, and dtype matches a current dimension does nothing.</p>
 <p>Parameters: dim_name: Name of the new dimension to be created. domain: The (inclusive) interval on which the dimension is valid. dtype: The numpy dtype of the values and domain of the dimension.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.array_creators" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.array_creators">array_creators</h3>
-<p><code>cf.DataspaceCreator.array_creators(self)</code></p>
+<p><code>cf.DataspaceCreator.array_creators()</code></p>
 <p>Iterates over array creators in the CF dataspace.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.create_array" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.create_array">create_array</h3>
-<p><code>cf.DataspaceCreator.create_array(self, uri, key=None, ctx=None)</code></p>
+<p><code>cf.DataspaceCreator.create_array(uri, key=None, ctx=None)</code></p>
 <p>Creates a TileDB array for a CF dataspace with only one array.</p>
 <p>Parameters: uri: Uniform resource identifier for the TileDB array to be created. key: If not <code>None</code>, encryption key to decrypt the array. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.create_group" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.create_group">create_group</h3>
-<p><code>cf.DataspaceCreator.create_group(self, uri, key=None, ctx=None, append=False)</code></p>
+<p><code>cf.DataspaceCreator.create_group(uri, key=None, ctx=None, append=False)</code></p>
 <p>Creates a TileDB group and arrays for the CF dataspace.</p>
 <p>Parameters: uri: Uniform resource identifier for the TileDB group to be created. key: If not <code>None</code>, encryption key, or dictionary of encryption keys, to decrypt arrays. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager. append: If <code>True</code>, add arrays in the dataspace to an already existing group. The arrays in the dataspace cannot be in the group that is being append to.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.get_array_creator" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.get_array_creator">get_array_creator</h3>
-<p><code>cf.DataspaceCreator.get_array_creator(self, array_name)</code></p>
+<p><code>cf.DataspaceCreator.get_array_creator(array_name)</code></p>
 <p>Returns the array creator with the requested name.</p>
 <p>Parameters: array_name: Name of the array to return.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.get_array_creator_by_attr" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.get_array_creator_by_attr">get_array_creator_by_attr</h3>
-<p><code>cf.DataspaceCreator.get_array_creator_by_attr(self, attr_name)</code></p>
+<p><code>cf.DataspaceCreator.get_array_creator_by_attr(attr_name)</code></p>
 <p>Returns the array creator with the requested attribute in it.</p>
 <p>Parameters: attr_name: Name of the attribute to return the array creator with.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.get_shared_dim" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.get_shared_dim">get_shared_dim</h3>
-<p><code>cf.DataspaceCreator.get_shared_dim(self, dim_name)</code></p>
+<p><code>cf.DataspaceCreator.get_shared_dim(dim_name)</code></p>
 <p>Returns the shared dimension with the requested name.</p>
 <p>Parameters: array_name: Name of the array to return.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.remove_array_creator" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.remove_array_creator">remove_array_creator</h3>
-<p><code>cf.DataspaceCreator.remove_array_creator(self, array_name)</code></p>
+<p><code>cf.DataspaceCreator.remove_array_creator(array_name)</code></p>
 <p>Removes the specified array and all its attributes from the CF dataspace.</p>
 <p>Parameters: array_name: Name of the array that will be removed.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.remove_attr_creator" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.remove_attr_creator">remove_attr_creator</h3>
-<p><code>cf.DataspaceCreator.remove_attr_creator(self, attr_name)</code></p>
+<p><code>cf.DataspaceCreator.remove_attr_creator(attr_name)</code></p>
 <p>Removes the specified attribute from the CF dataspace.</p>
 <p>Parameters: attr_name: Name of the attribute that will be removed.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.remove_shared_dim" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.remove_shared_dim">remove_shared_dim</h3>
-<p><code>cf.DataspaceCreator.remove_shared_dim(self, dim_name)</code></p>
+<p><code>cf.DataspaceCreator.remove_shared_dim(dim_name)</code></p>
 <p>Removes the specified dimension from the CF dataspace.</p>
 <p>This can only be used to remove dimensions that are not currently being used in an array.</p>
 <p>Parameters: dim_name: Name of the dimension to be removed.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.shared_dims" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.shared_dims">shared_dims</h3>
-<p><code>cf.DataspaceCreator.shared_dims(self)</code></p>
+<p><code>cf.DataspaceCreator.shared_dims()</code></p>
 <p>Iterators over shared dimensions in the CF dataspace.</p>
 </section>
 <section id="tiledb.cf.DataspaceCreator.to_schema" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.DataspaceCreator.to_schema">to_schema</h3>
-<p><code>cf.DataspaceCreator.to_schema(self, ctx=None)</code></p>
+<p><code>cf.DataspaceCreator.to_schema(ctx=None)</code></p>
 <p>Returns a dictionary of array schemas for the CF dataspace.</p>
 <p>Parameters: ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager.</p>
 

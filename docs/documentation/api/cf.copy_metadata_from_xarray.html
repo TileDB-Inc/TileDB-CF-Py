@@ -276,7 +276,7 @@
 
 <section id="tiledb.cf.copy_metadata_from_xarray" class="level1">
 <h1>cf.copy_metadata_from_xarray</h1>
-<p><code>cf.xarray_engine.copy_metadata_from_xarray(dataset, group_uri, *, config=None, ctx=None, skip_vars=None, copy_group_metadata=True, copy_variable_metadata=True)</code></p>
+<p><code>cf.copy_metadata_from_xarray(dataset, group_uri, *, config=None, ctx=None, skip_vars=None, copy_group_metadata=True, copy_variable_metadata=True)</code></p>
 <p>Copies metadata from an xarray dataset to a TileDB group.</p>
 <p>Parameters: dataset: The xarray Dataset to write. group_uri: The URI to the TileDB group to create or append to. config: A TileDB config object to use for TileDB objects. ctx: A TileDB context object to use for TileDB operations. skip_vars: A set of names of variables not to copy to the group. copy_group_metadata: If true, copy xarray dataset metadata to the TileDB group. copy_variable_metadata: If true, copy xarray variable metadata to the TileDB arrays as TileDB attribute metadata.</p>
 

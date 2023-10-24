@@ -276,7 +276,7 @@
 
 <section id="tiledb.cf.copy_data_from_xarray" class="level1">
 <h1>cf.copy_data_from_xarray</h1>
-<p><code>cf.xarray_engine.copy_data_from_xarray(dataset, group_uri, *, config=None, ctx=None, region=None, skip_vars=None, copy_group_metadata=False, copy_variable_metadata=False)</code></p>
+<p><code>cf.copy_data_from_xarray(dataset, group_uri, *, config=None, ctx=None, region=None, skip_vars=None, copy_group_metadata=False, copy_variable_metadata=False)</code></p>
 <p>Copies data from an xarray dataset to a TileDB group.</p>
 <p>Optionally copies metadata as well as variable data.</p>
 <p>Parameters: dataset: The xarray Dataset to write. group_uri: The URI to the TileDB group to create or append to. config: A TileDB config object to use for TileDB objects. ctx: A TileDB context object to use for TileDB operations. region: A mapping from dimension names to integer slices that specify what regions in the TileDB arrays to write the data. Regions include the first value of the slice and exclude the final value. skip_vars: A set of names of variables not to copy to the TileDB group. copy_group_metadata: If true, copy xarray dataset metadata to the TileDB group. copy_variable_metadata: If true, copy xarray variable metadata to the TileDB arrays as TileDB attribute metadata.</p>

@@ -313,20 +313,20 @@
 </table>
 <section id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata">copy_metadata</h3>
-<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata(self, netcdf_group, tiledb_array)</code></p>
+<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata(netcdf_group, tiledb_array)</code></p>
 <p>Copy the metadata data from NetCDF to TileDB.</p>
 <p>Parameters: netcdf_group: NetCDF group to get the metadata items from. tiledb_array: TileDB array to copy the metadata items to.</p>
 </section>
 <section id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values">get_values</h3>
-<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values(self, netcdf_group, indexer)</code></p>
+<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values(netcdf_group, indexer)</code></p>
 <p>Returns TileDB attribute values from a NetCDF group.</p>
 <p>Parameters: netcdf_group: NetCDF group to get the dimension values from. indexer: Slice to query the NetCDF variable on.</p>
 <p>Returns: The values needed to set an attribute in a TileDB array. If the array is sparse the values will be returned as an 1D array; otherwise, they will be returned as an ND array.</p>
 </section>
 <section id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary" class="level3">
 <h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary">html_summary</h3>
-<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary(self)</code></p>
+<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary()</code></p>
 <p>Returns a string HTML summary of the :class:<code>AttrCreator</code>.</p>
 
 
