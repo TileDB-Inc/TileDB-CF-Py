@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from collections import OrderedDict
+from collections.abc import Sequence
 from io import StringIO
-from typing import Dict, Iterable, Optional, Sequence, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 from typing_extensions import Self
@@ -11,8 +12,12 @@ import tiledb
 
 from ._attr_creator import AttrCreator
 from ._dim_creator import DimCreator
+from ._fragment_writer import FragmentWriter
 from ._shared_dim import SharedDim
 from .registry import RegisteredByNameMixin, Registry
+from .source import FieldData
+
+DenseRange = Union[Tuple[int, int], Tuple[np.datetime64, np.datetime64]]
 
 
 class ArrayDimRegistry:
@@ -107,7 +112,7 @@ class ArrayCreator(RegisteredByNameMixin):
 
         # Initialize the core implementation, the domain creator, and the
         # attribute registry.
-        self._core = self._new_core(dim_registry, dim_order)
+        self._core = self._new_core(sparse, dim_registry, dim_order)
         self._domain_creator = self._new_domain_creator()
         self._attr_registry = ArrayAttrRegistry(self._core)
 
@@ -127,6 +132,9 @@ class ArrayCreator(RegisteredByNameMixin):
 
         # Set name and registry for the array creator.
         super().__init__(name, registry)
+
+    def __getitem__(self, key: Union[int, str]) -> AttrCreator:
+        return self._core.get_attr_creator(key)
 
     def __iter__(self):
         """Returns iterator over attribute creators."""
@@ -154,8 +162,10 @@ class ArrayCreator(RegisteredByNameMixin):
         output.write("  )")
         return output.getvalue()
 
-    def _new_core(self, dataspace_registry, dim_names: Sequence[str]):
-        return ArrayCreatorCore(dataspace_registry, dim_names)
+    def _new_core(
+        self, sparse: bool, dim_registry: Registry[SharedDim], dim_names: Sequence[str]
+    ):
+        return ArrayCreatorCore(sparse, dim_registry, dim_names)
 
     def _new_domain_creator(self):
         return DomainCreator(self._core)
@@ -207,6 +217,73 @@ class ArrayCreator(RegisteredByNameMixin):
             filters=filters,
         )
 
+    def add_dense_fragment_writer(
+        self,
+        target_region: Optional[Tuple[DenseRange, ...]] = None,
+    ):
+        """Add a writer for dense fragments.
+
+        target_region: Optional[Tuple[DenseRange, ...]], default=None
+            Region the fragments are written on. If ``None``, the region is
+            set to the entire domain of the array.
+        """
+        self._core.add_dense_fragment_writer(target_region)
+
+    def add_sparse_fragment_writer(
+        self,
+        *,
+        size: Optional[int] = None,
+        shape: Optional[Tuple[int, ...]] = None,
+        form: str = "coo",
+    ):
+        """Add a writer for sparse fragments.
+
+        There are two valid forms for the sparse writer: "coo" and "row-major".
+
+        For "coo" form, the size is used to define the footprint of the data. This
+        supports a general sparse writes. The full expanded data for each dimension
+        must be provided.
+
+        Example input data for "coo" form on a 2D array:
+           dim1 = [1, 2, 1, 2]
+           dim2 = [3, 3, 4, 4]
+           attr = [1, 2, 3, 4]
+
+        For "row-major" form, a grid of data is provided. The data on each dimension
+        is just the dimension for that part of the grid:
+
+        Example input data for "row-major" form on a 2D array:
+            dim1 = [1, 2]
+            dim2 = [3, 4]
+            attr = [1, 2, 3, 4]
+
+        size: Optional[int], default=None
+        shape: Optional[Tuple[int, ...]], default=None
+        form: str, default="coo"
+            The form for the dimension data. Can either be "coo" (coordinate form) or
+            "row-major".
+        """
+        if size is not None and shape is not None and np.prod(shape) != size:
+            raise ValueError("Mismatch between shape={shape} and size={size}.")
+
+        if form == "coo":
+            if size is None:
+                if shape is None:
+                    raise TypeError(
+                        "Must provided shape or size for writing in 'coo' form."
+                    )
+                size = np.prod(shape)
+            self._core.add_sparse_coo_fragment_writer(size)
+        elif form == "row-major":
+            if shape is None:
+                raise ValueError("Must set shape when using form 'row-major'.")
+            self._core.add_sparse_row_major_fragment_writer(shape)
+        else:
+            raise ValueError(
+                f"'{form}' is not a valid value for 'form'. Valid options include: "
+                f"'coo', 'row-major'."
+            )
+
     def create(
         self, uri: str, key: Optional[str] = None, ctx: Optional[tiledb.Ctx] = None
     ):
@@ -218,6 +295,28 @@ class ArrayCreator(RegisteredByNameMixin):
             ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
         tiledb.Array.create(uri=uri, schema=self.to_schema(ctx), key=key, ctx=ctx)
+
+    def write(
+        self,
+        uri: str,
+        *,
+        key: Optional[str] = None,
+        ctx: Optional[tiledb.Ctx] = None,
+        timestamp: Optional[int] = None,
+        append: bool = False,
+        skip_metadata: bool = False,
+        writer_indices: Optional[Iterable[int]] = None,
+    ):
+        if not append:
+            self.create(uri, key=key, ctx=ctx)
+        with tiledb.open(uri, key=key, ctx=ctx, timestamp=timestamp, mode="w") as array:
+            if writer_indices is None:
+                for frag_writer in self._core.fragment_writers():
+                    frag_writer.write(array, skip_metadata=skip_metadata)
+            else:
+                for index in writer_indices:
+                    frag_writer = self._core.get_fragment_writer(index)
+                    frag_writer.write(array, skip_metadata=skip_metadata)
 
     @property
     def domain_creator(self) -> DomainCreator:
@@ -293,6 +392,14 @@ class ArrayCreator(RegisteredByNameMixin):
         """
         return self._core.deregister_attr_creator(attr_name)
 
+    @property
+    def sparse(self) -> bool:
+        return self._core.sparse
+
+    @sparse.setter
+    def sparse(self, is_sparse: bool):
+        self._core.sparse = is_sparse
+
     def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.ArraySchema:
         """Returns an array schema for the array.
 
@@ -317,15 +424,51 @@ class ArrayCreator(RegisteredByNameMixin):
 
 
 class ArrayCreatorCore:
-    def __init__(self, dim_registry: Registry[SharedDim], array_dims: Sequence[str]):
+    def __init__(
+        self, sparse: bool, dim_registry: Registry[SharedDim], array_dims: Sequence[str]
+    ):
+        self._sparse = sparse
         self._dim_registry = dim_registry
         self._dim_creators = tuple(
             self._new_dim_creator(dim_name) for dim_name in array_dims
         )
         self._attr_creators: Dict[str, AttrCreator] = OrderedDict()
+        self._fragment_writers: List[FragmentWriter] = list()
 
     def _new_dim_creator(self, dim_name: str, **kwargs):
-        return DimCreator(self._dim_registry[dim_name], **kwargs)
+        return DimCreator(
+            self._dim_registry[dim_name], registry=DomainDimRegistry(self), **kwargs
+        )
+
+    def add_dense_fragment_writer(
+        self,
+        target_region: Optional[Tuple[Tuple[int, int], ...]],
+    ):
+        self._fragment_writers.append(
+            FragmentWriter.create_dense(
+                dims=tuple(dim.base for dim in self._dim_creators),
+                attr_names=self._attr_creators.keys(),
+                target_region=target_region,
+            )
+        )
+
+    def add_sparse_coo_fragment_writer(self, size: int):
+        self._fragment_writers.append(
+            FragmentWriter.create_sparse_coo(
+                dims=tuple(dim.base for dim in self._dim_creators),
+                attr_names=self._attr_creators.keys(),
+                size=size,
+            )
+        )
+
+    def add_sparse_row_major_fragment_writer(self, shape: Tuple[int, ...]):
+        self._fragment_writers.append(
+            FragmentWriter.create_sparse_row_major(
+                dims=tuple(dim.base for dim in self._dim_creators),
+                attr_names=self._attr_creators.keys(),
+                shape=shape,
+            )
+        )
 
     def attr_creators(self):
         """Iterates over attribute creators in the array creator."""
@@ -347,10 +490,16 @@ class ArrayCreatorCore:
     def deregister_attr_creator(self, attr_name: str):
         """Removes an attribute from the group."""
         del self._attr_creators[attr_name]
+        for frag_writer in self._fragment_writers:
+            frag_writer.remove_attr(attr_name)
 
     def dim_creators(self):
         """Iterates over dimension creators in the array creator."""
         return iter(self._dim_creators)
+
+    def fragment_writers(self):
+        """Iterates over fragmetn writers in the array creator."""
+        return iter(self._fragment_writers)
 
     def get_attr_creator(self, key: Union[str, int]) -> AttrCreator:
         """Returns the requested attribute creator.
@@ -390,6 +539,9 @@ class ArrayCreatorCore:
                 return index
         raise KeyError(f"Dimension creator with name '{dim_name}' not found.")
 
+    def get_fragment_writer(self, index: int) -> FragmentWriter:
+        return self._fragment_writers[index]
+
     def has_attr_creator(self, name: str) -> bool:
         """Returns if an attribute creator with the requested name is in the array
         creator
@@ -401,6 +553,11 @@ class ArrayCreatorCore:
 
     def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Add an additional dimension into the domain of the array."""
+        if len(self._fragment_writers) > 0:
+            raise NotImplementedError(
+                "Injecting a dimension on an array that already has fragment writers "
+                "is not implemented."
+            )
         dim_creator = self._new_dim_creator(dim_name, **dim_kwargs)
         if dim_creator.name in {dim_creator.name for dim_creator in self._dim_creators}:
             raise ValueError(
@@ -430,10 +587,16 @@ class ArrayCreatorCore:
     def ndim(self) -> int:
         return len(self._dim_creators)
 
+    @property
+    def nwriter(self) -> int:
+        return len(self._fragment_writers)
+
     def register_attr_creator(self, attr_creator):
         self.check_new_attr_name(attr_creator.name)
         attr_name = attr_creator.name
         self._attr_creators[attr_name] = attr_creator
+        for frag_writer in self._fragment_writers:
+            frag_writer.add_attr(attr_name)
 
     def remove_dim_creator(self, dim_index: int):
         """Remove a dim creator from the array.
@@ -443,6 +606,11 @@ class ArrayCreatorCore:
             position: Position of the shared dimension. Negative values count backwards
                 from the end of the new number of dimensions.
         """
+        if len(self._fragment_writers) > 0:
+            raise NotImplementedError(
+                "Removing a dimension on an array that already has fragment writers "
+                "is not implemented."
+            )
         index = dim_index + self.ndim if dim_index < 0 else dim_index
         if index < 0 or index >= self.ndim:
             raise IndexError(
@@ -451,6 +619,46 @@ class ArrayCreatorCore:
         self._dim_creators = (
             self._dim_creators[:dim_index] + self._dim_creators[dim_index + 1 :]
         )
+
+    def set_writer_attr_data(
+        self, writer_index: Optional[int], attr_name: str, data: FieldData
+    ):
+        if writer_index is None:
+            if self.nwriter > 1:
+                raise ValueError(
+                    "Must specify `writer_index` for array with multiple writers."
+                )
+            writer_index = 0
+        self._fragment_writers[writer_index].set_attr_data(attr_name, data)
+
+    def set_writer_dim_data(
+        self, writer_index: Optional[int], dim_name: str, data: FieldData
+    ):
+        if writer_index is None:
+            if self.nwriter > 1:
+                raise ValueError(
+                    "Must specify `writer_index` for array with multiple writers."
+                )
+            writer_index = 0
+        self._fragment_writers[writer_index].set_dim_data(dim_name, data)
+
+    @property
+    def sparse(self) -> bool:
+        return self._sparse
+
+    @sparse.setter
+    def sparse(self, is_sparse: bool):
+        if is_sparse is self._sparse:
+            # No-op
+            return
+        if is_sparse is False and any(
+            not writer.is_dense_region for writer in self._fragment_writers
+        ):
+            raise ValueError(
+                "Cannot convert an array with a sparse fragment writer to a dense "
+                "array."
+            )
+        self._sparse = is_sparse
 
     def update_attr_creator_name(self, original_name: str, new_name: str):
         """Renames an attribute in the array.
@@ -479,9 +687,24 @@ class ArrayAttrRegistry:
             value.name = name
         self._core.register_attr_creator(value)
 
+    def set_writer_data(
+        self, writer_index: Optional[int], attr_name: str, data: FieldData
+    ):
+        self._core.set_writer_attr_data(writer_index, attr_name, data)
+
     def rename(self, old_name: str, new_name: str):
         self._core.check_new_attr_name(new_name)
         self._core.update_attr_creator_name(old_name, new_name)
+
+
+class DomainDimRegistry:
+    def __init__(self, array_core: ArrayCreatorCore):
+        self._core = array_core
+
+    def set_writer_data(
+        self, writer_index: Optional[int], dim_name: str, data: FieldData
+    ):
+        self._core.set_writer_dim_data(writer_index, dim_name, data)
 
 
 class DomainCreator:
@@ -489,6 +712,10 @@ class DomainCreator:
 
     def __init__(self, array_core: ArrayCreatorCore):
         self._core = array_core
+        self._dim_registry = DomainDimRegistry(self._core)
+
+    def __getitem__(self, key: Union[int, str]):
+        return self._core.get_dim_creator(key)
 
     def __iter__(self):
         return self._core.dim_creators()

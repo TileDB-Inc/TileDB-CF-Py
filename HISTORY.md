@@ -10,6 +10,9 @@
 
 ### New Features
 
+* Adds the ability to write fragments to the ArrayCreator.
+* Adds __getitem__ method to ArrayCreator.
+
 ### Improvements
 
 ## 0.9.0

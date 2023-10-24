@@ -421,11 +421,6 @@ class TestConvertNetCDFSimpleCoord1(ConvertNetCDFBase):
         tile = domain_creator.dim_creator(0).tile
         assert tile == 100.0
 
-    def test_convert_coordinate_domain_not_set_error(self, netcdf_file):
-        converter = NetCDF4ConverterEngine.from_file(netcdf_file, coords_to_dims=True)
-        with pytest.raises(ValueError):
-            converter.to_schema()
-
 
 class TestConvertNetCDFMultiCoords(ConvertNetCDFBase):
     """NetCDF conversion test cases for a NetCDF file with a coordinate variable.

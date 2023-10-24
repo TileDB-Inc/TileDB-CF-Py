@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Optional, Tuple
 
 import numpy as np
+from tiledb.datatypes import DataType
 from typing_extensions import Self
 
 from .._utils import DType
@@ -22,13 +23,13 @@ class SharedDim(RegisteredByNameMixin):
     ):
         self._name = name
         self.domain = domain
-        self.dtype = np.dtype(dtype)
+        self.dtype = DataType.from_numpy(dtype).np_dtype
         super().__init__(name, registry)
 
     def __eq__(self, other):
-        if not isinstance(other, self.__class__):
-            return False
-        if not isinstance(self, other.__class__):
+        if not isinstance(other, self.__class__) or not isinstance(
+            self, other.__class__
+        ):
             return False
         return (
             self.name == other.name

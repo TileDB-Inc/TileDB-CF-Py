@@ -3,11 +3,20 @@ from __future__ import annotations
 from typing import Optional, Tuple, Union
 
 import numpy as np
+from typing_extensions import Protocol
 
 import tiledb
 
 from .._utils import DType
 from ._shared_dim import SharedDim
+from .source import FieldData, create_field_data
+
+
+class DimRegistry(Protocol):
+    def set_writer_data(
+        self, writer_index: Optional[int], dim_name: str, data: FieldData
+    ):
+        """Set the data to the requested frgament writer."""
 
 
 class DimCreator:
@@ -24,10 +33,12 @@ class DimCreator:
         *,
         tile: Optional[Union[int, float]] = None,
         filters: Optional[Union[tiledb.FilterList]] = None,
+        registry: Optional[DimRegistry] = None,
     ):
         self._base = base
         self.tile = tile
         self.filters = filters
+        self._registry = registry
 
     def __repr__(self):
         filters_str = ""
@@ -71,6 +82,17 @@ class DimCreator:
         """Name of the dimension."""
         return self._base.name
 
+    def set_writer_data(
+        self,
+        dim_data: Union[np.ndarray, FieldData],
+        *,
+        writer_index: Optional[int] = None,
+    ):
+        if self._registry is None:
+            raise ValueError("Dimension creator is not registered to an array.")
+        data = create_field_data(dim_data, self.dtype)
+        self._registry.set_writer_data(writer_index, self.name, data)
+
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
         """Returns a :class:`tiledb.Dim` using the current properties.
 
@@ -80,11 +102,6 @@ class DimCreator:
         Returns:
             A tiledb dimension with the set properties.
         """
-        if self.domain is None:
-            raise ValueError(
-                f"Cannot create a TileDB dimension for dimension '{self.name}'. No "
-                f"domain is set."
-            )
         return tiledb.Dim(
             name=self.name,
             domain=self.domain,

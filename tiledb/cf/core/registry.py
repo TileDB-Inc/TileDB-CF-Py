@@ -11,20 +11,19 @@ T = TypeVar("T")
 
 class Registry(Protocol[T]):
     def __delitem__(self, name: str):
-        ...
+        """Delete the element with the provided name."""
 
     def __getitem__(self, name: str) -> T:
-        ...
+        """Get the element with the provided name."""
 
     def __setitem__(self, name: str, value: T):
-        ...
+        """Set the elemetn with the provided name to the provided value."""
 
     def rename(self, old_name: str, new_name: str):
         """Rename an element of the registry.
 
         If the rename fails, the registry should be left unchanged.
         """
-        ...
 
 
 class RegisteredByNameMixin:

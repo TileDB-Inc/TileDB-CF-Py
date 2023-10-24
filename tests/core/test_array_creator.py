@@ -376,3 +376,22 @@ def test_remove_dim_creator_name_key_error():
     creator = ArrayCreator(dim_order=("x0", "x1", "x2"), shared_dims=shared_dims)
     with pytest.raises(KeyError):
         creator.domain_creator.remove_dim_creator("x4")
+
+
+def test_change_sparsity_value_error():
+    creator = ArrayCreator(
+        dim_order=("x1"), shared_dims=[SharedDim("x1", (0, 7), np.uint32)], sparse=True
+    )
+    creator.add_sparse_fragment_writer(size=5)
+    with pytest.raises(ValueError):
+        creator.sparse = False
+
+
+def test_remove_attr():
+    creator = ArrayCreator(
+        dim_order=("x1"), shared_dims=[SharedDim("x1", (0, 7), np.uint32)], sparse=True
+    )
+    creator.add_attr_creator("y1", dtype=np.float64)
+    creator.add_dense_fragment_writer()
+    creator.remove_attr_creator("y1")
+    assert creator.nattr == 0
