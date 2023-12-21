@@ -18,19 +18,25 @@ from ._dim_converters import NetCDF4ToDimBase, NetCDF4ToDimConverter
 class NetCDF4ArrayConverter(ArrayCreator):
     """Converter for a TileDB array from a collection of NetCDF variables.
 
-    Attributes:
-        cell_order: The order in which TileDB stores the cells on disk inside a
-            tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
-            ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert curve.
-        tile_order: The order in which TileDB stores the tiles on disk. Valid values
-            are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
-            ``F`` for column major.
-        capacity: The number of cells in a data tile of a sparse fragment.
-        offsets_filters: Filters for the offsets for variable length attributes or
-            dimensions.
-        attrs_filters: Default filters to use when adding an attribute to the array.
-        allows_duplicates: Specifies if multiple values can be stored at the same
-             coordinate. Only allowed for sparse arrays.
+    Attributes
+    ----------
+    cell_order
+        The order in which TileDB stores the cells on disk inside a tile. Valid values
+        are: ``row-major`` (default) or ``C`` for row major; ``col-major`` or ``F`` for
+        column major; or ``Hilbert`` for a Hilbert curve.
+    tile_order
+        The order in which TileDB stores the tiles on disk. Valid values are:
+        ``row-major`` or ``C`` (default) for row major; or ``col-major`` or  ``F`` for
+        column major.
+    capacity
+        The number of cells in a data tile of a sparse fragment.
+    offsets_filters
+        Filters for the offsets for variable length attributes or dimensions.
+    attrs_filters
+        Default filters to use when adding an attribute to the array.
+    allows_duplicates
+        Specifies if multiple values can be stored at the same coordinate. Only allowed
+        for sparse arrays.
     """
 
     def _copy_to_array(
@@ -43,14 +49,20 @@ class NetCDF4ArrayConverter(ArrayCreator):
     ):
         """Copies data from a NetCDF group to a TileDB CF array.
 
-        Parameters:
-            netcdf_group: The NetCDF group to copy data from.
-            tiledb_array: The TileDB array to  copy data to.
-            indexer: Slices defining what values to copy for each dimension.
-            assigned_dim_values: Mapping from dimension name to value for dimensions
-                that are not copied from the NetCDF group.
-            assigned_attr_values: Mapping from attribute name to numpy array of values
-                for attributes that are not copied from the NetCDF group.
+        Parameters
+        ----------
+        netcdf_group
+            The NetCDF group to copy data from.
+        tiledb_array
+            The TileDB array to  copy data to.
+        indexer
+            Slices defining what values to copy for each dimension.
+        assigned_dim_values
+            Mapping from dimension name to value for dimensions that are not copied from
+            the NetCDF group.
+        assigned_attr_values
+            Mapping from attribute name to numpy array of values for attributes that are
+            not copied from the NetCDF group.
         """
         assert len(indexer) == self.ndim, "indexer has incorrect number of values"
         netcdf_indexer = tuple(
@@ -102,22 +114,29 @@ class NetCDF4ArrayConverter(ArrayCreator):
         The attribute's 'dataspace name' (name after dropping the suffix ``.data`` or
         ``.index``) be unique.
 
-        Parameters:
-            ncvar: NetCDF variable to convert to a TileDB attribute.
-            name: Name of the new attribute that will be added. If ``None``, the name
-                will be copied from the NetCDF variable.
-            dtype: Numpy dtype of the new attribute. If ``None``, the data type will be
-                copied from the variable.
-            fill: Fill value for unset cells. If ``None``, the fill value will be
-                copied from the NetCDF variable if it has a fill value.
-            var: Specifies if the attribute is variable length (automatic for
-                byte/strings).
-            nullable: Specifies if the attribute is nullable using validity tiles.
-            filters: Specifies compression filters for the attribute. If ``None``, use
-                array's ``attrs_filters`` property.
-            unpack: Unpack NetCDF data that has NetCDF attributes ``scale_factor`` or
-                ``add_offset`` using the transformation ``scale_factor * value +
-                unpack``.
+        Parameters
+        ----------
+        ncvar
+            NetCDF variable to convert to a TileDB attribute.
+        name
+            Name of the new attribute that will be added. If ``None``, the name will be
+            copied from the NetCDF variable.
+        dtype
+            Numpy dtype of the new attribute. If ``None``, the data type will be copied
+            from the variable.
+        fill
+            Fill value for unset cells. If ``None``, the fill value will be copied from
+            the NetCDF variable if it has a fill value.
+        var
+            Specifies if the attribute is variable length (automatic for byte/strings).
+        nullable
+            Specifies if the attribute is nullable using validity tiles.
+        filters
+            Specifies compression filters for the attribute. If ``None``, use array's
+            ``attrs_filters`` property.
+        unpack
+            Unpack NetCDF data that has NetCDF attributes ``scale_factor`` or
+            ``add_offset`` using the transformation ``scale_factor * value + unpack``.
         """
         if ncvar.dimensions != self.domain_creator.netcdf_dims:
             raise ValueError(
@@ -153,18 +172,27 @@ class NetCDF4ArrayConverter(ArrayCreator):
     ):
         """Copies data from a NetCDF group to a TileDB CF array.
 
-        Parameters:
-            netcdf_group: The NetCDF group to copy data from.
-            tiledb_uri: The TileDB array uri to copy data into.
-            tiledb_key: If not ``None``, the encryption key for the TileDB array.
-            tiledb_ctx: If not ``None``, the TileDB context wrapper for a TileDB
-                storage manager to use when opening the TileDB array.
-            tiledb_timestamp: If not ``None``, the timestamp to write the TileDB data
-                at.
-            assigned_dim_values: Mapping from dimension name to value for dimensions
-                that are not copied from the NetCDF group.
-            assigned_attr_values: Mapping from attribute name to numpy array of values
-                for attributes that are not copied from the NetCDF group.
+        Parameters
+        ----------
+        netcdf_group
+            The NetCDF group to copy data from.
+        tiledb_uri
+            The TileDB array uri to copy data into.
+        tiledb_key
+            If not ``None``, the encryption key for the TileDB array.
+        tiledb_ctx
+            If not ``None``, the TileDB context wrapper for a TileDB storage manager to
+            use when opening the TileDB array.
+        tiledb_timestamp
+            If not ``None``, the timestamp to write the TileDB data at.
+        assigned_dim_values
+            Mapping from dimension name to value for dimensions that are not copied
+            from the NetCDF group.
+        assigned_attr_values
+            Mapping from attribute name to numpy array of values for attributes that
+            are not copied from the NetCDF group.
+        copy_metadata
+            If ``False``, do not copy the metadata from netCDF.
         """
         dim_slices = tuple(
             dim_creator.get_fragment_indices(netcdf_group)
@@ -202,11 +230,15 @@ class NetCDF4ArrayConverterCore(ArrayCreatorCore):
     def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Add an additional dimension into the domain of the array.
 
-        Parameters:
-            dim_name: Name of the shared dimension to add to the array's domain.
-            position: Position of the shared dimension. Negative values count backwards
-                from the end of the new number of dimensions.
-            dim_kwargs: Keyword arguments to pass to :class:`NetCDF4ToDimConverter`.
+        Parameters
+        ----------
+        dim_name
+            Name of the shared dimension to add to the array's domain.
+        position
+            Position of the shared dimension. Negative values count backwards from the
+            end of the new number of dimensions.
+        dim_kwargs
+            Keyword arguments to pass to ``NetCDF4ToDimConverter``.
         """
         dim_creator = self._new_dim_creator(dim_name, **dim_kwargs)
         if dim_creator.is_from_netcdf:
@@ -251,11 +283,15 @@ class NetCDF4DomainConverter(DomainCreator):
     ):
         """Returns the coordinates used to copy data from a NetCDF group.
 
-        Parameters:
-            netcdf_group: Group to query the data from.
-            sparse: If ``True``, return coordinates for a sparse write. If ``False``,
-                return coordinates for a dense write.
-            assigned_dim_values: Values for any non-NetCDF dimensions.
+        Parameters
+        ----------
+        netcdf_group
+            Group to query the data from.
+        sparse
+            If ``True``, return coordinates for a sparse write. If ``False``, return
+            coordinates for a dense write.
+        assigned_dim_values
+            Values for any non-NetCDF dimensions.
         """
         if len(indexer) != self.ndim:
             raise ValueError(
@@ -279,11 +315,15 @@ class NetCDF4DomainConverter(DomainCreator):
     def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Add an additional dimension into the domain of the array.
 
-        Parameters:
-            dim_name: Name of the shared dimension to add to the array's domain.
-            position: Position of the shared dimension. Negative values count backwards
-                from the end of the new number of dimensions.
-            dim_kwargs: Keyword arguments to pass to :class:`NetCDF4ToDimConverter`.
+        Parameters
+        ----------
+        dim_name
+            Name of the shared dimension to add to the array's domain.
+        position
+            Position of the shared dimension. Negative values count backwards from the
+            end of the new number of dimensions.
+        dim_kwargs
+            Keyword arguments to pass to :class:`NetCDF4ToDimConverter`.
         """
         self._core.inject_dim_creator(dim_name, position, **dim_kwargs)
 
@@ -319,8 +359,10 @@ class NetCDF4DomainConverter(DomainCreator):
     def remove_dim_creator(self, dim_id: Union[str, int]):
         """Removes a dimension creator from the array creator.
 
-        Parameters:
-            dim_id: dimension index (int) or name (str)
+        Parameters
+        ----------
+        dim_id
+            dimension index (int) or name (str)
         """
         index = (
             dim_id

@@ -36,11 +36,18 @@ def get_netcdf_metadata(
     key exists but is not a numpy number, then a warning is raised. If the key exists
     and is an array of length 1, the scalar value is returned.
 
-    Parameters:
-        key: NetCDF attribute name to return.
-        default: Default value to return if the attribute is not found.
+    Parameters
+    ----------
+    key
+        NetCDF attribute name to return.
+    default
+        Default value to return if the attribute is not found.
+    is_number
+        If ``True``, the result is only returned if it is a numpy number.
 
-    Returns:
+    Returns
+    -------
+    Any
         The NetCDF attribute value, if found. Otherwise, return the default value.
     """
     if key in netcdf_item.ncattrs():
@@ -68,8 +75,15 @@ def get_unpacked_dtype(variable: netCDF4.Variable) -> np.dtype:
     """Returns the Numpy data type of a variable after it has been unpacked by applying
     any scale_factor or add_offset.
 
-    Parameters:
-        variable: The NetCDF variable to get the unpacked data type of.
+    Parameters
+    ----------
+    variable
+        The NetCDF variable to get the unpacked data type of.
+
+    Returns
+    -------
+    np.dtype
+        The unpacked data from the NetCDF variable.
     """
     input_dtype = np.dtype(variable.dtype)
     if not np.issubdtype(input_dtype, np.number):
@@ -95,12 +109,22 @@ def get_variable_values(
 ) -> np.ndarray:
     """Returns the values for a NetCDF variable at the requested indices.
 
-    Parameters:
-        variable: NetCDF variable to get values from.
-        indexer: Sequence of slices used to index the NetCDF variable.
-        fill: If not ``None``, the fill value to use for the output data.
-        unpack: If ``True``, unpack the variable if it contains a ``scale_factor``
-            or ``add_offset``.
+    Parameters
+    ----------
+    variable
+        NetCDF variable to get values from.
+    indexer
+        Sequence of slices used to index the NetCDF variable.
+    fill
+        If not ``None``, the fill value to use for the output data.
+    unpack
+        If ``True``, unpack the variable if it contains a ``scale_factor`` or
+        ``add_offset``.
+
+    Returns
+    -------
+    np.ndarray
+        The data from the NetCDF variable.
     """
     values = variable.getValue() if variable.ndim == 0 else variable[indexer]
     netcdf_fill = get_netcdf_metadata(variable, "_FillValue")
@@ -122,9 +146,20 @@ def get_variable_chunks(
     """
     Returns the chunks from a NetCDF variable if chunked and ``None`` otherwise.
 
-
     If one of the dimensions has a unlimited dimension, the chunk size will be
     reduced to the unlimited_dim_size.
+
+    Parameters
+    ----------
+    variable
+        The variable to get chunks from.
+    unlimited_dim_size
+        The size to use for unlimited dimensions.
+
+    Returns
+    -------
+    Tuple[int, ...], optional
+        Chunks from the NetCDF variable if it is chunked and ``None`` otherwise.
     """
     chunks = variable.chunking()
     if chunks is None or chunks == "contiguous":
@@ -148,11 +183,15 @@ def open_netcdf_group(
     If both an input file and group are provided, this function will prioritize
     opening from the group.
 
-    Parameters:
-        group: A NetCDF group to read from.
-        input_file: A NetCDF file to read from.
-        group_path: The path to the NetCDF group to read from in a NetCDF file. Use
-            ``'/'`` to specify the root group.
+    Parameters
+    ----------
+    group
+        A NetCDF group to read from.
+    input_file
+        A NetCDF file to read from.
+    group_path
+        The path to the NetCDF group to read from in a NetCDF file. Use ``'/'`` to
+        specify the root group.
     """
     if group is not None:
         if not isinstance(group, (netCDF4.Dataset, netCDF4.Group)):

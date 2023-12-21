@@ -19,12 +19,26 @@ from ._utils import get_unpacked_dtype, get_variable_values, safe_set_metadata
 
 
 class NetCDF4ToDimConverter(DimCreator):
-    """Converter from NetCDF to a TileDB dimension in a :class:`NetCDF4ArrayConverter`
-    using a :class:`SharedDim` for the base dimension.
+    """Converter from NetCDF to a TileDB dimension in a ``NetCDF4ArrayConverter``
+    using a ``SharedDim`` for the base dimension.
 
-    Attributes:
-        tile: The tile size for the dimension.
-        filters: Specifies compression filters for the dimension.
+    Parameters
+    ----------
+    base
+        The core shared dimension describing the dimension.
+    tile
+        The tile size for the dimension.
+    filters
+        Specifies compression filters for the dimension.
+    max_fragment_length
+        The size of the maximum length.
+
+    Attributes
+    ----------
+    tile
+        The tile size for the dimension.
+    filters
+        Specifies compression filters for the dimension.
     """
 
     def __init__(
@@ -56,10 +70,14 @@ class NetCDF4ToDimConverter(DimCreator):
         """Returns a sequence of slices for copying chunks of the dimension data for
         each TileDB fragment.
 
-        Parameters:
-            netcdf_group: NetCDF group to copy the data from.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to copy the data from.
 
-        Returns:
+        Returns
+        -------
+        Iterable[slice]
             A sequence of slices for copying chunks of the dimension data for each
             TileDB fragment.
         """
@@ -81,6 +99,19 @@ class NetCDF4ToDimConverter(DimCreator):
         indexer: slice,
         assigned_dim_values: Optional[Dict[str, Any]],
     ):
+        """Returns the coordinates for querying the array.
+
+        Parameters
+        ----------
+        netcdf_group
+            The netcdf group to get the data from.
+        sparse
+            The sparsity of the array.
+        indexer
+            The slice to indices on.
+        assigned_dim_values
+            Input dimension values for non-NetCDF dimensions.
+        """
         if assigned_dim_values is not None and self.name in assigned_dim_values:
             if self.is_from_netcdf:
                 raise NotImplementedError(
@@ -134,17 +165,22 @@ class NetCDF4ToDimBase(SharedDim):
     def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
         """Copy the metadata data from NetCDF to TileDB.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the metadata items from.
-            tiledb_array: TileDB array to copy the metadata items to.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the metadata items from.
+        tiledb_array
+            TileDB array to copy the metadata items to.
         """
 
     @abstractmethod
     def get_query_size(self, netcdf_group: netCDF4.Dataset):
         """Returns the number of coordinates to copy from NetCDF to TileDB.
 
-        Parameters:
-            netcdf_group: NetCDF group to copy the data from.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to copy the data from.
         """
 
     @abstractmethod
@@ -153,27 +189,56 @@ class NetCDF4ToDimBase(SharedDim):
     ) -> Union[np.ndarray, slice]:
         """Returns values from a NetCDF group that will be copied to TileDB.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the values from.
-            sparse: ``True`` if copying into a sparse array and ``False`` if copying
-                into a dense array.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the values from.
+        sparse
+            ``True`` if copying into a sparse array and ``False`` if copying into a
+            dense array.
+        indexer
+            The slice to indices on.
 
-        Returns:
+        Returns
+        -------
+        np.ndarray or slice
             The coordinates needed for querying the create TileDB dimension in the form
-                of a numpy array if sparse is ``True`` and a slice otherwise.
+            of a numpy array if sparse is ``True`` and a slice otherwise.
         """
 
 
 class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
     """Converter for a NetCDF variable/dimension pair to a TileDB dimension.
 
-    Attributes:
-        name: Name of the TileDB dimension.
-        domain: The (inclusive) interval on which the dimension is valid.
-        dtype: The numpy dtype of the values and domain of the dimension.
-        input_dim_name: The name of input NetCDF dimension.
-        input_var_name: The name of input NetCDF variable.
-        input_var_dtype: The numpy dtype of the input NetCDF variable.
+    Parameters
+    ----------
+    name
+        Name of the TileDB dimension.
+    domain
+        The (inclusive) interval on which the dimension is valid.
+    dtype
+        The numpy dtype of the values and domain of the dimension.
+    input_dim_name
+        The name of input NetCDF dimension.
+    input_var_name
+        The name of input NetCDF variable.
+    input_var_dtype
+        The numpy dtype of the input NetCDF variable.
+
+    Attributes
+    ----------
+    name
+        Name of the TileDB dimension.
+    domain
+        The (inclusive) interval on which the dimension is valid.
+    dtype
+        The numpy dtype of the values and domain of the dimension.
+    input_dim_name
+        The name of input NetCDF dimension.
+    input_var_name
+        The name of input NetCDF variable.
+    input_var_dtype
+        The numpy dtype of the input NetCDF variable.
     """
 
     def __init__(
@@ -227,9 +292,12 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
     def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
         """Copy the metadata data from NetCDF to TileDB.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the metadata items from.
-            tiledb_array: TileDB array to copy the metadata items to.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the metadata items from.
+        tiledb_array
+            TileDB array to copy the metadata items to.
         """
         variable = self._get_ncvar(netcdf_group)
         dim_meta = DimMetadata(tiledb_array.meta, self.name)
@@ -249,6 +317,23 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
         unpack: bool = False,
         registry: Optional[Registry[Self]] = None,
     ):
+        """Create the dimension from a NetCDF variable.
+
+        Parameters
+        ----------
+        ncvar
+            Input netCDF variable.
+        name
+            Name to use for the attribute. If ``None``, use the NetCDF variable name.
+        domain
+            Domain to use for the dimension.
+        dtype
+            The datatype of the attribute. If ``None``, use the NetCDF variable dtype.
+        unpack
+            If ``True``, unpack the NetCDF variable before converting.
+        registry
+            The registry for the attribute creator.
+        """
         if len(ncvar.dimensions) != 1:
             raise ValueError(
                 f"Cannot create dimension from variable '{ncvar.name}' with shape "
@@ -271,8 +356,10 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
     def get_query_size(self, netcdf_group: netCDF4.Dataset):
         """Returns the number of coordinates to copy from NetCDF to TileDB.
 
-        Parameters:
-            netcdf_group: NetCDF group to copy the data from.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to copy the data from.
         """
         variable = self._get_ncvar(netcdf_group)
         return variable.get_dims()[0].size
@@ -281,14 +368,21 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
         """Returns the values of the NetCDF coordinate that is being copied, or
         None if the coordinate is of size 0.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the coordinate values from.
-            sparse: ``True`` if copying into a sparse array and ``False`` if copying
-                into a dense array.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the coordinate values from.
+        sparse
+            ``True`` if copying into a sparse array and ``False`` if copying into a
+            dense array.
+        indexer
+            The slice to indices on.
 
-        Returns:
+        Returns
+        -------
+        np.ndarray or None
             The coordinate values needed for querying the TileDB dimension in the
-                form a numpy array.
+            form a numpy array.
         """
         if indexer.step not in {1, None}:
             raise ValueError("Dimension indexer must have step size of 1.")
@@ -320,13 +414,35 @@ class NetCDF4CoordToDimConverter(NetCDF4ToDimBase):
 class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
     """Converter for a NetCDF dimension to a TileDB dimension.
 
-    Attributes:
-        name: Name of the TileDB dimension.
-        domain: The (inclusive) interval on which the dimension is valid.
-        dtype: The numpy dtype of the values and domain of the dimension.
-        input_dim_name: Name of the input NetCDF variable.
-        input_dim_size: Size of the input NetCDF variable.
-        is_unlimited: If True, the input NetCDF variable is unlimited.
+    Parameters
+    ----------
+    name
+        Name of the TileDB dimension.
+    domain
+        The (inclusive) interval on which the dimension is valid.
+    dtype
+        The numpy dtype of the values and domain of the dimension.
+    input_dim_name
+        Name of the input NetCDF variable.
+    input_dim_size
+        Size of the input NetCDF variable.
+    is_unlimited
+        If True, the input NetCDF variable is unlimited.
+
+    Attributes
+    ----------
+    name
+        Name of the TileDB dimension.
+    domain
+        The (inclusive) interval on which the dimension is valid.
+    dtype
+        The numpy dtype of the values and domain of the dimension.
+    input_dim_name
+        Name of the input NetCDF dimension
+    input_dim_size
+        Size of the input NetCDF dimension.
+    is_unlimited
+        If True, the input NetCDF dimension is unlimited.
     """
 
     def __init__(
@@ -382,6 +498,22 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
         name: Optional[str] = None,
         registry: Optional[Registry[Self]] = None,
     ):
+        """Create the dimension creator from a NetCDF dimension
+
+        Parameters
+        ----------
+        dim
+            Input NetCDF dimension.
+        unlimited_dim_size
+            Size to create the domain for an unlimited dimension.
+        dtype
+            Datatype to use for the dimension.
+        name
+            The name to use for the dimension. If not provided, use the name from the
+            NetCDF dimension.
+        registry
+            The registry for the dimension creator.
+        """
         size = (
             unlimited_dim_size
             if dim.isunlimited() and unlimited_dim_size is not None
@@ -400,8 +532,10 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
     def get_query_size(self, netcdf_group: netCDF4.Dataset):
         """Returns the number of coordinates to copy from NetCDF to TileDB.
 
-        Parameters:
-            netcdf_group: NetCDF group to copy the data from.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to copy the data from.
         """
         dim = self._get_ncdim(netcdf_group)
         return dim.size
@@ -411,12 +545,19 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
     ) -> Union[np.ndarray, slice]:
         """Returns the values of the NetCDF dimension that is being copied.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the dimension values from.
-            sparse: ``True`` if copying into a sparse array and ``False`` if copying
-                into a dense array.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the dimension values from.
+        sparse
+            ``True`` if copying into a sparse array and ``False`` if copying into a
+            dense array.
+        indexer
+            Range to get values on.
 
-        Returns:
+        Returns
+        -------
+        np.ndarray or slice
             The coordinates needed for querying the created TileDB dimension in the form
                 of a numpy array if sparse is ``True`` and a slice otherwise.
         """
@@ -453,10 +594,14 @@ class NetCDF4DimToDimConverter(NetCDF4ToDimBase):
 class NetCDF4ScalarToDimConverter(NetCDF4ToDimBase):
     """Converter for NetCDF scalar (empty) dimensions to a TileDB Dimension.
 
-    Attributes:
-        name: Name of the TileDB dimension.
-        domain: The (inclusive) interval on which the dimension is valid.
-        dtype: The numpy dtype of the values and domain of the dimension.
+    Attributes
+    ----------
+    name
+        Name of the TileDB dimension.
+    domain
+        The (inclusive) interval on which the dimension is valid.
+    dtype
+        The numpy dtype of the values and domain of the dimension.
     """
 
     def __repr__(self):
@@ -470,13 +615,26 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimBase):
         *,
         registry: Optional[Registry[Self]] = None,
     ):
+        """Create a NetCDF scalar to dim converter.
+
+        Parameters
+        ----------
+        dim_name
+            The name of the dimension.
+        dtype
+            The dimension for the datatype.
+        registry
+            The registry for the shared dimension core.
+        """
         return cls(dim_name, (0, 0), dtype, registry=registry)
 
     def get_query_size(self, netcdf_group: netCDF4.Dataset):
         """Returns the number of coordinates to copy from NetCDF to TileDB.
 
-        Parameters:
-            netcdf_group: NetCDF group to copy the data from.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to copy the data from.
         """
         return 1
 
@@ -485,14 +643,21 @@ class NetCDF4ScalarToDimConverter(NetCDF4ToDimBase):
     ) -> Union[np.ndarray, slice]:
         """Get dimension values from a NetCDF group.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the dimension values from.
-            sparse: ``True`` if copying into a sparse array and ``False`` if copying
-                into a dense array.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the dimension values from.
+        sparse
+            ``True`` if copying into a sparse array and ``False`` if copying into a
+            dense array.
+        indexer
+            The slice to get the values on.
 
-        Returns:
+        Returns
+        -------
+        np.ndarray or slice
             The coordinates needed for querying the create TileDB dimension in the form
-                of a numpy array if sparse is ``True`` and a slice otherwise.
+            of a numpy array if sparse is ``True`` and a slice otherwise.
         """
         if indexer.step not in {1, None}:
             raise ValueError("Dimension indexer must have step size of 1.")

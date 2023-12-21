@@ -29,9 +29,12 @@ class NetCDF4ToAttrConverter(AttrCreator):
     def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
         """Copy the metadata data from NetCDF to TileDB.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the metadata items from.
-            tiledb_array: TileDB array to copy the metadata items to.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the metadata items from.
+        tiledb_array
+            TileDB array to copy the metadata items to.
         """
 
     @abstractmethod
@@ -42,32 +45,49 @@ class NetCDF4ToAttrConverter(AttrCreator):
     ) -> np.ndarray:
         """Returns TileDB attribute values from a NetCDF group.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the dimension values from.
-            sparse: ``True`` if copying into a sparse array and ``False`` if copying
-                into a dense array.
-            shape: If not ``None``, the shape to return the numpy array as.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the dimension values from.
+        indexer
+            Region to get data for.
 
-        Returns:
-            The values needed to set an attribute in a TileDB array. If the array
-        is sparse the values will be returned as an 1D array; otherwise, they will
-        be returned as an ND array.
+        Returns
+        -------
+        np.ndarray
+            The values needed to set an attribute in a TileDB array. If the array is
+            sparse the values will be returned as an 1D array; otherwise, they will be
+            returned as an ND array.
         """
 
 
 class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
     """Converter for a NetCDF variable to a TileDB attribute.
 
-    Attributes:
-        name: Name of the new attribute.
-        dtype: Numpy dtype of the attribute.
-        fill: Fill value for unset cells.
-        var: Specifies if the attribute is variable length (automatic for
-            byte/strings).
-        nullable: Specifies if the attribute is nullable using validity tiles.
-        filters: Specifies compression filters for the attribute.
-        input_var_name: Name of the input NetCDF variable that will be converted.
-        input_var_dtype: Numpy dtype of the input NetCDF variable.
+    Parameters
+    ----------
+    name
+        The name of the attribute.
+    dtype
+        The datatype of the attribute that will be created.
+    fill
+        Optional fill value for the attribute that will be created.
+    var
+        Specifies if the attribute that will be created will be variable length
+        (automatic for byte/strings).
+    nullable
+        Specifies if the attribute that will be created will be nullable using
+        validity tiles.
+    filters
+        Filter pipeline to apply to the attribute.
+    input_var_name
+        Name of the input netCDF variable to convert.
+    input_var_dtype
+        Datatype of the netCDF variable to convert.
+    unpack
+        If ``True``, unpack the data before converting.
+    registry
+        Registry for this attribute creator.
     """
 
     def __init__(
@@ -113,9 +133,12 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
     def copy_metadata(self, netcdf_group: netCDF4.Dataset, tiledb_array: tiledb.Array):
         """Copy the metadata data from NetCDF to TileDB.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the metadata items from.
-            tiledb_array: TileDB array to copy the metadata items to.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the metadata items from.
+        tiledb_array
+            TileDB array to copy the metadata items to.
         """
         try:
             variable = netcdf_group.variables[self.input_var_name]
@@ -146,6 +169,32 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
         unpack: bool = False,
         registry: Optional[Registry[Self]] = None,
     ):
+        """Create from a NetCDF variable.
+
+        Parameters
+        ----------
+        ncvar
+            Input netCDF variable.
+        name
+            Name to use for the attribute. If ``None``, use the NetCDF variable name.
+        dtype
+            The datatype of the attribute. If ``None``, use the NetCDF variable dtype.
+        fill
+            Optional fill value for the attribute. If ``None, use the NetCDF variable
+            fill.
+        var
+            Specifies if the attribute that will be created will be variable length
+            (automatic for byte/strings).
+        nullable
+            Specifies if the attribute that will be created will be nullable using
+            validity tiles.
+        filters
+            Filter pipeline to apply to the attribute.
+        unpack
+            If ``True``, unpack the NetCDF variable before converting.
+        registry
+            The registry for the attribute creator.
+        """
         if fill is None:
             fill = get_netcdf_metadata(ncvar, "_FillValue")
         if name is None:
@@ -177,14 +226,19 @@ class NetCDF4VarToAttrConverter(NetCDF4ToAttrConverter):
     ) -> np.ndarray:
         """Returns TileDB attribute values from a NetCDF group.
 
-        Parameters:
-            netcdf_group: NetCDF group to get the dimension values from.
-            indexer: Slice to query the NetCDF variable on.
+        Parameters
+        ----------
+        netcdf_group
+            NetCDF group to get the dimension values from.
+        indexer
+            Slice to query the NetCDF variable on.
 
-        Returns:
-            The values needed to set an attribute in a TileDB array. If the array
-        is sparse the values will be returned as an 1D array; otherwise, they will
-        be returned as an ND array.
+        Returns
+        -------
+        np.ndarray
+            The values needed to set an attribute in a TileDB array. If the array is
+            sparse the values will be returned as an 1D array; otherwise, they will be
+            returned as an ND array.
         """
         try:
             variable = netcdf_group.variables[self.input_var_name]

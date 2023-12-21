@@ -32,42 +32,52 @@ def from_netcdf(
 ):
     """Converts a NetCDF input file to nested TileDB CF dataspaces.
 
-    See :class:`~tiledb.cf.NetCDF4ConverterEngine` for more
-    information on the backend converter engine used for the conversion.
+    See ``tiledb.cf.NetCDF4ConverterEngine`` for more information on the backend
+    converter engine used for the conversion.
 
-    Parameters:
-        input_file: The input NetCDF file to generate the converter engine from.
-        output_uri: The uniform resource identifier for the TileDB group to be created.
-        input_group_path: The path to the NetCDF group to copy data from. Use ``'/'``
-            for the root group.
-        recursive: If ``True``, recursively convert groups in a NetCDF file. Otherwise,
-            only convert group provided.
-        output_key: If not ``None``, encryption key to decrypt arrays.
-        output_ctx: If not ``None``, TileDB context wrapper for a TileDB storage
-            manager.
-        dim_dtype: The numpy dtype for the TileDB dimensions created from NetCDF
-            dimensions.
-        unlimited_dim_size: The size of the domain for TileDB dimensions created
-            from unlimited NetCDF dimensions.
-        dim_dtype: The numpy dtype for TileDB dimensions.
-        tiles_by_var: A map from the name of a NetCDF variable to the tiles of the
-            dimensions of the variable in the generated TileDB array.
-        tiles_by_dims: A map from the name of NetCDF dimensions defining a variable
-            to the tiles of those dimensions in the generated TileDB array.
-        coords_to_dims: If ``True``, convert the NetCDF coordinate variable into a
-            TileDB dimension for sparse arrays. Otherwise, convert the coordinate
-            dimension into a TileDB dimension and the coordinate variable into a
-            TileDB attribute.
-        collect_attrs: If ``True``, store all attributes with the same dimensions in
-            the same array. Otherwise, store each attribute in a scalar array.
-        unpack_vars: Unpack NetCDF variables with NetCDF attributes ``scale_factor``
-            or ``add_offset`` using the transformation ``scale_factor * value +
-            unpack``.
-        offsets_filters: Default filters for all offsets for variable attributes
-            and dimensions.
-        attrs_filters: Default filters for all attributes.
-        copy_metadata: If  ``True`` copy NetCDF group and variable attributes to
-            TileDB metadata. If ``False`` do not copy metadata.
+    Parameters
+    ----------
+    input_file
+        The input NetCDF file to generate the converter engine from.
+    output_uri
+        The uniform resource identifier for the TileDB group to be created.
+    input_group_path:
+        The path to the NetCDF group to copy data from. Use ``'/'`` for the root group.
+    recursive
+        If ``True``, recursively convert groups in a NetCDF file. Otherwise, only
+        convert group provided.
+    output_key
+        If not ``None``, encryption key to decrypt arrays.
+    output_ctx
+        If not ``None``, TileDB context wrapper for a TileDB storage manager.
+    unlimited_dim_size:
+        The size of the domain for TileDB dimensions created from unlimited NetCDF
+        dimensions.
+    dim_dtype
+        The numpy dtype for TileDB dimensions.
+    tiles_by_var
+        A map from the name of a NetCDF variable to the tiles of the dimensions of the
+        variable in the generated TileDB array.
+    tiles_by_dims
+        A map from the name of NetCDF dimensions defining a variable to the tiles of
+        those dimensions in the generated TileDB array.
+    coords_to_dims
+        If ``True``, convert the NetCDF coordinate variable into a TileDB dimension for
+        sparse arrays. Otherwise, convert the coordinate dimension into a TileDB
+        dimension and the coordinate variable into a TileDB attribute.
+    collect_attrs
+        If ``True``, store all attributes with the same dimensions in the same array.
+        Otherwise, store each attribute in a scalar array.
+    unpack_vars
+        Unpack NetCDF variables with NetCDF attributes ``scale_factor`` or
+        ``add_offset`` using the transformation ``scale_factor * value + unpack``.
+    offsets_filters
+        Default filters for all offsets for variable attributes and dimensions.
+    attrs_filters
+        Default filters for all attributes.
+    copy_metadata
+        If  ``True`` copy NetCDF group and variable attributes to TileDB metadata. If
+        ``False`` do not copy metadata.
     """
     from .converter import NetCDF4ConverterEngine, open_netcdf_group
 
