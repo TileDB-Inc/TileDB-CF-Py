@@ -16,8 +16,10 @@ DIM_METADATA_FLAG = "__tiledb_dim."
 class Metadata(MutableMapping):
     """Class for accessing Metadata using the standard MutableMapping API.
 
-    Parameters:
-        metadata (tiledb.Metadata): TileDB array metadata object.
+    Parameters
+    ----------
+    metadata: tiledb.Metadata
+        TileDB array metadata object.
     """
 
     def __init__(self, metadata: tiledb.Metadata):
@@ -37,28 +39,37 @@ class Metadata(MutableMapping):
     def __getitem__(self, key: str) -> Any:
         """Implementation of [key] -> val (dict item retrieval).
 
-        Parameters:
-            key: Key to find value from.
+        Parameters
+        ----------
+        key: str
+            Key to find value from.
 
-        Returns:
+        Returns
+        -------
+        Any:
             Value stored with provided key.
         """
         return self._metadata[self._to_tiledb_key(key)]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    def __setitem__(self, key: str, value: Any):
         """Implementation of [key] <- val (dict item assignment).
 
-        Paremeters:
-            key: key to set
-            value: corresponding value
+        Paremeters
+        ----------
+        key: str
+            Key to set
+        value: Any
+            Corresponding value
         """
         self._metadata[self._to_tiledb_key(key)] = value
 
     def __delitem__(self, key):
         """Implementation of del [key] (dict item deletion).
 
-        Parameters:
-            key: Key to remove.
+        Parameters
+        ----------
+        key: str
+            Key to remove.
         """
         del self._metadata[self._to_tiledb_key(key)]
 
@@ -69,7 +80,14 @@ class Metadata(MutableMapping):
     def _from_tiledb_key(self, tiledb_key: str) -> Optional[str]:
         """Map an internal tiledb key to an external user metadata key.
 
-        Returns:
+        Parameters
+        ----------
+        tiledb_key: str
+            Internal key to use for metadata.
+
+        Returns
+        -------
+        Optional[str]
             The external user metadata key corresponding to `tiledb_key`,
             or None if there is no such corresponding key.
         """
@@ -81,9 +99,6 @@ class ArrayMetadata(Metadata):
 
     This class provides a way for accessing the TileDB array metadata that excludes
     attribute and dimension specific metadata.
-
-    Parameters:
-        metadata (tiledb.Metadata): TileDB array metadata object for the desired array.
     """
 
     def _to_tiledb_key(self, key: str) -> str:
@@ -108,10 +123,12 @@ class AttrMetadata(Metadata):
     This class allows access to the metadata for an attribute stored in the metadata
     for a TileDB array.
 
-    Parameters:
-        metadata (tiledb.Metadata): TileDB array metadata for the array containing the
-            desired attribute.
-        attr (str): Name or index of the arrary attribute being requested.
+    Parameters
+    ----------
+    metadata: tiledb.Metadata
+        TileDB array metadata for the array containing the desired attribute.
+    attr: str
+        Name or index of the arrary attribute being requested.
     """
 
     def __init__(self, metadata: tiledb.Metadata, attr: Union[str, int]):
@@ -137,10 +154,12 @@ class DimMetadata(Metadata):
     This class allows access to the metadata for a dimension stored in the metadata
     for a TileDB array.
 
-    Parameters:
-        metadata (tiledb.Metadata): TileDB array metadata for the array containing the
-            desired attribute.
-        dim (str): Name or index of the arrary attribute being requested.
+    Parameters
+    ----------
+    metadata: tiledb.Metadata
+        TileDB array metadata for the array containing the desired attribute.
+    dim: str
+        Name or index of the arrary attribute being requested.
     """
 
     def __init__(self, metadata: tiledb.Metadata, dim: Union[str, int]):

@@ -22,7 +22,19 @@ class DimRegistry(Protocol):
 class DimCreator:
     """Creator for a TileDB dimension using a SharedDim.
 
-    Attributes:
+    Parameters
+    ----------
+    base: SharedDim
+        The core shared dimension describing the dimension.
+    tile: int or float, optional
+        The tile size for the dimension.
+    filters: tiledb.FilterList, optional
+        Specifies compression filters for the dimension.
+    registry: DimRegistry, optional
+        An optional registry for the dimension registry.
+
+    Attributes
+    ----------
         tile: The tile size for the dimension.
         filters: Specifies compression filters for the dimension.
     """
@@ -32,7 +44,7 @@ class DimCreator:
         base: SharedDim,
         *,
         tile: Optional[Union[int, float]] = None,
-        filters: Optional[Union[tiledb.FilterList]] = None,
+        filters: Optional[tiledb.FilterList] = None,
         registry: Optional[DimRegistry] = None,
     ):
         self._base = base
@@ -88,18 +100,31 @@ class DimCreator:
         *,
         writer_index: Optional[int] = None,
     ):
+        """Set dimension data on a fragment writer
+
+        Parameters
+        ----------
+        dim_data: np.ndarray or FieldData
+            The dimension data to set.
+        writer_index: int, optional
+            The index of the fragment writer to set the data on.
+        """
         if self._registry is None:
             raise ValueError("Dimension creator is not registered to an array.")
         data = create_field_data(dim_data, self.dtype)
         self._registry.set_writer_data(writer_index, self.name, data)
 
-    def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
-        """Returns a :class:`tiledb.Dim` using the current properties.
+    def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Dim:
+        """Returns a `tiledb.Dim` using the creator properties.
 
-        Parameters:
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        Parameters
+        ----------
+        ctx: tiledb.Ctx, optional
+            If not ``None``, TileDB context wrapper for a TileDB storage manager.
 
-        Returns:
+        Returns
+        -------
+        tiledb.Dim
             A tiledb dimension with the set properties.
         """
         return tiledb.Dim(

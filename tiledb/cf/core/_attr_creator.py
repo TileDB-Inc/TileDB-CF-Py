@@ -39,13 +39,40 @@ class AttrRegistry(Protocol):
 class AttrCreator(RegisteredByNameMixin):
     """Creator for a TileDB attribute.
 
-    Attributes:
-        dtype: Numpy dtype of the attribute.
-        fill: Fill value for unset cells.
-        var: Specifies if the attribute is variable length (automatic for
-            byte/strings).
-        nullable: Specifies if the attribute is nullable using validity tiles.
-        filters: Specifies compression filters for the attribute.
+    Parameters
+    ----------
+    name: str
+        Name of the attribute that will be created.
+    dtype: np.dtype
+        The datatype of the attribute that will be created.
+    fill: int or float or str, optional
+        Optional fill value for the attribute that will be created.
+    var: bool, default=False
+        Specifies if the attribute that will be created will be variable length
+        (automatic for byte/strings).
+    nullable: bool, default=False
+        Specifies if the attribute that will be created will be nullable using
+        validity tiles.
+    filters: tiledb.FilterList, optional
+        Filter pipeline to apply to the attribute.
+    registry: AttrRegistry, optional
+        Registry for this attribute creator.
+    fragment_writers: Sequence[FragmentWriter], optional
+        Fragment writers for this attribute creator.
+
+    Attributes
+    ----------
+    dtype: np.dtype
+        Numpy dtype of the attribute.
+    fill: int or float or str, optional
+        Fill value for unset cells.
+    var: bool
+        Specifies if the attribute is variable length (automatic for
+        byte/strings).
+    nullable: bool
+        Specifies if the attribute is nullable using validity tiles.
+    filters: tiledb.FilterList, optional
+        Specifies compression filters for the attribute.
     """
 
     def __init__(
@@ -76,7 +103,7 @@ class AttrCreator(RegisteredByNameMixin):
         )
 
     def html_summary(self) -> str:
-        """Returns a string HTML summary of the :class:`AttrCreator`."""
+        """Returns a string HTML summary of the ``AttrCreator``."""
         filters_str = f", filters=FilterList({self.filters})" if self.filters else ""
         return (
             f" &rarr; tiledb.Attr(name={self.name}, dtype='{self.dtype!s}', "
@@ -89,6 +116,15 @@ class AttrCreator(RegisteredByNameMixin):
         *,
         writer_index: Optional[int] = None,
     ):
+        """Set attribute data to the specified fragment writer.
+
+        Parameters
+        ----------
+        attr_data: np.ndarray or FieldData
+            Attribute data to add to the writer.
+        writer_index: int, optional
+            The index of the fragment writer to add to.
+        """
         if self._registry is None:
             raise ValueError("Attribute creator is not registered to an array.")
         data = create_field_data(attr_data, self.dtype)
@@ -97,11 +133,15 @@ class AttrCreator(RegisteredByNameMixin):
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Attr:
         """Returns a :class:`tiledb.Attr` using the current properties.
 
-        Parameters:
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        Parameters
+        ----------
+        ctx: tiledb.Ctx, optional
+            If not ``None``, TileDB context wrapper for a TileDB storage manager.
 
-        Returns:
-            Returns an attribute with the set properties.
+        Returns
+        -------
+        tiledb.Attr
+            An attribute with the properties defined in this attribute creator.
         """
         return tiledb.Attr(
             name=self.name,

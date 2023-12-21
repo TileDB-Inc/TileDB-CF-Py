@@ -11,7 +11,19 @@ from .registry import RegisteredByNameMixin, Registry
 
 
 class SharedDim(RegisteredByNameMixin):
-    """Definition for the name, domain and data type of a collection of dimensions."""
+    """Definition for the name, domain and data type of a collection of dimensions.
+
+    Parameters
+    ----------
+    name: str
+        The name of the shared dimension.
+    domain: Tuple[Any, Any], optional
+        The domain for the shared dimension.
+    dtype: np.dtype
+        The datatype of the shared dimension.
+    registry: Registry[self], optional
+        If provided, a registry for the shared dimension.
+    """
 
     def __init__(
         self,

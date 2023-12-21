@@ -58,20 +58,39 @@ class ArrayDimRegistry:
 class ArrayCreator(RegisteredByNameMixin):
     """Creator for a TileDB array using shared dimension definitions.
 
-    Attributes:
-        cell_order: The order in which TileDB stores the cells on disk inside a
-            tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
-            ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert curve.
-        tile_order: The order in which TileDB stores the tiles on disk. Valid values
-            are: ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
-            ``F`` for column major.
-        capacity: The number of cells in a data tile of a sparse fragment.
-        offsets_filters: Filters for the offsets for variable length attributes or
-            dimensions.
-        attrs_filters: Default filters to use when adding an attribute to the array.
-        allows_duplicates: Specifies if multiple values can be stored at the same
-             coordinate. Only allowed for sparse arrays.
-        sparse: If ``True``, creates a sparse array. Otherwise, create
+    Attributes
+    ----------
+    cell_order:
+        The order in which TileDB stores the cells on disk inside a
+        tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
+        ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert curve.
+    tile_order:
+        The order in which TileDB stores the tiles on disk. Valid values are:
+        ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
+        ``F`` for column major.
+    capacity:
+        The number of cells in a data tile of a sparse fragment.
+    tiles: Sequence[int], optional
+        The tile extents to set on each dimension. The length must match the number
+        of dimensions.
+    dim_filters: Dict[str, tiledb.FilterList], optional
+        A dictionary from dimension name to TileDB filters to apply to the dimension.
+    offsets_filters:
+        Filters for the offsets for variable length attributes or dimensions.
+    attrs_filters:
+        Default filters to use when adding an attribute to the array.
+    allows_duplicates: bool, default: True
+        Specifies if multiple values can be stored at the same
+        coordinate. Only allowed for sparse arrays.
+    sparse: bool, default: True
+        If ``True``, creates a sparse array. Otherwise, creates a dense array.
+    registry: Registry[ArrayCreator], optional
+        Registry this array will belong to.
+    dim_registry: Registry[SharedDim], optional
+        Registry for the shared dimensions this array will use. If none is provided,
+        a registry will be created.
+    shared_dims: Sequence[SharedDim], optional
+        An ordered list of shared dimensions to use as the dimensions this array.
     """
 
     def __init__(
@@ -173,8 +192,10 @@ class ArrayCreator(RegisteredByNameMixin):
     def attr_creator(self, key: Union[int, str]) -> AttrCreator:
         """Returns the requested attribute creator
 
-        Parameters:
-            key: The attribute creator index (int) or name (str).
+        Parameters
+        ----------
+        key: int, str
+            The attribute creator index (int) or name (str).
 
         Returns:
             The attribute creator at the given index of name.
@@ -195,15 +216,22 @@ class ArrayCreator(RegisteredByNameMixin):
         The attribute's 'dataspace name' (name after dropping the suffix ``.data`` or
         ``.index``) must be unique.
 
-        Parameters:
-            name: Name of the new attribute that will be added.
-            dtype: Numpy dtype of the new attribute.
-            fill: Fill value for unset cells.
-            var: Specifies if the attribute is variable length (automatic for
-                byte/strings).
-            nullable: Specifies if the attribute is nullable using validity tiles.
-            filters: Specifies compression filters for the attribute. If ``None``, use
-                the array's ``attrs_filters`` property.
+        Parameters
+        ----------
+        name: str
+            Name of the new attribute that will be added.
+        dtype: np.dtype
+            Numpy dtype of the new attribute.
+        fill: int or float or str, optional
+            Fill value for unset cells.
+        var: bool, default=False
+            Specifies if the attribute is variable length (automatic for
+            byte/strings).
+        nullable: bool, default=False
+            Specifies if the attribute is nullable using validity tiles.
+        filters: tiledb.FilterList, optional
+            Specifies compression filters for the attribute. If ``None``, use
+            the array's ``attrs_filters`` property.
         """
         if filters is None:
             filters = self.attrs_filters
@@ -223,7 +251,9 @@ class ArrayCreator(RegisteredByNameMixin):
     ):
         """Add a writer for dense fragments.
 
-        target_region: Optional[Tuple[DenseRange, ...]], default=None
+        Parameters
+        ----------
+        target_region: Tuple[DenseRange, ...], optional
             Region the fragments are written on. If ``None``, the region is
             set to the entire domain of the array.
         """
@@ -257,8 +287,12 @@ class ArrayCreator(RegisteredByNameMixin):
             dim2 = [3, 4]
             attr = [1, 2, 3, 4]
 
-        size: Optional[int], default=None
-        shape: Optional[Tuple[int, ...]], default=None
+        Parameters
+        ----------
+        size: int, optional
+            The number of elements the fragment stores.
+        shape: Tuple[int, ...], optional
+            The shape of the fragment. Required for "row-major" form.
         form: str, default="coo"
             The form for the dimension data. Can either be "coo" (coordinate form) or
             "row-major".
@@ -289,10 +323,14 @@ class ArrayCreator(RegisteredByNameMixin):
     ):
         """Creates a TileDB array at the provided URI.
 
-        Parameters:
-            uri: Uniform resource identifier for the array to be created.
-            key: If not ``None``, encryption key to decrypt arrays.
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        Parameters
+        ----------
+        uri: str
+            Uniform resource identifier for the array to be created.
+        key: str, optional
+            If not ``None``, encryption key to decrypt arrays.
+        ctx: tiledb.Ctx, option
+            If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
         tiledb.Array.create(uri=uri, schema=self.to_schema(ctx), key=key, ctx=ctx)
 
@@ -307,6 +345,26 @@ class ArrayCreator(RegisteredByNameMixin):
         skip_metadata: bool = False,
         writer_indices: Optional[Iterable[int]] = None,
     ):
+        """Writes data to a TileDB array at the provided URI.
+
+        If ``apend=True``, a new TileDB array will be created at the URI. Otherwise,
+        the data will be written to an existing array.
+
+        Parameters
+        ----------
+        uri: str
+            Uniform resource identifier for the array.
+        key: str, optional
+            If not ``None``, encryption key to decrypt arrays.
+        timestamp: int, optional
+            If not ``None``, the timestamp to write new data at.
+        append: bool, default=False
+            If ``True``, write data to an existing array. Otherwise, create a new array.
+        skip_metadata: bool, default=False
+            If ``True``, do not write metadata.
+        writer_indices: Iterable[int], optional
+            If not ``None``, an iterable list of fragment writers to write from.
+        """
         if not append:
             self.create(uri, key=key, ctx=ctx)
         with tiledb.open(uri, key=key, ctx=ctx, timestamp=timestamp, mode="w") as array:
@@ -327,8 +385,10 @@ class ArrayCreator(RegisteredByNameMixin):
         """Returns if an attribute creator with the requested name is in the array
         creator
 
-        Parameters:
-            name: The name of the attribute creator to check for.
+        Parameters
+        ----------
+        name: str
+            The name of the attribute creator to check for.
         """
         return self._core.has_attr_creator(name)
 
@@ -387,13 +447,16 @@ class ArrayCreator(RegisteredByNameMixin):
     def remove_attr_creator(self, attr_name):
         """Removes the requested attribute from the array.
 
-        Parameters:
-            attr_name: Name of the attribute to remove.
+        Parameters
+        ----------
+        attr_name: str
+            Name of the attribute to remove.
         """
         return self._core.deregister_attr_creator(attr_name)
 
     @property
     def sparse(self) -> bool:
+        """If the array creator is sparse."""
         return self._core.sparse
 
     @sparse.setter
@@ -403,8 +466,10 @@ class ArrayCreator(RegisteredByNameMixin):
     def to_schema(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.ArraySchema:
         """Returns an array schema for the array.
 
-        Parameters:
-            ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
+        Parameters
+        ----------
+        ctx: tiledb.Ctx, optional
+            If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
         if self._core.nattr == 0:
             raise ValueError("Cannot create schema for array with no attributes.")
@@ -444,6 +509,14 @@ class ArrayCreatorCore:
         self,
         target_region: Optional[Tuple[Tuple[int, int], ...]],
     ):
+        """Add a writer for dense fragments.
+
+        Parameters
+        ----------
+        target_region: Optional[Tuple[DenseRange, ...]], default=None
+            Region the fragments are written on. If ``None``, the region is
+            set to the entire domain of the array.
+        """
         self._fragment_writers.append(
             FragmentWriter.create_dense(
                 dims=tuple(dim.base for dim in self._dim_creators),
@@ -453,6 +526,22 @@ class ArrayCreatorCore:
         )
 
     def add_sparse_coo_fragment_writer(self, size: int):
+        """Adds a spare writer for a COO fragment.
+
+        For "coo" form, the size is used to define the footprint of the data. This
+        supports a general sparse writes. The full expanded data for each dimension
+        must be provided.
+
+        Example input data for "coo" form on a 2D array:
+           dim1 = [1, 2, 1, 2]
+           dim2 = [3, 3, 4, 4]
+           attr = [1, 2, 3, 4]
+
+        Parameters
+        ----------
+        size: int
+            The number of elements the fragment stores.
+        """
         self._fragment_writers.append(
             FragmentWriter.create_sparse_coo(
                 dims=tuple(dim.base for dim in self._dim_creators),
@@ -462,6 +551,21 @@ class ArrayCreatorCore:
         )
 
     def add_sparse_row_major_fragment_writer(self, shape: Tuple[int, ...]):
+        """Adds a sparse writer for a row-major grament.
+
+        For "row-major" form, a grid of data is provided. The data on each dimension
+        is just the dimension for that part of the grid:
+
+        Example input data for "row-major" form on a 2D array:
+            dim1 = [1, 2]
+            dim2 = [3, 4]
+            attr = [1, 2, 3, 4]
+
+        Parameters
+        ----------
+        shape: Tuple[int, ...]
+            The shape of the fragment.
+        """
         self._fragment_writers.append(
             FragmentWriter.create_sparse_row_major(
                 dims=tuple(dim.base for dim in self._dim_creators),
@@ -475,6 +579,13 @@ class ArrayCreatorCore:
         return iter(self._attr_creators.values())
 
     def check_new_attr_name(self, attr_name):
+        """Raises an error if the provided name is not a valid new attribute name.
+
+        Parameters
+        ----------
+        attr_name: str
+            The attribute name to check.
+        """
         if attr_name in self._attr_creators:
             raise ValueError(
                 f"An attribute with the name '{attr_name}' already exists in this "
@@ -488,7 +599,13 @@ class ArrayCreatorCore:
                 )
 
     def deregister_attr_creator(self, attr_name: str):
-        """Removes an attribute from the group."""
+        """Removes an attribute from the group.
+
+        Parameters
+        ----------
+        attr_name: str
+            The name of the attribute creator to remove.
+        """
         del self._attr_creators[attr_name]
         for frag_writer in self._fragment_writers:
             frag_writer.remove_attr(attr_name)
@@ -504,8 +621,10 @@ class ArrayCreatorCore:
     def get_attr_creator(self, key: Union[str, int]) -> AttrCreator:
         """Returns the requested attribute creator.
 
-        Parameters:
-            attr_name: Name of the attribute to return.
+        Parameters
+        ----------
+        attr_name: str
+            Name of the attribute creator to return.
         """
         if isinstance(key, int):
             return tuple(self._attr_creators.values())[key]
@@ -514,10 +633,14 @@ class ArrayCreatorCore:
     def get_dim_creator(self, key: Union[int, str]) -> DimCreator:
         """Returns the requested dimension creator.
 
-        Parameters:
-            key: Name (string) or index (integer) of the dimension to return.
+        Parameters
+        ----------
+        key: str or int
+            Name (string) or index (integer) of the dimension to return.
 
-        Returns:
+        Returns
+        -------
+        DimCreator
             The requested dimension creator.
         """
         if isinstance(key, int):
@@ -528,10 +651,14 @@ class ArrayCreatorCore:
     def get_dim_position_by_name(self, dim_name: str) -> int:
         """Returns the dimension position of the requested dimension name.
 
-        Parameters:
-            dim_name: Name of the dimension to get the position of.
+        Parameters
+        ----------
+        dim_name: str
+            Name of the dimension to get the position of.
 
-        Returns:
+        Returns
+        -------
+        int
             The position of the requested dimension in the array domain.
         """
         for index, dim_creator in enumerate(self._dim_creators):
@@ -540,19 +667,49 @@ class ArrayCreatorCore:
         raise KeyError(f"Dimension creator with name '{dim_name}' not found.")
 
     def get_fragment_writer(self, index: int) -> FragmentWriter:
+        """Returns the fragment writer at the requested index.
+
+        Parameters
+        ----------
+        index: int
+            The index of the fragment writer to return.
+
+        Returns
+        -------
+        FragmentWriter
+            The requested fragment writer.
+        """
         return self._fragment_writers[index]
 
     def has_attr_creator(self, name: str) -> bool:
         """Returns if an attribute creator with the requested name is in the array
-        creator
+        creator.
 
-        Parameters:
-            name: The name of the attribute creator to check for.
+        Parameters
+        ----------
+        name: str
+            The name of the attribute creator to check for.
+
+        Returns
+        -------
+        bool
+            If an attribute creator with the requested name is in the array creator.
         """
         return name in self._attr_creators
 
     def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
-        """Add an additional dimension into the domain of the array."""
+        """Add an additional dimension into the domain of the array.
+
+        Parameters
+        ----------
+        dim_name: str
+            Name of the dimension creator that will be added.
+        position: int
+            Index the dimension creator will be added at.
+        **dim_kwargs: dict, optional
+            Keyword arguments to pass to the dimension creator.
+
+        """
         if len(self._fragment_writers) > 0:
             raise NotImplementedError(
                 "Injecting a dimension on an array that already has fragment writers "
@@ -581,17 +738,21 @@ class ArrayCreatorCore:
 
     @property
     def nattr(self) -> int:
+        """Number of attribute creators."""
         return len(self._attr_creators)
 
     @property
     def ndim(self) -> int:
+        """Number of dimension creators."""
         return len(self._dim_creators)
 
     @property
     def nwriter(self) -> int:
+        """Number of writers."""
         return len(self._fragment_writers)
 
     def register_attr_creator(self, attr_creator):
+        """Register an attribute creator to this array creator."""
         self.check_new_attr_name(attr_creator.name)
         attr_name = attr_creator.name
         self._attr_creators[attr_name] = attr_creator
@@ -601,10 +762,10 @@ class ArrayCreatorCore:
     def remove_dim_creator(self, dim_index: int):
         """Remove a dim creator from the array.
 
-        Parameters:
-            dim_creator: The dimension creator to add.
-            position: Position of the shared dimension. Negative values count backwards
-                from the end of the new number of dimensions.
+        Parameters
+        ----------
+        dim_creator: index
+            The location of the dimension creator to remove.
         """
         if len(self._fragment_writers) > 0:
             raise NotImplementedError(
@@ -623,6 +784,17 @@ class ArrayCreatorCore:
     def set_writer_attr_data(
         self, writer_index: Optional[int], attr_name: str, data: FieldData
     ):
+        """Sets attribute data on a fragment writer.
+
+        Parameters
+        ----------
+        writer_index: int
+            Index of the fragment writer to add attribute data to.
+        attr_name: str
+            The name of the attribute creator to add data for.
+        data: FieldData
+            The data that is being added.
+        """
         if writer_index is None:
             if self.nwriter > 1:
                 raise ValueError(
@@ -634,6 +806,16 @@ class ArrayCreatorCore:
     def set_writer_dim_data(
         self, writer_index: Optional[int], dim_name: str, data: FieldData
     ):
+        """Sets dimension data on a fragment writer.
+
+        Parameters
+        ----------
+        writer_index: int
+        dim_name: str
+            The name of the dimension creator to add data for.
+        data: FieldData
+            The data that is being added.
+        """
         if writer_index is None:
             if self.nwriter > 1:
                 raise ValueError(
@@ -644,6 +826,7 @@ class ArrayCreatorCore:
 
     @property
     def sparse(self) -> bool:
+        """If the array creator is sparse."""
         return self._sparse
 
     @sparse.setter
@@ -663,9 +846,12 @@ class ArrayCreatorCore:
     def update_attr_creator_name(self, original_name: str, new_name: str):
         """Renames an attribute in the array.
 
-        Parameters:
-            original_name: Current name of the attribute to be renamed.
-            new_name: New name the attribute will be renamed to.
+        Parameters
+        ----------
+        original_name: str
+            Current name of the attribute to be renamed.
+        new_name: str
+            New name the attribute will be renamed to.
         """
         self._attr_creators[new_name] = self._attr_creators.pop(original_name)
 
@@ -726,11 +912,15 @@ class DomainCreator:
     def inject_dim_creator(self, dim_name: str, position: int, **dim_kwargs):
         """Adds a new dimension creator at a specified location.
 
-        Parameters:
-            dim_name: Name of the shared dimension to add to the array's domain.
-            position: Position of the shared dimension. Negative values count backwards
-                from the end of the new number of dimensions.
-            dim_kwargs: Keyword arguments to pass to :class:`DimCreator`.
+        Parameters
+        ----------
+        dim_name: str
+            Name of the shared dimension to add to the array's domain.
+        position: index
+            Position of the shared dimension. Negative values count backwards
+            from the end of the new number of dimensions.
+        dim_kwargs: dict, optional
+            Keyword arguments to pass to ``DimCreator``.
         """
         self._core.inject_dim_creator(dim_name, position, **dim_kwargs)
 
@@ -739,14 +929,18 @@ class DomainCreator:
         """Number of dimensions in the domain."""
         return self._core.ndim
 
-    def dim_creator(self, dim_id):
+    def dim_creator(self, dim_id) -> DimCreator:
         """Returns a dimension creator from the domain creator given the dimension's
         index or name.
 
-        Parameter:
-            dim_id: dimension index (int) or name (str)
+        Parameters
+        ----------
+        dim_id: int or str
+            dimension index (int) or name (str)
 
-        Returns:
+        Returns
+        -------
+        DimCreator
             The dimension creator with the requested key.
         """
         return self._core.get_dim_creator(dim_id)
@@ -754,8 +948,10 @@ class DomainCreator:
     def remove_dim_creator(self, dim_id: Union[str, int]):
         """Removes a dimension creator from the array creator.
 
-        Parameters:
-            dim_id: dimension index (int) or name (str)
+        Parameters
+        ----------
+        dim_id: int or str
+            dimension index (int) or name (str)
         """
         if isinstance(dim_id, int):
             self._core.remove_dim_creator(dim_id)
@@ -779,7 +975,13 @@ class DomainCreator:
             dim_creator.tile = tile
 
     def to_tiledb(self, ctx: Optional[tiledb.Ctx] = None) -> tiledb.Domain:
-        """Returns a TileDB domain from the contained dimension creators."""
+        """Returns a TileDB domain from the contained dimension creators.
+
+        Parameters
+        ----------
+        ctx: tiledb.Ctx, optional
+            If not ``None``, the context to use when creating the domain.
+        """
         if self.ndim == 0:
             raise ValueError("Cannot create schema for array with no dimensions.")
         tiledb_dims = [dim_creator.to_tiledb() for dim_creator in self]
