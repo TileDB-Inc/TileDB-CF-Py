@@ -21,13 +21,20 @@ def create_group(
 
     All arrays in the group will be added at a relative URI that matches the array name.
 
-    Parameters:
-        uri: Uniform resource identifier for TileDB group or array.
-        group_schema: A mapping from array names to array schemas to add to the group.
-        ctx: If not ``None``, TileDB context wrapper for a TileDB storage manager.
-        append: If ``True``, add arrays from the provided group schema to an
-            already existing group. The names for the arrays in the group schema
-            cannot already exist in the group being append to.
+    Parameters
+    ----------
+    uri
+        Uniform resource identifier for TileDB group or array.
+    group_schema
+        A mapping from array names to array schemas to add to the group.
+    key
+        A encryption key or dict from array names to encryption keys.
+    ctx
+        If not ``None``, TileDB context wrapper for a TileDB storage manager.
+    append
+        If ``True``, add arrays from the provided group schema to an already existing
+        group. The names for the arrays in the group schema cannot already exist in the
+        group being append to.
     """
     if append:
         check_valid_group(uri, ctx=ctx)
@@ -63,15 +70,23 @@ def open_group_array(
     If only providing the attribute, there must be exactly one array in the group with
     an attribute with the requested name.
 
-    Parameters:
-        array: If not ``None``, the name of the array to open. Overrides attr if
-            both are provided.
-        attr: If not ``None``, open the array that contains this attr. Attr must be in
-            only one of the group arrays.
-        **kwargs: Keyword arguments to pass to the ``tiledb.open`` method.
+    Parameters
+    ----------
+    group
+        The tiledb group to open the array in.
+    array
+        If not ``None``, the name of the array to open. Overrides attr if both are
+        provided.
+    attr
+        If not ``None``, open the array that contains this attr. Attr must be in only
+        one of the group arrays.
+    **kwargs: dict, optional
+        Keyword arguments to pass to the ``tiledb.open`` method.
 
-    Returns:
-        tiledb.Array opened in the specified mode
+    Returns
+    -------
+    tiledb.Array:
+        An array opened in the specified mode
     """
     # Get the item in the group that either has the requested array name or
     # requested attribute.

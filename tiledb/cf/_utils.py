@@ -26,12 +26,17 @@ def get_array_key(
 ) -> Optional[str]:
     """Returns a key for the array with name ``array_name``.
 
-    Parameters:
-        key: If not ``None``, encryption key, or dictionary of encryption keys, to
-            decrypt arrays.
-        array_name: Name of the array to decrypt.
+    Parameters
+    ----------
+    key
+        If not ``None``, encryption key, or dictionary of encryption keys, to decrypt
+        arrays.
+    array_name
+        Name of the array to decrypt.
 
-    Returns:
+    Returns
+    -------
+    Optional[str]
        Key for the array with name ``array_name``.
     """
     return key.get(array_name) if isinstance(key, dict) else key
@@ -44,13 +49,18 @@ def get_array_uri(group_uri: str, array_name: str) -> str:
      This method is only needed for creating relative arrays before adding them
      to a group.
 
-    Parameters:
-        group_uri: URI of the group containing the array
-        array_name: name of the array
+    Parameters
+    ----------
+    group_uri
+        URI of the group containing the array
+    array_name
+        name of the array
 
-    Returns:
+    Returns
+    -------
+    str:
         Array URI of an array with name ``array_name`` inside a group at URI
-            ``group_uri``.
+        ``group_uri``.
     """
     return os.path.join(group_uri, array_name)
 

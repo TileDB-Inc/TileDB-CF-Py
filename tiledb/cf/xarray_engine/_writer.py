@@ -29,20 +29,30 @@ def copy_from_xarray(  # noqa: C901
     to the dataset.
 
 
-    Parameters:
-    -----------
-    group_uri: The URI to the TileDB group to create or append to.
-    dataset: The xarray Dataset to write.
-    variables: A mapping of encoded xarray variables.
-    group_metadata: A mapping of key-value pairs correspoding to dataset metadata.
-    config: A TileDB config object to use for TileDB objects.
-    ctx: A TileDB context object to use for TileDB operations.
-    region: A mapping from dimension names to integer slices along the
-        dataset dimensions to indicate the region to write this dataset's data in.
-    copy_group_metadata: If true, copy xarray dataset metadata to the TileDB group.
-    copy_variable_metadata: If true, copy xarray variable metadata to the TileDB
-        arrays as TileDB attribute metadata.
-    copy_variable_data: If true, copy variable data to the TileDB arrays.
+    Parameters
+    ----------
+    group_uri
+        The URI to the TileDB group to create or append to.
+    dataset
+        The xarray Dataset to write.
+    variables
+        A mapping of encoded xarray variables.
+    group_metadata
+        A mapping of key-value pairs correspoding to dataset metadata.
+    config
+        A TileDB config object to use for TileDB objects.
+    ctx
+        A TileDB context object to use for TileDB operations.
+    region
+        A mapping from dimension names to integer slices along thevdataset dimensions
+        to indicate the region to write this dataset's data in.
+    copy_group_metadata
+        If true, copy xarray dataset metadata to the TileDB group.
+    copy_variable_metadata
+        If true, copy xarray variable metadata to the TileDBvarrays as TileDB attribute
+        metadata.
+    copy_variable_data
+        If true, copy variable data to the TileDB arrays.
     """
 
     # Check that there is a group at the location.
@@ -142,9 +152,14 @@ def copy_variable(name, variable, array_wrapper, region):
         Raises a value error if the size of the target slice does not match the
         size of the source dimension.
 
-        dim_name: Name of the dimension to return the slice for.
-        var_dim_size: Size of the dimension in the source xarray variable.
-        array_dim_size: Size of the domain of the dimension in the target TileDB array.
+        Parameters
+        ----------
+        dim_name
+            Name of the dimension to return the slice for.
+        var_dim_size
+            Size of the dimension in the source xarray variable.
+        array_dim_size
+            Size of the domain of the dimension in the target TileDB array.
         """
         if var_dim_size > array_dim_size:
             raise ValueError(
@@ -215,19 +230,28 @@ def create_from_xarray(
     """Creates a TileDB group and arrays from a xarray dataset and optionally copies
     metadata over.
 
-    Parameters:
+    Parameters
     ----------
-    dataset: The xarray Dataset to write.
-    group_uri: The URI to the TileDB group to create or append to.
-    variables: A mapping of encoded xarray variables.
-    config: A TileDB config object to use for TileDB objects.
-    ctx: A TileDB context object to use for TileDB operations.
-    encoding: A nested dictionary with variable names as keys and dictionaries
-        of TileDB specific encoding.
-    unlimited_dims: Set of dimensions to use the maximum dimension size for. Only used
-        for variables in the dataset that do not have `max_size` encoding provided.
-    config: TileDB configuration to use for writing metadata to groups and arrays.
-    ctx: Context object to use for TileDB operations.
+    dataset
+        The xarray Dataset to write.
+    group_uri
+        The URI to the TileDB group to create or append to.
+    variables
+        A mapping of encoded xarray variables.
+    config
+        A TileDB config object to use for TileDB objects.
+    ctx
+        A TileDB context object to use for TileDB operations.
+    encoding
+        A nested dictionary with variable names as keys and dictionaries of TileDB
+        specific encoding.
+    unlimited_dims
+        Set of dimensions to use the maximum dimension size for. Only used for variables
+        in the dataset that do not have `max_size` encoding provided.
+    config
+        TileDB configuration to use for writing metadata to groups and arrays.
+    ctx
+        Context object to use for TileDB operations.
     """
 
     # Check the TileDB encoding is for valid variables.
@@ -286,8 +310,12 @@ def extract_encoded_data(dataset, skip_vars=None):
     """Returns encoded xarray variables and attribtues (metadata) from an
     input xarray dataset.
 
-    dataset: Xarray dataset to encode.
-    skip_vars: Variables to exclude if they exist in the dataset
+    Parameters
+    ----------
+    dataset
+        Xarray dataset to encode.
+    skip_vars
+        Variables to exclude if they exist in the dataset
     """
 
     if skip_vars is None:
@@ -321,16 +349,22 @@ def get_chunk_regions(
     """Returns a generator of (target_region, source_region) for writing the
     input source by chunks.
 
-    Parameters:
+    Parameters
     ----------
-    target_region: Slices that correspond to the target region to query using
+    target_region
+        Slices that correspond to the target region to query using
         numpy-style indexing.
-    source_shape: Shape of the input data.
-    chunks: A tuple or tuples containing the fully explicit size of chunks along each
+    source_shape
+        Shape of the input data.
+    chunks
+        A tuple or tuples containing the fully explicit size of chunks along each
         dimension.
 
-    Yields tuples of (target_chunk, source_chunk) pairs that cover the entire target
-    and source regions.
+    Yields
+    ------
+    Tuple[Tuple[slice, ...], Tuple[slice, ....]] or None
+        Yields tuples of (target_chunk, source_chunk) pairs that cover the entire target
+        and source regions.
     """
 
     # Return a single (target region, source region ) pair for a non-chunked array.

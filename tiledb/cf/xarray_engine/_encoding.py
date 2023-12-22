@@ -15,6 +15,22 @@ _DIM_DTYPE_ENCODING = "dim_dtype"
 
 
 class TileDBVariableEncoder:
+    """Class for encoding array variables.
+
+    Parameters
+    ----------
+    name
+        Name of the variable.
+    variable
+        Xarray variable to encode.
+    encoding
+        Dictionary of TileDB encoding keywords.
+    unlimited_dims
+        Unlimited dimensions. Only used if max_shape is not provided in the encoding.
+    ctx
+        Context object for TileDB operations.
+    """
+
     valid_encoding_keys = {
         _ATTR_FILTERS_ENCODING,
         _ATTR_NAME_ENCODING,
@@ -24,17 +40,6 @@ class TileDBVariableEncoder:
     }
 
     def __init__(self, name, variable, encoding, unlimited_dims, ctx):
-        """Creates a class for encoding xarray variables.
-
-        Parameters:
-        -----------
-        name: Name of the variable.
-        variable: Xarray variable to encode.
-        encoding: Dictionary of TileDB encoding keywords.
-        unlimited_dims: Unlimited dimensions. Only used if max_shape is not provided
-            in the encoding.
-        ctx: Context object for TileDB operations.
-        """
         # Set initial class properties.
         self._ctx = ctx
         self._name = name
