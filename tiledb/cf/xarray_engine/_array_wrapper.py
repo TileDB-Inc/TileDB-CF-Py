@@ -21,18 +21,18 @@ def _to_zero_based_tiledb_index(dim_name, dim_size, index):
 
     Parameters
     ----------
-    dim_name: int
+    dim_name
         Name of the dimension. Used for errors.
-    dim_size: int
+    dim_size
         Size of the dimension as interpreted by xarray. May be smaller than the
         full domain of the TileDB dimension.
-    index : Union[int, np.array, slice]
+    index
         An integer index, array of integer indices, or a slice for indexing an
         xarray dimension.
 
     Returns
     -------
-    new_index : Union[int, List[int], slice]
+    Union[int, List[int], slice]
         An integer, a list of integer values, or a slice for indexing a
         TileDB dimension using mulit_index.
     """

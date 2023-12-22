@@ -68,28 +68,41 @@ class TileDBXarrayBackendEntrypoint(BackendEntrypoint):
 
         Parameters
         ----------
-        filename_or_obj: TileDB URI for the group or array to open in xarray.
-        config: TileDB config object to pass to TileDB objects.
-        ctx: TileDB context to use for TileDB operations.
-        timestamp: Timestamp to open the TileDB array at. Not valid for groups.
-        key: [Deprecated] Encryption key to use for the backend array.
-        encode_fill: [Deprecated] Encode the TileDB fill value.
-        coord_dims: [Deprecated] List of dimensions to convert to coordinates.
-        open_full_domain: [Deprecated] Open the full TileDB domain instead of the
-            non-empty domain.
-        mask_and_scale: xarray decoder that masks fill value and applies float-scale
-            filter using variable metadata.
-        decode_times: xarray decoder that converts variables with NetCDF CF-Convention
-            time metadata to a numpy.datetime64 datatype.
-        concat_characters: xarray decoder not supported by TileDB.
-        decode_coords: xarray decoder that controls which variables are set as
-            coordinate variables.
-        drop_variables: A variable or list of variables to exclude from being
-            parase from the dataset.
-        use_cftime: xarray decoder option. Uses cftime for datetime decoding.
-        decode_timedelta: xarray decoder that converts variables with time units
-            to a numpy.timedelta64 datatype.
-
+        filename_or_obj
+            TileDB URI for the group or array to open in xarray.
+        config
+            TileDB config object to pass to TileDB objects.
+        ctx
+            TileDB context to use for TileDB operations.
+        timestamp
+            Timestamp to open the TileDB array at. Not valid for groups.
+        key
+            [Deprecated] Encryption key to use for the backend array.
+        encode_fill
+            [Deprecated] Encode the TileDB fill value.
+        coord_dims
+            [Deprecated] List of dimensions to convert to coordinates.
+        open_full_domain
+            [Deprecated] Open the full TileDB domain instead of the non-empty domain.
+        mask_and_scale
+            xarray decoder that masks fill value and applies float-scale filter using
+            variable metadata.
+        decode_times
+            xarray decoder that converts variables with NetCDF CF-Convention time
+            metadata to a numpy.datetime64 datatype.
+        concat_characters
+            xarray decoder not supported by TileDB.
+        decode_coords
+            xarray decoder that controls which variables are set as coordinate
+            variables.
+        drop_variables
+            A variable or list of variables to exclude from being opened from the
+            dataset.
+        use_cftime
+            xarray decoder option. Uses cftime for datetime decoding.
+        decode_timedelta
+            xarray decoder that converts variables with time units to a
+            numpy.timedelta64 datatype.
         """
 
         deprecated_kwargs = {
