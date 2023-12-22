@@ -538,7 +538,7 @@ class NetCDF4ConverterEngine(DataspaceCreator):
 
         Parameters
         ----------
-        var
+        ncvar
             NetCDF coordinate variable to be converted.
         dim_name
             If not ``None``, name to use for the TileDB dimension.
@@ -627,7 +627,9 @@ class NetCDF4ConverterEngine(DataspaceCreator):
         ----------
         ncvar
             NetCDF variable to convert to a TileDB attribute.
-        name
+        array_name
+            Name of the array the attribute is stored in.
+        attr_name
             Name of the new attribute that will be added. If ``None``, the name
             will be copied from the NetCDF variable.
         dtype
