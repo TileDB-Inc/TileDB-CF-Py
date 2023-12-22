@@ -4,8 +4,20 @@ import pytest
 import tiledb
 from tiledb.cf import create_group, open_group_array
 
-_row = tiledb.Dim(name="rows", domain=(1, 4), tile=4, dtype=np.uint64)
-_col = tiledb.Dim(name="cols", domain=(1, 4), tile=4, dtype=np.uint64)
+_row = tiledb.Dim(
+    name="rows",
+    domain=(1, 4),
+    tile=4,
+    dtype=np.uint64,
+    filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+)
+_col = tiledb.Dim(
+    name="cols",
+    domain=(1, 4),
+    tile=4,
+    dtype=np.uint64,
+    filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+)
 
 
 _attr_a = tiledb.Attr(name="a", dtype=np.uint64)

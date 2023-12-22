@@ -180,7 +180,13 @@ class TestWriteSimple1D(TileDBXarrayWriterBase):
     @pytest.fixture(scope="class")
     def expected_schemas(self):
         domain = tiledb.Domain(
-            tiledb.Dim("rows", domain=(0, 15), tile=8, dtype=np.uint32)
+            tiledb.Dim(
+                "rows",
+                domain=(0, 15),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            )
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         example_attr = tiledb.Attr("example", filters=default_filters, dtype=np.float32)
@@ -221,7 +227,13 @@ class TestWriteCoord1D(TileDBXarrayWriterBase):
     @pytest.fixture(scope="class")
     def expected_schemas(self):
         domain = tiledb.Domain(
-            tiledb.Dim("rows", domain=(0, 15), tile=8, dtype=np.uint32)
+            tiledb.Dim(
+                "rows",
+                domain=(0, 15),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            )
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         example_attr = tiledb.Attr("example", filters=default_filters, dtype=np.float32)
@@ -262,7 +274,13 @@ class TestWriteSkipVar1D(TileDBXarrayWriterBase):
     @pytest.fixture(scope="class")
     def expected_schemas(self):
         domain = tiledb.Domain(
-            tiledb.Dim("rows", domain=(0, 15), tile=8, dtype=np.uint32)
+            tiledb.Dim(
+                "rows",
+                domain=(0, 15),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            )
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         index_attr = tiledb.Attr("index", filters=default_filters, dtype=np.uint32)
@@ -300,6 +318,7 @@ class TestWriteUnlimitedDim1D(TileDBXarrayWriterBase):
                 domain=(0, np.iinfo(np.dtype("uint32")).max - 1),
                 tile=8,
                 dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
             )
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
@@ -333,7 +352,13 @@ class TestWriteUnlimitedDimWithShape1D(TileDBXarrayWriterBase):
     @pytest.fixture(scope="class")
     def expected_schemas(self):
         domain = tiledb.Domain(
-            tiledb.Dim("rows", domain=(0, 31), tile=8, dtype=np.uint32)
+            tiledb.Dim(
+                "rows",
+                domain=(0, 31),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            )
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         example_attr = tiledb.Attr("example", filters=default_filters, dtype=np.uint32)
@@ -370,7 +395,13 @@ class TestWriteTimedelta1D(TileDBXarrayWriterBase):
     @pytest.fixture(scope="class")
     def expected_schemas(self):
         domain = tiledb.Domain(
-            tiledb.Dim("rows", domain=(0, 7), tile=8, dtype=np.uint32)
+            tiledb.Dim(
+                "rows",
+                domain=(0, 7),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            )
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         example_attr = tiledb.Attr("example", filters=default_filters, dtype=np.int64)
@@ -410,7 +441,13 @@ class TestWriteDatetime(TileDBXarrayWriterBase):
     @pytest.fixture(scope="class")
     def expected_schemas(self):
         domain = tiledb.Domain(
-            tiledb.Dim("rows", domain=(0, 7), tile=8, dtype=np.uint32)
+            tiledb.Dim(
+                "rows",
+                domain=(0, 7),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            )
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         example_attr = tiledb.Attr("example", filters=default_filters, dtype="int64")
@@ -448,8 +485,20 @@ class TestWriteMixedUnlimitedDim12D(TileDBXarrayWriterBase):
     @pytest.fixture(scope="class")
     def expected_schemas(self):
         domain = tiledb.Domain(
-            tiledb.Dim("rows", domain=(0, 31), tile=8, dtype=np.uint32),
-            tiledb.Dim("cols", domain=(0, 7), tile=8, dtype=np.uint32),
+            tiledb.Dim(
+                "rows",
+                domain=(0, 31),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            ),
+            tiledb.Dim(
+                "cols",
+                domain=(0, 7),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            ),
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         example_attr = tiledb.Attr("example", filters=default_filters, dtype=np.uint32)
@@ -488,8 +537,20 @@ class TestWriteSimpleDask(TileDBXarrayWriterBase):
     @pytest.fixture(scope="class")
     def expected_schemas(self):
         domain = tiledb.Domain(
-            tiledb.Dim("rows", domain=(0, 31), tile=8, dtype=np.uint32),
-            tiledb.Dim("cols", domain=(0, 31), tile=8, dtype=np.uint32),
+            tiledb.Dim(
+                "rows",
+                domain=(0, 31),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            ),
+            tiledb.Dim(
+                "cols",
+                domain=(0, 31),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            ),
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         example_attr = tiledb.Attr("example", filters=default_filters, dtype=np.float32)
@@ -522,7 +583,15 @@ class TestMultiWriteSimple1D(TileDBXarrayMultiWriterBase):
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         return {
             "example": tiledb.ArraySchema(
-                tiledb.Domain(tiledb.Dim("x", domain=(0, 15), tile=8, dtype=np.uint32)),
+                tiledb.Domain(
+                    tiledb.Dim(
+                        "x",
+                        domain=(0, 15),
+                        tile=8,
+                        dtype=np.uint32,
+                        filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+                    )
+                ),
                 [tiledb.Attr("example", filters=default_filters, dtype=np.int32)],
             )
         }
@@ -562,7 +631,15 @@ class TestMultiRegionWriteSimple1D(TileDBXarrayMultiWriterBase):
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         return {
             "example": tiledb.ArraySchema(
-                tiledb.Domain(tiledb.Dim("x", domain=(0, 15), tile=8, dtype=np.uint32)),
+                tiledb.Domain(
+                    tiledb.Dim(
+                        "x",
+                        domain=(0, 15),
+                        tile=8,
+                        dtype=np.uint32,
+                        filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+                    )
+                ),
                 [tiledb.Attr("example", filters=default_filters, dtype=np.int32)],
             )
         }
@@ -604,7 +681,15 @@ class MulitWriteSkipVars:
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
         return {
             "example": tiledb.ArraySchema(
-                tiledb.Domain(tiledb.Dim("x", domain=(0, 15), tile=8, dtype=np.uint32)),
+                tiledb.Domain(
+                    tiledb.Dim(
+                        "x",
+                        domain=(0, 15),
+                        tile=8,
+                        dtype=np.uint32,
+                        filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+                    )
+                ),
                 [tiledb.Attr("example", filters=default_filters, dtype=np.int32)],
             )
         }
