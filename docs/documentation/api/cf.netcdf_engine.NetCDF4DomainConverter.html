@@ -267,16 +267,7 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter">cf.netcdf_engine.NetCDF4DomainConverter</a>
-<ul class="collapse">
-<li><a href="#attributes" class="nav-link" data-scroll-target="#attributes">Attributes</a></li>
-<li><a href="#methods" class="nav-link" data-scroll-target="#methods">Methods</a>
-<ul class="collapse">
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.get_query_coordinates" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.get_query_coordinates">get_query_coordinates</a></li>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.inject_dim_creator" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.inject_dim_creator">inject_dim_creator</a></li>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.remove_dim_creator" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.remove_dim_creator">remove_dim_creator</a></li>
-</ul></li>
-</ul></li>
+<li><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter">cf.netcdf_engine.NetCDF4DomainConverter</a></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -285,75 +276,11 @@
 
 <section id="tiledb.cf.netcdf_engine.NetCDF4DomainConverter" class="level1">
 <h1>cf.netcdf_engine.NetCDF4DomainConverter</h1>
-<p><code>cf.netcdf_engine.NetCDF4DomainConverter()</code></p>
+<p><code>cf.netcdf_engine.NetCDF4DomainConverter(self, array_core)</code></p>
 <p>Converter for NetCDF dimensions to a TileDB domain.</p>
-<section id="attributes" class="level2">
-<h2 class="anchored" data-anchor-id="attributes">Attributes</h2>
-<table class="table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.max_fragment_shape">max_fragment_shape</a></td>
-<td>Maximum shape of a fragment when copying from NetCDF to TileDB.</td>
-</tr>
-<tr class="even">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.netcdf_dims">netcdf_dims</a></td>
-<td>Ordered tuple of NetCDF dimension names for dimension converters.</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<table class="table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.get_query_coordinates">get_query_coordinates</a></td>
-<td>Returns the coordinates used to copy data from a NetCDF group.</td>
-</tr>
-<tr class="even">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.inject_dim_creator">inject_dim_creator</a></td>
-<td>Add an additional dimension into the domain of the array.</td>
-</tr>
-<tr class="odd">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4DomainConverter.remove_dim_creator">remove_dim_creator</a></td>
-<td>Removes a dimension creator from the array creator.</td>
-</tr>
-</tbody>
-</table>
-<section id="tiledb.cf.netcdf_engine.NetCDF4DomainConverter.get_query_coordinates" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4DomainConverter.get_query_coordinates">get_query_coordinates</h3>
-<p><code>cf.netcdf_engine.NetCDF4DomainConverter.get_query_coordinates(netcdf_group, sparse, indexer, assigned_dim_values=None)</code></p>
-<p>Returns the coordinates used to copy data from a NetCDF group.</p>
-<p>Parameters: netcdf_group: Group to query the data from. sparse: If <code>True</code>, return coordinates for a sparse write. If <code>False</code>, return coordinates for a dense write. assigned_dim_values: Values for any non-NetCDF dimensions.</p>
-</section>
-<section id="tiledb.cf.netcdf_engine.NetCDF4DomainConverter.inject_dim_creator" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4DomainConverter.inject_dim_creator">inject_dim_creator</h3>
-<p><code>cf.netcdf_engine.NetCDF4DomainConverter.inject_dim_creator(dim_name, position, **dim_kwargs)</code></p>
-<p>Add an additional dimension into the domain of the array.</p>
-<p>Parameters: dim_name: Name of the shared dimension to add to the array’s domain. position: Position of the shared dimension. Negative values count backwards from the end of the new number of dimensions. dim_kwargs: Keyword arguments to pass to :class:<code>NetCDF4ToDimConverter</code>.</p>
-</section>
-<section id="tiledb.cf.netcdf_engine.NetCDF4DomainConverter.remove_dim_creator" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4DomainConverter.remove_dim_creator">remove_dim_creator</h3>
-<p><code>cf.netcdf_engine.NetCDF4DomainConverter.remove_dim_creator(dim_id)</code></p>
-<p>Removes a dimension creator from the array creator.</p>
-<p>Parameters: dim_id: dimension index (int) or name (str)</p>
 
 
 
-</section>
-</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

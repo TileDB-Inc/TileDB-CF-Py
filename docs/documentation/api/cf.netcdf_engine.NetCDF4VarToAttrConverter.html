@@ -267,15 +267,7 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter">cf.netcdf_engine.NetCDF4VarToAttrConverter</a>
-<ul class="collapse">
-<li><a href="#methods" class="nav-link" data-scroll-target="#methods">Methods</a>
-<ul class="collapse">
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata">copy_metadata</a></li>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values">get_values</a></li>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary">html_summary</a></li>
-</ul></li>
-</ul></li>
+<li><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter">cf.netcdf_engine.NetCDF4VarToAttrConverter</a></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -287,52 +279,9 @@
 <p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter(self, name, dtype, fill, var, nullable, filters, input_var_name, input_var_dtype, unpack, *, registry=None)</code></p>
 <p>Converter for a NetCDF variable to a TileDB attribute.</p>
 <p>Attributes: name: Name of the new attribute. dtype: Numpy dtype of the attribute. fill: Fill value for unset cells. var: Specifies if the attribute is variable length (automatic for byte/strings). nullable: Specifies if the attribute is nullable using validity tiles. filters: Specifies compression filters for the attribute. input_var_name: Name of the input NetCDF variable that will be converted. input_var_dtype: Numpy dtype of the input NetCDF variable.</p>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<table class="table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata">copy_metadata</a></td>
-<td>Copy the metadata data from NetCDF to TileDB.</td>
-</tr>
-<tr class="even">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values">get_values</a></td>
-<td>Returns TileDB attribute values from a NetCDF group.</td>
-</tr>
-<tr class="odd">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary">html_summary</a></td>
-<td>Returns a string HTML summary of the :class:<code>AttrCreator</code>.</td>
-</tr>
-</tbody>
-</table>
-<section id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata">copy_metadata</h3>
-<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter.copy_metadata(netcdf_group, tiledb_array)</code></p>
-<p>Copy the metadata data from NetCDF to TileDB.</p>
-<p>Parameters: netcdf_group: NetCDF group to get the metadata items from. tiledb_array: TileDB array to copy the metadata items to.</p>
-</section>
-<section id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values">get_values</h3>
-<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter.get_values(netcdf_group, indexer)</code></p>
-<p>Returns TileDB attribute values from a NetCDF group.</p>
-<p>Parameters: netcdf_group: NetCDF group to get the dimension values from. indexer: Slice to query the NetCDF variable on.</p>
-<p>Returns: The values needed to set an attribute in a TileDB array. If the array is sparse the values will be returned as an 1D array; otherwise, they will be returned as an ND array.</p>
-</section>
-<section id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary">html_summary</h3>
-<p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter.html_summary()</code></p>
-<p>Returns a string HTML summary of the :class:<code>AttrCreator</code>.</p>
 
 
 
-</section>
-</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

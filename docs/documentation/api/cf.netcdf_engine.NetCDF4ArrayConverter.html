@@ -267,14 +267,7 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter">cf.netcdf_engine.NetCDF4ArrayConverter</a>
-<ul class="collapse">
-<li><a href="#methods" class="nav-link" data-scroll-target="#methods">Methods</a>
-<ul class="collapse">
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter">add_var_to_attr_converter</a></li>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.copy" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.copy">copy</a></li>
-</ul></li>
-</ul></li>
+<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter">cf.netcdf_engine.NetCDF4ArrayConverter</a></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -283,46 +276,12 @@
 
 <section id="tiledb.cf.netcdf_engine.NetCDF4ArrayConverter" class="level1">
 <h1>cf.netcdf_engine.NetCDF4ArrayConverter</h1>
-<p><code>cf.netcdf_engine.NetCDF4ArrayConverter()</code></p>
+<p><code>cf.netcdf_engine.NetCDF4ArrayConverter(self, *, name='array', dim_order=None, cell_order='row-major', tile_order='row-major', capacity=0, tiles=None, dim_filters=None, offsets_filters=None, attrs_filters=None, allows_duplicates=False, sparse=False, registry=None, dim_registry=None, shared_dims=None)</code></p>
 <p>Converter for a TileDB array from a collection of NetCDF variables.</p>
 <p>Attributes: cell_order: The order in which TileDB stores the cells on disk inside a tile. Valid values are: <code>row-major</code> (default) or <code>C</code> for row major; <code>col-major</code> or <code>F</code> for column major; or <code>Hilbert</code> for a Hilbert curve. tile_order: The order in which TileDB stores the tiles on disk. Valid values are: <code>row-major</code> or <code>C</code> (default) for row major; or <code>col-major</code> or <code>F</code> for column major. capacity: The number of cells in a data tile of a sparse fragment. offsets_filters: Filters for the offsets for variable length attributes or dimensions. attrs_filters: Default filters to use when adding an attribute to the array. allows_duplicates: Specifies if multiple values can be stored at the same coordinate. Only allowed for sparse arrays.</p>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<table class="table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter">add_var_to_attr_converter</a></td>
-<td>Adds a new variable to attribute converter to the array creator.</td>
-</tr>
-<tr class="even">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.copy">copy</a></td>
-<td>Copies data from a NetCDF group to a TileDB CF array.</td>
-</tr>
-</tbody>
-</table>
-<section id="tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter">add_var_to_attr_converter</h3>
-<p><code>cf.netcdf_engine.NetCDF4ArrayConverter.add_var_to_attr_converter(ncvar, name=None, dtype=None, fill=None, var=False, nullable=False, filters=None, unpack=False)</code></p>
-<p>Adds a new variable to attribute converter to the array creator.</p>
-<p>The attribute’s ‘dataspace name’ (name after dropping the suffix <code>.data</code> or <code>.index</code>) be unique.</p>
-<p>Parameters: ncvar: NetCDF variable to convert to a TileDB attribute. name: Name of the new attribute that will be added. If <code>None</code>, the name will be copied from the NetCDF variable. dtype: Numpy dtype of the new attribute. If <code>None</code>, the data type will be copied from the variable. fill: Fill value for unset cells. If <code>None</code>, the fill value will be copied from the NetCDF variable if it has a fill value. var: Specifies if the attribute is variable length (automatic for byte/strings). nullable: Specifies if the attribute is nullable using validity tiles. filters: Specifies compression filters for the attribute. If <code>None</code>, use array’s <code>attrs_filters</code> property. unpack: Unpack NetCDF data that has NetCDF attributes <code>scale_factor</code> or <code>add_offset</code> using the transformation <code>scale_factor * value +         unpack</code>.</p>
-</section>
-<section id="tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.copy" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4ArrayConverter.copy">copy</h3>
-<p><code>cf.netcdf_engine.NetCDF4ArrayConverter.copy(netcdf_group, tiledb_uri, tiledb_key=None, tiledb_ctx=None, tiledb_timestamp=None, assigned_dim_values=None, assigned_attr_values=None, copy_metadata=True)</code></p>
-<p>Copies data from a NetCDF group to a TileDB CF array.</p>
-<p>Parameters: netcdf_group: The NetCDF group to copy data from. tiledb_uri: The TileDB array uri to copy data into. tiledb_key: If not <code>None</code>, the encryption key for the TileDB array. tiledb_ctx: If not <code>None</code>, the TileDB context wrapper for a TileDB storage manager to use when opening the TileDB array. tiledb_timestamp: If not <code>None</code>, the timestamp to write the TileDB data at. assigned_dim_values: Mapping from dimension name to value for dimensions that are not copied from the NetCDF group. assigned_attr_values: Mapping from attribute name to numpy array of values for attributes that are not copied from the NetCDF group.</p>
 
 
 
-</section>
-</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

@@ -267,15 +267,7 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter">cf.netcdf_engine.NetCDF4ToDimConverter</a>
-<ul class="collapse">
-<li><a href="#attributes" class="nav-link" data-scroll-target="#attributes">Attributes</a></li>
-<li><a href="#methods" class="nav-link" data-scroll-target="#methods">Methods</a>
-<ul class="collapse">
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.get_fragment_indices" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.get_fragment_indices">get_fragment_indices</a></li>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.html_summary" class="nav-link" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.html_summary">html_summary</a></li>
-</ul></li>
-</ul></li>
+<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter">cf.netcdf_engine.NetCDF4ToDimConverter</a></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -287,63 +279,9 @@
 <p><code>cf.netcdf_engine.NetCDF4ToDimConverter(self, base, *, tile=None, filters=None, max_fragment_length=None)</code></p>
 <p>Converter from NetCDF to a TileDB dimension in a :class:<code>NetCDF4ArrayConverter</code> using a :class:<code>SharedDim</code> for the base dimension.</p>
 <p>Attributes: tile: The tile size for the dimension. filters: Specifies compression filters for the dimension.</p>
-<section id="attributes" class="level2">
-<h2 class="anchored" data-anchor-id="attributes">Attributes</h2>
-<table class="table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.is_from_netcdf">is_from_netcdf</a></td>
-<td>Returns <code>True</code> if the dimension is converted from a NetCDF variable or</td>
-</tr>
-<tr class="even">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.max_fragment_length">max_fragment_length</a></td>
-<td>The maximum number of elements to copy at a time. If <code>None</code>, there is no</td>
-</tr>
-</tbody>
-</table>
-</section>
-<section id="methods" class="level2">
-<h2 class="anchored" data-anchor-id="methods">Methods</h2>
-<table class="table">
-<thead>
-<tr class="header">
-<th>Name</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.get_fragment_indices">get_fragment_indices</a></td>
-<td>Returns a sequence of slices for copying chunks of the dimension data for</td>
-</tr>
-<tr class="even">
-<td><a href="#tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.html_summary">html_summary</a></td>
-<td>Returns a string HTML summary of the :class:<code>NetCDF4ToDimConverter</code>.</td>
-</tr>
-</tbody>
-</table>
-<section id="tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.get_fragment_indices" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.get_fragment_indices">get_fragment_indices</h3>
-<p><code>cf.netcdf_engine.NetCDF4ToDimConverter.get_fragment_indices(netcdf_group)</code></p>
-<p>Returns a sequence of slices for copying chunks of the dimension data for each TileDB fragment.</p>
-<p>Parameters: netcdf_group: NetCDF group to copy the data from.</p>
-<p>Returns: A sequence of slices for copying chunks of the dimension data for each TileDB fragment.</p>
-</section>
-<section id="tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.html_summary" class="level3">
-<h3 class="anchored" data-anchor-id="tiledb.cf.netcdf_engine.NetCDF4ToDimConverter.html_summary">html_summary</h3>
-<p><code>cf.netcdf_engine.NetCDF4ToDimConverter.html_summary()</code></p>
-<p>Returns a string HTML summary of the :class:<code>NetCDF4ToDimConverter</code>.</p>
 
 
 
-</section>
-</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">
