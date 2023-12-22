@@ -267,7 +267,10 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.from_xarray" class="nav-link active" data-scroll-target="#tiledb.cf.from_xarray">cf.from_xarray</a></li>
+<li><a href="#tiledb.cf.from_xarray" class="nav-link active" data-scroll-target="#tiledb.cf.from_xarray">cf.from_xarray</a>
+<ul class="collapse">
+<li><a href="#parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -278,10 +281,84 @@
 <h1>cf.from_xarray</h1>
 <p><code>cf.from_xarray(dataset, group_uri, *, config=None, ctx=None, encoding=None, region=None, unlimited_dims=None, skip_vars=None)</code></p>
 <p>Creates a TileDB group and copies all data from an xarray dataset.</p>
-<p>Parameters: dataset: The xarray Dataset to write. group_uri: The URI to the TileDB group to create or append to. config: A TileDB config object to use for TileDB objects. ctx: A TileDB context object to use for TileDB operations. encoding: A nested dictionary with variable names as keys and dictionaries of TileDB specific encoding. encoding: A nested dictionary with variable names as keys and dictionaries of TileDB specific encodings as values. region: A mapping from dimension names to integer slices that specify what regions in the TileDB arrays to write the data. Regions include the first value of the slice and exclude the final value. unlimited_dims: Set of dimensions to use the maximum dimension size for. Only used for variables in the dataset that do not have <code>max_size</code> encoding provided. skip_vars: A set of names of variables not to add to the TileDB group.</p>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="table">
+<colgroup>
+<col style="width: 6%">
+<col style="width: 19%">
+<col style="width: 69%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>dataset</code></td>
+<td></td>
+<td>The xarray Dataset to write.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>group_uri</code></td>
+<td></td>
+<td>The URI to the TileDB group to create or append to.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>config</code></td>
+<td>typing.Optional[tiledb.tiledb.Config]</td>
+<td>A TileDB config object to use for TileDB objects.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>ctx</code></td>
+<td>typing.Optional[tiledb.tiledb.Ctx]</td>
+<td>A TileDB context object to use for TileDB operations.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td><code>encoding</code></td>
+<td>typing.Optional[typing.Mapping[str, typing.Any]]</td>
+<td>A nested dictionary with variable names as keys and dictionaries of TileDB specific encoding.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>encoding</code></td>
+<td>typing.Optional[typing.Mapping[str, typing.Any]]</td>
+<td>A nested dictionary with variable names as keys and dictionaries of TileDB specific encodings as values.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td><code>region</code></td>
+<td>typing.Optional[typing.Mapping[str, slice]]</td>
+<td>A mapping from dimension names to integer slices that specify what regions in the TileDB arrays to write the data. Regions include the first value of the slice and exclude the final value.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>unlimited_dims</code></td>
+<td>typing.Optional[typing.Iterable[str]]</td>
+<td>Set of dimensions to use the maximum dimension size for. Only used for variables in the dataset that do not have <code>max_size</code> encoding provided.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td><code>skip_vars</code></td>
+<td>typing.Optional[typing.Set[str]]</td>
+<td>A set of names of variables not to add to the TileDB group.</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

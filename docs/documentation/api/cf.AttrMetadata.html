@@ -267,7 +267,10 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.AttrMetadata" class="nav-link active" data-scroll-target="#tiledb.cf.AttrMetadata">cf.AttrMetadata</a></li>
+<li><a href="#tiledb.cf.AttrMetadata" class="nav-link active" data-scroll-target="#tiledb.cf.AttrMetadata">cf.AttrMetadata</a>
+<ul class="collapse">
+<li><a href="#parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -279,10 +282,42 @@
 <p><code>cf.AttrMetadata(self, metadata, attr)</code></p>
 <p>Metadata wrapper for accessing attribute metadata.</p>
 <p>This class allows access to the metadata for an attribute stored in the metadata for a TileDB array.</p>
-<p>Parameters: metadata (tiledb.Metadata): TileDB array metadata for the array containing the desired attribute. attr (str): Name or index of the arrary attribute being requested.</p>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="table">
+<colgroup>
+<col style="width: 9%">
+<col style="width: 21%">
+<col style="width: 58%">
+<col style="width: 9%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>metadata</code></td>
+<td>tiledb.tiledb.Metadata</td>
+<td>TileDB array metadata for the array containing the desired attribute.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>attr</code></td>
+<td>typing.Union[str, int]</td>
+<td>Name or index of the arrary attribute being requested.</td>
+<td><em>required</em></td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

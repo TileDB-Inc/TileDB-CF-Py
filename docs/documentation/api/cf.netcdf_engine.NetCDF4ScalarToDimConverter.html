@@ -267,7 +267,10 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ScalarToDimConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ScalarToDimConverter">cf.netcdf_engine.NetCDF4ScalarToDimConverter</a></li>
+<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ScalarToDimConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ScalarToDimConverter">cf.netcdf_engine.NetCDF4ScalarToDimConverter</a>
+<ul class="collapse">
+<li><a href="#attributes" class="nav-link" data-scroll-target="#attributes">Attributes</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -278,10 +281,43 @@
 <h1>cf.netcdf_engine.NetCDF4ScalarToDimConverter</h1>
 <p><code>cf.netcdf_engine.NetCDF4ScalarToDimConverter(self, name, domain, dtype, *, registry=None)</code></p>
 <p>Converter for NetCDF scalar (empty) dimensions to a TileDB Dimension.</p>
-<p>Attributes: name: Name of the TileDB dimension. domain: The (inclusive) interval on which the dimension is valid. dtype: The numpy dtype of the values and domain of the dimension.</p>
+<section id="attributes" class="level2">
+<h2 class="anchored" data-anchor-id="attributes">Attributes</h2>
+<table class="table">
+<colgroup>
+<col style="width: 10%">
+<col style="width: 10%">
+<col style="width: 78%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>name</td>
+<td></td>
+<td>Name of the TileDB dimension.</td>
+</tr>
+<tr class="even">
+<td>domain</td>
+<td></td>
+<td>The (inclusive) interval on which the dimension is valid.</td>
+</tr>
+<tr class="odd">
+<td>dtype</td>
+<td></td>
+<td>The numpy dtype of the values and domain of the dimension.</td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

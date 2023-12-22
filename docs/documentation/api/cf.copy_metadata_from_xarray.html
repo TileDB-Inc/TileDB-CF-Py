@@ -267,7 +267,10 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.copy_metadata_from_xarray" class="nav-link active" data-scroll-target="#tiledb.cf.copy_metadata_from_xarray">cf.copy_metadata_from_xarray</a></li>
+<li><a href="#tiledb.cf.copy_metadata_from_xarray" class="nav-link active" data-scroll-target="#tiledb.cf.copy_metadata_from_xarray">cf.copy_metadata_from_xarray</a>
+<ul class="collapse">
+<li><a href="#parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -278,10 +281,72 @@
 <h1>cf.copy_metadata_from_xarray</h1>
 <p><code>cf.copy_metadata_from_xarray(dataset, group_uri, *, config=None, ctx=None, skip_vars=None, copy_group_metadata=True, copy_variable_metadata=True)</code></p>
 <p>Copies metadata from an xarray dataset to a TileDB group.</p>
-<p>Parameters: dataset: The xarray Dataset to write. group_uri: The URI to the TileDB group to create or append to. config: A TileDB config object to use for TileDB objects. ctx: A TileDB context object to use for TileDB operations. skip_vars: A set of names of variables not to copy to the group. copy_group_metadata: If true, copy xarray dataset metadata to the TileDB group. copy_variable_metadata: If true, copy xarray variable metadata to the TileDB arrays as TileDB attribute metadata.</p>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="table">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 24%">
+<col style="width: 53%">
+<col style="width: 7%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>dataset</code></td>
+<td></td>
+<td>The xarray Dataset to write.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>group_uri</code></td>
+<td></td>
+<td>The URI to the TileDB group to create or append to.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>config</code></td>
+<td>typing.Optional[tiledb.tiledb.Config]</td>
+<td>A TileDB config object to use for TileDB objects.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>ctx</code></td>
+<td>typing.Optional[tiledb.tiledb.Ctx]</td>
+<td>A TileDB context object to use for TileDB operations.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td><code>skip_vars</code></td>
+<td>typing.Optional[typing.Set[str]]</td>
+<td>A set of names of variables not to copy to the group.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>copy_group_metadata</code></td>
+<td>bool</td>
+<td>If true, copy xarray dataset metadata to the TileDB group.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td><code>copy_variable_metadata</code></td>
+<td>bool</td>
+<td>If true, copy xarray variable metadata to the TileDB arrays as TileDB attribute metadata.</td>
+<td><code>True</code></td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

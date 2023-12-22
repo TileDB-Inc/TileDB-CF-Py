@@ -267,7 +267,11 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4DimToDimConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4DimToDimConverter">cf.netcdf_engine.NetCDF4DimToDimConverter</a></li>
+<li><a href="#tiledb.cf.netcdf_engine.NetCDF4DimToDimConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4DimToDimConverter">cf.netcdf_engine.NetCDF4DimToDimConverter</a>
+<ul class="collapse">
+<li><a href="#parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+<li><a href="#attributes" class="nav-link" data-scroll-target="#attributes">Attributes</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -278,10 +282,115 @@
 <h1>cf.netcdf_engine.NetCDF4DimToDimConverter</h1>
 <p><code>cf.netcdf_engine.NetCDF4DimToDimConverter(self, name, domain, dtype, input_dim_name, input_dim_size, is_unlimited, *, registry)</code></p>
 <p>Converter for a NetCDF dimension to a TileDB dimension.</p>
-<p>Attributes: name: Name of the TileDB dimension. domain: The (inclusive) interval on which the dimension is valid. dtype: The numpy dtype of the values and domain of the dimension. input_dim_name: Name of the input NetCDF variable. input_dim_size: Size of the input NetCDF variable. is_unlimited: If True, the input NetCDF variable is unlimited.</p>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 57%">
+<col style="width: 28%">
+<col style="width: 5%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>name</code></td>
+<td>str</td>
+<td>Name of the TileDB dimension.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>domain</code></td>
+<td>typing.Optional[typing.Tuple[typing.Optional[tiledb.cf._utils.DType], typing.Optional[tiledb.cf._utils.DType]]]</td>
+<td>The (inclusive) interval on which the dimension is valid.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>dtype</code></td>
+<td>numpy.numpy.dtype</td>
+<td>The numpy dtype of the values and domain of the dimension.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>input_dim_name</code></td>
+<td>str</td>
+<td>Name of the input NetCDF variable.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>input_dim_size</code></td>
+<td>int</td>
+<td>Size of the input NetCDF variable.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>is_unlimited</code></td>
+<td>bool</td>
+<td>If True, the input NetCDF variable is unlimited.</td>
+<td><em>required</em></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="attributes" class="level2">
+<h2 class="anchored" data-anchor-id="attributes">Attributes</h2>
+<table class="table">
+<colgroup>
+<col style="width: 19%">
+<col style="width: 9%">
+<col style="width: 71%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>name</td>
+<td></td>
+<td>Name of the TileDB dimension.</td>
+</tr>
+<tr class="even">
+<td>domain</td>
+<td></td>
+<td>The (inclusive) interval on which the dimension is valid.</td>
+</tr>
+<tr class="odd">
+<td>dtype</td>
+<td></td>
+<td>The numpy dtype of the values and domain of the dimension.</td>
+</tr>
+<tr class="even">
+<td>input_dim_name</td>
+<td></td>
+<td>Name of the input NetCDF dimension</td>
+</tr>
+<tr class="odd">
+<td>input_dim_size</td>
+<td></td>
+<td>Size of the input NetCDF dimension.</td>
+</tr>
+<tr class="even">
+<td>is_unlimited</td>
+<td></td>
+<td>If True, the input NetCDF dimension is unlimited.</td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

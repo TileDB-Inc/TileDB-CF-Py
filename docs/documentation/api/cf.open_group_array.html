@@ -267,7 +267,11 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.open_group_array" class="nav-link active" data-scroll-target="#tiledb.cf.open_group_array">cf.open_group_array</a></li>
+<li><a href="#tiledb.cf.open_group_array" class="nav-link active" data-scroll-target="#tiledb.cf.open_group_array">cf.open_group_array</a>
+<ul class="collapse">
+<li><a href="#parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+<li><a href="#returns" class="nav-link" data-scroll-target="#returns">Returns</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -279,11 +283,71 @@
 <p><code>cf.open_group_array(group, *, array=None, attr=None, **kwargs)</code></p>
 <p>Opens an array in a group either by specifying the name of the array or the name of an attribute in the array.</p>
 <p>If only providing the attribute, there must be exactly one array in the group with an attribute with the requested name.</p>
-<p>Parameters: array: If not <code>None</code>, the name of the array to open. Overrides attr if both are provided. attr: If not <code>None</code>, open the array that contains this attr. Attr must be in only one of the group arrays. **kwargs: Keyword arguments to pass to the <code>tiledb.open</code> method.</p>
-<p>Returns: tiledb.Array opened in the specified mode</p>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="table">
+<colgroup>
+<col style="width: 7%">
+<col style="width: 15%">
+<col style="width: 68%">
+<col style="width: 7%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>group</code></td>
+<td>tiledb.tiledb.Group</td>
+<td>The tiledb group to open the array in.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>array</code></td>
+<td>typing.Optional[str]</td>
+<td>If not <code>None</code>, the name of the array to open. Overrides attr if both are provided.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td><code>attr</code></td>
+<td>typing.Optional[str]</td>
+<td>If not <code>None</code>, open the array that contains this attr. Attr must be in only one of the group arrays.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>**kwargs</code></td>
+<td></td>
+<td>Keyword arguments to pass to the <code>tiledb.open</code> method.</td>
+<td><code>{}</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="returns" class="level2">
+<h2 class="anchored" data-anchor-id="returns">Returns</h2>
+<table class="table">
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>tiledb.Array:</td>
+<td>An array opened in the specified mode</td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

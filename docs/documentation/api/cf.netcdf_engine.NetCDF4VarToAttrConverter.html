@@ -267,7 +267,10 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter">cf.netcdf_engine.NetCDF4VarToAttrConverter</a></li>
+<li><a href="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4VarToAttrConverter">cf.netcdf_engine.NetCDF4VarToAttrConverter</a>
+<ul class="collapse">
+<li><a href="#parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -278,10 +281,90 @@
 <h1>cf.netcdf_engine.NetCDF4VarToAttrConverter</h1>
 <p><code>cf.netcdf_engine.NetCDF4VarToAttrConverter(self, name, dtype, fill, var, nullable, filters, input_var_name, input_var_dtype, unpack, *, registry=None)</code></p>
 <p>Converter for a NetCDF variable to a TileDB attribute.</p>
-<p>Attributes: name: Name of the new attribute. dtype: Numpy dtype of the attribute. fill: Fill value for unset cells. var: Specifies if the attribute is variable length (automatic for byte/strings). nullable: Specifies if the attribute is nullable using validity tiles. filters: Specifies compression filters for the attribute. input_var_name: Name of the input NetCDF variable that will be converted. input_var_dtype: Numpy dtype of the input NetCDF variable.</p>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 37%">
+<col style="width: 48%">
+<col style="width: 5%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>name</code></td>
+<td>str</td>
+<td>The name of the attribute.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>dtype</code></td>
+<td>numpy.numpy.dtype</td>
+<td>The datatype of the attribute that will be created.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>fill</code></td>
+<td>typing.Optional[typing.Union[int, float, str]]</td>
+<td>Optional fill value for the attribute that will be created.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>var</code></td>
+<td>bool</td>
+<td>Specifies if the attribute that will be created will be variable length (automatic for byte/strings).</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>nullable</code></td>
+<td>bool</td>
+<td>Specifies if the attribute that will be created will be nullable using validity tiles.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>filters</code></td>
+<td>typing.Optional[tiledb.tiledb.FilterList]</td>
+<td>Filter pipeline to apply to the attribute.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>input_var_name</code></td>
+<td>str</td>
+<td>Name of the input netCDF variable to convert.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>input_var_dtype</code></td>
+<td>numpy.numpy.dtype</td>
+<td>Datatype of the netCDF variable to convert.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>unpack</code></td>
+<td>bool</td>
+<td>If <code>True</code>, unpack the data before converting.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>registry</code></td>
+<td>typing.Optional[tiledb.cf.core.registry.Registry[typing_extensions.Self]]</td>
+<td>Registry for this attribute creator.</td>
+<td><code>None</code></td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

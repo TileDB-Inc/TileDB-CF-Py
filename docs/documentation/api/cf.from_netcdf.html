@@ -267,7 +267,10 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.from_netcdf" class="nav-link active" data-scroll-target="#tiledb.cf.from_netcdf">cf.from_netcdf</a></li>
+<li><a href="#tiledb.cf.from_netcdf" class="nav-link active" data-scroll-target="#tiledb.cf.from_netcdf">cf.from_netcdf</a>
+<ul class="collapse">
+<li><a href="#parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -278,11 +281,127 @@
 <h1>cf.from_netcdf</h1>
 <p><code>cf.from_netcdf(input_file, output_uri, input_group_path='/', recursive=True, output_key=None, output_ctx=None, unlimited_dim_size=10000, dim_dtype=_DEFAULT_INDEX_DTYPE, tiles_by_var=None, tiles_by_dims=None, coords_to_dims=False, collect_attrs=True, unpack_vars=False, offsets_filters=None, attrs_filters=None, copy_metadata=True)</code></p>
 <p>Converts a NetCDF input file to nested TileDB CF dataspaces.</p>
-<p>See :class:<code>~tiledb.cf.NetCDF4ConverterEngine</code> for more information on the backend converter engine used for the conversion.</p>
-<p>Parameters: input_file: The input NetCDF file to generate the converter engine from. output_uri: The uniform resource identifier for the TileDB group to be created. input_group_path: The path to the NetCDF group to copy data from. Use <code>'/'</code> for the root group. recursive: If <code>True</code>, recursively convert groups in a NetCDF file. Otherwise, only convert group provided. output_key: If not <code>None</code>, encryption key to decrypt arrays. output_ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager. dim_dtype: The numpy dtype for the TileDB dimensions created from NetCDF dimensions. unlimited_dim_size: The size of the domain for TileDB dimensions created from unlimited NetCDF dimensions. dim_dtype: The numpy dtype for TileDB dimensions. tiles_by_var: A map from the name of a NetCDF variable to the tiles of the dimensions of the variable in the generated TileDB array. tiles_by_dims: A map from the name of NetCDF dimensions defining a variable to the tiles of those dimensions in the generated TileDB array. coords_to_dims: If <code>True</code>, convert the NetCDF coordinate variable into a TileDB dimension for sparse arrays. Otherwise, convert the coordinate dimension into a TileDB dimension and the coordinate variable into a TileDB attribute. collect_attrs: If <code>True</code>, store all attributes with the same dimensions in the same array. Otherwise, store each attribute in a scalar array. unpack_vars: Unpack NetCDF variables with NetCDF attributes <code>scale_factor</code> or <code>add_offset</code> using the transformation <code>scale_factor * value +         unpack</code>. offsets_filters: Default filters for all offsets for variable attributes and dimensions. attrs_filters: Default filters for all attributes. copy_metadata: If <code>True</code> copy NetCDF group and variable attributes to TileDB metadata. If <code>False</code> do not copy metadata.</p>
+<p>See <code>tiledb.cf.NetCDF4ConverterEngine</code> for more information on the backend converter engine used for the conversion.</p>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="table">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 31%">
+<col style="width: 56%">
+<col style="width: 6%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>input_file</code></td>
+<td>typing.Union[str, pathlib.Path]</td>
+<td>The input NetCDF file to generate the converter engine from.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>output_uri</code></td>
+<td>str</td>
+<td>The uniform resource identifier for the TileDB group to be created.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>input_group_path</code></td>
+<td>str</td>
+<td>The path to the NetCDF group to copy data from. Use <code>'/'</code> for the root group.</td>
+<td><code>'/'</code></td>
+</tr>
+<tr class="even">
+<td><code>recursive</code></td>
+<td>bool</td>
+<td>If <code>True</code>, recursively convert groups in a NetCDF file. Otherwise, only convert group provided.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td><code>output_key</code></td>
+<td>typing.Optional[str]</td>
+<td>If not <code>None</code>, encryption key to decrypt arrays.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>output_ctx</code></td>
+<td>typing.Optional[tiledb.tiledb.Ctx]</td>
+<td>If not <code>None</code>, TileDB context wrapper for a TileDB storage manager.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td><code>unlimited_dim_size</code></td>
+<td>int</td>
+<td>The size of the domain for TileDB dimensions created from unlimited NetCDF dimensions.</td>
+<td><code>10000</code></td>
+</tr>
+<tr class="even">
+<td><code>dim_dtype</code></td>
+<td>numpy.numpy.dtype</td>
+<td>The numpy dtype for TileDB dimensions.</td>
+<td><code>_DEFAULT_INDEX_DTYPE</code></td>
+</tr>
+<tr class="odd">
+<td><code>tiles_by_var</code></td>
+<td>typing.Optional[typing.Dict[str, typing.Dict[str, typing.Optional[typing.Sequence[int]]]]]</td>
+<td>A map from the name of a NetCDF variable to the tiles of the dimensions of the variable in the generated TileDB array.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>tiles_by_dims</code></td>
+<td>typing.Optional[typing.Dict[str, typing.Dict[typing.Sequence[str], typing.Optional[typing.Sequence[int]]]]]</td>
+<td>A map from the name of NetCDF dimensions defining a variable to the tiles of those dimensions in the generated TileDB array.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td><code>coords_to_dims</code></td>
+<td>bool</td>
+<td>If <code>True</code>, convert the NetCDF coordinate variable into a TileDB dimension for sparse arrays. Otherwise, convert the coordinate dimension into a TileDB dimension and the coordinate variable into a TileDB attribute.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="even">
+<td><code>collect_attrs</code></td>
+<td>bool</td>
+<td>If <code>True</code>, store all attributes with the same dimensions in the same array. Otherwise, store each attribute in a scalar array.</td>
+<td><code>True</code></td>
+</tr>
+<tr class="odd">
+<td><code>unpack_vars</code></td>
+<td>bool</td>
+<td>Unpack NetCDF variables with NetCDF attributes <code>scale_factor</code> or <code>add_offset</code> using the transformation <code>scale_factor * value + unpack</code>.</td>
+<td><code>False</code></td>
+</tr>
+<tr class="even">
+<td><code>offsets_filters</code></td>
+<td>typing.Optional[tiledb.tiledb.FilterList]</td>
+<td>Default filters for all offsets for variable attributes and dimensions.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td><code>attrs_filters</code></td>
+<td>typing.Optional[tiledb.tiledb.FilterList]</td>
+<td>Default filters for all attributes.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>copy_metadata</code></td>
+<td>bool</td>
+<td>If <code>True</code> copy NetCDF group and variable attributes to TileDB metadata. If <code>False</code> do not copy metadata.</td>
+<td><code>True</code></td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

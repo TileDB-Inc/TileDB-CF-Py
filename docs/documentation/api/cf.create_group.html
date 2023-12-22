@@ -267,7 +267,10 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.create_group" class="nav-link active" data-scroll-target="#tiledb.cf.create_group">cf.create_group</a></li>
+<li><a href="#tiledb.cf.create_group" class="nav-link active" data-scroll-target="#tiledb.cf.create_group">cf.create_group</a>
+<ul class="collapse">
+<li><a href="#parameters" class="nav-link" data-scroll-target="#parameters">Parameters</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -279,10 +282,60 @@
 <p><code>cf.create_group(uri, group_schema, *, key=None, ctx=None, config=None, append=False)</code></p>
 <p>Creates a TileDB group with arrays at relative locations inside the group.</p>
 <p>All arrays in the group will be added at a relative URI that matches the array name.</p>
-<p>Parameters: uri: Uniform resource identifier for TileDB group or array. group_schema: A mapping from array names to array schemas to add to the group. ctx: If not <code>None</code>, TileDB context wrapper for a TileDB storage manager. append: If <code>True</code>, add arrays from the provided group schema to an already existing group. The names for the arrays in the group schema cannot already exist in the group being append to.</p>
+<section id="parameters" class="level2">
+<h2 class="anchored" data-anchor-id="parameters">Parameters</h2>
+<table class="table">
+<colgroup>
+<col style="width: 5%">
+<col style="width: 23%">
+<col style="width: 66%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>uri</code></td>
+<td>str</td>
+<td>Uniform resource identifier for TileDB group or array.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="even">
+<td><code>group_schema</code></td>
+<td>collections.abc.Mapping[str, tiledb.tiledb.ArraySchema]</td>
+<td>A mapping from array names to array schemas to add to the group.</td>
+<td><em>required</em></td>
+</tr>
+<tr class="odd">
+<td><code>key</code></td>
+<td>typing.Optional[typing.Union[typing.Dict[str, str], str]]</td>
+<td>A encryption key or dict from array names to encryption keys.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="even">
+<td><code>ctx</code></td>
+<td>typing.Optional[tiledb.tiledb.Ctx]</td>
+<td>If not <code>None</code>, TileDB context wrapper for a TileDB storage manager.</td>
+<td><code>None</code></td>
+</tr>
+<tr class="odd">
+<td><code>append</code></td>
+<td>bool</td>
+<td>If <code>True</code>, add arrays from the provided group schema to an already existing group. The names for the arrays in the group schema cannot already exist in the group being append to.</td>
+<td><code>False</code></td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">

@@ -267,7 +267,10 @@
         <nav id="TOC" role="doc-toc">
 <h2 id="toc-title">On this page</h2>
 <ul>
-<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter">cf.netcdf_engine.NetCDF4ArrayConverter</a></li>
+<li><a href="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter" class="nav-link active" data-scroll-target="#tiledb.cf.netcdf_engine.NetCDF4ArrayConverter">cf.netcdf_engine.NetCDF4ArrayConverter</a>
+<ul class="collapse">
+<li><a href="#attributes" class="nav-link" data-scroll-target="#attributes">Attributes</a></li>
+</ul></li>
 </ul>
 <div class="toc-actions"><div><i class="bi bi-github"></i></div><div class="action-links"><p><a href="https://github.com/TileDB-Inc/tiledb-quarto-template/issues/new" class="toc-action">Report an issue</a></p></div></div></nav>
     </div>
@@ -278,10 +281,58 @@
 <h1>cf.netcdf_engine.NetCDF4ArrayConverter</h1>
 <p><code>cf.netcdf_engine.NetCDF4ArrayConverter(self, *, name='array', dim_order=None, cell_order='row-major', tile_order='row-major', capacity=0, tiles=None, dim_filters=None, offsets_filters=None, attrs_filters=None, allows_duplicates=False, sparse=False, registry=None, dim_registry=None, shared_dims=None)</code></p>
 <p>Converter for a TileDB array from a collection of NetCDF variables.</p>
-<p>Attributes: cell_order: The order in which TileDB stores the cells on disk inside a tile. Valid values are: <code>row-major</code> (default) or <code>C</code> for row major; <code>col-major</code> or <code>F</code> for column major; or <code>Hilbert</code> for a Hilbert curve. tile_order: The order in which TileDB stores the tiles on disk. Valid values are: <code>row-major</code> or <code>C</code> (default) for row major; or <code>col-major</code> or <code>F</code> for column major. capacity: The number of cells in a data tile of a sparse fragment. offsets_filters: Filters for the offsets for variable length attributes or dimensions. attrs_filters: Default filters to use when adding an attribute to the array. allows_duplicates: Specifies if multiple values can be stored at the same coordinate. Only allowed for sparse arrays.</p>
+<section id="attributes" class="level2">
+<h2 class="anchored" data-anchor-id="attributes">Attributes</h2>
+<table class="table">
+<colgroup>
+<col style="width: 8%">
+<col style="width: 3%">
+<col style="width: 88%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>cell_order</td>
+<td></td>
+<td>The order in which TileDB stores the cells on disk inside a tile. Valid values are: <code>row-major</code> (default) or <code>C</code> for row major; <code>col-major</code> or <code>F</code> for column major; or <code>Hilbert</code> for a Hilbert curve.</td>
+</tr>
+<tr class="even">
+<td>tile_order</td>
+<td></td>
+<td>The order in which TileDB stores the tiles on disk. Valid values are: <code>row-major</code> or <code>C</code> (default) for row major; or <code>col-major</code> or <code>F</code> for column major.</td>
+</tr>
+<tr class="odd">
+<td>capacity</td>
+<td></td>
+<td>The number of cells in a data tile of a sparse fragment.</td>
+</tr>
+<tr class="even">
+<td>offsets_filters</td>
+<td></td>
+<td>Filters for the offsets for variable length attributes or dimensions.</td>
+</tr>
+<tr class="odd">
+<td>attrs_filters</td>
+<td></td>
+<td>Default filters to use when adding an attribute to the array.</td>
+</tr>
+<tr class="even">
+<td>allows_duplicates</td>
+<td></td>
+<td>Specifies if multiple values can be stored at the same coordinate. Only allowed for sparse arrays.</td>
+</tr>
+</tbody>
+</table>
 
 
 
+</section>
 </section>
 </main> <!-- /main -->
 <script type="application/javascript">
