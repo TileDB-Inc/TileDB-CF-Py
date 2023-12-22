@@ -62,9 +62,7 @@ class ConvertNetCDFBase:
                 with open_group_array(group, attr=attr_name) as array:
                     nonempty_domain = array.nonempty_domain()
                     result = array.multi_index[nonempty_domain]
-                np.testing.assert_equal(
-                    result[attr_name], self.variable_data[var_name]
-                ), f"unexpected values for attribute '{attr_name}'"
+                np.testing.assert_equal(result[attr_name], self.variable_data[var_name])
 
     @pytest.mark.parametrize("collect_attrs", [True, False])
     def test_from_netcdf(self, netcdf_file, tmpdir, collect_attrs):
