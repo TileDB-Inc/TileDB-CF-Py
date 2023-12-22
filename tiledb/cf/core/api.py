@@ -23,15 +23,15 @@ def create_group(
 
     Parameters
     ----------
-    uri: str
+    uri
         Uniform resource identifier for TileDB group or array.
-    group_schema: Mapping[str, tiledb.ArraySchema]
+    group_schema
         A mapping from array names to array schemas to add to the group.
-    key: str or Dict[str, str], optional
+    key
         A encryption key or dict from array names to encryption keys.
-    ctx: tiledb.Ctx, optional
+    ctx
         If not ``None``, TileDB context wrapper for a TileDB storage manager.
-    append: bool, default=False
+    append
         If ``True``, add arrays from the provided group schema to an already existing
         group. The names for the arrays in the group schema cannot already exist in the
         group being append to.
@@ -72,12 +72,12 @@ def open_group_array(
 
     Parameters
     ----------
-    group: tiledb.Group
+    group
         The tiledb group to open the array in.
-    array: str, optional
+    array
         If not ``None``, the name of the array to open. Overrides attr if both are
         provided.
-    attr: str, optional
+    attr
         If not ``None``, open the array that contains this attr. Attr must be in only
         one of the group arrays.
     **kwargs: dict, optional

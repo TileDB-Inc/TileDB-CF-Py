@@ -18,7 +18,7 @@ class Metadata(MutableMapping):
 
     Parameters
     ----------
-    metadata: tiledb.Metadata
+    metadata
         TileDB array metadata object.
     """
 
@@ -41,12 +41,12 @@ class Metadata(MutableMapping):
 
         Parameters
         ----------
-        key: str
+        key
             Key to find value from.
 
         Returns
         -------
-        Any:
+        Any
             Value stored with provided key.
         """
         return self._metadata[self._to_tiledb_key(key)]
@@ -56,9 +56,9 @@ class Metadata(MutableMapping):
 
         Paremeters
         ----------
-        key: str
+        key
             Key to set
-        value: Any
+        value
             Corresponding value
         """
         self._metadata[self._to_tiledb_key(key)] = value
@@ -68,7 +68,7 @@ class Metadata(MutableMapping):
 
         Parameters
         ----------
-        key: str
+        key
             Key to remove.
         """
         del self._metadata[self._to_tiledb_key(key)]
@@ -82,7 +82,7 @@ class Metadata(MutableMapping):
 
         Parameters
         ----------
-        tiledb_key: str
+        tiledb_key
             Internal key to use for metadata.
 
         Returns
@@ -125,9 +125,9 @@ class AttrMetadata(Metadata):
 
     Parameters
     ----------
-    metadata: tiledb.Metadata
+    metadata
         TileDB array metadata for the array containing the desired attribute.
-    attr: str
+    attr
         Name or index of the arrary attribute being requested.
     """
 
@@ -156,9 +156,9 @@ class DimMetadata(Metadata):
 
     Parameters
     ----------
-    metadata: tiledb.Metadata
+    metadata
         TileDB array metadata for the array containing the desired attribute.
-    dim: str
+    dim
         Name or index of the arrary attribute being requested.
     """
 

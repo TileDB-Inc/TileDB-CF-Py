@@ -15,13 +15,13 @@ class SharedDim(RegisteredByNameMixin):
 
     Parameters
     ----------
-    name: str
+    name
         The name of the shared dimension.
-    domain: Tuple[Any, Any], optional
+    domain
         The domain for the shared dimension.
-    dtype: np.dtype
+    dtype
         The datatype of the shared dimension.
-    registry: Registry[self], optional
+    registry
         If provided, a registry for the shared dimension.
     """
 

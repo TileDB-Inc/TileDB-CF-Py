@@ -24,19 +24,21 @@ class DimCreator:
 
     Parameters
     ----------
-    base: SharedDim
+    base
         The core shared dimension describing the dimension.
-    tile: int or float, optional
+    tile
         The tile size for the dimension.
-    filters: tiledb.FilterList, optional
+    filters
         Specifies compression filters for the dimension.
-    registry: DimRegistry, optional
+    registry
         An optional registry for the dimension registry.
 
     Attributes
     ----------
-        tile: The tile size for the dimension.
-        filters: Specifies compression filters for the dimension.
+    tile
+        The tile size for the dimension.
+    filters
+        Specifies compression filters for the dimension.
     """
 
     def __init__(
@@ -104,9 +106,9 @@ class DimCreator:
 
         Parameters
         ----------
-        dim_data: np.ndarray or FieldData
+        dim_data
             The dimension data to set.
-        writer_index: int, optional
+        writer_index
             The index of the fragment writer to set the data on.
         """
         if self._registry is None:
@@ -119,7 +121,7 @@ class DimCreator:
 
         Parameters
         ----------
-        ctx: tiledb.Ctx, optional
+        ctx
             If not ``None``, TileDB context wrapper for a TileDB storage manager.
 
         Returns

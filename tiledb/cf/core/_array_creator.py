@@ -60,36 +60,36 @@ class ArrayCreator(RegisteredByNameMixin):
 
     Attributes
     ----------
-    cell_order:
+    cell_order
         The order in which TileDB stores the cells on disk inside a
         tile. Valid values are: ``row-major`` (default) or ``C`` for row major;
         ``col-major`` or ``F`` for column major; or ``Hilbert`` for a Hilbert curve.
-    tile_order:
+    tile_order
         The order in which TileDB stores the tiles on disk. Valid values are:
         ``row-major`` or ``C`` (default) for row major; or ``col-major`` or
         ``F`` for column major.
-    capacity:
+    capacity
         The number of cells in a data tile of a sparse fragment.
-    tiles: Sequence[int], optional
+    tiles
         The tile extents to set on each dimension. The length must match the number
         of dimensions.
-    dim_filters: Dict[str, tiledb.FilterList], optional
+    dim_filters
         A dictionary from dimension name to TileDB filters to apply to the dimension.
-    offsets_filters:
+    offsets_filters
         Filters for the offsets for variable length attributes or dimensions.
-    attrs_filters:
+    attrs_filters
         Default filters to use when adding an attribute to the array.
-    allows_duplicates: bool, default: True
+    allows_duplicates
         Specifies if multiple values can be stored at the same
         coordinate. Only allowed for sparse arrays.
-    sparse: bool, default: True
+    sparse
         If ``True``, creates a sparse array. Otherwise, creates a dense array.
-    registry: Registry[ArrayCreator], optional
+    registry
         Registry this array will belong to.
-    dim_registry: Registry[SharedDim], optional
+    dim_registry
         Registry for the shared dimensions this array will use. If none is provided,
         a registry will be created.
-    shared_dims: Sequence[SharedDim], optional
+    shared_dims
         An ordered list of shared dimensions to use as the dimensions this array.
     """
 
@@ -194,11 +194,12 @@ class ArrayCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        key: int, str
+        key
             The attribute creator index (int) or name (str).
 
-        Returns:
-            The attribute creator at the given index of name.
+        Returns
+        -------
+        The attribute creator at the given index of name.
         """
         return self._core.get_attr_creator(key)
 
@@ -218,18 +219,18 @@ class ArrayCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        name: str
+        name
             Name of the new attribute that will be added.
-        dtype: np.dtype
+        dtype
             Numpy dtype of the new attribute.
-        fill: int or float or str, optional
+        fill
             Fill value for unset cells.
-        var: bool, default=False
+        var
             Specifies if the attribute is variable length (automatic for
             byte/strings).
-        nullable: bool, default=False
+        nullable
             Specifies if the attribute is nullable using validity tiles.
-        filters: tiledb.FilterList, optional
+        filters
             Specifies compression filters for the attribute. If ``None``, use
             the array's ``attrs_filters`` property.
         """
@@ -253,7 +254,7 @@ class ArrayCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        target_region: Tuple[DenseRange, ...], optional
+        target_region
             Region the fragments are written on. If ``None``, the region is
             set to the entire domain of the array.
         """
@@ -289,11 +290,11 @@ class ArrayCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        size: int, optional
+        size
             The number of elements the fragment stores.
-        shape: Tuple[int, ...], optional
+        shape
             The shape of the fragment. Required for "row-major" form.
-        form: str, default="coo"
+        form
             The form for the dimension data. Can either be "coo" (coordinate form) or
             "row-major".
         """
@@ -325,11 +326,11 @@ class ArrayCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        uri: str
+        uri
             Uniform resource identifier for the array to be created.
-        key: str, optional
+        key
             If not ``None``, encryption key to decrypt arrays.
-        ctx: tiledb.Ctx, option
+        ctx
             If not ``None``, TileDB context wrapper for a TileDB storage manager.
         """
         tiledb.Array.create(uri=uri, schema=self.to_schema(ctx), key=key, ctx=ctx)
@@ -352,17 +353,17 @@ class ArrayCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        uri: str
+        uri
             Uniform resource identifier for the array.
-        key: str, optional
+        key
             If not ``None``, encryption key to decrypt arrays.
-        timestamp: int, optional
+        timestamp
             If not ``None``, the timestamp to write new data at.
-        append: bool, default=False
+        append
             If ``True``, write data to an existing array. Otherwise, create a new array.
-        skip_metadata: bool, default=False
+        skip_metadata
             If ``True``, do not write metadata.
-        writer_indices: Iterable[int], optional
+        writer_indices
             If not ``None``, an iterable list of fragment writers to write from.
         """
         if not append:
@@ -387,8 +388,13 @@ class ArrayCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        name: str
+        name
             The name of the attribute creator to check for.
+
+        Returns
+        -------
+        bool
+            If an attribute creator with the requested name is in the array creator.
         """
         return self._core.has_attr_creator(name)
 
@@ -449,7 +455,7 @@ class ArrayCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        attr_name: str
+        attr_name
             Name of the attribute to remove.
         """
         return self._core.deregister_attr_creator(attr_name)
@@ -468,8 +474,14 @@ class ArrayCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        ctx: tiledb.Ctx, optional
+        ctx
             If not ``None``, TileDB context wrapper for a TileDB storage manager.
+
+
+        Returns
+        -------
+        tiledb.ArraySchema
+            An array schema for the array from the array creator properties.
         """
         if self._core.nattr == 0:
             raise ValueError("Cannot create schema for array with no attributes.")
@@ -513,7 +525,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        target_region: Optional[Tuple[DenseRange, ...]], default=None
+        target_region
             Region the fragments are written on. If ``None``, the region is
             set to the entire domain of the array.
         """
@@ -539,7 +551,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        size: int
+        size
             The number of elements the fragment stores.
         """
         self._fragment_writers.append(
@@ -563,7 +575,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        shape: Tuple[int, ...]
+        shape
             The shape of the fragment.
         """
         self._fragment_writers.append(
@@ -583,7 +595,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        attr_name: str
+        attr_name
             The attribute name to check.
         """
         if attr_name in self._attr_creators:
@@ -603,7 +615,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        attr_name: str
+        attr_name
             The name of the attribute creator to remove.
         """
         del self._attr_creators[attr_name]
@@ -623,7 +635,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        attr_name: str
+        attr_name
             Name of the attribute creator to return.
         """
         if isinstance(key, int):
@@ -635,7 +647,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        key: str or int
+        key
             Name (string) or index (integer) of the dimension to return.
 
         Returns
@@ -653,7 +665,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        dim_name: str
+        dim_name
             Name of the dimension to get the position of.
 
         Returns
@@ -671,7 +683,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        index: int
+        index
             The index of the fragment writer to return.
 
         Returns
@@ -687,7 +699,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        name: str
+        name
             The name of the attribute creator to check for.
 
         Returns
@@ -702,13 +714,12 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        dim_name: str
+        dim_name
             Name of the dimension creator that will be added.
-        position: int
+        position
             Index the dimension creator will be added at.
         **dim_kwargs: dict, optional
             Keyword arguments to pass to the dimension creator.
-
         """
         if len(self._fragment_writers) > 0:
             raise NotImplementedError(
@@ -764,7 +775,7 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        dim_creator: index
+        dim_creator
             The location of the dimension creator to remove.
         """
         if len(self._fragment_writers) > 0:
@@ -788,11 +799,11 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        writer_index: int
+        writer_index
             Index of the fragment writer to add attribute data to.
-        attr_name: str
+        attr_name
             The name of the attribute creator to add data for.
-        data: FieldData
+        data
             The data that is being added.
         """
         if writer_index is None:
@@ -810,10 +821,11 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        writer_index: int
-        dim_name: str
+        writer_index
+            The index of the fragment writer to add dimension data to.
+        dim_name
             The name of the dimension creator to add data for.
-        data: FieldData
+        data
             The data that is being added.
         """
         if writer_index is None:
@@ -848,9 +860,9 @@ class ArrayCreatorCore:
 
         Parameters
         ----------
-        original_name: str
+        original_name
             Current name of the attribute to be renamed.
-        new_name: str
+        new_name
             New name the attribute will be renamed to.
         """
         self._attr_creators[new_name] = self._attr_creators.pop(original_name)
@@ -914,9 +926,9 @@ class DomainCreator:
 
         Parameters
         ----------
-        dim_name: str
+        dim_name
             Name of the shared dimension to add to the array's domain.
-        position: index
+        position
             Position of the shared dimension. Negative values count backwards
             from the end of the new number of dimensions.
         dim_kwargs: dict, optional
@@ -935,7 +947,7 @@ class DomainCreator:
 
         Parameters
         ----------
-        dim_id: int or str
+        dim_id
             dimension index (int) or name (str)
 
         Returns
@@ -950,7 +962,7 @@ class DomainCreator:
 
         Parameters
         ----------
-        dim_id: int or str
+        dim_id
             dimension index (int) or name (str)
         """
         if isinstance(dim_id, int):
@@ -979,7 +991,7 @@ class DomainCreator:
 
         Parameters
         ----------
-        ctx: tiledb.Ctx, optional
+        ctx
             If not ``None``, the context to use when creating the domain.
         """
         if self.ndim == 0:

@@ -41,23 +41,23 @@ class AttrCreator(RegisteredByNameMixin):
 
     Parameters
     ----------
-    name: str
+    name
         Name of the attribute that will be created.
-    dtype: np.dtype
+    dtype
         The datatype of the attribute that will be created.
-    fill: int or float or str, optional
+    fill
         Optional fill value for the attribute that will be created.
-    var: bool, default=False
+    var
         Specifies if the attribute that will be created will be variable length
         (automatic for byte/strings).
-    nullable: bool, default=False
+    nullable
         Specifies if the attribute that will be created will be nullable using
         validity tiles.
-    filters: tiledb.FilterList, optional
+    filters
         Filter pipeline to apply to the attribute.
-    registry: AttrRegistry, optional
+    registry
         Registry for this attribute creator.
-    fragment_writers: Sequence[FragmentWriter], optional
+    fragment_writers
         Fragment writers for this attribute creator.
 
     Attributes
@@ -120,9 +120,9 @@ class AttrCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        attr_data: np.ndarray or FieldData
+        attr_data
             Attribute data to add to the writer.
-        writer_index: int, optional
+        writer_index
             The index of the fragment writer to add to.
         """
         if self._registry is None:
@@ -135,7 +135,7 @@ class AttrCreator(RegisteredByNameMixin):
 
         Parameters
         ----------
-        ctx: tiledb.Ctx, optional
+        ctx
             If not ``None``, TileDB context wrapper for a TileDB storage manager.
 
         Returns
