@@ -105,7 +105,7 @@ def open_group_array(
             raise ValueError(
                 f"The array must be specified when opening an attribute that "
                 f"exists in multiple arrays in a group. Arrays with attribute "
-                f"'{attr}' include: {item.name for item in group}."
+                f"'{attr}' include: {list(item.name for item in group)}."
             )
         item = arrays[0]
     else:
