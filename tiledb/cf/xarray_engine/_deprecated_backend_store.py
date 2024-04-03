@@ -19,9 +19,15 @@ from typing import Tuple
 import numpy as np
 from xarray.backends.common import AbstractDataStore, BackendArray
 from xarray.core.indexing import ExplicitIndexer, LazilyIndexedArray
-from xarray.core.pycompat import integer_types
+
 from xarray.core.utils import FrozenDict
 from xarray.core.variable import Variable
+try:
+  # handle https://github.com/TileDB-Inc/TileDB-CF-Py/issues/152#issuecomment-2035080835
+  # - https://github.com/pydata/xarray/commit/d64460795e406bc4a998e2ddae0054a1029d52a9
+  from xarray.core.pycompat import integer_types
+except ImportError:
+  from xarray.namedarray.pycompat import integer_types
 
 try:
     import tiledb
