@@ -35,7 +35,7 @@ class TileDBXarrayWriterBase:
 
     @pytest.fixture(scope="class")
     def expected_dataset(self):
-        return xr.Dataset()
+        return xr.Dataset().astype('float64')
 
     @pytest.fixture(scope="class")
     def expected_schemas(self):
@@ -404,7 +404,7 @@ class TestWriteTimedelta1D(TileDBXarrayWriterBase):
             )
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
-        example_attr = tiledb.Attr("example", filters=default_filters, dtype=np.int64)
+        example_attr = tiledb.Attr("example", filters=default_filters, dtype=np.float64)
         return {
             "example": tiledb.ArraySchema(domain, (example_attr,)),
         }
@@ -450,7 +450,7 @@ class TestWriteDatetime(TileDBXarrayWriterBase):
             )
         )
         default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
-        example_attr = tiledb.Attr("example", filters=default_filters, dtype="int64")
+        example_attr = tiledb.Attr("example", filters=default_filters, dtype="float64")
         return {
             "example": tiledb.ArraySchema(domain, (example_attr,)),
         }
