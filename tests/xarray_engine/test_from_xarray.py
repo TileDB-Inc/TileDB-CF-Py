@@ -35,7 +35,7 @@ class TileDBXarrayWriterBase:
 
     @pytest.fixture(scope="class")
     def expected_dataset(self):
-        return xr.Dataset().astype('float64')
+        return xr.Dataset().astype("float64")
 
     @pytest.fixture(scope="class")
     def expected_schemas(self):
@@ -367,7 +367,50 @@ class TestWriteUnlimitedDimWithShape1D(TileDBXarrayWriterBase):
         }
 
 
-class TestWriteTimedelta1D(TileDBXarrayWriterBase):
+class TestWriteIntTimedelta1D(TileDBXarrayWriterBase):
+    name = "timedelta_1d"
+
+    kwargs = {"encoding": {"example": {"tiles": (8,)}}}
+
+    ds = xr.decode_cf(
+        xr.Dataset(
+            {
+                "example": xr.DataArray(
+                    data=np.arange(8, dtype=np.int32),
+                    dims="rows",
+                    attrs={"units": "hours"},
+                )
+            }
+        )
+    )
+
+    @pytest.fixture(scope="class")
+    def input_dataset(self):
+        return self.ds
+
+    @pytest.fixture(scope="class")
+    def expected_dataset(self):
+        return self.ds
+
+    @pytest.fixture(scope="class")
+    def expected_schemas(self):
+        domain = tiledb.Domain(
+            tiledb.Dim(
+                "rows",
+                domain=(0, 7),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            )
+        )
+        default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
+        example_attr = tiledb.Attr("example", filters=default_filters, dtype=np.int32)
+        return {
+            "example": tiledb.ArraySchema(domain, (example_attr,)),
+        }
+
+
+class TestWriteFloatTimedelta1D(TileDBXarrayWriterBase):
     name = "timedelta_1d"
 
     kwargs = {"encoding": {"example": {"tiles": (8,)}}}
@@ -410,7 +453,53 @@ class TestWriteTimedelta1D(TileDBXarrayWriterBase):
         }
 
 
-class TestWriteDatetime(TileDBXarrayWriterBase):
+class TestWriteIntDatetime(TileDBXarrayWriterBase):
+    name = "datetime_1d"
+
+    ds = xr.decode_cf(
+        xr.Dataset(
+            {
+                "example": xr.DataArray(
+                    data=np.arange(8, dtype=np.int32),
+                    dims="rows",
+                    attrs={"units": "hours since 2000-01-01"},
+                )
+            }
+        )
+    )
+
+    kwargs = {
+        "encoding": {"example": {"tiles": (8,)}},
+        "region": {"rows": slice(8)},
+    }
+
+    @pytest.fixture(scope="class")
+    def input_dataset(self):
+        return self.ds
+
+    @pytest.fixture(scope="class")
+    def expected_dataset(self):
+        return self.ds
+
+    @pytest.fixture(scope="class")
+    def expected_schemas(self):
+        domain = tiledb.Domain(
+            tiledb.Dim(
+                "rows",
+                domain=(0, 7),
+                tile=8,
+                dtype=np.uint32,
+                filters=tiledb.FilterList([tiledb.ZstdFilter()]),
+            )
+        )
+        default_filters = tiledb.FilterList([tiledb.ZstdFilter(level=5)])
+        example_attr = tiledb.Attr("example", filters=default_filters, dtype="int32")
+        return {
+            "example": tiledb.ArraySchema(domain, (example_attr,)),
+        }
+
+
+class TestWriteFloatDatetime(TileDBXarrayWriterBase):
     name = "datetime_1d"
 
     ds = xr.decode_cf(
