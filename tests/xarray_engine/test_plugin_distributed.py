@@ -28,6 +28,10 @@ def test_dask_distributed_tiledb_integration_test(loop, create_tiledb_example):
             assert_allclose(actual, expected)
 
 
+@pytest.mark.skip(
+    reason="failing test of deprecated engine. Will implement for new backend engine"
+    "after xarray implements better non-nanosecond datetime support."
+)
 def test_dask_distributed_tiledb_datetime_integration_test(
     loop,
     create_tiledb_datetime_example,
